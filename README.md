@@ -8,6 +8,21 @@ Aktuell ist das ein klickbarer Prototyp ohne Server und ohne Konten. Er läuft m
 
 `prototype/index.html` im Browser öffnen. Es gibt keinen Build-Schritt.
 
+## Dokumente
+
+- [TODO.md](TODO.md): alle To-dos, sortiert nach Bereich
+- [FEATURES.md](FEATURES.md): Übersicht aller Funktionen mit Stand
+- [DECISIONS.md](DECISIONS.md): alle Entscheidungen mit Begründung
+
+## Die vier Bereiche
+
+| Bereich | Verantwortet | Grenze zu den anderen |
+|---|---|---|
+| 1 Gruppen | Startseite, Gruppe erstellen und beitreten, Gruppen-Detail mit Wettliste | Zeigt die Inhalte der Tabs „Balances“ (Bereich 3) und „Members“ (Bereich 4) nur an |
+| 2 Wetten erstellen und beitreten | Formular für Event- und Reallife-Wetten, Wett-Detail bis zum Annahmeschluss | Ab Status „Locked“ übernimmt Bereich 3 |
+| 3 Auflösung, Salden und Ausgleich | Regeln und Berechnung, Wett-Detail ab „Locked“, Salden, Kontoverlauf, „Settle up“ | Bekommt die fertige Wette von Bereich 2 |
+| 4 Profil, Admin und Fundament | Profil, Adminbereich mit Mitgliedern, Datenmodell, Styles, gemeinsame Bausteine, Pull Requests | Liefert Bausteine und Datenmodell an alle |
+
 ## Aufbau und Zuständigkeiten
 
 Jede Datei gehört zu genau einem Bereich. Wer etwas in einer fremden Datei braucht, spricht es mit dem Bereich ab, statt es selbst zu ändern.
