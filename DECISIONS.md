@@ -59,6 +59,8 @@ Diese Einträge beantworten die Klärungspunkte K1 bis K5 aus der TODO.md. Sie w
 | E-42 | 16.11.2026 | Eine Gruppe löschen kann der Admin nur, wenn keine Wette läuft und alle Salden bei 0 stehen. Vor dem Löschen fragt die App nach. | Löschen würde sonst offene Schulden verschwinden lassen. | Vorschlag |
 | E-43 | 16.11.2026 | Reallife-Wetten haben zwei bis fünf Ausgänge. | Mehr als zwei Ausgänge erlauben Wetten wie „Wer putzt zuerst?“. Die Obergrenze hält das Formular auf dem Handy bedienbar. | Vorschlag |
 | E-44 | 16.11.2026 | Platzhalter für Profil- und Gruppenbilder sind die Initialen: Kreis für Personen, abgerundetes Quadrat für Gruppen. | Braucht keinen Upload und unterscheidet Personen und Gruppen auf einen Blick. | Vorschlag |
+| E-46 | 16.11.2026 | Ein Konto löschen kann nur, wer in jeder Gruppe Saldo 0 hat, keine unbestätigte Zahlung und keinen Einsatz in einer laufenden Wette. Vor dem Löschen fragt die App nach. | Sonst würden mit dem Konto Schulden oder Guthaben gegenüber anderen verschwinden. Entspricht der Regel für „Gruppe verlassen“ (E-41). | Vorschlag |
+| E-47 | 16.11.2026 | Profilbilder werden beim Hochladen quadratisch zugeschnitten und auf 192 Pixel verkleinert. | Kleine Bilder laden schnell und passen in den Speicher des Browsers. Solange es keinen Server gibt, sieht nur man selbst das eigene Bild. | Vorschlag |
 
 ## Auflösung
 
@@ -79,6 +81,7 @@ Diese Einträge beantworten die Klärungspunkte K1 bis K5 aus der TODO.md. Sie w
 | E-27 | 16.11.2026 | Die App ist für das Handy optimiert. | Vorgabe des Teams für den ersten Draft. | Team |
 | E-28 | 16.11.2026 | Auffälliges Farbschema: Schwarz mit Neongrün. | Vorgabe des Teams für den ersten Draft. | Team |
 | E-29 | 16.11.2026 | Solange es keine Profil- und Gruppenbilder gibt, werden Platzhalter verwendet. | Die Stellen sollen im Layout schon vorhanden sein. | Team |
+| E-45 | 16.11.2026 | Das Logo zeigt eckige Klammern: WE BE[A]T. Die Klammern sind gezeichnete Formen, keine Schriftzeichen, und das A samt Klammern ist neongrün. | Eckige Klammern bestehen nur aus geraden Strichen und passen besser zu den kantigen Großbuchstaben. Gezeichnet statt getippt sitzen sie exakt auf der Mitte der Buchstaben. | Team |
 
 ## Technik und Zusammenarbeit
 
@@ -96,6 +99,8 @@ Diese Punkte sind noch nicht entschieden. Sobald sie es sind, wandern sie mit Nu
 
 | Frage | Betrifft | Bisherige Überlegung |
 |---|---|---|
+| Was passiert beim Löschen eines Kontos mit den Gruppen, in denen man Admin war? | Bereich 4 | Im Prototyp ist das nicht geregelt, das Löschen setzt nur den Browser zurück. Varianten: (a) Löschen erst möglich, nachdem man die Admin-Rolle an ein anderes Mitglied übergeben hat. (b) Die Rolle geht automatisch an das am längsten beigetretene Mitglied. (c) Gruppen ohne weitere Mitglieder werden mit dem Konto gelöscht. Vorschlag: (a) für Gruppen mit weiteren Mitgliedern, (c) für Gruppen, in denen man allein ist. |
+| Wird der Name im Fließtext weiter „We Be(a)t“ mit runden Klammern geschrieben, obwohl das Logo eckige zeigt? | alle | Logo und Schreibweise weichen seit E-45 voneinander ab. Seitentitel und Dokumente nutzen noch die runde Schreibweise. |
 | Woher kommen Events und Ergebnisse für Event-Wetten? | später | Braucht eine Sportdaten-Quelle, die meist Geld kostet. |
 | Mit welcher Technik wird die echte App gebaut (Server, Konten, App-Stores)? | später | Der Prototyp hat keinen Server. Die Entscheidung sollte fallen, bevor viel Arbeit in den Prototyp fließt. |
 | Braucht es eine rechtliche Prüfung, wenn Gruppen die fiktiven Euro in echtem Geld ausgleichen? | später | Die App bewegt kein Geld, faktisch sind es dann aber Geldwetten unter Freunden. |
