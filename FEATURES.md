@@ -84,6 +84,8 @@ Alle Funktionen der App mit ihrem Stand. Wer eine Funktion fertigstellt oder ein
 | Einladungscode anzeigen und kopieren | Vorhanden | `js/admin.js` |
 | Beitritt eines neuen Mitglieds | Demo | `js/admin.js` |
 | Profil-Option oben rechts auf jedem Screen | Vorhanden | `js/core.js` |
+| Profilbild hochladen über das Plus am Profilbild, entfernen möglich (nur in diesem Browser gespeichert) | Vorhanden | `js/profile.js` |
+| Konto löschen mit Rückfrage, nur ohne offene Salden und laufende Einsätze | Demo | `js/profile.js` |
 | Logout im Profil mit Login-Screen (Attrappe, da es noch keine Konten gibt) | Demo | `js/profile.js` |
 | Profil-Screen: Anzeigename ändern, Saldo über alle Gruppen, Anzahl Gruppen und laufender Wetten | Vorhanden | `js/profile.js` |
 | Baustein für Profil- und Gruppenbilder (Platzhalter mit Initialen) | Vorhanden | `js/core.js`, `css/styles.css` |

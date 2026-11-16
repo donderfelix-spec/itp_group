@@ -38,6 +38,7 @@ _Keine offenen To-dos._
 
 Dateien: `index.html`, `css/styles.css`, `js/core.js`, `js/data.js`, `js/admin.js`, `js/profile.js`, `js/main.js`
 
+- [ ] **4.7** Konto löschen: festlegen und umsetzen, was mit Gruppen passiert, in denen man Admin war (siehe offene Frage in der DECISIONS.md)
 - [ ] **4.6** Pull Requests der anderen Bereiche prüfen und mergen (laufend)
 
 ## Alle Bereiche

@@ -118,6 +118,15 @@ act('go', { v: 'admin', g: 'g1' }); act('askDelete'); act('deleteGroup');
 check('group with running bets cannot be deleted', db.groups.indexOf(g1) > -1, true);
 act('back');
 
+/* --- Delete account --- */
+act('go', { v: 'profile' }); check('profile offers upload and account deletion', [page().indexOf('p-photo') > -1, page().indexOf('Delete account') > -1], [true, true]);
+act('askDeleteAccount'); act('deleteAccount');
+check('account with a stake in a running bet cannot be deleted', !!db.loggedOut, false);
+db.groups.forEach(function (g) { g.bets.forEach(function (b) { if (isActive(b)) b.status = 'void'; }); });
+act('askDeleteAccount'); act('deleteAccount');
+check('account with nothing owed or at stake can be deleted', !!db.loggedOut, true);
+act('login');
+
 /* --- Log out and back in --- */
 act('logout'); check('logged out shows only the login screen', page().indexOf('You are logged out') > -1, true);
 act('login'); check('logging in returns to the groups', page().indexOf('Your groups') > -1, true);

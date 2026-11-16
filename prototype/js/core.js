@@ -47,15 +47,20 @@ function toast(msg) { const t = document.getElementById('toast'); t.textContent 
 /* Picture placeholders: initials in a circle (people) or rounded square (groups). Add 'lg' for the large size. */
 const initials = s => { const w = String(s).trim().split(/\s+/).filter(Boolean); return ((w.length > 1 ? w[0][0] + w[1][0] : (w[0] || '?').slice(0, 2))).toUpperCase(); };
 const avatar = (name, extra) => '<span class="av' + (extra ? ' ' + extra : '') + '" aria-hidden="true">' + esc(initials(name)) + '</span>';
-const avatarUser = (u, extra) => avatar(u === 'me' ? db.profile.name : nm(u), extra);
+/* Your own avatar shows your uploaded picture if there is one, otherwise your initials. */
+const avatarUser = (u, extra) => u === 'me' && db.profile.photo
+  ? '<span class="av' + (extra ? ' ' + extra : '') + '" aria-hidden="true"><img src="' + esc(db.profile.photo) + '" alt=""></span>'
+  : avatar(u === 'me' ? db.profile.name : nm(u), extra);
 const avatarGroup = (g, extra) => avatar(g.name, 'g' + (extra ? ' ' + extra : ''));
 
-/* Wordmark. The brackets sit in their own elements so CSS can lift them to the optical centre of the capitals. */
-const BRAND = 'WE BE<b><i>(</i>A<i>)</i></b>T';
+/* Wordmark. The letters are type, the two square brackets are drawn shapes, so their weight and height are exact
+   and they sit on the centre of the capitals instead of wherever the typeface puts its brackets. */
+const bracket = d => '<svg viewBox="0 0 30 100" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="butt" stroke-linejoin="miter" aria-hidden="true"><path d="' + d + '"/></svg>';
+const BRAND = '<span class="bm" role="img" aria-label="We Be(a)t"><span>WE BE</span>' + bracket('M24 7H9V93H24') + '<span class="a">A</span>' + bracket('M6 7H21V93H6') + '<span>T</span></span>';
 
 const profileBtn = () => '<button class="avbtn" data-a="go" data-v="profile" aria-label="Profile">' + avatarUser('me') + '</button>';
 /* Top bar. The profile button sits top right on every screen unless noProfile is set. */
-const head = (title, back, noProfile) => '<header class="top">' + (back ? '<button class="back" data-a="back" aria-label="Back">‹</button>' : '') +
+const head = (title, back, noProfile) => '<header class="top">' + (back ? '<button class="back" data-a="back" aria-label="Back"><svg width="11" height="18" viewBox="0 0 11 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2 2 9l7 7"/></svg></button>' : '') +
   '<h1>' + esc(title) + '</h1><span class="sp"></span>' + (noProfile ? '' : profileBtn()) + '</header>';
 const pill = s => '<span class="pill ' + STATUS[s][1] + '">' + STATUS[s][0] + '</span>';
 
@@ -75,7 +80,7 @@ function go(v, g, b) { ui.nav.push({ v, g, b }); window.scrollTo(0, 0); }
 Object.assign(A, {
   go(d) {
     if (d.v === 'bet') { ui.join = { o: null, s: '', h: '', a: '' }; ui.res = { h: '', a: '' }; }
-    if (d.v === 'profile') { if (cur().v === 'profile') return; ui.pdraft = { name: db.profile.name }; }
+    if (d.v === 'profile') { if (cur().v === 'profile') return; ui.pdraft = { name: db.profile.name }; ui.confirmAcc = false; }
     if (d.v === 'admin') { const g = db.groups.find(x => x.id === d.g); ui.adraft = { name: g.name, desc: g.desc, limit: g.limit }; ui.confirmDel = false; }
     go(d.v, d.g, d.b);
   },
