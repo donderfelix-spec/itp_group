@@ -51,6 +51,21 @@ Jede Datei gehört zu genau einem Bereich. Wer etwas in einer fremden Datei brau
 - Ein Eingabefeld mit `data-m="draft.name"` schreibt seinen Wert nach `ui.draft.name`, ohne neu zu zeichnen.
 - Neue Dateien in `index.html` eintragen, vor `main.js`.
 
+## Automatische Checks
+
+Bei jedem Pull Request und jedem Push auf `main` laufen auf GitHub zwei Prüfungen (`.github/workflows/ci.yml`):
+
+- **Syntax check:** Jede Datei unter `prototype/js/` und `tests/` muss gültiges JavaScript sein.
+- **Flow tests:** `tests/flows.js` spielt die Abläufe ohne Browser durch und prüft die Regeln, zum Beispiel Topf-Aufteilung, Ergebnis-Tipp, Schuldenlimit, „nicht durchführbar“, Ausgleich auf 0, Gruppe beitreten und verlassen.
+
+Lokal laufen die Tests mit Node.js:
+
+```bash
+node tests/run.js
+```
+
+Wer eine Regel in `logic.js` ändert oder einen neuen Ablauf baut, ergänzt in `tests/flows.js` einen `check(...)` dazu. Das Aussehen prüfen die Tests nicht, das bleibt Handarbeit im Browser.
+
 ## Regeln für die Zusammenarbeit
 
 - Ein Branch pro To-do, Merge per Pull Request. Niemand pusht direkt auf `main`.
