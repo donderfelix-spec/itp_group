@@ -1,9 +1,21 @@
 /* Balances, history and "Settle up". Owner: area 3 (resolution and balances). */
 
 function balancesTab(g) {
-  return '<div class="card list">' + g.members.map(u => '<div class="row"><span>' + esc(nm(u)) + '</span><span class="num ' + cls(g.bal[u] || 0) + '">' + sg(g.bal[u] || 0) + '</span></div>').join('') + '</div>' +
-    '<h2>History</h2>' + (g.ledger.length ? g.ledger.slice().reverse().map(l => '<div class="card"><span>' + esc(l.t) + '</span><div class="chips small">' +
-      Object.keys(l.d).map(u => '<span class="num ' + cls(l.d[u]) + '">' + esc(nm(u)) + ' ' + sg(l.d[u]) + '</span>').join('') + '</div></div>').join('') : '<p class="mut">Nothing booked yet.</p>');
+  const rows = g.members.map(u => {
+    const pend = pendingStakes(g, u);
+    return '<div class="row"><span class="who">' + avatarUser(u) + '<span class="col"><span>' + esc(nm(u)) + '</span>' + (pend ? '<span class="small mut">' + eur(pend) + ' at stake in running bets</span>' : '') + '</span></span>' +
+      '<span class="num ' + cls(g.bal[u] || 0) + '">' + sg(g.bal[u] || 0) + '</span></div>';
+  }).join('');
+  const entry = l => {
+    const inner = '<span>' + esc(l.t) + '</span><div class="chips small">' + Object.keys(l.d).map(u => '<span class="num ' + cls(l.d[u]) + '">' + esc(nm(u)) + ' ' + sg(l.d[u]) + '</span>').join('') + '</div>';
+    /* Entries that belong to a bet open that bet. */
+    return l.b && g.bets.some(b => b.id === l.b)
+      ? '<button class="card" data-a="go" data-v="bet" data-g="' + g.id + '" data-b="' + l.b + '">' + inner + '<span class="small mut">Open bet ›</span></button>'
+      : '<div class="card">' + inner + '</div>';
+  };
+  return '<div class="card list">' + rows + '</div>' +
+    (g.limit ? '<p class="small mut">Debt limit in this group: ' + eur(g.limit) + '. Stakes in running bets count towards it.</p>' : '') +
+    '<h2>History</h2>' + (g.ledger.length ? g.ledger.slice().reverse().map(entry).join('') : '<p class="mut">Nothing booked yet.</p>');
 }
 
 VIEWS.settle = function () {

@@ -18,7 +18,7 @@ Aktuell ist das ein klickbarer Prototyp ohne Server und ohne Konten. Er läuft m
 
 | Bereich | Verantwortet | Grenze zu den anderen |
 |---|---|---|
-| 1 Gruppen | Startseite, Gruppe erstellen und beitreten, Gruppen-Detail mit Wettliste | Zeigt die Inhalte der Tabs „Balances“ (Bereich 3) und „Members“ (Bereich 4) nur an |
+| 1 Gruppen | Startseite, Gruppe erstellen und beitreten, Gruppen-Detail mit Wettliste | Zeigt den Tab „Balances“ (Bereich 3) nur an und verlinkt in den Adminbereich (Bereich 4) |
 | 2 Wetten erstellen und beitreten | Formular für Event- und Reallife-Wetten, Wett-Detail bis zum Annahmeschluss | Ab Status „Locked“ übernimmt Bereich 3 |
 | 3 Auflösung, Salden und Ausgleich | Regeln und Berechnung, Wett-Detail ab „Locked“, Salden, Kontoverlauf, „Settle up“ | Bekommt die fertige Wette von Bereich 2 |
 | 4 Profil, Admin und Fundament | Profil, Adminbereich mit Mitgliedern, Datenmodell, Styles, gemeinsame Bausteine, Pull Requests | Liefert Bausteine und Datenmodell an alle |
@@ -29,15 +29,16 @@ Jede Datei gehört zu genau einem Bereich. Wer etwas in einer fremden Datei brau
 
 | Datei | Inhalt | Bereich |
 |---|---|---|
-| `prototype/js/home.js` | Startseite, Gruppe erstellen | 1 Gruppen |
-| `prototype/js/group.js` | Gruppen-Detail, Wettliste, Tabs | 1 Gruppen |
+| `prototype/js/home.js` | Startseite, Gruppe erstellen, Gruppe beitreten | 1 Gruppen |
+| `prototype/js/group.js` | Gruppen-Detail, Wettliste, Tabs, Gruppe verlassen | 1 Gruppen |
 | `prototype/js/bet-new.js` | Formular „Create bet“ für Event und Reallife | 2 Wetten erstellen und beitreten |
 | `prototype/js/bet-detail.js` | Wett-Detail bis zum Annahmeschluss: beitreten, zurückziehen, stornieren | 2 Wetten erstellen und beitreten |
-| `prototype/js/logic.js` | Regeln: Topf-Aufteilung, Auflösung, Annahmeschluss, Ausgleichsvorschläge | 3 Auflösung, Salden, Ausgleich |
+| `prototype/js/logic.js` | Regeln: Topf-Aufteilung, Ergebnis-Tipp, Auflösung, Annahmeschluss, Schuldenlimit, Ausgleichsvorschläge | 3 Auflösung, Salden, Ausgleich |
 | `prototype/js/bet-resolve.js` | Wett-Detail ab „Locked“: Ergebnis melden, bestätigen, Einspruch | 3 Auflösung, Salden, Ausgleich |
 | `prototype/js/settle.js` | Salden, Kontoverlauf, „Settle up“ | 3 Auflösung, Salden, Ausgleich |
-| `prototype/js/members.js` | Mitgliederliste, Einladungscode (wird zum Adminbereich) | 4 Profil, Admin, Fundament |
-| `prototype/js/core.js` | Zustand, Speicherung, Hilfsfunktionen, Navigation | 4 Profil, Admin, Fundament |
+| `prototype/js/admin.js` | Adminbereich: Gruppe bearbeiten und löschen, Mitglieder, Einladungscode, Schuldenlimit | 4 Profil, Admin, Fundament |
+| `prototype/js/profile.js` | Profil-Screen | 4 Profil, Admin, Fundament |
+| `prototype/js/core.js` | Zustand, Speicherung, Hilfsfunktionen, Navigation, Kopfzeile, Platzhalter-Bilder | 4 Profil, Admin, Fundament |
 | `prototype/js/data.js` | Beispieldaten, Konstanten, Datenmodell | 4 Profil, Admin, Fundament |
 | `prototype/css/styles.css` | Farben, Schriften, gemeinsame Bausteine | 4 Profil, Admin, Fundament |
 | `prototype/index.html`, `prototype/js/main.js` | Seitengerüst, Ladereihenfolge, Start | 4 Profil, Admin, Fundament |
@@ -47,6 +48,7 @@ Jede Datei gehört zu genau einem Bereich. Wer etwas in einer fremden Datei brau
 - Die Skripte sind normale `<script>`-Dateien ohne Module, damit die Seite per Doppelklick läuft. Alles auf oberster Ebene ist global, also auf eindeutige Namen achten.
 - Ein Screen meldet sich mit `VIEWS.name = function () { ... }` an und gibt HTML zurück.
 - Ein Klick-Handler meldet sich mit `Object.assign(A, { name(d) { ... } })` an. Im HTML löst ihn `data-a="name"` aus.
+- Ein Eingabefeld mit `data-m="draft.name"` schreibt seinen Wert nach `ui.draft.name`, ohne neu zu zeichnen.
 - Neue Dateien in `index.html` eintragen, vor `main.js`.
 
 ## Regeln für die Zusammenarbeit
