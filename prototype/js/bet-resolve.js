@@ -1,25 +1,40 @@
-/* Bet detail from the entry deadline onwards: report result, confirm, dispute, vote, final result.
+/* Bet detail from the entry deadline onwards: report result, check proof, confirm, dispute, vote, final result.
    Owner: area 3 (resolution and balances). Everything before the deadline is in bet-detail.js (area 2). */
 
 /* Returns { info, act, demo } HTML blocks for a bet that is no longer open. */
 function resolveBlock(b) {
-  const iAmCreator = b.creator === 'me';
+  const iAmCreator = b.creator === 'me', score = b.mode === 'score';
   const pick = (action, label) => '<span class="small mut">' + label + '</span><div class="chips">' + b.opts.map((o, i) => '<button class="chip" data-a="' + action + '" data-i="' + i + '">' + esc(o) + '</button>').join('') + '</div>';
+  const proof = b.type === 'real' ? '<span class="small mut">Agreed proof: ' + esc(PROOFS[b.proof] || PROOFS.participants) + '.</span>' : '';
   let info = isActive(b) ? positionCard(b) : '', act = '', demo = '';
 
   if (b.status === 'resolved') {
-    info = '<div class="card"><span class="small mut">Result: ' + esc(b.opts[b.result]) + '</span><div class="list">' + Object.keys(b.deltas).map(u => '<div class="row"><span>' + esc(nm(u)) + '</span><span class="num ' + cls(b.deltas[u]) + '">' + sg(b.deltas[u]) + '</span></div>').join('') + '</div></div>';
+    const even = Object.keys(b.deltas).every(u => !b.deltas[u]);
+    info = '<div class="card"><span class="small mut">' + (score ? 'Final score: ' + esc(tipStr(b.score)) : 'Result: ' + esc(b.opts[b.result])) + '</span>' +
+      '<div class="list">' + Object.keys(b.deltas).map(u => '<div class="row"><span>' + esc(nm(u)) + '</span><span class="num ' + cls(b.deltas[u]) + '">' + sg(b.deltas[u]) + '</span></div>').join('') + '</div>' +
+      (even ? '<span class="small mut">Everyone was equally close, so nobody wins or loses.</span>' : '') + '</div>';
   } else if (b.status === 'infeasible') {
     info = '<div class="hint">There was no opponent by the entry deadline. The bet was marked as not feasible and closed. Nothing was booked.</div>';
   } else if (b.status === 'void') {
     info = '<div class="hint">This bet is void. Nothing was booked.</div>';
   } else if (b.status === 'locked') {
-    if (b.type === 'event') demo = pick('result', 'Simulate the result from the sports API:');
-    else if (iAmCreator) act = '<h2>Report result</h2><div class="card">' + pick('propose', 'What happened?') + '</div>';
-    else demo = pick('propose', esc(nm(b.creator)) + ' reports the result:');
+    if (b.type === 'event' && score) {
+      demo = '<span class="small mut">Simulate the final score from the sports API:</span>' +
+        '<div class="score"><label>' + esc(b.opts[0]) + '<input id="r-h" type="number" inputmode="numeric" min="0" max="20" data-m="res.h" value="' + esc(ui.res.h) + '"></label><b>:</b>' +
+        '<label>' + esc(b.opts[b.opts.length - 1]) + '<input id="r-a" type="number" inputmode="numeric" min="0" max="20" data-m="res.a" value="' + esc(ui.res.a) + '"></label></div>' +
+        '<div class="btns"><button class="btn" data-a="resultScore">Set final score</button></div>';
+    } else if (b.type === 'event') {
+      demo = pick('result', 'Simulate the result from the sports API:');
+    } else if (iAmCreator) {
+      act = '<h2>Report result</h2><div class="card">' + pick('propose', 'What happened?') + proof +
+        (b.proof === 'participants' ? '' : '<span class="small mut">Have it ready for the group. Uploading proof in the app comes later.</span>') + '</div>';
+    } else {
+      demo = pick('propose', esc(nm(b.creator)) + ' reports the result:');
+    }
   } else if (b.status === 'resolving') {
-    act = '<div class="card"><span>' + (iAmCreator ? 'You' : esc(nm(b.creator))) + ' reported “' + esc(b.opts[b.proposed]) + '” as the result.</span>' +
+    act = '<div class="card"><span>' + (iAmCreator ? 'You' : esc(nm(b.creator))) + ' reported “' + esc(b.opts[b.proposed]) + '” as the result.</span>' + proof +
       (iAmCreator ? '<span class="small mut">The other participants have to confirm. Without a reaction it counts as confirmed after 48 hours.</span>' :
+        '<span class="small mut">' + (b.proof === 'participants' ? 'Confirm only if you agree with the result.' : 'Check the proof before you confirm.') + '</span>' +
         '<div class="btns"><button class="btn pri" data-a="confirm">Confirm</button><button class="btn danger" data-a="dispute">Dispute</button></div>') + '</div>';
     if (iAmCreator) demo = '<div class="btns"><button class="btn" data-a="confirm">Group confirms</button><button class="btn" data-a="dispute">Someone disputes</button></div>';
   } else if (b.status === 'disputed') {
@@ -34,5 +49,10 @@ Object.assign(A, {
   confirm() { const b = bet(); resolve(grp(), b, b.proposed); },
   dispute() { bet().status = 'disputed'; toast('Result disputed. The group votes.'); },
   result(d) { resolve(grp(), bet(), +d.i); },
+  resultScore() {
+    const sc = parseTip(ui.res.h, ui.res.a);
+    if (!sc) return toast('Enter the final score as two whole numbers.');
+    resolve(grp(), bet(), sc);
+  },
   nomajority() { bet().status = 'void'; toast('No majority. Bet void, nothing booked.'); }
 });

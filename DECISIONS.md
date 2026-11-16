@@ -43,6 +43,23 @@ Hier steht jede Entscheidung zum Projekt mit ihrer Begründung. Neue Entscheidun
 | E-18 | 16.11.2026 | Dasselbe gilt, wenn zwar Leute beitreten, aber alle auf derselben Seite stehen. | Auch dann gibt es keinen Gegenspieler. Erweiterung von E-17. | Vorschlag |
 | E-19 | 16.11.2026 | Man kann jede Wette, an der man beteiligt ist, jederzeit ansehen, egal in welchem Status. | Wunsch des Teams: bestehende Wetten sollen einsehbar sein. | Team |
 
+## Erweiterungen vom 16.11.2026
+
+Diese Einträge beantworten die Klärungspunkte K1 bis K5 aus der TODO.md. Sie wurden beim Umsetzen als Vorschlag entschieden und warten auf Bestätigung durch das Team.
+
+| Nr. | Datum | Entscheidung | Begründung | Von |
+|---|---|---|---|---|
+| E-35 | 16.11.2026 | Datenmodell: Eine Wette hat `mode` („pick“ für Seitenwahl, „score“ für Ergebnis-Tipp). Reallife-Wetten haben `proof`. Ein Einsatz trägt entweder eine Seite (`o`) oder einen Tipp (`tip: [Heim, Gast]`). | Beide Wett-Arten laufen so durch dieselbe Topf-Berechnung, nur die Bestimmung der Gewinner unterscheidet sich. | Vorschlag |
+| E-36 | 16.11.2026 | Ergebnis-Tipp: Der nächste Tipp gewinnt. Zuerst zählt die richtige Tendenz (Heimsieg, Unentschieden, Auswärtssieg), danach der kleinere Abstand in Toren. Gleich nahe Tipps teilen den Topf. | Mit „nur exakt zählt“ wären die meisten Ergebnis-Wetten ungültig, weil selten jemand genau trifft. So gibt es immer einen Gewinner. | Vorschlag |
+| E-37 | 16.11.2026 | Der Ergebnis-Tipp ist eine eigene Wett-Art neben „Winner“ und nur bei Events mit Spielstand wählbar. | Bei Events ohne Spielstand (z. B. Darts-Finale in den Beispieldaten) gibt es nichts zu tippen. Getrennte Arten halten die Topf-Regel einfach. | Vorschlag |
+| E-38 | 16.11.2026 | Beweis-Dropdown mit drei Optionen: Bestätigung durch die Teilnehmer (Standard), Foto-Beweis, Video-Beweis. | Die ersten beiden hat das Team genannt, Video liegt nahe. Ein Schiedsrichter wurde weggelassen, weil man dafür eine Person auswählen und ihr Rechte geben müsste. | Vorschlag |
+| E-39 | 16.11.2026 | Der Adminbereich ist nur für den Admin der Gruppe sichtbar. Mitglieder und ihre Salden sehen alle weiterhin im Tab „Balances“. | Verwalten soll nur, wer die Gruppe erstellt hat. Die Mitgliederliste bleibt über die Salden trotzdem für alle sichtbar. | Vorschlag |
+| E-40 | 16.11.2026 | Schuldenlimit je Gruppe, Standard 500 €, vom Admin einstellbar, 0 schaltet es ab. Geprüft wird: Saldo minus alle eigenen Einsätze in laufenden Wetten minus neuer Einsatz darf nicht unter das Limit fallen. | Ohne Startguthaben könnte sonst jemand unbegrenzt ins Minus wetten. Laufende Einsätze zählen mit, weil sie im schlechtesten Fall alle verloren gehen. | Vorschlag |
+| E-41 | 16.11.2026 | Eine Gruppe verlassen kann nur, wer Saldo 0 hat, keinen Einsatz in einer laufenden Wette und keine unbestätigte Zahlung. | Sonst blieben Schulden oder Wetten ohne Teilnehmer zurück. | Vorschlag |
+| E-42 | 16.11.2026 | Eine Gruppe löschen kann der Admin nur, wenn keine Wette läuft und alle Salden bei 0 stehen. Vor dem Löschen fragt die App nach. | Löschen würde sonst offene Schulden verschwinden lassen. | Vorschlag |
+| E-43 | 16.11.2026 | Reallife-Wetten haben zwei bis fünf Ausgänge. | Mehr als zwei Ausgänge erlauben Wetten wie „Wer putzt zuerst?“. Die Obergrenze hält das Formular auf dem Handy bedienbar. | Vorschlag |
+| E-44 | 16.11.2026 | Platzhalter für Profil- und Gruppenbilder sind die Initialen: Kreis für Personen, abgerundetes Quadrat für Gruppen. | Braucht keinen Upload und unterscheidet Personen und Gruppen auf einen Blick. | Vorschlag |
+
 ## Auflösung
 
 | Nr. | Datum | Entscheidung | Begründung | Von |
@@ -79,10 +96,6 @@ Diese Punkte sind noch nicht entschieden. Sobald sie es sind, wandern sie mit Nu
 
 | Frage | Betrifft | Bisherige Überlegung |
 |---|---|---|
-| Ist der Adminbereich nur für Admins sichtbar, oder für alle mit eingeschränkten Rechten? | Bereich 4 | Wandert „Mitglieder“ komplett in den Adminbereich, sehen normale Mitglieder die Liste und den Einladungscode nicht mehr. |
-| Was passiert beim Ergebnis-Tipp, wenn niemand das genaue Ergebnis trifft? | Bereich 2 und 3 | Varianten: nur exakt zählt (sonst ungültig), oder wer näher dran ist, gewinnt. |
-| Gibt es ein Schuldenlimit je Gruppe? | Bereich 3 | Ohne Startguthaben kann jemand unbegrenzt ins Minus wetten. Vorschlag: einstellbares Limit, z. B. −500 €. |
-| Welche Optionen bekommt das Beweis-Dropdown? | Bereich 2 | Genannt wurden Foto-Beweis und Bestätigung durch die Wett-Teilnehmer. Denkbar: Video, Schiedsrichter aus der Gruppe. |
 | Woher kommen Events und Ergebnisse für Event-Wetten? | später | Braucht eine Sportdaten-Quelle, die meist Geld kostet. |
 | Mit welcher Technik wird die echte App gebaut (Server, Konten, App-Stores)? | später | Der Prototyp hat keinen Server. Die Entscheidung sollte fallen, bevor viel Arbeit in den Prototyp fließt. |
 | Braucht es eine rechtliche Prüfung, wenn Gruppen die fiktiven Euro in echtem Geld ausgleichen? | später | Die App bewegt kein Geld, faktisch sind es dann aber Geldwetten unter Freunden. |
