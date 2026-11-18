@@ -336,6 +336,7 @@ REJECTION_TEXTS = {
     "wrong_credentials": "Wrong username or password.",
     "accounts_unavailable": "Accounts are unavailable right now. You can still play as a guest.",
     "not_signed_in": "Log in or play as a guest first.",
+    "already_signed_in": "Log out first.",
     "no_lobby": "No lobby with that code.",
     "lobby_full": "This lobby is full.",
     "not_in_lobby": "You are not in a lobby.",
@@ -400,3 +401,14 @@ def test_normal_non_ascii_and_emoji_passwords_are_accepted(password):
         assert parse_client_message(json.dumps(message)) == message
         # ensure_ascii=False sends the characters themselves instead of \u escapes.
         assert parse_client_message(json.dumps(message, ensure_ascii=False)) == message
+
+
+# Signing in twice on one connection (M1-2.0)
+
+
+def test_already_signed_in_has_its_own_text():
+    assert protocol.rejection("already_signed_in") == {
+        "type": "error",
+        "code": "already_signed_in",
+        "message": "Log out first.",
+    }

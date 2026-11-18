@@ -229,6 +229,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Lobby code is not four letters | “Lobby codes are 4 letters.” |
 | Character already taken by another player | “That character is taken.” |
 | Action that needs a signed-in player or a guest | “Log in or play as a guest first.” |
+| Signing up, logging in or entering as a guest while signed in | “Log out first.” |
 | Action that needs a lobby | “You are not in a lobby.” |
 | Creating or joining a lobby while in one | “Leave your lobby first.” |
 

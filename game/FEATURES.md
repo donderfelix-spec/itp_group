@@ -44,9 +44,9 @@ As of 2026-11-18. The project skeleton is built, the game itself starts with mil
 | Feature | Milestone | Status |
 |---|---|---|
 | Start a server that delivers the client and the game | M0 | Done |
-| Create an account with username and password, log in, log out | M1 | Planned |
-| Play as a guest, without statistics and friends | M1 | Planned |
-| Clear message when a name is taken, the password is wrong or the database is not reachable | M1 | Planned |
+| Create an account with username and password, log in, log out | M1 | In progress |
+| Play as a guest, without statistics and friends | M1 | In progress |
+| Clear message when a name is taken, the password is wrong or the database is not reachable | M1 | In progress |
 | Statistics per account: rounds and wins per mode, best Duel time | M2 | Planned |
 | Leaderboard of all accounts | M2 | Planned |
 | Add friends by username, accept or decline a request | M4 | Planned |

@@ -42,6 +42,7 @@ REJECTIONS = {
     "wrong_credentials": "Wrong username or password.",
     "accounts_unavailable": "Accounts are unavailable right now. You can still play as a guest.",
     "not_signed_in": "Log in or play as a guest first.",
+    "already_signed_in": "Log out first.",
     "no_lobby": "No lobby with that code.",
     "lobby_full": "This lobby is full.",
     "not_in_lobby": "You are not in a lobby.",
