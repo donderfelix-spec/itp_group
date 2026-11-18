@@ -1,0 +1,135 @@
+{
+  "note": "The campus map, once, as data (S-79). All numbers are in the units of game/design/map.svg (680 x 668). The browser draws from this file, the server reads it for collision. A rectangle is x, y (top left corner), w, h. Walls are 6 units thick and centred on the line drawn in the sketch. Circles of the sketch are stored as their bounding squares.",
+
+  "width": 680,
+  "height": 668,
+  "spawn": {"x": 486, "y": 296},
+
+  "colours": {"lawn": "#DCE6C8", "deck": "#F3F0E9", "outline": "#2E2A3B"},
+
+  "rooms": [
+    {"id": "lecture-hall", "name": "Lecture Hall",     "x": 20,  "y": 20,  "w": 210, "h": 150, "floor": "#EAD3AE"},
+    {"id": "mon-cafe",     "name": "Mon Café",         "x": 250, "y": 20,  "w": 200, "h": 150, "floor": "#F6ECE0"},
+    {"id": "canteen",      "name": "Canteen",          "x": 470, "y": 20,  "w": 190, "h": 150, "floor": "#D7EDDF"},
+    {"id": "ctt",          "name": "CTT Student Hall", "x": 20,  "y": 230, "w": 140, "h": 330, "floor": "#D6E4F4"},
+    {"id": "pingo-doce",   "name": "Pingo Doce",       "x": 440, "y": 400, "w": 220, "h": 160, "floor": "#DCEFC8"}
+  ],
+
+  "deck": [
+    {"x": 20,  "y": 170}, {"x": 660, "y": 170}, {"x": 660, "y": 400}, {"x": 440, "y": 400},
+    {"x": 440, "y": 566}, {"x": 160, "y": 566}, {"x": 160, "y": 230}, {"x": 20,  "y": 230}
+  ],
+
+  "doors": [
+    {"room": "lecture-hall", "x": 105, "y": 165, "w": 40, "h": 10},
+    {"room": "mon-cafe",     "x": 330, "y": 165, "w": 40, "h": 10},
+    {"room": "canteen",      "x": 545, "y": 165, "w": 40, "h": 10},
+    {"room": "ctt",          "x": 70,  "y": 225, "w": 40, "h": 10},
+    {"room": "pingo-doce",   "x": 520, "y": 395, "w": 40, "h": 10}
+  ],
+
+  "solids": [
+    {"id": "lecture-hall-wall-top",   "kind": "wall", "x": 17,  "y": 17,  "w": 216, "h": 6},
+    {"id": "lecture-hall-wall-left",  "kind": "wall", "x": 17,  "y": 17,  "w": 6,   "h": 156},
+    {"id": "lecture-hall-wall-right", "kind": "wall", "x": 227, "y": 17,  "w": 6,   "h": 156},
+    {"id": "mon-cafe-wall-top",       "kind": "wall", "x": 247, "y": 17,  "w": 206, "h": 6},
+    {"id": "mon-cafe-wall-left",      "kind": "wall", "x": 247, "y": 17,  "w": 6,   "h": 156},
+    {"id": "mon-cafe-wall-right",     "kind": "wall", "x": 447, "y": 17,  "w": 6,   "h": 156},
+    {"id": "canteen-wall-top",        "kind": "wall", "x": 467, "y": 17,  "w": 196, "h": 6},
+    {"id": "canteen-wall-left",       "kind": "wall", "x": 467, "y": 17,  "w": 6,   "h": 156},
+    {"id": "canteen-wall-right",      "kind": "wall", "x": 657, "y": 17,  "w": 6,   "h": 156},
+
+    {"id": "deck-wall-top-1",         "kind": "wall", "x": 17,  "y": 167, "w": 88,  "h": 6},
+    {"id": "deck-wall-top-2",         "kind": "wall", "x": 145, "y": 167, "w": 185, "h": 6},
+    {"id": "deck-wall-top-3",         "kind": "wall", "x": 370, "y": 167, "w": 175, "h": 6},
+    {"id": "deck-wall-top-4",         "kind": "wall", "x": 585, "y": 167, "w": 78,  "h": 6},
+    {"id": "deck-wall-left",          "kind": "wall", "x": 17,  "y": 167, "w": 6,   "h": 66},
+    {"id": "deck-wall-right",         "kind": "wall", "x": 657, "y": 167, "w": 6,   "h": 236},
+
+    {"id": "ctt-wall-top-1",          "kind": "wall", "x": 17,  "y": 227, "w": 53,  "h": 6},
+    {"id": "ctt-wall-top-2",          "kind": "wall", "x": 110, "y": 227, "w": 53,  "h": 6},
+    {"id": "ctt-wall-left",           "kind": "wall", "x": 17,  "y": 227, "w": 6,   "h": 336},
+    {"id": "ctt-wall-bottom",         "kind": "wall", "x": 17,  "y": 557, "w": 146, "h": 6},
+    {"id": "ctt-wall-right",          "kind": "wall", "x": 157, "y": 227, "w": 6,   "h": 342},
+
+    {"id": "pingo-doce-wall-top-1",   "kind": "wall", "x": 437, "y": 397, "w": 83,  "h": 6},
+    {"id": "pingo-doce-wall-top-2",   "kind": "wall", "x": 560, "y": 397, "w": 103, "h": 6},
+    {"id": "pingo-doce-wall-left",    "kind": "wall", "x": 437, "y": 397, "w": 6,   "h": 172},
+    {"id": "pingo-doce-wall-right",   "kind": "wall", "x": 657, "y": 397, "w": 6,   "h": 166},
+    {"id": "pingo-doce-wall-bottom",  "kind": "wall", "x": 437, "y": 557, "w": 226, "h": 6},
+
+    {"id": "glass-front",             "kind": "glass", "x": 163, "y": 561, "w": 274, "h": 10},
+
+    {"id": "lecture-hall-board",      "kind": "board", "x": 60,  "y": 30,  "w": 110, "h": 8},
+    {"id": "lecture-hall-bench-1",    "kind": "bench", "x": 40,  "y": 60,  "w": 170, "h": 9},
+    {"id": "lecture-hall-bench-2",    "kind": "bench", "x": 40,  "y": 81,  "w": 170, "h": 9},
+    {"id": "lecture-hall-bench-3",    "kind": "bench", "x": 40,  "y": 102, "w": 170, "h": 9},
+    {"id": "lecture-hall-bench-4",    "kind": "bench", "x": 40,  "y": 123, "w": 170, "h": 9},
+
+    {"id": "mon-cafe-counter",        "kind": "counter", "x": 268, "y": 30,  "w": 92, "h": 14},
+    {"id": "mon-cafe-coffee-machine", "kind": "machine", "x": 388, "y": 29,  "w": 40, "h": 18},
+    {"id": "mon-cafe-column-1",       "kind": "column",  "x": 278, "y": 75,  "w": 14, "h": 14},
+    {"id": "mon-cafe-column-2",       "kind": "column",  "x": 408, "y": 75,  "w": 14, "h": 14},
+    {"id": "mon-cafe-column-3",       "kind": "column",  "x": 278, "y": 125, "w": 14, "h": 14},
+    {"id": "mon-cafe-column-4",       "kind": "column",  "x": 408, "y": 125, "w": 14, "h": 14},
+    {"id": "mon-cafe-table-1",        "kind": "round-table", "x": 343, "y": 97,  "w": 14, "h": 14},
+    {"id": "mon-cafe-table-2",        "kind": "round-table", "x": 311, "y": 59,  "w": 14, "h": 14},
+    {"id": "mon-cafe-table-3",        "kind": "round-table", "x": 375, "y": 119, "w": 14, "h": 14},
+
+    {"id": "canteen-counter",         "kind": "counter", "x": 485, "y": 30,  "w": 135, "h": 14},
+    {"id": "canteen-table-1",         "kind": "table",   "x": 492, "y": 66,  "w": 24, "h": 24},
+    {"id": "canteen-table-2",         "kind": "table",   "x": 553, "y": 66,  "w": 24, "h": 24},
+    {"id": "canteen-table-3",         "kind": "table",   "x": 614, "y": 80,  "w": 24, "h": 24},
+    {"id": "canteen-table-4",         "kind": "table",   "x": 492, "y": 108, "w": 24, "h": 24},
+    {"id": "canteen-table-5",         "kind": "table",   "x": 553, "y": 108, "w": 24, "h": 24},
+
+    {"id": "ctt-table-row-1",         "kind": "table-row", "x": 40, "y": 264, "w": 92, "h": 13},
+    {"id": "ctt-table-row-2",         "kind": "table-row", "x": 40, "y": 296, "w": 92, "h": 13},
+    {"id": "ctt-table-row-3",         "kind": "table-row", "x": 40, "y": 328, "w": 92, "h": 13},
+    {"id": "ctt-table-row-4",         "kind": "table-row", "x": 40, "y": 360, "w": 92, "h": 13},
+    {"id": "ctt-table-row-5",         "kind": "table-row", "x": 40, "y": 392, "w": 92, "h": 13},
+    {"id": "ctt-table-row-6",         "kind": "table-row", "x": 40, "y": 424, "w": 92, "h": 13},
+    {"id": "ctt-table-row-7",         "kind": "table-row", "x": 40, "y": 456, "w": 92, "h": 13},
+    {"id": "ctt-table-row-8",         "kind": "table-row", "x": 40, "y": 488, "w": 92, "h": 13},
+    {"id": "ctt-bookshelf",           "kind": "bookshelf", "x": 34, "y": 540, "w": 112, "h": 9},
+
+    {"id": "pingo-doce-shelf-1",      "kind": "shelf",    "x": 466, "y": 440, "w": 16, "h": 56},
+    {"id": "pingo-doce-shelf-2",      "kind": "shelf",    "x": 516, "y": 440, "w": 16, "h": 56},
+    {"id": "pingo-doce-shelf-3",      "kind": "shelf",    "x": 566, "y": 440, "w": 16, "h": 56},
+    {"id": "pingo-doce-shelf-4",      "kind": "shelf",    "x": 616, "y": 440, "w": 16, "h": 56},
+    {"id": "pingo-doce-checkout",     "kind": "checkout", "x": 456, "y": 528, "w": 56, "h": 13},
+
+    {"id": "deck-pool",               "kind": "pool",  "x": 300, "y": 262, "w": 130, "h": 56},
+    {"id": "deck-tree-1",             "kind": "tree",  "x": 198, "y": 238, "w": 28, "h": 28},
+    {"id": "deck-tree-2",             "kind": "tree",  "x": 198, "y": 330, "w": 28, "h": 28},
+    {"id": "deck-tree-3",             "kind": "tree",  "x": 528, "y": 238, "w": 28, "h": 28},
+    {"id": "deck-tree-4",             "kind": "tree",  "x": 528, "y": 330, "w": 28, "h": 28},
+    {"id": "deck-tree-5",             "kind": "tree",  "x": 186, "y": 426, "w": 28, "h": 28},
+    {"id": "deck-tree-6",             "kind": "tree",  "x": 386, "y": 426, "w": 28, "h": 28},
+    {"id": "deck-hedge",              "kind": "hedge", "x": 566, "y": 236, "w": 58, "h": 26},
+    {"id": "deck-logo",               "kind": "logo",  "x": 229, "y": 463, "w": 142, "h": 40}
+  ],
+
+  "stations": [
+    {"id": 1, "name": "Sort the slides",  "room": "lecture-hall", "x": 196, "y": 46,  "r": 10},
+    {"id": 2, "name": "Brew the order",   "room": "mon-cafe",     "x": 436, "y": 62,  "r": 10},
+    {"id": 3, "name": "Build the tray",   "room": "canteen",      "x": 640, "y": 48,  "r": 10},
+    {"id": 4, "name": "Shelve the books", "room": "ctt",          "x": 90,  "y": 520, "r": 10},
+    {"id": 5, "name": "Self-checkout",    "room": "pingo-doce",   "x": 532, "y": 534, "r": 10},
+    {"id": 6, "name": "Catch the wave",   "room": "deck",         "x": 300, "y": 534, "r": 10}
+  ],
+
+  "button": {"x": 642, "y": 249, "r": 11},
+
+  "hiding_spots": [
+    {"x": 595, "y": 249, "r": 9},
+    {"x": 549, "y": 468, "r": 9},
+    {"x": 136, "y": 524, "r": 9},
+    {"x": 636, "y": 128, "r": 9}
+  ],
+
+  "bands": [
+    {"id": "sand", "x": 0, "y": 566, "w": 680, "h": 18, "colour": "#F0DFA8"},
+    {"id": "sea",  "x": 0, "y": 584, "w": 680, "h": 30, "colour": "#4FA3D9"}
+  ]
+}

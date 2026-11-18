@@ -34,14 +34,14 @@ These points hold up the start. The reasoning behind them is under “Open decis
 
 - [ ] **M1-1.1** Draw the map from the floor plan, with simple shapes
 - [ ] **M1-1.2** Move the character with the keyboard, the camera follows
-- [ ] **M1-1.3** Collision with walls and furniture
+- [ ] **M1-1.3** Collision with walls and furniture. _Server part built and tested: map data in `client/js/world/campus.json`, movement and collision in `server/world/`. Still open: wiring into the server (M1-2.3) and a check in the browser._
 - [ ] **M1-1.4** Draw other players with their names
 
 **Area 2**
 
 - [ ] **M1-2.0** Accounts: tables in Supabase, sign up, log in, log out, guest access, with tests for rejected cases (name taken, wrong password, password too short). _Server side built and tested with the in-memory store. Still open: one run against the real Supabase database, and the forms in the browser (M1-2.1)._
 - [ ] **M1-2.1** Start page: log in or play as a guest, create a lobby or join with a code
-- [ ] **M1-2.2** Lobby on the server: code, player list, host
+- [ ] **M1-2.2** Lobby on the server: code, player list, host. _Built and tested on the server (create, join, leave, character, host change). The lobby screen in the browser comes with M1-2.1._
 - [ ] **M1-2.3** Synchronise positions and smooth the movement of the other players
 - [ ] **M1-2.4** Play test with several browsers: three players join and see each other walk
 
