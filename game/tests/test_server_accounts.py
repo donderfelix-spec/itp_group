@@ -276,18 +276,10 @@ def test_only_an_argon2_hash_is_stored(socket):
 # Messages of later to-dos
 
 
-@pytest.mark.parametrize(
-    "message",
-    [
-        {"type": "create_lobby"},
-        {"type": "join_lobby", "code": "ABCD"},
-        {"type": "leave_lobby"},
-        {"type": "choose_character", "character": "surfer"},
-        {"type": "move", "dx": 1, "dy": 0},
-    ],
-)
-def test_lobby_and_movement_messages_are_not_answered_yet(socket, message):
-    socket.send_json(message)
+def test_movement_messages_are_not_answered_yet(socket):
+    # The lobby messages were part of this test until the lobby was built
+    # (M1-2.2). They are now answered and tested in test_server_lobby.py.
+    socket.send_json({"type": "move", "dx": 1, "dy": 0})
     # The next answer belongs to the hello, so nothing was sent for the message before.
     assert ask(socket, {"type": "hello", "name": "Mara"})["type"] == "welcome"
 
