@@ -1,0 +1,5 @@
+# Everything needed to run the tests and the dependency audit locally and in CI.
+-r requirements.txt
+pytest==9.2.0
+httpx==0.28.1
+pip-audit==2.10.1

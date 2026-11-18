@@ -1,0 +1,8 @@
+# Python
+game/.venv/
+__pycache__/
+.pytest_cache/
+
+# Secrets never go into the repository
+.env
+.env.*

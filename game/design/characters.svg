@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 400" font-family="system-ui, sans-serif">
+  <title>Group Project – character drafts 2</title>
+  <rect width="680" height="400" rx="12" fill="#F4EFE3"/>
+  <defs>
+    <g id="base">
+      <ellipse cx="0" cy="98" rx="24" ry="5" fill="#2E2A3B" opacity="0.14"/>
+      <rect x="-15" y="89" width="14" height="8" rx="4" fill="#2E2A3B"/>
+      <rect x="1" y="89" width="14" height="8" rx="4" fill="#2E2A3B"/>
+    </g>
+    <g id="face">
+      <circle cx="0" cy="20" r="18" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2.5"/>
+      <circle cx="-6.5" cy="22" r="2.4" fill="#2E2A3B"/><circle cx="6.5" cy="22" r="2.4" fill="#2E2A3B"/>
+      <path d="M-4 29 Q0 32.5 4 29" fill="none" stroke="#2E2A3B" stroke-width="2"/>
+      <circle cx="-11" cy="27" r="2.6" fill="#F2A99B" opacity="0.7"/><circle cx="11" cy="27" r="2.6" fill="#F2A99B" opacity="0.7"/>
+    </g>
+  </defs>
+  <g stroke-linejoin="round" stroke-linecap="round" font-size="13" font-weight="700" text-anchor="middle">
+
+  <!-- 1 Consultant -->
+  <g transform="translate(95,26) scale(1.15)">
+    <use href="#base"/>
+    <rect x="-13" y="74" width="11" height="18" rx="4" fill="#1C3156" stroke="#2E2A3B" stroke-width="2"/><rect x="2" y="74" width="11" height="18" rx="4" fill="#1C3156" stroke="#2E2A3B" stroke-width="2"/>
+    <rect x="-19" y="38" width="38" height="42" rx="11" fill="#26406E" stroke="#2E2A3B" stroke-width="2.5"/>
+    <polygon points="-9,39 9,39 0,63" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="1.5"/>
+    <polygon points="-2.8,41 2.8,41 3.3,52 2.1,57.5 0,63 -2.1,57.5 -3.3,52" fill="#E0483E" stroke="#2E2A3B" stroke-width="1.2"/>
+    <path d="M-9 39 L-2.6 56 M9 39 L2.6 56" stroke="#1C3156" stroke-width="2.5"/>
+    <rect x="12" y="73" width="22" height="16" rx="2.5" fill="#8A5A3B" stroke="#2E2A3B" stroke-width="2"/>
+    <path d="M18 73 v-5 h10 v5" fill="none" stroke="#2E2A3B" stroke-width="2"/><rect x="21" y="79" width="4" height="3" fill="#FFD23F"/>
+    <path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q26.0 56.5 23 65" fill="none" stroke="#2E2A3B" stroke-width="10.5"/><path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q26.0 56.5 23 65" fill="none" stroke="#26406E" stroke-width="6.5"/>
+    <circle cx="-22" cy="65" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><circle cx="23" cy="68" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
+    <use href="#face"/>
+    <path d="M-18 19 A18 18 0 0 1 18 19 Q10 7 -3 9 Q-12 10 -18 19 Z" fill="#3B2F2F" stroke="#2E2A3B" stroke-width="2"/>
+    <text y="120" font-size="11.3" fill="#2E2A3B">The Consultant</text>
+  </g>
+
+  <!-- 2 Finance Bro -->
+  <g transform="translate(258,26) scale(1.15)">
+    <use href="#base"/>
+    <rect x="-13" y="74" width="11" height="18" rx="4" fill="#D8C3A0" stroke="#2E2A3B" stroke-width="2"/><rect x="2" y="74" width="11" height="18" rx="4" fill="#D8C3A0" stroke="#2E2A3B" stroke-width="2"/>
+    <rect x="-19" y="38" width="38" height="42" rx="11" fill="#BFD9F2" stroke="#2E2A3B" stroke-width="2.5"/>
+    <path d="M-18 48 Q-18 39 -8 39 L-4 39 L-4 79 L-10 79 Q-18 79 -18 70 Z" fill="#3F4A5E" stroke="#2E2A3B" stroke-width="1.5"/>
+    <path d="M18 48 Q18 39 8 39 L4 39 L4 79 L10 79 Q18 79 18 70 Z" fill="#3F4A5E" stroke="#2E2A3B" stroke-width="1.5"/>
+    <path d="M-17 52 h13 M-17 62 h13 M-17 72 h13 M4 52 h13 M4 62 h13 M4 72 h13" stroke="#2A3345" stroke-width="1.5"/>
+    <path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q27.0 54.0 25 60" fill="none" stroke="#2E2A3B" stroke-width="10.5"/><path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q27.0 54.0 25 60" fill="none" stroke="#BFD9F2" stroke-width="6.5"/>
+    <rect x="19" y="42" width="13" height="22" rx="2.5" fill="#2E2A3B"/>
+    <polyline points="21.5,58 24.5,51 27,54.5 30,46" fill="none" stroke="#6BD68A" stroke-width="1.8"/>
+    <circle cx="-22" cy="65" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><circle cx="25" cy="63" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
+    <use href="#face"/>
+    <path d="M-18 19 A18 18 0 0 1 18 19 Q14 6 0 7 Q-14 6 -18 19 Z" fill="#8A6A3B" stroke="#2E2A3B" stroke-width="2"/>
+    <text y="120" font-size="11.3" fill="#2E2A3B">The Finance Bro</text>
+  </g>
+
+  <!-- 3 Exchange Student -->
+  <g transform="translate(422,26) scale(1.15)">
+    <use href="#base"/>
+    <rect x="-27" y="36" width="54" height="36" rx="12" fill="#3E8FD0" stroke="#2E2A3B" stroke-width="2.5"/>
+    <rect x="-13" y="74" width="11" height="18" rx="4" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><rect x="2" y="74" width="11" height="18" rx="4" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
+    <rect x="-19" y="38" width="38" height="42" rx="11" fill="#F0569B" stroke="#2E2A3B" stroke-width="2.5"/>
+    <rect x="-18" y="70" width="36" height="12" rx="5" fill="#FFD23F" stroke="#2E2A3B" stroke-width="2"/>
+    <path d="M-12 39 V68 M12 39 V68" stroke="#2A6FA8" stroke-width="5"/>
+    <path d="M-6 40 L0 52 L6 40" fill="none" stroke="#2E2A3B" stroke-width="1.5"/><rect x="-4" y="52" width="8" height="10" rx="1.5" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="1.5"/>
+    <rect x="23" y="62" width="19" height="27" rx="3" fill="#2BB3A3" stroke="#2E2A3B" stroke-width="2"/>
+    <path d="M28 62 V48 H37 V62" fill="none" stroke="#2E2A3B" stroke-width="2"/>
+    <circle cx="29" cy="70" r="2.5" fill="#FFD23F"/><rect x="33" y="75" width="6" height="5" fill="#F2695C"/><circle cx="30" cy="82" r="2" fill="#FFFFFF"/>
+    <circle cx="27" cy="91" r="2.5" fill="#2E2A3B"/><circle cx="38" cy="91" r="2.5" fill="#2E2A3B"/>
+    <path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q30.5 47.5 32 47" fill="none" stroke="#2E2A3B" stroke-width="10.5"/><path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q30.5 47.5 32 47" fill="none" stroke="#F0569B" stroke-width="6.5"/>
+    <circle cx="-22" cy="65" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><circle cx="32" cy="50" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
+    <use href="#face"/>
+    <path d="M-15 13 Q-14 -4 0 -4 Q14 -4 15 13 Z" fill="#FFD23F" stroke="#2E2A3B" stroke-width="2"/>
+    <path d="M-23 14 Q0 8 23 14" fill="none" stroke="#2E2A3B" stroke-width="5.5"/><path d="M-23 14 Q0 8 23 14" fill="none" stroke="#FFD23F" stroke-width="2.5"/>
+    <text y="120" font-size="11.3" fill="#2E2A3B">The Exchange Student</text>
+  </g>
+
+  <!-- 4 Surfer -->
+  <g transform="translate(585,26) scale(1.15)">
+    <use href="#base"/>
+    <rect x="-13" y="74" width="11" height="18" rx="4" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><rect x="2" y="74" width="11" height="18" rx="4" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
+    <rect x="-19" y="38" width="38" height="42" rx="11" fill="#159A8C" stroke="#2E2A3B" stroke-width="2.5"/>
+    <rect x="-18" y="68" width="36" height="14" rx="5" fill="#F08A3C" stroke="#2E2A3B" stroke-width="2"/>
+    <path d="M-9 41 Q0 50 9 41" fill="none" stroke="#2E2A3B" stroke-width="1.2"/>
+    <circle cx="-5" cy="45" r="1.8" fill="#FFFFFF"/><circle cx="0" cy="46.5" r="1.8" fill="#FFFFFF"/><circle cx="5" cy="45" r="1.8" fill="#FFFFFF"/>
+    <path d="M-21 20 Q-22 -1 0 -1 Q22 -1 21 20 L22 40 Q16 45 12 36 L12 20 L-12 20 L-12 36 Q-16 45 -22 40 Z" fill="#F2D36B" stroke="#2E2A3B" stroke-width="2"/>
+    <ellipse cx="0" cy="57" rx="4.5" ry="9.5" transform="rotate(28 0 57)" fill="#FFD23F" stroke="#2E2A3B" stroke-width="1.5"/><path d="M-3.5 50.5 L3.5 63.5" stroke="#F2695C" stroke-width="1.5"/><path d="M-12 65 q3 -4 6 0 t6 0 t6 0 t6 0" fill="none" stroke="#FFFFFF" stroke-width="1.8"/>
+    <path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q25.5 55.0 22 62" fill="none" stroke="#2E2A3B" stroke-width="10.5"/><path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q25.5 55.0 22 62" fill="none" stroke="#159A8C" stroke-width="6.5"/>
+    <circle cx="-22" cy="65" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><circle cx="22" cy="65" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
+    <use href="#face"/>
+    <path d="M-18 19 A18 18 0 0 1 18 19 Q7 9 -5 11 Q-13 12 -18 19 Z" fill="#F2D36B" stroke="#2E2A3B" stroke-width="2"/>
+    <text y="120" font-size="11.3" fill="#2E2A3B">The Surfer</text>
+  </g>
+
+  <!-- 5 Founder -->
+  <g transform="translate(95,212) scale(1.15)">
+    <use href="#base"/>
+    <rect x="-15" y="89" width="14" height="8" rx="4" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="1.5"/><rect x="1" y="89" width="14" height="8" rx="4" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="1.5"/>
+    <rect x="-13" y="74" width="11" height="18" rx="4" fill="#4A5568" stroke="#2E2A3B" stroke-width="2"/><rect x="2" y="74" width="11" height="18" rx="4" fill="#4A5568" stroke="#2E2A3B" stroke-width="2"/>
+    <circle cx="0" cy="20" r="22" fill="#33333D" stroke="#2E2A3B" stroke-width="2.5"/>
+    <rect x="-19" y="38" width="38" height="42" rx="11" fill="#33333D" stroke="#2E2A3B" stroke-width="2.5"/>
+    <path d="M-5 40 V52 M5 40 V52" stroke="#FFFFFF" stroke-width="1.8"/>
+    <rect x="-16" y="55" width="32" height="21" rx="2.5" fill="#C9CED6" stroke="#2E2A3B" stroke-width="2"/>
+    <circle cx="-6" cy="63" r="3.5" fill="#F2695C"/><rect x="2" y="60" width="8" height="5" rx="1" fill="#FFD23F"/><circle cx="6" cy="70" r="2.2" fill="#5FA86B"/>
+    <path d="M-17 45 Q-23.5 56.5 -18 65 M17 45 Q23.5 56.5 18 65" fill="none" stroke="#2E2A3B" stroke-width="10.5"/><path d="M-17 45 Q-23.5 56.5 -18 65 M17 45 Q23.5 56.5 18 65" fill="none" stroke="#33333D" stroke-width="6.5"/>
+    <circle cx="-18" cy="68" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><circle cx="18" cy="68" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
+    <use href="#face"/>
+    <path d="M-19 22 A19 19 0 0 1 19 22 Q13 7 0 7 Q-13 7 -19 22 Z" fill="#33333D" stroke="#2E2A3B" stroke-width="2"/>
+    <text y="120" font-size="11.3" fill="#2E2A3B">The Founder</text>
+  </g>
+
+  <!-- 6 Overachiever -->
+  <g transform="translate(258,212) scale(1.15)">
+    <use href="#base"/>
+    <rect x="-13" y="74" width="11" height="18" rx="4" fill="#5E6472" stroke="#2E2A3B" stroke-width="2"/><rect x="2" y="74" width="11" height="18" rx="4" fill="#5E6472" stroke="#2E2A3B" stroke-width="2"/>
+    <rect x="-19" y="38" width="38" height="42" rx="11" fill="#4E9F5B" stroke="#2E2A3B" stroke-width="2.5"/>
+    <polygon points="-8,39 8,39 0,56" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="1.5"/>
+    <circle cx="0" cy="62" r="1.6" fill="#2E2A3B"/><circle cx="0" cy="70" r="1.6" fill="#2E2A3B"/>
+    <rect x="7" y="54" width="24" height="30" rx="2.5" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="2"/>
+    <rect x="31" y="58" width="5" height="6" fill="#F2695C" stroke="#2E2A3B" stroke-width="1"/><rect x="31" y="66" width="5" height="6" fill="#FFD23F" stroke="#2E2A3B" stroke-width="1"/><rect x="31" y="74" width="5" height="6" fill="#6FA8F0" stroke="#2E2A3B" stroke-width="1"/>
+    <path d="M11 61 h15 M11 67 h15 M11 73 h10" stroke="#B9B4A6" stroke-width="1.5"/>
+    <text x="19" y="82" font-size="7" fill="#5FA86B">A+</text>
+    <circle cx="0" cy="-3" r="8" fill="#5A3E2B" stroke="#2E2A3B" stroke-width="2"/>
+    <path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q30.0 57.5 31 67" fill="none" stroke="#2E2A3B" stroke-width="10.5"/><path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q30.0 57.5 31 67" fill="none" stroke="#4E9F5B" stroke-width="6.5"/>
+    <circle cx="-22" cy="65" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><circle cx="31" cy="70" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
+    <use href="#face"/>
+    <path d="M-18 19 A18 18 0 0 1 18 19 Q9 9 0 9 Q-9 9 -18 19 Z" fill="#5A3E2B" stroke="#2E2A3B" stroke-width="2"/>
+    <circle cx="-6.5" cy="22" r="6" fill="#FFFFFF" fill-opacity="0.35" stroke="#2E2A3B" stroke-width="2"/><circle cx="6.5" cy="22" r="6" fill="#FFFFFF" fill-opacity="0.35" stroke="#2E2A3B" stroke-width="2"/>
+    <path d="M-0.5 22 h1 M-12.5 21 L-17.5 19 M12.5 21 L17.5 19" stroke="#2E2A3B" stroke-width="2"/>
+    <text y="120" font-size="11.3" fill="#2E2A3B">The Overachiever</text>
+  </g>
+
+  <!-- 7 Latecomer -->
+  <g transform="translate(422,212) scale(1.15)">
+    <use href="#base"/>
+    <path d="M-44 50 h10 M-46 60 h14 M-44 70 h10" stroke="#B9B4A6" stroke-width="2.5"/>
+    <rect x="-13" y="74" width="11" height="18" rx="4" fill="#3F5F8A" stroke="#2E2A3B" stroke-width="2"/><rect x="2" y="74" width="11" height="18" rx="4" fill="#3F5F8A" stroke="#2E2A3B" stroke-width="2"/>
+    <rect x="-19" y="38" width="38" height="42" rx="11" fill="#F08A3C" stroke="#2E2A3B" stroke-width="2.5"/>
+    <rect x="-6" y="39" width="12" height="40" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="1.5"/>
+    <path d="M23 46 q-3 -4 0 -8 M29 47 q3 -4 0 -8" fill="none" stroke="#B9B4A6" stroke-width="1.8"/>
+    <path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q27.0 56.0 25 64" fill="none" stroke="#2E2A3B" stroke-width="10.5"/><path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q27.0 56.0 25 64" fill="none" stroke="#F08A3C" stroke-width="6.5"/>
+    <polygon points="17,56 34,56 32,78 19,78" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="2"/>
+    <rect x="16" y="52" width="19" height="5" rx="2" fill="#8A5A3B" stroke="#2E2A3B" stroke-width="1.5"/><rect x="19" y="63" width="13" height="7" fill="#C9A27A"/>
+    <circle cx="-22" cy="65" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><circle cx="25" cy="67" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
+    <use href="#face"/>
+    <path d="M-18 19 Q-23 7 -13 4 Q-15 -5 -5 0 Q-2 -9 4 -1 Q11 -8 13 3 Q23 5 18 19 Q10 9 0 11 Q-10 9 -18 19 Z" fill="#7A4B2A" stroke="#2E2A3B" stroke-width="2"/>
+    <path d="M24 14 q4 6 0 10 q-4 -4 0 -10 Z" fill="#6FB8E8" stroke="#2E2A3B" stroke-width="1.2"/>
+    <text y="120" font-size="11.3" fill="#2E2A3B">The Latecomer</text>
+  </g>
+
+  <!-- 8 Library Local -->
+  <g transform="translate(585,212) scale(1.15)">
+    <use href="#base"/>
+    <rect x="-13" y="74" width="11" height="18" rx="4" fill="#B9B4A6" stroke="#2E2A3B" stroke-width="2"/><rect x="2" y="74" width="11" height="18" rx="4" fill="#B9B4A6" stroke="#2E2A3B" stroke-width="2"/>
+    <rect x="-19" y="38" width="38" height="42" rx="11" fill="#7A5CC2" stroke="#2E2A3B" stroke-width="2.5"/>
+    <rect x="-14" y="67" width="28" height="8" rx="1.5" fill="#6FA8F0" stroke="#2E2A3B" stroke-width="1.8"/><rect x="-12" y="59" width="25" height="8" rx="1.5" fill="#E0483E" stroke="#2E2A3B" stroke-width="1.8"/><rect x="-13" y="51" width="23" height="8" rx="1.5" fill="#FFD23F" stroke="#2E2A3B" stroke-width="1.8"/>
+    <path d="M-17 45 Q-22.5 59.0 -16 70 M17 45 Q22.5 59.0 16 70" fill="none" stroke="#2E2A3B" stroke-width="10.5"/><path d="M-17 45 Q-22.5 59.0 -16 70 M17 45 Q22.5 59.0 16 70" fill="none" stroke="#7A5CC2" stroke-width="6.5"/>
+    <circle cx="-16" cy="73" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><circle cx="16" cy="73" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
+    <use href="#face"/>
+    <path d="M-18 24 Q-21 2 0 2 Q21 2 18 24 L15 14 Q0 8 -15 14 Z" fill="#2B2B33" stroke="#2E2A3B" stroke-width="2"/>
+    <path d="M-19 17 A19 19 0 0 1 19 17" fill="none" stroke="#2E2A3B" stroke-width="7"/><path d="M-19 17 A19 19 0 0 1 19 17" fill="none" stroke="#F2695C" stroke-width="3.5"/>
+    <rect x="-25" y="13" width="9" height="16" rx="4" fill="#F2695C" stroke="#2E2A3B" stroke-width="2"/><rect x="16" y="13" width="9" height="16" rx="4" fill="#F2695C" stroke="#2E2A3B" stroke-width="2"/>
+    <text y="120" font-size="11.3" fill="#2E2A3B">The Library Local</text>
+  </g>
+
+  </g>
+</svg>
