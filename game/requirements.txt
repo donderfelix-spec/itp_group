@@ -1,0 +1,4 @@
+# Runtime dependencies. Keep this list short and every version pinned (see DECISIONS.md, S-34).
+fastapi==0.165.0
+uvicorn==0.54.0
+websockets==17.4

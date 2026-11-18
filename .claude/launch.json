@@ -4,8 +4,28 @@
     {
       "name": "prototype",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "prototype"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8765",
+        "--directory",
+        "prototype"
+      ],
       "port": 8765
+    },
+    {
+      "name": "game",
+      "runtimeExecutable": "game/.venv/bin/python",
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "server.main:app",
+        "--app-dir",
+        "game",
+        "--port",
+        "8000"
+      ],
+      "port": 8000
     }
   ]
 }

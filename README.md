@@ -1,74 +1,83 @@
-# We Be(a)t
+# Group Project
 
-Wett-App für Freundesgruppen: Event- und Reallife-Wetten, abgerechnet in fiktiven Euro, am Ende per Ausgleichszahlung beglichen.
+A multiplayer browser game set on the Nova SBE campus in Carcavelos. Everyone is working on the group project. One of you is only pretending.
 
-Aktuell ist das ein klickbarer Prototyp ohne Server und ohne Konten. Er läuft mit Beispieldaten, Eingaben bleiben nur im eigenen Browser gespeichert.
+Two to eight players join a lobby with a four-letter code. The **High Performers** walk across the campus and complete tasks, each one a short minigame. The **Free Rider** pretends to work and quietly fails the others. Find the Free Rider and vote them out before the group project falls apart.
 
-## Starten
+Team project for Introduction to Programming (course 2477), Nova SBE, 2026.
 
-`prototype/index.html` im Browser öffnen. Es gibt keinen Build-Schritt.
+## Play it
 
-## Dokumente
+**Deployed URL:** _to be added after the first deploy (to-do M0-2.6)_
 
-- [TODO.md](TODO.md): alle To-dos, sortiert nach Bereich
-- [FEATURES.md](FEATURES.md): Übersicht aller Funktionen mit Stand
-- [DECISIONS.md](DECISIONS.md): alle Entscheidungen mit Begründung
+## Team
 
-## Die vier Bereiche
+| Name | Student number |
+|---|---|
+| _to be added_ | _to be added_ |
+| _to be added_ | _to be added_ |
+| _to be added_ | _to be added_ |
+| _to be added_ | _to be added_ |
 
-| Bereich | Verantwortet | Grenze zu den anderen |
-|---|---|---|
-| 1 Gruppen | Startseite, Gruppe erstellen und beitreten, Gruppen-Detail mit Wettliste | Zeigt den Tab „Balances“ (Bereich 3) nur an und verlinkt in den Adminbereich (Bereich 4) |
-| 2 Wetten erstellen und beitreten | Formular für Event- und Reallife-Wetten, Wett-Detail bis zum Annahmeschluss | Ab Status „Locked“ übernimmt Bereich 3 |
-| 3 Auflösung, Salden und Ausgleich | Regeln und Berechnung, Wett-Detail ab „Locked“, Salden, Kontoverlauf, „Settle up“ | Bekommt die fertige Wette von Bereich 2 |
-| 4 Profil, Admin und Fundament | Profil, Adminbereich mit Mitgliedern, Datenmodell, Styles, gemeinsame Bausteine, Pull Requests | Liefert Bausteine und Datenmodell an alle |
+## Run it locally
 
-## Aufbau und Zuständigkeiten
+You need Python 3.13 or newer. Run all commands from the `game` folder.
 
-Jede Datei gehört zu genau einem Bereich. Wer etwas in einer fremden Datei braucht, spricht es mit dem Bereich ab, statt es selbst zu ändern.
-
-| Datei | Inhalt | Bereich |
-|---|---|---|
-| `prototype/js/home.js` | Startseite, Gruppe erstellen, Gruppe beitreten | 1 Gruppen |
-| `prototype/js/group.js` | Gruppen-Detail, Wettliste, Tabs, Gruppe verlassen | 1 Gruppen |
-| `prototype/js/bet-new.js` | Formular „Create bet“ für Event und Reallife | 2 Wetten erstellen und beitreten |
-| `prototype/js/bet-detail.js` | Wett-Detail bis zum Annahmeschluss: beitreten, zurückziehen, stornieren | 2 Wetten erstellen und beitreten |
-| `prototype/js/logic.js` | Regeln: Topf-Aufteilung, Ergebnis-Tipp, Auflösung, Annahmeschluss, Schuldenlimit, Ausgleichsvorschläge | 3 Auflösung, Salden, Ausgleich |
-| `prototype/js/bet-resolve.js` | Wett-Detail ab „Locked“: Ergebnis melden, bestätigen, Einspruch | 3 Auflösung, Salden, Ausgleich |
-| `prototype/js/settle.js` | Salden, Kontoverlauf, „Settle up“ | 3 Auflösung, Salden, Ausgleich |
-| `prototype/js/admin.js` | Adminbereich: Gruppe bearbeiten und löschen, Mitglieder, Einladungscode, Schuldenlimit | 4 Profil, Admin, Fundament |
-| `prototype/js/profile.js` | Profil-Screen | 4 Profil, Admin, Fundament |
-| `prototype/js/core.js` | Zustand, Speicherung, Hilfsfunktionen, Navigation, Kopfzeile, Platzhalter-Bilder | 4 Profil, Admin, Fundament |
-| `prototype/js/data.js` | Beispieldaten, Konstanten, Datenmodell | 4 Profil, Admin, Fundament |
-| `prototype/css/styles.css` | Farben, Schriften, gemeinsame Bausteine | 4 Profil, Admin, Fundament |
-| `prototype/index.html`, `prototype/js/main.js` | Seitengerüst, Ladereihenfolge, Start | 4 Profil, Admin, Fundament |
-
-## So hängen die Dateien zusammen
-
-- Die Skripte sind normale `<script>`-Dateien ohne Module, damit die Seite per Doppelklick läuft. Alles auf oberster Ebene ist global, also auf eindeutige Namen achten.
-- Ein Screen meldet sich mit `VIEWS.name = function () { ... }` an und gibt HTML zurück.
-- Ein Klick-Handler meldet sich mit `Object.assign(A, { name(d) { ... } })` an. Im HTML löst ihn `data-a="name"` aus.
-- Ein Eingabefeld mit `data-m="draft.name"` schreibt seinen Wert nach `ui.draft.name`, ohne neu zu zeichnen.
-- Neue Dateien in `index.html` eintragen, vor `main.js`.
-
-## Automatische Checks
-
-Bei jedem Pull Request und jedem Push auf `main` laufen auf GitHub zwei Prüfungen (`.github/workflows/ci.yml`):
-
-- **Syntax check:** Jede Datei unter `prototype/js/` und `tests/` muss gültiges JavaScript sein.
-- **Flow tests:** `tests/flows.js` spielt die Abläufe ohne Browser durch und prüft die Regeln, zum Beispiel Topf-Aufteilung, Ergebnis-Tipp, Schuldenlimit, „nicht durchführbar“, Ausgleich auf 0, Gruppe beitreten und verlassen.
-
-Lokal laufen die Tests mit Node.js:
+Set up once:
 
 ```bash
-node tests/run.js
+python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 ```
 
-Wer eine Regel in `logic.js` ändert oder einen neuen Ablauf baut, ergänzt in `tests/flows.js` einen `check(...)` dazu. Das Aussehen prüfen die Tests nicht, das bleibt Handarbeit im Browser.
+Start the game, then open http://localhost:8000:
 
-## Regeln für die Zusammenarbeit
+```bash
+.venv/bin/uvicorn server.main:app --reload
+```
 
-- Ein Branch pro To-do, Merge per Pull Request. Niemand pusht direkt auf `main`.
-- Änderungen am Datenmodell (`data.js`) vorher ankündigen, sie betreffen alle Bereiche.
-- Texte in der App sind Englisch. Beträge sind fiktive Euro und laufen über die Hilfsfunktionen `eur()` und `sg()`.
-- To-dos stehen in [TODO.md](TODO.md).
+Run the tests:
+
+```bash
+.venv/bin/python -m pytest
+```
+
+Check the dependencies for known vulnerabilities:
+
+```bash
+.venv/bin/pip-audit -r requirements.txt
+```
+
+To see several players at once, open the page in two or more browser windows.
+
+## The modes
+
+| Mode | Players | What happens |
+|---|---|---|
+| Classic | 4 to 8 | Complete tasks, find the Free Rider, discuss and vote in meetings. With 6 to 8 players there are two Free Riders. |
+| Duel | 2 to 8 | Everyone gets their own random route across three task stations. The first to finish all three wins. |
+| Deadline | 2 to 8 | Everyone plays together against the clock while disruptions get in the way. Built only if time allows. |
+
+## How it is built
+
+| Part | Where | What it does |
+|---|---|---|
+| Server | `game/server/` | Python with FastAPI. Serves the page, holds one WebSocket connection per player, and decides everything that matters: roles, positions, votes, results. |
+| Message checks | `game/server/protocol.py` | Every message from a browser is checked for size, shape and allowed values before any game code sees it. |
+| Client | `game/client/` | Plain HTML, CSS and JavaScript drawing on a canvas. No framework and no build step. It sends what the player wants to do and draws what the server reports. |
+| Tests | `game/tests/` | pytest. Accepted actions, rejected actions and edge cases. They run on every pull request. |
+| Data | Supabase (Postgres) | Accounts and statistics. Lobbies and running rounds live only in the server's memory and are gone after a restart. |
+
+No credentials are stored in this repository. The server reads the database connection from the environment variable `DATABASE_URL`.
+
+## Documents
+
+- [game/DESIGN.md](game/DESIGN.md): look, map, characters, screens, rules of every mode, minigames
+- [game/DECISIONS.md](game/DECISIONS.md): every decision with its reason, including the ones we later replaced
+- [game/FEATURES.md](game/FEATURES.md): every feature and its status
+- [game/TODO.md](game/TODO.md): open and finished to-dos
+- [game/WORKFLOW.md](game/WORKFLOW.md): how we work with coding agents
+- [AGENTS.md](AGENTS.md): the rules every coding agent follows in this repository
+
+## About this repository
+
+The folder `prototype/`, the folder `tests/` and the files `TODO.md`, `DECISIONS.md` and `FEATURES.md` in the root belong to an earlier idea, the betting app "We Be(a)t". We dropped it in favour of the game. They are not part of the deployed application and will move to an `archive/` folder before submission.
