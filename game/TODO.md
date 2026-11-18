@@ -25,7 +25,6 @@ These points hold up the start. The reasoning behind them is under “Open decis
 
 ## M0: Preparation
 
-- [ ] **M0-2.5** Define the messages for lobby and movement in `server/protocol.py` and agree on them with all areas (the format and the validation are in place, so far there is only `hello`)
 - [ ] **M0-4.1** The five minigames are described in the DESIGN.md, the team should proofread them once more
 - [ ] **M0-2.7** Write the README in the main folder in English for the submission (S-36), and decide whether the planning documents will be translated
 
@@ -114,6 +113,7 @@ These points hold up the start. The reasoning behind them is under “Open decis
 
 ## Done
 
+- [x] **M0-2.5** Messages for lobby, accounts and movement defined and checked in `server/protocol.py`, list confirmed by the team (S-74) (2026-11-18)
 - [x] **M0-2.6** First deploy on Render: https://itp-group.onrender.com, deploys automatically from `main`. Start page, `/health` and the WebSocket connection checked on the deployed URL (2026-11-18)
 - [x] **M0-2.1** Agents created: `researcher`, `coder`, `reviewer`, `tester` under `.claude/agents/`, rules in `AGENTS.md`, `CLAUDE.md` refers to it (2026-11-18)
 - [x] **M0-2.2** and **M0-2.3** Research on movement and tests: decided in S-72 (2026-11-18)
