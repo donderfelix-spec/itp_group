@@ -14,7 +14,7 @@ All features of the game with their status. Whoever finishes a feature or plans 
 - **M1 Walking:** Several players meet in a lobby and walk across the campus together.
 - **M2 Duel:** Minigames and the Duel mode are playable.
 - **M3 Classic:** A complete Classic round with Free Rider, meeting and vote is playable.
-- **M4 Extensions:** Sabotage, Deadline mode, finished characters, sound, phone, hosting.
+- **M4 Extensions:** Sabotage, Deadline mode, finished characters, sound, phone.
 
 As of 2026-11-18. The project skeleton is built, the game itself starts with milestone 1.
 
@@ -62,7 +62,7 @@ As of 2026-11-18. The project skeleton is built, the game itself starts with mil
 | If someone leaves the game, the round continues, and the host changes if needed | M2 | Planned |
 | Players who were disconnected for a short time come back into their round | M3 | Planned |
 | Each client gets only the information that its player is allowed to know | M3 | Planned |
-| Game reachable over the internet (hosting) | M4 | Later |
+| Game reachable at a public URL, deployed automatically from `main` | M0 | Done |
 | Several lobbies at the same time | M1 | Planned |
 
 ## Area 3: Classic rules

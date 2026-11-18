@@ -8,7 +8,9 @@ Team project for Introduction to Programming (course 2477), Nova SBE, 2026.
 
 ## Play it
 
-**Deployed URL:** _to be added after the first deploy (to-do M0-2.6)_
+**Deployed URL:** https://itp-group.onrender.com
+
+The game runs on a free Render instance that goes to sleep when nobody visits. The first visit after a pause can take about a minute to load.
 
 ## Team
 
