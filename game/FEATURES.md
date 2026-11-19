@@ -95,7 +95,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 
 | Feature | Milestone | Status |
 |---|---|---|
-| Frame for minigames: open at a station, close, report “done” | M2 | Planned |
+| Frame for minigames: open at a station, close, report “done” | M2 | Done |
 | Canteen: put four of six dishes from the order slip onto the tray | M2 | Planned |
 | Mon Café: prepare a drink by recipe at the coffee machine | M2 | Planned |
 | Lecture Hall: put slides into the right order | M2 | Planned |
