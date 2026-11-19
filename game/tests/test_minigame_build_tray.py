@@ -138,7 +138,7 @@ def test_station_3_is_build_the_tray():
     assert minigame is build_tray.MINIGAME
     assert isinstance(minigame, Minigame)
     assert minigame.title == "Build the tray"
-    assert minigame.min_seconds == 3
+    assert minigame.min_seconds == 1
     assert minigame.make_content is build_tray.make_content
 
 
@@ -167,13 +167,13 @@ def test_station_3_opens_with_a_tray_to_build(connect):
 
 def test_station_3_counts_after_the_minimum_time(connect, clock):
     mara, _ = open_station_3(connect)
-    clock.wait(3)
+    clock.wait(1)
     assert round_helpers.finish_station(mara) == {"type": "station_done", "station": 3}
 
 
 def test_station_3_does_not_count_sooner_than_the_minimum_time(connect, clock):
     mara, _ = open_station_3(connect)
-    clock.wait(2.9)
+    clock.wait(0.9)
     assert round_helpers.finish_station(mara) == round_helpers.TOO_FAST
 
 

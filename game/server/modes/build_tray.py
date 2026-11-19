@@ -14,9 +14,9 @@ DISHES = ("Soup", "Bacalhau", "Rice", "Salad", "Pastel de nata", "Fruit")
 # How many of the dishes the order slip names.
 DISHES_ON_SLIP = 4
 
-# Reading the slip and four clicks take longer than this; a "done" that
-# comes sooner was not played (S-93).
-MIN_SECONDS = 3
+# Stops a script that reports "done" at once; a quick, correct player is
+# not punished (S-93).
+MIN_SECONDS = 1
 
 
 def make_content(rng) -> dict:
