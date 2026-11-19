@@ -97,7 +97,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 |---|---|---|
 | Frame for minigames: open at a station, close, report “done” | M2 | Done |
 | Canteen: put four of six dishes from the order slip onto the tray | M2 | Done |
-| Mon Café: prepare a drink by recipe at the coffee machine | M2 | Planned |
+| Mon Café: prepare a drink by recipe at the coffee machine | M2 | Done |
 | Lecture Hall: put slides into the right order | M2 | Planned |
 | CTT Student Hall: sort books by number onto the shelf | M2 | Planned |
 | Pingo Doce: scan products until exactly the target amount comes out | M2 | Planned |
