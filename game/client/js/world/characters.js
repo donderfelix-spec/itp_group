@@ -128,8 +128,9 @@ Game.world = Game.world || {};
     return keptPaths.get(svgPath);
   }
 
-  // Text centred at (x, y). It always reads from left to right, also on a
-  // mirrored character: there it is mirrored a second time, around its middle.
+  // Text centred at (x, y). The only text is the "A+" on the folder. It is
+  // never drawn mirrored: a character turned to the left holds its folder
+  // in a hand that is mirrored back, see drawArmsWithObjectKeptInHand().
   function label(ctx, words, x, y, size, colour) {
     ctx.save();
     ctx.translate(x, y);
