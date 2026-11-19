@@ -9,10 +9,12 @@ functions, so they can be tested without a network.
 """
 
 import asyncio
+import contextlib
 import logging
 import os
 import random
 import string
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -26,6 +28,7 @@ from server.accounts.store import make_account_store
 from server.net.lobbies import Lobbies
 from server.net.sessions import GUEST_NUMBERS, Sessions
 from server.protocol import PROTOCOL_VERSION, ProtocolError, error, parse_client_message, welcome
+from server.world.campus import load_campus
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +42,19 @@ SECURITY_HEADERS = {
     "Content-Security-Policy": "default-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data:",
 }
 
+
+@contextlib.asynccontextmanager
+async def lifespan(app):
+    """The tick loop starts with the server and stops with it."""
+    ticking = asyncio.create_task(run_ticks())
+    yield
+    ticking.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await ticking
+
+
 # The automatic API pages are switched off: the game has no public API to document.
-app = FastAPI(title="Group Project", docs_url=None, redoc_url=None, openapi_url=None)
+app = FastAPI(title="Group Project", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 
 # Kept on `app.state` so the tests can put their own in. Accounts live in
 # Postgres when DATABASE_URL is set (never print it: it holds the password),
@@ -49,6 +63,9 @@ app.state.account_store = make_account_store(os.environ.get("DATABASE_URL"))
 app.state.hasher = service.Argon2Hasher()
 app.state.sessions = Sessions()
 app.state.lobbies = Lobbies()
+# The map is read once, when the server starts. A broken map file stops the
+# start with a clear message, which is better than a game without walls.
+app.state.campus = load_campus()
 
 # Hashing a password and asking the database both take a while, so they run in
 # worker threads and do not freeze the game for every other player. There are
@@ -113,7 +130,8 @@ async def read_messages(websocket: WebSocket):
             await answer_account_message(websocket, message)
         elif message["type"] in LOBBY_HANDLERS:
             await answer_lobby_message(websocket, message)
-        # The movement message is not answered yet.
+        elif message["type"] == "move":
+            await answer_move_message(websocket, message)
 
 
 async def answer_account_message(websocket: WebSocket, message: dict):
@@ -353,6 +371,11 @@ async def send_to(name: str, message: dict) -> bool:
     connection = app.state.sessions.connection_of(name)
     if connection is None:
         return False
+    return await send_on(connection, message)
+
+
+async def send_on(connection, message: dict) -> bool:
+    """Send a message on this connection, with the time limit. Never raises."""
     try:
         await asyncio.wait_for(connection.send_json(message), SEND_TIMEOUT_SECONDS)
         return True
@@ -380,6 +403,94 @@ LOBBY_HANDLERS = {
     "leave_lobby": handle_leave_lobby,
     "choose_character": handle_choose_character,
 }
+
+
+# Walking on the campus. The rules are in `server/net/walking.py` and
+# `server/world/movement.py`; the functions here measure the time, ask the
+# rules and send the positions.
+
+# How often per second the server moves the players and tells their browsers (S-72).
+TICKS_PER_SECOND = 15
+
+# Connections that are still busy taking a positions message. Positions are
+# replaceable: a newer message is better than a queue of old ones, so a busy
+# connection is skipped until it is free again.
+taking_positions = set()
+
+
+async def answer_move_message(websocket: WebSocket, message: dict):
+    """Remember the direction the player wants to walk. Only a rejection is answered."""
+    name = app.state.sessions.name_of(websocket)
+    if name is None:
+        await websocket.send_json(protocol.rejection("not_signed_in"))
+        return
+    lobby = app.state.lobbies.lobby_of(name)
+    if lobby is None:
+        await websocket.send_json(protocol.rejection("not_in_lobby"))
+        return
+    # The next tick moves the player. The browser sees the result in `positions`.
+    lobby.walkers.set_direction(name, message["dx"], message["dy"])
+
+
+async def run_ticks():
+    """Call `tick` about TICKS_PER_SECOND times per second, until the server stops."""
+    previous = time.monotonic()
+    while True:
+        await asyncio.sleep(1 / TICKS_PER_SECOND)
+        now = time.monotonic()
+        try:
+            tick(now - previous)
+        except Exception as problem:
+            # `tick` already catches what goes wrong in one lobby. This is the
+            # last line of defence: whatever else fails, the loop goes on and
+            # the next tick tries again. Only the kind of error is logged.
+            logger.error("A tick failed: %s", type(problem).__name__)
+        previous = now
+
+
+def tick(seconds: float):
+    """Move the players of every lobby for `seconds` and tell them the news.
+
+    This function never waits for a browser: every send runs as its own task.
+    So a slow player cannot delay the tick or the other players.
+    """
+    for lobby in app.state.lobbies.all():
+        try:
+            if lobby.walkers.advance(seconds, app.state.campus):
+                tell_positions(lobby)
+        except Exception as problem:
+            # A fault in one lobby must not freeze the lobbies after it.
+            # Only the kind of error is logged.
+            logger.error("The tick failed for one lobby: %s", type(problem).__name__)
+
+
+def tell_positions(lobby):
+    """Start sending the lobby's positions to every member who needs them and is free."""
+    message = protocol.positions(lobby.walkers.positions())
+    for name in lobby.walkers.names_to_tell():
+        connection = app.state.sessions.connection_of(name)
+        if connection is None or connection in taking_positions:
+            # Not marked as told: this player gets the newest positions at a
+            # later tick, as soon as the connection is free.
+            continue
+        lobby.walkers.mark_told(name)
+        taking_positions.add(connection)
+        task = asyncio.create_task(send_positions(name, connection, lobby, message))
+        background_sends.add(task)
+        task.add_done_callback(background_sends.discard)
+
+
+async def send_positions(name: str, connection, lobby, message: dict):
+    """Send one member the positions. Runs as its own task, started by `tell_positions`."""
+    try:
+        # The player may have left, or logged in elsewhere, in the short
+        # moment before this task started. Then the positions are not theirs
+        # to see any more.
+        still_there = is_member(name, lobby) and app.state.sessions.connection_of(name) is connection
+        if still_there:
+            await send_on(connection, message)
+    finally:
+        taking_positions.discard(connection)
 
 
 # Mounted last, so /health and /ws win over files of the same name.
