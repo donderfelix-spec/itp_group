@@ -335,6 +335,28 @@ def test_a_fault_while_one_round_is_set_up_does_not_keep_another_lobby_from_star
     assert start_countdown(broken)["Tiago"][1] == COUNTDOWN
 
 
+def test_a_fault_in_the_rules_own_start_opens_the_lobby_again_and_tells_the_players(connect, clock, monkeypatch):
+    players, code = counting_lobby(connect, ["Mara", "Tiago"])
+    lobby = lobby_named("Mara")
+    real_back_to_spawn = lobby.walkers.back_to_spawn
+
+    def back_to_spawn():
+        raise RuntimeError("the spawn is gone")
+
+    monkeypatch.setattr(lobby.walkers, "back_to_spawn", back_to_spawn)
+    tick_after(players["Mara"], clock, 5)
+    open_again = lobby_state(code, "Mara", ("Mara", FIRST), ("Tiago", SECOND), phase="lobby")
+    for name in players:
+        assert wait_for_news(players[name]) == [open_again]
+    assert lobby.phase == "lobby" and lobby.round_starts_at is None
+    assert lobby.tasks is None and lobby.duel is None
+    # Nothing is left that a later tick could start, and the host can try again.
+    tick_after(players["Mara"], clock, 60)
+    assert lobby.phase == "lobby" and nothing_new_for(players)
+    monkeypatch.setattr(lobby.walkers, "back_to_spawn", real_back_to_spawn)
+    assert start_countdown(players)["Tiago"][1] == COUNTDOWN
+
+
 # During the countdown
 
 

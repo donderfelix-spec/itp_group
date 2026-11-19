@@ -125,6 +125,9 @@ class Lobby:
         The players stay where they stand.
         """
         self.phase = PHASE_LOBBY
+        # Already None after a normal start. Cleared here too, so the lobby
+        # is open and counts nothing also after a start that failed halfway.
+        self.round_starts_at = None
         self.tasks = None
         self.duel = None
 

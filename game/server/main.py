@@ -859,15 +859,16 @@ def start_round_if_due(lobby) -> bool:
     starts exactly one round, also when a tick comes late or twice. The
     round is set up now, for the players who are in the lobby now.
     """
-    if not lobby.start_round_if_due(seconds_now()):
-        return False
     try:
+        if not lobby.start_round_if_due(seconds_now()):
+            return False
         set_up_round(lobby)
     except Exception as problem:
-        # A round without its tasks could never end. The lobby is open
-        # again instead, and the host can press "Start game" once more.
-        # Only the kind of error is logged.
-        logger.error("A round could not be set up: %s", type(problem).__name__)
+        # Whatever failed, in the rules' own start or while the round was
+        # set up: a round without its tasks could never end. The lobby is
+        # open again instead, and the host can press "Start game" once
+        # more. Only the kind of error is logged.
+        logger.error("A round could not be started: %s", type(problem).__name__)
         lobby.end_round()
     return True
 
@@ -876,8 +877,8 @@ async def tell_round_begins(lobby):
     """The news that the round started: the lobby's state with phase "round", then what the mode tells.
 
     There is no message of its own for the start (S-91). The next tick
-    sends everybody's position on the spawn. If the round could not be set
-    up, the state says that the lobby is open again, and nothing follows it.
+    sends everybody's position on the spawn. If the round could not be
+    started, the state says that the lobby is open again, and nothing follows it.
     """
     await tell_lobby(lobby)
     await tell_round_started(lobby)
