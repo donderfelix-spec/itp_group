@@ -428,7 +428,7 @@ def test_removing_one_player_leaves_the_others_alone():
     assert round_tasks.open_station_of("Tiago") == 2
 
 
-def test_asking_about_a_player_does_not_create_one():
+def test_asking_about_a_player_changes_nothing_for_them():
     round_tasks = new_round()
     round_tasks.has_open_task("Mara")
     round_tasks.finished_by("Mara")
@@ -518,10 +518,30 @@ def test_the_placeholder_has_fixed_content_and_one_second_minimum():
     assert minigame.make_content(random.Random(2)) == {"kind": "placeholder"}
 
 
-def test_without_a_table_of_its_own_a_round_uses_the_real_minigames():
+def test_without_a_table_of_its_own_a_round_uses_the_real_minigames(monkeypatch):
+    # A minigame nobody else has, so the test does not depend on which
+    # minigames the real table holds.
+    marked = Minigame(title="Only in this test", min_seconds=7, make_content=lambda rng: {"kind": "marked"})
+    monkeypatch.setitem(minigames.MINIGAMES, 1, marked)
     campus = load_campus()
     round_tasks = RoundTasks(campus["stations"], campus["use_range"])
     station = campus["stations"][0]
     opened, rejection_code = round_tasks.open("Mara", 1, (station["x"], station["y"]), 0.0, random.Random(1))
     assert rejection_code is None
-    assert opened == {"station": 1, "title": "Sort the slides", "content": {"kind": "placeholder"}}
+    assert opened == {"station": 1, "title": "Only in this test", "content": {"kind": "marked"}}
+    # Its minimum time is used too: 6.9 seconds are too fast, 7 are enough.
+    assert round_tasks.finish("Mara", 6.9) == (1, "too_fast")
+    round_tasks.open("Mara", 1, (station["x"], station["y"]), 10.0, random.Random(1))
+    assert round_tasks.finish("Mara", 17.0) == (1, None)
+
+
+def test_the_real_table_has_the_five_stations_with_the_titles_of_the_design():
+    """True whatever minigames are in the table: stations, titles, a minimum time, content."""
+    titles = {1: "Sort the slides", 2: "Brew the order", 3: "Build the tray", 4: "Shelve the books", 5: "Self-checkout"}
+    assert {station: minigame.title for station, minigame in minigames.MINIGAMES.items()} == titles
+    for minigame in minigames.MINIGAMES.values():
+        assert minigame.min_seconds > 0
+        content = minigame.make_content(random.Random(0))
+        assert isinstance(content, dict)
+        assert isinstance(content["kind"], str)
+        assert json.loads(json.dumps(content)) == content

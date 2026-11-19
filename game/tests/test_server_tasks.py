@@ -7,150 +7,56 @@ with an open task stands still while the real tick runs is tested in
 test_server_tasks_walking.py.
 """
 
-import contextlib
 import random
 
 import pytest
-from fastapi.testclient import TestClient
 
 from server import main, protocol
 from server.main import app
 from server.modes import minigames
 from server.modes.minigame import Minigame
 
-PASSWORD = "password123"
-CAMPUS = app.state.campus
-STATION = {station["id"]: station for station in CAMPUS["stations"]}
-SPAWN = (CAMPUS["spawn"]["x"], CAMPUS["spawn"]["y"])
-
-NOT_SIGNED_IN = protocol.rejection("not_signed_in")
-NOT_IN_LOBBY = protocol.rejection("not_in_lobby")
-NOT_IN_ROUND = {"type": "error", "code": "not_in_round", "message": "No round is running."}
-NO_STATION = {"type": "error", "code": "no_station", "message": "That station does not exist."}
-BAD_STATION = {"type": "error", "code": "bad_station", "message": "That station does not exist."}
-TOO_FAR = {"type": "error", "code": "too_far", "message": "You are too far away."}
-NOT_NEEDED = {"type": "error", "code": "station_not_needed", "message": "You do not need that station."}
-TASK_OPEN = {"type": "error", "code": "task_open", "message": "Close your current task first."}
-NO_TASK_OPEN = {"type": "error", "code": "no_task_open", "message": "You have no task open."}
-TOO_FAST = {"type": "error", "code": "too_fast", "message": "That was too fast. Try again."}
-
-NEW_HOST = {"type": "notice", "message": "The host left. Tiago is the new host."}
-
-PLACEHOLDER = {"kind": "placeholder"}
-TITLES = {1: "Sort the slides", 2: "Brew the order", 3: "Build the tray", 4: "Shelve the books", 5: "Self-checkout"}
-
-
-class Clock:
-    """The server's clock for the tasks, set by the test."""
-
-    def __init__(self):
-        self.now = 1000.0
-
-    def __call__(self):
-        return self.now
-
-    def wait(self, seconds):
-        self.now += seconds
-
-
-@pytest.fixture(autouse=True)
-def clock(monkeypatch):
-    test_clock = Clock()
-    monkeypatch.setattr(main, "seconds_now", test_clock)
-    return test_clock
-
-
-@pytest.fixture
-def client():
-    # One event loop for all connections, like the real server (see test_server_lobby.py).
-    with TestClient(app) as shared_client:
-        yield shared_client
-
-
-@pytest.fixture
-def connect(client):
-    """A function that opens one more connection. All of them are closed after the test."""
-    with contextlib.ExitStack() as open_connections:
-        yield lambda: open_connections.enter_context(client.websocket_connect("/ws"))
-
-
-def ask(connection, message):
-    """Send one message and return the next message the server sends."""
-    connection.send_json(message)
-    return connection.receive_json()
-
-
-def player(connect, name):
-    """A new connection, signed in with a new account of this name."""
-    connection = connect()
-    assert ask(connection, {"type": "sign_up", "name": name, "password": PASSWORD})["type"] == "signed_in"
-    return connection
-
-
-def still_works(connection):
-    """True if the next message is the answer to a hello: nothing else was waiting."""
-    return ask(connection, {"type": "hello", "name": "Mara"})["type"] == "welcome"
-
-
-def lobby_of_two(connect):
-    """Mara creates a lobby and Tiago joins. Both have read every state so far."""
-    mara = player(connect, "Mara")
-    tiago = player(connect, "Tiago")
-    code = ask(mara, {"type": "create_lobby"})["code"]
-    ask(tiago, {"type": "join_lobby", "code": code})
-    mara.receive_json()
-    return mara, tiago, code
-
-
-def running_round(connect):
-    """A round of Mara and Tiago. Both stand on the spawn, as after the first tick."""
-    mara, tiago, code = lobby_of_two(connect)
-    assert ask(mara, {"type": "start_game"})["phase"] == "round"
-    tiago.receive_json()
-    put("Mara", SPAWN)
-    put("Tiago", SPAWN)
-    return mara, tiago, code
-
-
-def lobby_named(name):
-    return app.state.lobbies.lobby_of(name)
-
-
-def put(name, position):
-    """Place a player on the map, as the tick would after a long walk.
-
-    Walking to a station takes many seconds of real time, so the tests write
-    the position where the tick writes it.
-    """
-    lobby_named(name).walkers._walkers[name].position = (float(position[0]), float(position[1]))
-
-
-def put_at_station(name, station):
-    put(name, (STATION[station]["x"], STATION[station]["y"]))
-
-
-def open_station(connection, station):
-    return ask(connection, {"type": "open_station", "station": station})
-
-
-def close_station(connection):
-    return ask(connection, {"type": "close_station"})
-
-
-def finish_station(connection):
-    return ask(connection, {"type": "finish_station"})
-
-
-def opened(station, content=PLACEHOLDER):
-    return {"type": "station_opened", "station": station, "title": TITLES[station], "content": content}
-
-
-def round_with_station_open(connect, station=1):
-    """A running round in which Mara has the minigame of `station` open."""
-    mara, tiago, code = running_round(connect)
-    put_at_station("Mara", station)
-    assert open_station(mara, station) == opened(station)
-    return mara, tiago, code
+# The helpers live in task_helpers.py, where the tests of the minigames find
+# them too. They are imported by name, so that every one of them can still be
+# taken from this file as well. The fixtures work through this import alone.
+from task_helpers import (  # noqa: F401
+    BAD_STATION,
+    CAMPUS,
+    NEW_HOST,
+    NO_STATION,
+    NO_TASK_OPEN,
+    NOT_IN_LOBBY,
+    NOT_IN_ROUND,
+    NOT_NEEDED,
+    NOT_SIGNED_IN,
+    PASSWORD,
+    PLACEHOLDER,
+    SPAWN,
+    STATION,
+    TASK_FAILED,
+    TASK_OPEN,
+    TITLES,
+    TOO_FAR,
+    TOO_FAST,
+    Clock,
+    ask,
+    client,
+    clock,
+    close_station,
+    connect,
+    finish_station,
+    lobby_named,
+    lobby_of_two,
+    open_station,
+    opened,
+    placeholder_at_every_station,
+    player,
+    put,
+    put_at_station,
+    round_with_station_open,
+    running_round,
+    still_works,
+)
 
 
 # Opening: accepted
@@ -440,16 +346,31 @@ def test_a_new_lobby_starts_with_nothing_finished(connect, clock):
     assert open_station(mara, 1) == opened(1)
 
 
-def test_leaving_with_a_task_open_forgets_it_and_disturbs_nobody(connect):
-    mara, tiago, code = round_with_station_open(connect, 1)
+def both_finish_one_station(mara, tiago, clock):
+    """Mara finishes station 2 and Tiago station 3, so both have something to lose."""
+    for connection, name, station in [(mara, "Mara", 2), (tiago, "Tiago", 3)]:
+        put_at_station(name, station)
+        assert open_station(connection, station) == opened(station)
+        clock.wait(2)
+        assert finish_station(connection) == {"type": "station_done", "station": station}
+
+
+def test_leaving_with_a_task_open_forgets_it_and_disturbs_nobody(connect, clock):
+    mara, tiago, code = running_round(connect)
+    both_finish_one_station(mara, tiago, clock)
+    put_at_station("Mara", 1)
+    assert open_station(mara, 1) == opened(1)
     lobby = lobby_named("Mara")
+    assert lobby.tasks.finished_by("Mara") == {2}
     assert ask(mara, {"type": "leave_lobby"}) == {"type": "left_lobby"}
     assert tiago.receive_json() == NEW_HOST
     assert tiago.receive_json() == protocol.lobby_state(code, "Tiago", [("Tiago", protocol.CHARACTERS[1])], "duel", "round")
     assert not lobby.tasks.has_open_task("Mara")
     assert lobby.tasks.open_station_of("Mara") is None
+    # Mara had finished station 2: an empty set shows her state was removed.
     assert lobby.tasks.finished_by("Mara") == set()
     assert lobby.tasks.open_station_of("Tiago") is None
+    assert lobby.tasks.finished_by("Tiago") == {3}
     assert close_station(mara) == NOT_IN_LOBBY
     # Tiago plays on as if nothing had happened.
     put_at_station("Tiago", 1)
@@ -458,22 +379,23 @@ def test_leaving_with_a_task_open_forgets_it_and_disturbs_nobody(connect):
 
 def test_disconnecting_with_a_task_open_forgets_it_and_disturbs_nobody(connect, clock):
     mara, tiago, code = running_round(connect)
+    both_finish_one_station(mara, tiago, clock)
     put_at_station("Mara", 1)
     assert open_station(mara, 1) == opened(1)
     lobby = lobby_named("Mara")
+    assert lobby.tasks.finished_by("Mara") == {2}
     mara.close()
     assert tiago.receive_json() == NEW_HOST
     assert tiago.receive_json()["host"] == "Tiago"
     assert lobby.tasks.open_station_of("Mara") is None
+    # Mara had finished station 2: an empty set shows her state was removed.
     assert lobby.tasks.finished_by("Mara") == set()
     assert lobby.tasks.open_station_of("Tiago") is None
+    assert lobby.tasks.finished_by("Tiago") == {3}
     put_at_station("Tiago", 2)
     assert open_station(tiago, 2) == opened(2)
     clock.wait(2)
     assert finish_station(tiago) == {"type": "station_done", "station": 2}
-
-
-TASK_FAILED = {"type": "error", "code": "task_failed", "message": "Something went wrong. Try again."}
 
 
 def test_a_fault_in_a_minigame_does_not_close_the_connection(connect, monkeypatch):
@@ -538,6 +460,26 @@ def test_a_fault_while_closing_or_finishing_is_answered_too(connect, monkeypatch
         assert close_station(mara) == TASK_FAILED
     assert still_works(mara)
     assert open_station(mara, 1) == opened(1)
+
+
+def test_a_fault_while_finishing_leaves_nothing_open(connect, monkeypatch, clock):
+    def broken(station):
+        raise ValueError("the answer could not be built")
+
+    mara, tiago, _ = round_with_station_open(connect, 1)
+    clock.wait(2)
+    with monkeypatch.context() as patched:
+        patched.setattr(protocol, "station_done", broken)
+        # Only the error comes: no `station_closed` follows it.
+        assert finish_station(mara) == TASK_FAILED
+    assert still_works(mara)
+    assert not lobby_named("Mara").tasks.has_open_task("Mara")
+    assert lobby_named("Mara").tasks.open_station_of("Mara") is None
+    # The player is not stuck: closing finds no task, and another station opens.
+    assert close_station(mara) == NO_TASK_OPEN
+    put_at_station("Mara", 2)
+    assert open_station(mara, 2) == opened(2)
+    assert still_works(tiago)
 
 
 def test_a_fault_is_logged_by_its_kind_only(connect, monkeypatch, caplog):
