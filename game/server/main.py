@@ -11,6 +11,7 @@ functions, so they can be tested without a network.
 import asyncio
 import contextlib
 import logging
+import math
 import os
 import random
 import string
@@ -31,7 +32,7 @@ from server.modes import duel, minigames, tasks
 from server.net.lobbies import Lobbies
 from server.net.sessions import GUEST_NUMBERS, Sessions
 from server.protocol import PROTOCOL_VERSION, ProtocolError, error, parse_client_message, welcome
-from rules import check_winner, end_reason
+from rules import can_fail, check_winner, end_reason
 from server.world import paths
 from server.world.campus import load_campus
 
@@ -144,6 +145,8 @@ async def read_messages(websocket: WebSocket):
             await answer_move_message(websocket, message)
         elif message["type"] in TASK_HANDLERS:
             await answer_task_message(websocket, message)
+        elif message["type"] == "fail":
+            await answer_fail_message(websocket)
         elif message["type"] == "chat":
             await answer_chat_message(websocket, message)
         elif message["type"] == "vote":
@@ -608,6 +611,8 @@ def answers_after_fault(lobby, name: str) -> list:
 
 
 def handle_open_station(lobby, name: str, message: dict) -> list:
+    if lobby.classic_round is not None and lobby.classic_round.roles.get(name) == "FR":
+        return [protocol.rejection("fr_cannot_task")]
     position = lobby.walkers.position_of(name)
     opened, rejection_code = tasks.open_station(
         lobby.tasks, name, message["station"], position, seconds_now(), random
@@ -621,6 +626,8 @@ def handle_open_station(lobby, name: str, message: dict) -> list:
 
 
 def handle_close_station(lobby, name: str, message: dict) -> list:
+    if lobby.classic_round is not None and lobby.classic_round.roles.get(name) == "FR":
+        return [protocol.rejection("fr_cannot_task")]
     station, rejection_code = tasks.close_station(lobby.tasks, name)
     if rejection_code is not None:
         return [protocol.rejection(rejection_code)]
@@ -628,6 +635,8 @@ def handle_close_station(lobby, name: str, message: dict) -> list:
 
 
 def handle_finish_station(lobby, name: str, message: dict) -> list:
+    if lobby.classic_round is not None and lobby.classic_round.roles.get(name) == "FR":
+        return [protocol.rejection("fr_cannot_task")]
     now = seconds_now()
     station, rejection_code = tasks.finish_station(lobby.tasks, name, now)
     if rejection_code == "too_fast":
@@ -674,6 +683,56 @@ TASK_HANDLERS = {
     "close_station": handle_close_station,
     "finish_station": handle_finish_station,
 }
+
+
+async def answer_fail_message(websocket: WebSocket):
+    """Apply Q to the nearest living HP in range; Classic rules validate the action."""
+    name = app.state.sessions.name_of(websocket)
+    if name is None:
+        await websocket.send_json(protocol.rejection("not_signed_in"))
+        return
+    lobby = app.state.lobbies.lobby_of(name)
+    if lobby is None:
+        await websocket.send_json(protocol.rejection("not_in_lobby"))
+        return
+    classic = lobby.classic_round
+    if classic is None:
+        await websocket.send_json(protocol.rejection("fail_rejected"))
+        return
+
+    members = set(lobby.names())
+    classic.positions = {
+        player_id: lobby.walkers.position_of(player_id)
+        for player_id in classic.roles
+        if player_id in members
+    }
+    now = seconds_now()
+    state = classic.rule_state()
+    targets = [
+        player_id
+        for player_id, role in classic.roles.items()
+        if role == "HP" and can_fail(state, name, player_id, now)
+    ]
+    if not targets:
+        await websocket.send_json(protocol.rejection("fail_rejected"))
+        return
+
+    source_position = classic.positions[name]
+    target_id = min(
+        targets,
+        key=lambda player_id: math.dist(source_position, classic.positions[player_id]),
+    )
+    target_position = classic.positions[target_id]
+    classic.fail(name, target_id, now, target_position)
+    sheet_id = f"f-sheet-{len(classic.f_sheets)}"
+    event = {
+        "type": "classic_fail",
+        "target_id": target_id,
+        "sheet_id": sheet_id,
+        "position": {"x": target_position[0], "y": target_position[1]},
+    }
+    await asyncio.gather(*(send_to(player_id, event) for player_id in lobby.names()))
+    await tell_round_news(lobby)
 
 
 def update_meeting_clock(lobby):
@@ -771,6 +830,8 @@ def set_up_duel(lobby):
 def set_up_classic(lobby):
     campus = app.state.campus
     lobby.classic_round = ClassicRound(lobby.names(), sorted(minigames.MINIGAMES), random)
+    if os.environ.get("DEBUG_ROLES") == "1":
+        print(f"Classic roles: {lobby.classic_round.roles}", flush=True)
     lobby.tasks = tasks.RoundTasks(
         campus["stations"], campus["use_range"],
         needed_stations=lobby.classic_round.stations_needed,
@@ -808,6 +869,7 @@ async def tell_round_started(lobby):
     """After the lobby's state with phase "round": what the mode tells at the start."""
     if lobby.classic_round is not None:
         classic = lobby.classic_round
+        classic.take_news()  # the start message below carries the initial state
         await asyncio.gather(*(tell_classic_start(name, lobby, classic) for name in classic.roles))
         await tell_classic_progress(lobby)
         return
@@ -824,6 +886,8 @@ async def tell_classic_start(name: str, lobby, classic):
     reveal = classic.role_reveal(name)
     if reveal is not None:
         await send_to(name, {"type": "classic_role", **reveal})
+        if reveal["role"] == "FR":
+            await send_to(name, {"type": "you_are_fr"})
 
 
 async def tell_classic_progress(lobby):

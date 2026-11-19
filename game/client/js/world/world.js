@@ -57,6 +57,7 @@ Game.world = Game.world || {};
   // section 4).
   var USE_KEY_CODE = "KeyE"; // `event.code` of the key in the E position
   var USE_BUTTON_TEXT = "E Use";
+  var FAIL_KEY_CODE = "KeyQ";
 
   // ---- State -----------------------------------------------------------
 
@@ -69,11 +70,13 @@ Game.world = Game.world || {};
   var running = false;
   var frameRequest = 0; // id of the waiting requestAnimationFrame
   var ownName = null;
+  var ownIsFreeRider = false;
   var players = new Map(); // name -> player record, see newPlayer()
   var pressedKeys = {}; // event.code -> true while the key is held down
   var sentDirection = { dx: 0, dy: 0 }; // what the server heard last
   var usableStations = null; // ids of the stations that count, null = all
   var useHandler = null; // called with the id of the station that is opened
+  var failHandler = null; // called when the player presses Q in Classic
   var useButton = null; // the button "E Use", while the world runs
   var inputPaused = false; // true while a minigame is open, see setInputPaused()
 
@@ -154,6 +157,10 @@ Game.world = Game.world || {};
 
   function setOwnName(name) {
     ownName = isName(name) ? name : null;
+  }
+
+  function setOwnFreeRider(value) {
+    ownIsFreeRider = value === true;
   }
 
   // The players of the lobby with their characters: [{name, character}].
@@ -281,6 +288,10 @@ Game.world = Game.world || {};
     useHandler = typeof handler === "function" ? handler : null;
   }
 
+  function setFailHandler(handler) {
+    failHandler = typeof handler === "function" ? handler : null;
+  }
+
   // Opens the station in range: with the key E or a click on the button.
   // Without a station in range or without a handler nothing happens, and
   // there is no message either (DESIGN.md, section 4).
@@ -386,6 +397,10 @@ Game.world = Game.world || {};
     return event.code === USE_KEY_CODE;
   }
 
+  function isFailKey(event) {
+    return event.code === FAIL_KEY_CODE;
+  }
+
   function onKeyDown(event) {
     if (isMetaKey(event)) {
       releaseAllKeys();
@@ -410,6 +425,10 @@ Game.world = Game.world || {};
       if (!event.repeat) {
         useStationInRange();
       }
+      return;
+    }
+    if (isFailKey(event)) {
+      if (!event.repeat && typeof failHandler === "function") failHandler();
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(KEY_DIRECTIONS, event.code)) {
@@ -577,6 +596,7 @@ Game.world = Game.world || {};
     var headTop = figureMiddleY(entry.y) - CHARACTER_HEIGHT / 2 - BOB_HEIGHT;
     return {
       name: entry.player.name,
+      isFreeRider: ownIsFreeRider && isOwn(entry.player),
       x: entry.x,
       y: headTop - LABEL_OUTLINE - LABEL_HEIGHT / 2,
       width: ctx.measureText(entry.player.name).width + 6
@@ -626,7 +646,7 @@ Game.world = Game.world || {};
     ctx.strokeStyle = SURFACE;
     ctx.stroke();
 
-    ctx.fillStyle = OUTLINE;
+    ctx.fillStyle = label.isFreeRider ? "#C43E3E" : OUTLINE;
     ctx.fillText(label.name, label.x, label.y + 0.3);
   }
 
@@ -756,10 +776,12 @@ Game.world = Game.world || {};
   Game.world.start = start;
   Game.world.stop = stop;
   Game.world.setOwnName = setOwnName;
+  Game.world.setOwnFreeRider = setOwnFreeRider;
   Game.world.setPlayers = setPlayers;
   Game.world.setPositions = setPositions;
   Game.world.setUsableStations = setUsableStations;
   Game.world.setUseHandler = setUseHandler;
+  Game.world.setFailHandler = setFailHandler;
   Game.world.stationInRange = stationInRange;
   Game.world.setInputPaused = setInputPaused;
   Game.world.nearestStationInRange = nearestStationInRange;

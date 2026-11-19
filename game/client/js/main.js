@@ -58,6 +58,7 @@ window.Game = window.Game || {};
     Game.minigames.close(); // before the world stops, so its keys are not left paused
     Game.classicMeeting.hide();
     Game.classicRound.hide();
+    Game.classicRound.resetRoleMarker();
     Game.duel.reset();
     roundIsRunning = false;
     finishedStations = new Set();
@@ -68,6 +69,10 @@ window.Game = window.Game || {};
 
   function openStation(station) {
     Game.net.ask({ type: 'open_station', station: station });
+  }
+
+  function requestFail() {
+    if (mode === 'classic' && roundIsRunning) Game.net.send({ type: 'fail' });
   }
 
   // Which stations glow and can be used: outside a round none. In a Duel
@@ -210,6 +215,7 @@ window.Game = window.Game || {};
   Game.classicMeeting.setup();
   Game.classicRound.setup();
   callWorld('setUseHandler', openStation);
+  callWorld('setFailHandler', requestFail);
 
   Game.net.on('open', Game.screens.hideMessage);
   Game.net.on('close', whenConnectionLost);
@@ -226,6 +232,7 @@ window.Game = window.Game || {};
   Game.net.on('duel_result', whenDuelResult);
   Game.net.on('notice', (message) => Game.screens.showMessage(message.message, false));
   Game.net.on('error', whenError);
+  Game.net.on('you_are_fr', () => Game.classicRound.setOwnFreeRider(true));
 
   Game.net.connect();
 })();

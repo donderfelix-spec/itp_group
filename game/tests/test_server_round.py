@@ -323,5 +323,8 @@ def test_classic_round_sends_each_living_player_a_private_role_card(connect):
     assert all(card["role"] in {"HP", "FR"} for card in cards)
     assert sum(card["role"] == "FR" for card in cards) == 1
     assert all("other_free_riders" not in card for card in cards if card["role"] == "HP")
+    for connection, card in zip((mara, tiago, ines, rui), cards):
+        if card["role"] == "FR":
+            assert connection.receive_json() == {"type": "you_are_fr"}
     progress_messages = [connection.receive_json() for connection in (mara, tiago, ines, rui)]
     assert all(message == {"type": "classic_progress", "progress": 0.0} for message in progress_messages)

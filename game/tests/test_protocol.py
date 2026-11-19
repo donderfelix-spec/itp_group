@@ -126,11 +126,12 @@ VALID_MESSAGES = [
     {"type": "open_station", "station": 3},
     {"type": "close_station"},
     {"type": "finish_station"},
+    {"type": "fail"},
     {"type": "chat", "text": "Hello there."},
     {"type": "vote", "target_id": "Mara"},
 ]
 MESSAGES_WITHOUT_FIELDS = [
-    "guest", "log_out", "create_lobby", "leave_lobby", "start_game", "close_station", "finish_station",
+    "guest", "log_out", "create_lobby", "leave_lobby", "start_game", "close_station", "finish_station", "fail",
 ]
 
 
@@ -381,6 +382,8 @@ REJECTION_TEXTS = {
     "no_task_open": "You have no task open.",
     "too_fast": "That was too fast. Try again.",
     "task_failed": "Something went wrong. Try again.",
+    "fr_cannot_task": "Free Riders cannot complete tasks.",
+    "fail_rejected": "You cannot fail a player right now.",
     "chat_rejected": "You cannot send that chat message right now.",
     "vote_rejected": "You cannot cast that vote right now.",
 }

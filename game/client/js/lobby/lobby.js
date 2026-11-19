@@ -41,6 +41,8 @@ window.Game = window.Game || {};
   const characterButtons = {}; // character id -> its button
   const modeButtons = {}; // mode id -> its button
   let ownName = null;
+  let ownIsFreeRider = false;
+  let latestState = null;
 
   function setup() {
     allCharacters().forEach(addCharacterButton);
@@ -56,6 +58,11 @@ window.Game = window.Game || {};
 
   function setOwnName(name) {
     ownName = name;
+  }
+
+  function setOwnFreeRider(value) {
+    ownIsFreeRider = value === true;
+    if (latestState) showPlayers(latestState);
   }
 
   function allCharacters() {
@@ -240,6 +247,7 @@ window.Game = window.Game || {};
     row.appendChild(makeIcon(player.character));
     // textContent, never innerHTML: a name is text from another player.
     const name = makeText('span', 'player-name', player.name);
+    if (player.name === ownName && ownIsFreeRider) name.classList.add('free-rider-name');
     name.title = player.name; // A long name is cut off in the narrow list.
     row.appendChild(name);
     if (player.name === hostName) row.appendChild(makeText('span', 'marker marker-host', 'Host'));
@@ -257,6 +265,7 @@ window.Game = window.Game || {};
   // ---- The whole panel ----
 
   function show(state) {
+    latestState = state;
     codeElement.textContent = state.code;
     showPlayers(state);
     showCharacters(state.players);
@@ -272,5 +281,10 @@ window.Game = window.Game || {};
     document.getElementById('lobby-waiting').hidden = isHost || isRunning;
   }
 
-  Game.lobby = { setup: setup, setOwnName: setOwnName, show: show };
+  Game.lobby = {
+    setup: setup,
+    setOwnName: setOwnName,
+    setOwnFreeRider: setOwnFreeRider,
+    show: show
+  };
 })();

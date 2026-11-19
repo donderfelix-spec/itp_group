@@ -75,6 +75,8 @@ REJECTIONS = {
     "no_task_open": "You have no task open.",
     "too_fast": "That was too fast. Try again.",
     "task_failed": "Something went wrong. Try again.",
+    "fr_cannot_task": "Free Riders cannot complete tasks.",
+    "fail_rejected": "You cannot fail a player right now.",
     "chat_rejected": "You cannot send that chat message right now.",
     "vote_rejected": "You cannot cast that vote right now.",
 }
@@ -199,6 +201,7 @@ CLIENT_MESSAGES = {
     "open_station": {"station": _check_station},
     "close_station": {},
     "finish_station": {},
+    "fail": {},
     "chat": {"text": _check_chat_text},
     "vote": {"target_id": _check_name},
 }

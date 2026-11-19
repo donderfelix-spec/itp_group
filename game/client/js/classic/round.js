@@ -4,10 +4,12 @@ Game.classicRound = Game.classicRound || {};
 
 (function () {
   "use strict";
-  var roleScreen, roleName, roleInstructions, rolePartners;
+  var roleScreen, roleName, roleInstructions, rolePartners, ownNameLabel;
   var endScreen, winner, reason, roles, stats, newRound, hostHint;
   var progressPanel, progressLabel, progressTrack, progressFill;
   var ownName = null;
+  var ownIsFreeRider = false;
+  var roundIsActive = false;
   var isHost = false;
   var roleTimer = null;
 
@@ -27,6 +29,7 @@ Game.classicRound = Game.classicRound || {};
     progressLabel = document.getElementById("classic-progress-label");
     progressTrack = progressPanel.querySelector('[role="progressbar"]');
     progressFill = document.getElementById("classic-progress-fill");
+    ownNameLabel = document.getElementById("classic-own-name");
     document.getElementById("classic-back-lobby").addEventListener("click", hideResult);
     newRound.addEventListener("click", startNewRound);
     Game.net.on("classic_role", showRole);
@@ -36,13 +39,47 @@ Game.classicRound = Game.classicRound || {};
 
   function setLobby(message) {
     if (!message || !Array.isArray(message.players)) return;
+    var classicRoundActive = message.mode === "classic" && message.phase === "round";
+    if ((classicRoundActive && !roundIsActive)
+      || (message.phase === "round" && message.mode !== "classic")) {
+      setOwnFreeRider(false);
+    }
+    roundIsActive = classicRoundActive;
     isHost = message.host === ownName;
     if (message.mode === "classic" && message.phase === "round") progressPanel.hidden = false;
     else if (message.phase !== "round") progressPanel.hidden = true;
     if (!endScreen.hidden) updateHostAction();
   }
 
-  function setOwnName(name) { ownName = typeof name === "string" ? name : null; }
+  function setOwnName(name) {
+    ownName = typeof name === "string" ? name : null;
+    updateOwnName();
+  }
+
+  function setOwnFreeRider(value) {
+    ownIsFreeRider = value === true;
+    if (Game.lobby && typeof Game.lobby.setOwnFreeRider === "function") {
+      Game.lobby.setOwnFreeRider(ownIsFreeRider);
+    }
+    if (Game.world && typeof Game.world.setOwnFreeRider === "function") {
+      Game.world.setOwnFreeRider(ownIsFreeRider);
+    }
+    if (Game.classicMeeting && typeof Game.classicMeeting.setOwnFreeRider === "function") {
+      Game.classicMeeting.setOwnFreeRider(ownIsFreeRider);
+    }
+    updateOwnName();
+  }
+
+  function updateOwnName() {
+    if (!ownNameLabel) return;
+    ownNameLabel.textContent = ownName || "";
+    ownNameLabel.classList.toggle("free-rider-name", ownIsFreeRider);
+  }
+
+  function resetRoleMarker() {
+    roundIsActive = false;
+    setOwnFreeRider(false);
+  }
 
   function showRole(message) {
     if (!message || !["HP", "FR"].includes(message.role)) return;
@@ -123,6 +160,8 @@ Game.classicRound = Game.classicRound || {};
 
   Game.classicRound.setup = setup;
   Game.classicRound.setOwnName = setOwnName;
+  Game.classicRound.setOwnFreeRider = setOwnFreeRider;
+  Game.classicRound.resetRoleMarker = resetRoleMarker;
   Game.classicRound.setLobby = setLobby;
   Game.classicRound.hide = hide;
 })();

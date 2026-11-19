@@ -9,6 +9,7 @@ Game.classicMeeting = Game.classicMeeting || {};
 
   var state = null;
   var ownName = null;
+  var ownIsFreeRider = false;
   var canvas;
   var context;
   var screen;
@@ -41,6 +42,12 @@ Game.classicMeeting = Game.classicMeeting || {};
   function setOwnName(name) {
     ownName = typeof name === "string" ? name : null;
     updateInput();
+    draw();
+  }
+
+  function setOwnFreeRider(value) {
+    ownIsFreeRider = value === true;
+    draw();
   }
 
   function show(message) {
@@ -175,10 +182,26 @@ Game.classicMeeting = Game.classicMeeting || {};
     context.fillStyle = color;
     context.font = "700 16px system-ui, sans-serif";
     context.fillText(title, x, y);
-    context.fillStyle = "#2E2A3B";
     context.font = "14px system-ui, sans-serif";
-    var shown = players.length ? players.join(", ") : "None";
-    wrapText(shown, x, y + 24, 260, 18, 3);
+    if (!players.length) {
+      context.fillStyle = "#2E2A3B";
+      context.fillText("None", x, y + 24);
+      return;
+    }
+    var cursorX = x;
+    var row = 0;
+    players.forEach(function (playerId, index) {
+      var label = playerId + (index === players.length - 1 ? "" : ", ");
+      var width = context.measureText(label).width;
+      if (cursorX > x && cursorX + width > x + 260) {
+        cursorX = x;
+        row += 1;
+      }
+      if (row >= 3) return;
+      context.fillStyle = ownIsFreeRider && playerId === ownName ? "#C43E3E" : "#2E2A3B";
+      context.fillText(label, cursorX, y + 24 + row * 18);
+      cursorX += width;
+    });
   }
 
   function drawChat(width, height) {
@@ -225,5 +248,6 @@ Game.classicMeeting = Game.classicMeeting || {};
 
   Game.classicMeeting.setup = setup;
   Game.classicMeeting.setOwnName = setOwnName;
+  Game.classicMeeting.setOwnFreeRider = setOwnFreeRider;
   Game.classicMeeting.hide = hide;
 })();

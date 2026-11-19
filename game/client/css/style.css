@@ -1556,6 +1556,8 @@ input {
   white-space: nowrap;
 }
 
+.free-rider-name { color: #C43E3E; }
+
 .icon {
   flex: none;
   width: 48px;
@@ -1704,6 +1706,7 @@ input {
 /* ---- Classic round HUD and results ---- */
 
 .classic-progress { margin-top: 18px; }
+.classic-own-name { margin: 0 0 8px; font-weight: 800; }
 .classic-progress-track { height: 18px; overflow: hidden; border: var(--outline); border-radius: 999px; background: white; }
 .classic-progress-fill { width: 0; height: 100%; background: var(--green); transition: width 180ms ease-out; }
 .classic-overlay { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(46, 42, 59, 0.78); }
