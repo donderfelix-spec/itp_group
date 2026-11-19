@@ -128,22 +128,11 @@ Game.world = Game.world || {};
     return keptPaths.get(svgPath);
   }
 
-  // Is the drawing mirrored right now (a character walking to the left)?
-  // In a mirrored drawing the two axes turn the other way round, which makes
-  // this number of the transform negative.
-  function isMirrored(ctx) {
-    var transform = ctx.getTransform();
-    return transform.a * transform.d - transform.b * transform.c < 0;
-  }
-
   // Text centred at (x, y). It always reads from left to right, also on a
   // mirrored character: there it is mirrored a second time, around its middle.
   function label(ctx, words, x, y, size, colour) {
     ctx.save();
     ctx.translate(x, y);
-    if (isMirrored(ctx)) {
-      ctx.scale(-1, 1);
-    }
     ctx.fillStyle = colour;
     ctx.font = "bold " + size + "px system-ui, sans-serif";
     ctx.textAlign = "center";
@@ -288,11 +277,7 @@ Game.world = Game.world || {};
         shape(ctx, "M-2.8 41 L2.8 41 L3.3 52 L2.1 57.5 L0 63 L-2.1 57.5 L-3.3 52 Z", "#E0483E", 1.2);
         stroke(ctx, "M-9 39 L-2.6 56 M9 39 L2.6 56", "#1C3156", 2.5);
       },
-      object: function (ctx) {
-        box(ctx, 12, 73, 22, 16, 2.5, "#8A5A3B", 2);
-        stroke(ctx, "M18 73 v-5 h10 v5", OUTLINE, 2);
-        box(ctx, 21, 79, 4, 3, 0, "#FFD23F", 0); // the lock
-      },
+      object: drawBriefcase,
       head: function (ctx) {
         shape(ctx, "M-18 19 A18 18 0 0 1 18 19 Q10 7 -3 9 Q-12 10 -18 19 Z", "#3B2F2F", 2);
       },
@@ -303,11 +288,7 @@ Game.world = Game.world || {};
         shape(ctx, "M2.2 41 L7.8 41 L8.3 52 L7.1 57.5 L5 63 L2.9 57.5 L1.7 52 Z", "#E0483E", 1.2);
         stroke(ctx, "M-4 39 L2.4 56 M13 39 L7.6 56", "#1C3156", 2.5);
       },
-      turnedObject: function (ctx) {
-        box(ctx, 12, 73, 22, 16, 2.5, "#8A5A3B", 2);
-        stroke(ctx, "M18 73 v-5 h10 v5", OUTLINE, 2);
-        box(ctx, 21, 79, 4, 3, 0, "#FFD23F", 0);
-      },
+      turnedObject: drawBriefcase,
       turnedHead: function (ctx) {
         // The parting moves with the face; behind it the hair reaches down
         // to the ear.
@@ -324,10 +305,7 @@ Game.world = Game.world || {};
         shape(ctx, "M18 48 Q18 39 8 39 L4 39 L4 79 L10 79 Q18 79 18 70 Z", "#3F4A5E", 1.5);
         stroke(ctx, "M-17 52 h13 M-17 62 h13 M-17 72 h13 M4 52 h13 M4 62 h13 M4 72 h13", "#2A3345", 1.5);
       },
-      object: function (ctx) {
-        box(ctx, 19, 42, 13, 22, 2.5, OUTLINE, 0);
-        stroke(ctx, "M21.5 58 L24.5 51 L27 54.5 L30 46", "#6BD68A", 1.8);
-      },
+      object: drawPhone,
       head: function (ctx) {
         shape(ctx, "M-18 19 A18 18 0 0 1 18 19 Q14 6 0 7 Q-14 6 -18 19 Z", "#8A6A3B", 2);
       },
@@ -340,10 +318,7 @@ Game.world = Game.world || {};
         shape(ctx, "M16 48 Q16 39 11 39 L9 39 L9 79 L10 79 Q16 79 16 70 Z", "#3F4A5E", 1.5);
         stroke(ctx, "M-16 52 h17 M-16 62 h17 M-16 72 h17 M9 52 h6 M9 62 h6 M9 72 h6", "#2A3345", 1.5);
       },
-      turnedObject: function (ctx) {
-        box(ctx, 19, 42, 13, 22, 2.5, OUTLINE, 0);
-        stroke(ctx, "M21.5 58 L24.5 51 L27 54.5 L30 46", "#6BD68A", 1.8);
-      },
+      turnedObject: drawPhone,
       turnedHead: function (ctx) {
         shape(ctx, "M-17 26 A18 18 0 0 1 17 14 Q15 5 5 6.5 Q-7 6 -10 17 Q-11.5 24 -17 26 Z", "#8A6A3B", 2);
       }
@@ -361,15 +336,7 @@ Game.world = Game.world || {};
         stroke(ctx, "M-6 40 L0 52 L6 40", OUTLINE, 1.5);
         box(ctx, -4, 52, 8, 10, 1.5, "#FFFFFF", 1.5);
       },
-      object: function (ctx) {
-        stroke(ctx, "M28 62 V48 H37 V62", OUTLINE, 2);
-        box(ctx, 23, 62, 19, 27, 3, "#2BB3A3", 2);
-        circle(ctx, 29, 70, 2.5, "#FFD23F", 0);
-        box(ctx, 33, 75, 6, 5, 0, "#F2695C", 0);
-        circle(ctx, 30, 82, 2, "#FFFFFF", 0);
-        circle(ctx, 27, 91, 2.5, OUTLINE, 0);
-        circle(ctx, 38, 91, 2.5, OUTLINE, 0);
-      },
+      object: drawSuitcase,
       head: drawBucketHat,
       turnedLeftHand: [-21, 65], turnedRightHand: [32, 50], holdsInRightHand: true,
       turnedBehind: function (ctx) {
@@ -382,15 +349,7 @@ Game.world = Game.world || {};
         stroke(ctx, "M-1 40 L5 52 L11 40", OUTLINE, 1.5);
         box(ctx, 1, 52, 8, 10, 1.5, "#FFFFFF", 1.5);
       },
-      turnedObject: function (ctx) {
-        stroke(ctx, "M28 62 V48 H37 V62", OUTLINE, 2);
-        box(ctx, 23, 62, 19, 27, 3, "#2BB3A3", 2);
-        circle(ctx, 29, 70, 2.5, "#FFD23F", 0);
-        box(ctx, 33, 75, 6, 5, 0, "#F2695C", 0);
-        circle(ctx, 30, 82, 2, "#FFFFFF", 0);
-        circle(ctx, 27, 91, 2.5, OUTLINE, 0);
-        circle(ctx, 38, 91, 2.5, OUTLINE, 0);
-      },
+      turnedObject: drawSuitcase,
       turnedHead: function (ctx) {
         // Under the hat the hair shows at the back of the head.
         shape(ctx, "M-17.6 16 Q-18.6 22 -16.6 27 Q-12 24 -11 15 Z", "#8A5A3B", 2);
@@ -491,14 +450,7 @@ Game.world = Game.world || {};
         circle(ctx, 0, 62, 1.6, OUTLINE, 0);
         circle(ctx, 0, 70, 1.6, OUTLINE, 0);
       },
-      object: function (ctx) {
-        box(ctx, 7, 54, 24, 30, 2.5, "#FFFFFF", 2);
-        box(ctx, 31, 58, 5, 6, 0, "#F2695C", 1);
-        box(ctx, 31, 66, 5, 6, 0, "#FFD23F", 1);
-        box(ctx, 31, 74, 5, 6, 0, "#6FA8F0", 1);
-        stroke(ctx, "M11 61 h15 M11 67 h15 M11 73 h10", "#B9B4A6", 1.5);
-        label(ctx, "A+", 19, 82, 7, "#5FA86B");
-      },
+      object: drawFolder,
       head: function (ctx) {
         shape(ctx, "M-18 19 A18 18 0 0 1 18 19 Q9 9 0 9 Q-9 9 -18 19 Z", "#5A3E2B", 2);
         drawGlasses(ctx);
@@ -513,14 +465,7 @@ Game.world = Game.world || {};
         circle(ctx, 5, 62, 1.6, OUTLINE, 0);
         circle(ctx, 5, 70, 1.6, OUTLINE, 0);
       },
-      turnedObject: function (ctx) {
-        box(ctx, 7, 54, 24, 30, 2.5, "#FFFFFF", 2);
-        box(ctx, 31, 58, 5, 6, 0, "#F2695C", 1);
-        box(ctx, 31, 66, 5, 6, 0, "#FFD23F", 1);
-        box(ctx, 31, 74, 5, 6, 0, "#6FA8F0", 1);
-        stroke(ctx, "M11 61 h15 M11 67 h15 M11 73 h10", "#B9B4A6", 1.5);
-        label(ctx, "A+", 19, 82, 7, "#5FA86B");
-      },
+      turnedObject: drawFolder,
       turnedHead: function (ctx) {
         shape(ctx, "M-17 26 A18 18 0 0 1 17 14 Q12 8 5 8.5 Q-6 9 -9.5 18 Q-11 24 -17 26 Z", "#5A3E2B", 2);
         drawTurnedGlasses(ctx);
@@ -534,11 +479,7 @@ Game.world = Game.world || {};
       clothes: function (ctx) {
         box(ctx, -6, 39, 12, 40, 0, "#FFFFFF", 1.5);
       },
-      object: function (ctx) {
-        shape(ctx, "M17 56 L34 56 L32 78 L19 78 Z", "#FFFFFF", 2);
-        box(ctx, 16, 52, 19, 5, 2, "#8A5A3B", 1.5);
-        box(ctx, 19, 63, 13, 7, 0, "#C9A27A", 0);
-      },
+      object: drawCoffeeCup,
       head: function (ctx) {
         shape(ctx, "M-18 19 Q-23 7 -13 4 Q-15 -5 -5 0 Q-2 -9 4 -1 Q11 -8 13 3 Q23 5 18 19 Q10 9 0 11 Q-10 9 -18 19 Z", "#7A4B2A", 2);
       },
@@ -547,11 +488,7 @@ Game.world = Game.world || {};
       turnedClothes: function (ctx) {
         box(ctx, -1, 39, 11, 40, 0, "#FFFFFF", 1.5);
       },
-      turnedObject: function (ctx) {
-        shape(ctx, "M17 56 L34 56 L32 78 L19 78 Z", "#FFFFFF", 2);
-        box(ctx, 16, 52, 19, 5, 2, "#8A5A3B", 1.5);
-        box(ctx, 19, 63, 13, 7, 0, "#C9A27A", 0);
-      },
+      turnedObject: drawCoffeeCup,
       turnedHead: function (ctx) {
         shape(ctx, "M-17 26 Q-24 18 -19 10 Q-25 2 -13 3 Q-15 -6 -4 -1 Q-1 -10 6 -2 Q13 -8 14.5 3 Q23 6 17 15 Q12 8 4 10 Q-6 11 -9.5 18 Q-11 24 -17 26 Z", "#7A4B2A", 2);
       }
@@ -587,6 +524,52 @@ Game.world = Game.world || {};
   };
 
   // ---- Parts of the looks that need more than a line or two ------------
+
+  // The Consultant's briefcase. It is held in the same place in the portrait and
+  // in the turned view.
+  function drawBriefcase(ctx) {
+    box(ctx, 12, 73, 22, 16, 2.5, "#8A5A3B", 2);
+    stroke(ctx, "M18 73 v-5 h10 v5", OUTLINE, 2);
+    box(ctx, 21, 79, 4, 3, 0, "#FFD23F", 0); // the lock
+  }
+
+  // The Finance Bro's phone with a price chart. It is held in the same place in the portrait and
+  // in the turned view.
+  function drawPhone(ctx) {
+    box(ctx, 19, 42, 13, 22, 2.5, OUTLINE, 0);
+    stroke(ctx, "M21.5 58 L24.5 51 L27 54.5 L30 46", "#6BD68A", 1.8);
+  }
+
+  // The Exchange Student's wheeled suitcase with stickers. It is held in the same place in the portrait and
+  // in the turned view.
+  function drawSuitcase(ctx) {
+    stroke(ctx, "M28 62 V48 H37 V62", OUTLINE, 2);
+    box(ctx, 23, 62, 19, 27, 3, "#2BB3A3", 2);
+    circle(ctx, 29, 70, 2.5, "#FFD23F", 0);
+    box(ctx, 33, 75, 6, 5, 0, "#F2695C", 0);
+    circle(ctx, 30, 82, 2, "#FFFFFF", 0);
+    circle(ctx, 27, 91, 2.5, OUTLINE, 0);
+    circle(ctx, 38, 91, 2.5, OUTLINE, 0);
+  }
+
+  // The Overachiever's folder with tabs and "A+". It is held in the same place in the portrait and
+  // in the turned view.
+  function drawFolder(ctx) {
+    box(ctx, 7, 54, 24, 30, 2.5, "#FFFFFF", 2);
+    box(ctx, 31, 58, 5, 6, 0, "#F2695C", 1);
+    box(ctx, 31, 66, 5, 6, 0, "#FFD23F", 1);
+    box(ctx, 31, 74, 5, 6, 0, "#6FA8F0", 1);
+    stroke(ctx, "M11 61 h15 M11 67 h15 M11 73 h10", "#B9B4A6", 1.5);
+    label(ctx, "A+", 19, 82, 7, "#5FA86B");
+  }
+
+  // The Latecomer's coffee cup. It is held in the same place in the portrait and
+  // in the turned view.
+  function drawCoffeeCup(ctx) {
+    shape(ctx, "M17 56 L34 56 L32 78 L19 78 Z", "#FFFFFF", 2);
+    box(ctx, 16, 52, 19, 5, 2, "#8A5A3B", 1.5);
+    box(ctx, 19, 63, 13, 7, 0, "#C9A27A", 0);
+  }
 
   function drawBucketHat(ctx) {
     shape(ctx, "M-15 13 Q-14 -4 0 -4 Q14 -4 15 13 Z", "#FFD23F", 2);
