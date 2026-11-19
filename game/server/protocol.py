@@ -196,7 +196,7 @@ def signed_out() -> dict:
 def lobby_state(code: str, host: str, players) -> dict:
     """`players` is a list of (name, character) pairs, in the order they joined.
 
-    `character` is None while a player has not chosen one yet.
+    Every player has a character from the moment they join (S-75).
     """
     listed = [{"name": name, "character": character} for name, character in players]
     return {"type": "lobby_state", "code": code, "host": host, "players": listed}

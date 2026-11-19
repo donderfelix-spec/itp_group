@@ -66,6 +66,13 @@ class Sessions:
         del self._signed_in[connection]
         return True
 
+    def connection_of(self, name: str):
+        """The connection signed in under exactly this name (account or guest), or None."""
+        for connection, (other_name, is_guest) in self._signed_in.items():
+            if other_name == name:
+                return connection
+        return None
+
     def _connection_of_account(self, name: str):
         """The connection signed in with this account (ignoring case), or None."""
         for connection, (other_name, is_guest) in self._signed_in.items():
