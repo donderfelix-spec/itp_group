@@ -100,11 +100,11 @@ def test_classic_q_cooldown_then_reaches_fr_parity(names, fail_count, connect, c
 
     for index in range(fail_count):
         if index:
-            clock.wait(24.99)
+            clock.wait(14.0)
             connections[fr_id].send_json({"type": "fail"})
             rejected = connections[fr_id].receive_json()
             assert rejected["code"] == "fail_rejected"
-            clock.wait(0.01)
+            clock.wait(1.0)
         connections[fr_id].send_json({"type": "fail"})
         event = connections[fr_id].receive_json()
         assert event["type"] == "classic_fail"

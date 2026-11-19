@@ -7,9 +7,10 @@ from typing import Literal, NotRequired, Protocol, TypedDict
 
 Role = Literal["HP", "FR"]
 TASKS_PER_PLAYER = 4
-FAIL_RANGE_TILES = 3.0
+FAIL_RANGE_TILES = 5.0
 FAIL_RANGE = FAIL_RANGE_TILES
-FAIL_COOLDOWN = 25.0
+FAIL_COOLDOWN_SECONDS = 15.0
+FAIL_COOLDOWN = FAIL_COOLDOWN_SECONDS
 REPORT_RANGE = 2.0
 Position = tuple[float, float]
 

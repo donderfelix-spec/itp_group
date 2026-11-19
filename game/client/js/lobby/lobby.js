@@ -51,9 +51,7 @@ window.Game = window.Game || {};
       // `ask` ignores further clicks until the server has answered (S-89).
       Game.net.ask({ type: 'start_game' });
     });
-    document.getElementById('lobby-leave').addEventListener('click', () => {
-      Game.net.ask({ type: 'leave_lobby' });
-    });
+    document.getElementById('lobby-leave').addEventListener('click', leaveLobby);
   }
 
   function setOwnName(name) {
@@ -288,11 +286,16 @@ window.Game = window.Game || {};
     showCharacters(players);
   }
 
+  function leaveLobby() {
+    Game.net.ask({ type: 'leave_lobby' });
+  }
+
   Game.lobby = {
     setup: setup,
     setOwnName: setOwnName,
     setOwnFreeRider: setOwnFreeRider,
     setPlayers: setPlayers,
+    leaveLobby: leaveLobby,
     show: show
   };
 })();

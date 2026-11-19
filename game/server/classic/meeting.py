@@ -38,6 +38,8 @@ def start_discussion(
         "messages": [],
         "last_message_at": {},
         "votes": {},
+        "reason": (round_state or {}).get("meeting_reason"),
+        "trigger_player_id": (round_state or {}).get("meeting_trigger_player_id"),
     }
     if round_state is not None:
         for key in ("roles", "tasks", "completed_tasks", "eliminated"):
@@ -152,6 +154,8 @@ def meeting_snapshot(meeting: dict, now: float) -> dict:
         "seconds_left": max(0, math.ceil(current["deadline"] - now)),
         "living": list(current["living"]),
         "ghosts": list(current["ghosts"]),
+        "reason": current.get("reason"),
+        "trigger_player_id": current.get("trigger_player_id"),
         "messages": [
             {"player_id": item["player_id"], "text": item["text"]}
             for item in current["messages"]

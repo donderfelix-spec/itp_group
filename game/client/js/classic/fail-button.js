@@ -7,7 +7,7 @@
   }
 
   function fillFraction(status, receivedAt, now, cooldownSeconds) {
-    var duration = cooldownSeconds || 25;
+    var duration = cooldownSeconds || 15;
     if (!status || !Number.isFinite(status.cooldown_until)) return 1;
     return Math.min(1, Math.max(0, 1 - remainingSeconds(status, receivedAt, now) / duration));
   }

@@ -330,4 +330,12 @@ def test_classic_round_sends_each_living_player_a_private_role_card(connect):
             assert fail_status["type"] == "classic_fail_status"
             assert fail_status["cooldown_until"] is None
     progress_messages = [connection.receive_json() for connection in (mara, tiago, ines, rui)]
-    assert all(message == {"type": "classic_progress", "progress": 0.0} for message in progress_messages)
+    assert all(set(message) == {
+        "type", "progress", "server_time", "emergency_ready_at"
+    } for message in progress_messages)
+    assert all(message["type"] == "classic_progress" and message["progress"] == 0.0 for message in progress_messages)
+    assert all(isinstance(message["server_time"], (int, float)) for message in progress_messages)
+    assert all(
+        message["emergency_ready_at"] - message["server_time"] == pytest.approx(45.0, abs=0.01)
+        for message in progress_messages
+    )

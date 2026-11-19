@@ -30,7 +30,7 @@ Game.classicRound = Game.classicRound || {};
     progressTrack = progressPanel.querySelector('[role="progressbar"]');
     progressFill = document.getElementById("classic-progress-fill");
     ownNameLabel = document.getElementById("classic-own-name");
-    document.getElementById("classic-back-lobby").addEventListener("click", hideResult);
+    document.getElementById("classic-back-lobby").addEventListener("click", Game.lobby.leaveLobby);
     newRound.addEventListener("click", startNewRound);
     Game.net.on("classic_role", showRole);
     Game.net.on("classic_progress", showProgress);

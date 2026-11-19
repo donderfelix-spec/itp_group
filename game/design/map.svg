@@ -101,7 +101,7 @@
     <circle cx="595" cy="249" r="9"/><circle cx="549" cy="468" r="9"/><circle cx="136" cy="524" r="9"/><circle cx="636" cy="128" r="9"/>
   </g>
 
-  <circle cx="642" cy="249" r="11" fill="#F2695C" stroke="#2E2A3B" stroke-width="2.5"/>
+  <circle cx="350" cy="370" r="11" fill="#F2695C" stroke="#2E2A3B" stroke-width="2.5"/>
 
   <!-- task stations -->
   <g font-size="11" font-weight="700" fill="#2E2A3B" text-anchor="middle">

@@ -119,6 +119,7 @@ def test_emergency_is_living_only_once_per_player_and_chat_vote_reach_all(names,
     connections, round_state, lobby, _fr_id, ghost_id, reporter_id, _position = failed_sheet(
         names, connect, clock
     )
+    clock.wait(45.0)
     connections[ghost_id].send_json({"type": "emergency"})
     assert connections[ghost_id].receive_json()["code"] == "emergency_rejected"
 
@@ -162,6 +163,31 @@ def test_emergency_is_living_only_once_per_player_and_chat_vote_reach_all(names,
     connections[another_living].send_json({"type": "emergency"})
     second_meeting = receive_broadcast(connections, "meeting_state")
     assert second_meeting["phase"] == "discussion"
+
+
+@pytest.mark.parametrize("names", PLAYER_SETS)
+def test_emergency_button_unlocks_at_45_seconds_from_round_start(names, connect, clock):
+    connections, round_state, _lobby, fr_id, ghost_id, reporter_id, _position = failed_sheet(
+        names, connect, clock
+    )
+    clock.wait(44.99)
+    connections[reporter_id].send_json({"type": "emergency"})
+    rejected = connections[reporter_id].receive_json()
+    assert rejected["type"] == "error"
+    assert rejected["code"] == "emergency_rejected"
+    assert "second" in rejected["message"]
+    assert round_state.meeting is None
+
+    clock.wait(0.01)
+    connections[reporter_id].send_json({"type": "emergency"})
+    meeting = receive_broadcast(connections, "meeting_state")
+    assert meeting["reason"] == "emergency"
+    assert meeting["trigger_player_id"] == reporter_id
+
+    connections[reporter_id].send_json({"type": "emergency"})
+    assert connections[reporter_id].receive_json()["code"] == "emergency_rejected"
+    connections[ghost_id].send_json({"type": "emergency"})
+    assert connections[ghost_id].receive_json()["code"] == "emergency_rejected"
     assert round_state.meeting["reason"] == "emergency"
 
 

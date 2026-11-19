@@ -155,21 +155,21 @@ def failure_state():
     }
 
 
-def test_fail_is_allowed_at_exactly_three_fields_and_rejected_beyond_range():
+def test_fail_is_allowed_at_exactly_five_fields_and_rejected_beyond_range():
     state = failure_state()
-    state["positions"]["hp"] = (3.0, 0.0)
+    state["positions"]["hp"] = (5.0, 0.0)
     assert can_fail(state, "fr", "hp", 100.0)
 
-    state["positions"]["hp"] = (4.0, 0.0)
+    state["positions"]["hp"] = (6.0, 0.0)
     assert not can_fail(state, "fr", "hp", 100.0)
 
 
-def test_fail_cooldown_blocks_before_25_seconds_and_allows_at_25_seconds():
+def test_fail_cooldown_blocks_before_15_seconds_and_allows_at_15_seconds():
     state = failure_state()
     state["last_fail_at"]["fr"] = 100.0
 
-    assert not can_fail(state, "fr", "hp", 124.99)
-    assert can_fail(state, "fr", "hp", 125.0)
+    assert not can_fail(state, "fr", "hp", 114.99)
+    assert can_fail(state, "fr", "hp", 115.0)
 
 
 def test_fail_rejects_a_free_rider_or_ghost_as_target():

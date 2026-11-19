@@ -93,6 +93,14 @@ window.Game = window.Game || {};
     if (mode === 'classic' && roundIsRunning) callWorld('setFailStatus', message);
   }
 
+  function whenClassicEmergencyStatus(message) {
+    if (mode === 'classic' && roundIsRunning) callWorld('setEmergencyStatus', message);
+  }
+
+  function whenClassicProgress(message) {
+    if (mode === 'classic' && roundIsRunning) callWorld('setEmergencyStatus', message);
+  }
+
   // Which stations glow and can be used: outside a round none. In a Duel
   // only the player's next station, and none once all are done (S-94). In
   // any other round the ones in use that this player has not finished yet.
@@ -259,6 +267,8 @@ window.Game = window.Game || {};
   Game.net.on('duel_result', whenDuelResult);
   Game.net.on('classic_fail', whenClassicFail);
   Game.net.on('classic_fail_status', whenClassicFailStatus);
+  Game.net.on('classic_emergency_status', whenClassicEmergencyStatus);
+  Game.net.on('classic_progress', whenClassicProgress);
   Game.net.on('notice', (message) => Game.screens.showMessage(message.message, false));
   Game.net.on('error', whenError);
   Game.net.on('you_are_fr', () => Game.classicRound.setOwnFreeRider(true));

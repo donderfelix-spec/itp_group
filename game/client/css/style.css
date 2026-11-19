@@ -344,6 +344,14 @@ input {
   background: linear-gradient(to right, #F2C84B var(--fail-fill, 100%), #D9D3C5 var(--fail-fill, 100%));
 }
 
+.report-button {
+  position: absolute;
+  right: 34px;
+  bottom: 86px;
+  z-index: 1;
+  background: var(--sun);
+}
+
 /* ---- The window of a minigame, built by js/minigames/frame.js ---- */
 
 /* Lies over the map only: the lobby panel next to it stays visible. The

@@ -73,18 +73,18 @@ def test_playtest_b_fr_win_after_three_fails_with_cooldown():
     game.fail(fr, hps[0], 10.0, game.positions[hps[0]])
     assert hps[0] in game.eliminated
 
-    # 00:34.999 — second Q is rejected; no state or statistic changes.
+    # 00:24.999 — second Q is rejected; no state or statistic changes.
     before = (set(game.eliminated), dict(game.f_sheets), game.failure_count)
     with pytest.raises(ValueError, match="cannot fail"):
-        game.fail(fr, hps[1], 34.999, game.positions[hps[1]])
+        game.fail(fr, hps[1], 24.999, game.positions[hps[1]])
     assert (game.eliminated, game.f_sheets, game.failure_count) == before
 
-    # 00:35 — 25 seconds after the first fail, second Q succeeds.
-    game.fail(fr, hps[1], 35.0, game.positions[hps[1]])
+    # 00:25 — 15 seconds after the first fail, second Q succeeds.
+    game.fail(fr, hps[1], 25.0, game.positions[hps[1]])
     assert hps[1] in game.eliminated
 
-    # 01:00 — 25 seconds later, third Q succeeds. One HP and one FR remain.
-    game.fail(fr, hps[2], 60.0, game.positions[hps[2]])
+    # 00:40 — 15 seconds later, third Q succeeds. One HP and one FR remain.
+    game.fail(fr, hps[2], 40.0, game.positions[hps[2]])
     assert game.eliminated == set(hps[:3])
     living = set(PLAYER_IDS) - game.eliminated
     assert sum(game.roles[player] == "FR" for player in living) == 1

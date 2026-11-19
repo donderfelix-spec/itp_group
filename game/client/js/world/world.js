@@ -58,9 +58,11 @@ Game.world = Game.world || {};
   var USE_KEY_CODE = "KeyE"; // `event.code` of the key in the E position
   var USE_BUTTON_TEXT = "E Use";
   var FAIL_KEY_CODE = "KeyQ";
-  var FAIL_RANGE_TILES = 3;
+  var FAIL_RANGE_TILES = 5;
+  var FAIL_COOLDOWN_SECONDS = 15;
   var REPORT_KEY_CODE = "KeyR";
   var REPORT_RANGE = 2;
+  var EMERGENCY_DELAY_SECONDS = 45;
 
   // ---- State -----------------------------------------------------------
 
@@ -79,6 +81,9 @@ Game.world = Game.world || {};
   var failCooldownUntil = null;
   var failStatus = null;
   var failStatusReceivedAt = 0;
+  var emergencyStatus = null;
+  var emergencyStatusReceivedAt = 0;
+  var ownIsGhost = false;
   var players = new Map(); // name -> player record, see newPlayer()
   var pressedKeys = {}; // event.code -> true while the key is held down
   var sentDirection = { dx: 0, dy: 0 }; // what the server heard last
@@ -89,6 +94,7 @@ Game.world = Game.world || {};
   var emergencyHandler = null; // called on E at the red button
   var bloodSheets = new Map(); // sheet id -> map position
   var useButton = null; // the button for E, while the world runs
+  var reportButton = null;
   var inputPaused = false; // true while a minigame is open, see setInputPaused()
 
   // ---- Players and smoothing -------------------------------------------
@@ -196,10 +202,12 @@ Game.world = Game.world || {};
   // Whoever is not in the list any more disappears.
   function setPlayers(list) {
     var listed = new Set();
+    var ownEntry = null;
     (Array.isArray(list) ? list : []).forEach(function (entry) {
       if (entry && isName(entry.name)) {
         playerNamed(entry.name).character = entry.character;
         playerNamed(entry.name).isGhost = entry.ghost === true;
+        if (entry.name === ownName) ownEntry = entry;
         listed.add(entry.name);
       }
     });
@@ -208,6 +216,7 @@ Game.world = Game.world || {};
         players.delete(name);
       }
     });
+    if (ownEntry) ownIsGhost = ownEntry.ghost === true;
   }
 
   // Positions from the server, in map units: [{name, x, y}].
@@ -330,6 +339,12 @@ Game.world = Game.world || {};
     emergencyHandler = typeof handler === "function" ? handler : null;
   }
 
+  function setEmergencyStatus(message) {
+    if (!message || !Number.isFinite(message.emergency_ready_at) || !Number.isFinite(message.server_time)) return;
+    emergencyStatus = message;
+    emergencyStatusReceivedAt = performance.now();
+  }
+
   function addBloodSheet(message) {
     if (!message || typeof message.sheet_id !== "string" || !message.position) return;
     var x = message.position.x;
@@ -355,7 +370,7 @@ Game.world = Game.world || {};
     bloodSheets.forEach(function (sheet, sheetId) {
       var distance = Math.hypot(position.x - sheet.x, position.y - sheet.y);
       if (distance <= nearestDistance) {
-        nearest = { sheet_id: sheetId, position: { x: position.x, y: position.y } };
+        nearest = { sheet_id: sheetId, position: { x: position.x, y: position.y }, distance: distance };
         nearestDistance = distance;
       }
     });
@@ -363,7 +378,7 @@ Game.world = Game.world || {};
   }
 
   function isAtEmergencyButton() {
-    if (!campus || !campus.button || !emergencyHandler) return false;
+    if (!campus || !campus.button || !emergencyHandler || !emergencyIsUnlocked()) return false;
     var position = ownServerPosition();
     if (!position) return false;
     var button = campus.button;
@@ -409,6 +424,13 @@ Game.world = Game.world || {};
     button.addEventListener("click", onUseButtonClick);
     canvas.parentNode.appendChild(button);
     useButton = button; // remembered only once it is on the page
+    reportButton = document.createElement("button");
+    reportButton.type = "button";
+    reportButton.className = "button report-button";
+    reportButton.textContent = "Report";
+    reportButton.hidden = true;
+    reportButton.addEventListener("click", onReportButtonClick);
+    canvas.parentNode.appendChild(reportButton);
   }
 
   // A clicked button keeps the keyboard focus. Space and Enter would then
@@ -417,16 +439,26 @@ Game.world = Game.world || {};
   function onUseButtonClick() {
     useButton.blur();
     if (ownIsFreeRider) {
-      if (isFailButtonActive() && typeof failHandler === "function") failHandler();
+      if (isAtEmergencyButton()) emergencyHandler();
+      else if (isFailButtonActive() && typeof failHandler === "function") failHandler();
     } else {
       useActionInRange();
     }
+  }
+
+  function onReportButtonClick() {
+    reportButton.blur();
+    reportSheetInRange();
   }
 
   function removeUseButton() {
     if (useButton) {
       useButton.remove();
       useButton = null;
+    }
+    if (reportButton) {
+      reportButton.remove();
+      reportButton = null;
     }
   }
 
@@ -436,10 +468,15 @@ Game.world = Game.world || {};
     if (!useButton) return;
     if (ownIsFreeRider) {
       var secondsLeft = failCooldownSeconds();
-      var fill = window.ClassicFailButton.fillFraction(failStatus, failStatusReceivedAt, performance.now());
+      var fill = window.ClassicFailButton.fillFraction(
+        failStatus, failStatusReceivedAt, performance.now(), FAIL_COOLDOWN_SECONDS
+      );
       useButton.classList.add("fail-button");
       useButton.style.setProperty("--fail-fill", (fill * 100) + "%");
-      useButton.textContent = secondsLeft > 0
+      var emergencyNearby = isAtEmergencyButton();
+      useButton.textContent = emergencyNearby
+        ? "E Emergency"
+        : secondsLeft > 0
         ? "Let fail (" + secondsLeft + " s)"
         : (failInRange ? "Let fail (" + FAIL_RANGE_TILES + " tiles)" : "Let fail");
       var shouldDisableFail = !isFailButtonActive() || inputPaused;
@@ -467,6 +504,20 @@ Game.world = Game.world || {};
   function failCooldownSeconds() {
     if (failStatus === null || failCooldownUntil === null) return 0;
     return Math.ceil(window.ClassicFailButton.remainingSeconds(failStatus, failStatusReceivedAt, performance.now()));
+  }
+
+  function updateReportButton() {
+    if (!reportButton) return;
+    var sheet = nearestSheetInRange();
+    reportButton.hidden = !window.ClassicHudActions.reportVisible(
+      !ownIsGhost, sheet ? sheet.distance : Infinity, REPORT_RANGE
+    ) || inputPaused;
+  }
+
+  function emergencyIsUnlocked() {
+    return window.ClassicHudActions.emergencyUnlocked(
+      emergencyStatus, emergencyStatusReceivedAt, performance.now()
+    );
   }
 
   function isFailButtonActive() {
@@ -827,13 +878,14 @@ Game.world = Game.world || {};
       return;
     }
     var view = aimCamera(cameraCentre(now));
-    Game.world.drawMap(ctx, campus, view);
+    Game.world.drawMap(ctx, campus, view, emergencyIsUnlocked());
     drawBloodSheets();
     var idInRange = stationInRange();
     if (idInRange !== null) {
       Game.world.drawStationGlow(ctx, stationWithId(idInRange), now);
     }
     updateUseButton(idInRange);
+    updateReportButton();
     drawPlayers(now);
   }
 
@@ -939,6 +991,7 @@ Game.world = Game.world || {};
   Game.world.setFailHandler = setFailHandler;
   Game.world.setReportHandler = setReportHandler;
   Game.world.setEmergencyHandler = setEmergencyHandler;
+  Game.world.setEmergencyStatus = setEmergencyStatus;
   Game.world.addBloodSheet = addBloodSheet;
   Game.world.clearBloodSheets = clearBloodSheets;
   Game.world.stationInRange = stationInRange;

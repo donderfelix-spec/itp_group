@@ -13,9 +13,11 @@ from rules import (
 )
 from server.classic import meeting as meeting_rules
 
+EMERGENCY_DELAY_SECONDS = 45.0
+
 
 class ClassicRound:
-    def __init__(self, player_ids, station_ids, rng):
+    def __init__(self, player_ids, station_ids, rng, started_at=0.0):
         self.roles = assign_roles(player_ids, rng)
         self.tasks = assign_tasks(self.roles, [str(station) for station in station_ids], rng)
         self.completed_tasks = {player_id: set() for player_id in player_ids}
@@ -31,6 +33,7 @@ class ClassicRound:
         self.failure_count = 0
         self.meeting_count = 0
         self._has_news = True
+        self.started_at = float(started_at)
 
     def state(self):
         return {
@@ -82,20 +85,27 @@ class ClassicRound:
         living = [player for player in self.roles if player not in self.eliminated]
         ghosts = [player for player in self.roles if player in self.eliminated]
         self.meeting = meeting_rules.start_discussion(living, ghosts, now, updated)
+        self.meeting["reason"] = "report"
         self.meeting_count += 1
         self._has_news = True
         return self.meeting
 
     def emergency(self, player_id, now):
         """Use a living player's once-per-round emergency call."""
+        if now - self.started_at < EMERGENCY_DELAY_SECONDS:
+            raise ValueError("The emergency button is not unlocked yet.")
         updated = call_emergency(self.rule_state(), player_id)
         self._sync_rule_state(updated)
         living = [player for player in self.roles if player not in self.eliminated]
         ghosts = [player for player in self.roles if player in self.eliminated]
         self.meeting = meeting_rules.start_discussion(living, ghosts, now, updated)
+        self.meeting["reason"] = "emergency"
         self.meeting_count += 1
         self._has_news = True
         return self.meeting
+
+    def emergency_seconds_left(self, now):
+        return max(0.0, self.started_at + EMERGENCY_DELAY_SECONDS - now)
 
     def send_chat(self, player_id, text, now):
         if self.meeting is None:

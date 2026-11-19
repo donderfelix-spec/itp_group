@@ -32,7 +32,8 @@ from server.modes import duel, minigames, tasks
 from server.net.lobbies import Lobbies
 from server.net.sessions import GUEST_NUMBERS, Sessions
 from server.protocol import PROTOCOL_VERSION, ProtocolError, error, parse_client_message, welcome
-from rules import FAIL_COOLDOWN, FAIL_RANGE, can_fail, check_winner, end_reason
+from rules import FAIL_COOLDOWN_SECONDS, FAIL_RANGE_TILES, can_fail, check_winner, end_reason
+from server.classic.round import EMERGENCY_DELAY_SECONDS
 from server.world import paths
 from server.world.campus import load_campus
 
@@ -735,7 +736,7 @@ async def answer_fail_message(websocket: WebSocket):
     ]
     if not targets:
         last_fail = classic.last_fail_at.get(name)
-        cooldown_end = None if last_fail is None else last_fail + FAIL_COOLDOWN
+        cooldown_end = None if last_fail is None else last_fail + FAIL_COOLDOWN_SECONDS
         if cooldown_end is not None and cooldown_end > now:
             remaining = cooldown_end - now
             rejection = protocol.rejection("fail_rejected")
@@ -808,6 +809,7 @@ async def answer_report_message(websocket: WebSocket, message: dict):
         return
 
     meeting["reason"] = "report"
+    meeting["trigger_player_id"] = name
     lobby.meeting = meeting
     lobby.meeting_clock = None
     await tell_meeting_state(lobby, now)
@@ -828,12 +830,22 @@ async def answer_emergency_message(websocket: WebSocket):
         await websocket.send_json(protocol.rejection("emergency_rejected"))
         return
 
+    now = seconds_now()
+    seconds_left = classic.emergency_seconds_left(now)
+    if seconds_left > 0:
+        rejection = protocol.rejection("emergency_rejected")
+        remaining = math.ceil(seconds_left)
+        unit = "second" if remaining == 1 else "seconds"
+        rejection["message"] = f"The emergency button unlocks in {remaining} {unit}."
+        await websocket.send_json(rejection)
+        return
     try:
-        meeting = classic.emergency(name, seconds_now())
+        meeting = classic.emergency(name, now)
     except ValueError:
         await websocket.send_json(protocol.rejection("emergency_rejected"))
         return
     meeting["reason"] = "emergency"
+    meeting["trigger_player_id"] = name
     lobby.meeting = meeting
     lobby.meeting_clock = None
     await tell_meeting_state(lobby)
@@ -968,7 +980,9 @@ def set_up_duel(lobby):
 
 def set_up_classic(lobby):
     campus = app.state.campus
-    lobby.classic_round = ClassicRound(lobby.names(), sorted(minigames.MINIGAMES), random)
+    lobby.classic_round = ClassicRound(
+        lobby.names(), sorted(minigames.MINIGAMES), random, seconds_now()
+    )
     if os.environ.get("DEBUG_ROLES") == "1":
         print(f"Classic roles: {lobby.classic_round.roles}", flush=True)
     lobby.tasks = tasks.RoundTasks(
@@ -1055,7 +1069,7 @@ async def tell_classic_fail_status(lobby, only_player=None):
             and player_id in classic.positions
             and classic.positions[player_id] is not None
             and classic.positions[target_id] is not None
-            and math.dist(classic.positions[player_id], classic.positions[target_id]) <= FAIL_RANGE
+            and math.dist(classic.positions[player_id], classic.positions[target_id]) <= FAIL_RANGE_TILES
             for target_id, target_role in classic.roles.items()
         )
         available = any(
@@ -1063,7 +1077,7 @@ async def tell_classic_fail_status(lobby, only_player=None):
             for target_id, target_role in classic.roles.items()
         )
         last_fail = classic.last_fail_at.get(player_id)
-        cooldown_end = None if last_fail is None else last_fail + FAIL_COOLDOWN
+        cooldown_end = None if last_fail is None else last_fail + FAIL_COOLDOWN_SECONDS
         cooldown_until = (
             time.time() + max(0.0, cooldown_end - now)
             if cooldown_end is not None and cooldown_end > now
@@ -1098,7 +1112,13 @@ async def tell_classic_progress(lobby):
     classic = lobby.classic_round
     if classic is None:
         return
-    message = {"type": "classic_progress", "progress": classic.progress()}
+    server_time = time.time()
+    message = {
+        "type": "classic_progress",
+        "progress": classic.progress(),
+        "server_time": server_time,
+        "emergency_ready_at": server_time + classic.emergency_seconds_left(seconds_now()),
+    }
     await asyncio.gather(*(send_to(name, message) for name in lobby.names()))
 
 

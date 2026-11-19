@@ -170,8 +170,12 @@ Game.classicMeeting = Game.classicMeeting || {};
     context.font = "700 18px system-ui, sans-serif";
     context.fillText(phaseLabel(state.phase), 24, 76);
     context.fillText("Time left: " + state.seconds_left + " s", width - 170, 76);
-    drawPlayers("Living", state.living, 24, 112, "#5FA86B");
-    drawPlayers("Ghosts", state.ghosts, Math.max(170, width * 0.52), 112, "#8C8795");
+    var trigger = state.trigger_player_id ? " by " + state.trigger_player_id : "";
+    var reasonLabel = state.reason === "report" ? "Report" : state.reason === "emergency" ? "Emergency" : "Meeting";
+    context.font = "700 15px system-ui, sans-serif";
+    context.fillText(reasonLabel + trigger, 24, 101);
+    drawPlayers("Living", state.living, 24, 132, "#5FA86B");
+    drawPlayers("Dead players", state.ghosts, Math.max(170, width * 0.52), 132, "#8C8795");
     drawChat(width, height);
   }
 
@@ -208,7 +212,7 @@ Game.classicMeeting = Game.classicMeeting || {};
   }
 
   function drawChat(width, height) {
-    var top = 210;
+    var top = 230;
     context.strokeStyle = "#2E2A3B";
     context.lineWidth = 2;
     context.beginPath();

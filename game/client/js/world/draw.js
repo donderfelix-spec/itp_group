@@ -375,8 +375,8 @@ Game.world = Game.world || {};
   }
 
   // The red button for the emergency meeting.
-  function drawButton(ctx, campus) {
-    if (campus.button) {
+  function drawButton(ctx, campus, visible) {
+    if (visible && campus.button) {
       circle(ctx, campus.button.x, campus.button.y, campus.button.r, CORAL, 2.5);
     }
   }
@@ -429,7 +429,7 @@ Game.world = Game.world || {};
   // Draws the map in map units. `view` ({x, y, w, h}, optional) is the part
   // of the world that is visible; without it the whole map is assumed.
   // The order matters: what is drawn later lies on top.
-  function drawMap(ctx, campus, view) {
+  function drawMap(ctx, campus, view, emergencyVisible) {
     if (!ctx || !campus || !campus.colours) {
       return;
     }
@@ -443,7 +443,7 @@ Game.world = Game.world || {};
     drawRoomNames(ctx, campus);
     drawSolids(ctx, campus);
     drawHidingSpots(ctx, campus);
-    drawButton(ctx, campus);
+    drawButton(ctx, campus, emergencyVisible === true);
     drawStations(ctx, campus);
     ctx.restore();
   }

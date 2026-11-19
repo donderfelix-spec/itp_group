@@ -137,7 +137,7 @@ def test_only_free_rider_can_fail_and_fail_cooldown_is_checked_by_server(connect
     for connection in connections.values():
         assert connection.receive_json()["type"] == "positions"
 
-    clock.wait(24.99)
+    clock.wait(14.99)
     cooldown_rejection = ask(connections[fr_id], {"type": "fail"})
     assert cooldown_rejection["type"] == "error"
     assert cooldown_rejection["code"] == "fail_rejected"

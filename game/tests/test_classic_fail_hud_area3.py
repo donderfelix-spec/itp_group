@@ -80,7 +80,7 @@ def test_fr_fail_cooldown_and_parity_win_over_websocket(names, fail_count, conne
 
     for index in range(fail_count):
         if index:
-            clock.wait(24.99)
+            clock.wait(14.0)
             connections[fr_id].send_json({"type": "fail"})
             rejected = connections[fr_id].receive_json()
             assert rejected["type"] == "error"
@@ -88,7 +88,7 @@ def test_fr_fail_cooldown_and_parity_win_over_websocket(names, fail_count, conne
             assert isinstance(rejected["cooldown_until"], (int, float))
             assert "second" in rejected["message"]
             assert round_state.failure_count == index
-            clock.wait(0.01)
+            clock.wait(1.0)
 
         connections[fr_id].send_json({"type": "fail"})
         success = connections[fr_id].receive_json()
@@ -143,8 +143,8 @@ def test_fail_button_is_private_to_fr_and_q_uses_the_same_handler():
     assert "type: 'fail'" in main or 'type: "fail"' in main
 
 
-@pytest.mark.parametrize(("distance", "allowed"), [(3.0, True), (4.0, False)])
-def test_fail_range_is_three_tiles(distance, allowed, connect):
+@pytest.mark.parametrize(("distance", "allowed"), [(5.0, True), (6.0, False)])
+def test_fail_range_is_five_tiles(distance, allowed, connect):
     names = PLAYER_SETS[0][0]
     connections, _code, _public, _start = start_classic(connect, names)
     round_state = classic_for(names[0])
@@ -168,6 +168,29 @@ def test_fail_range_is_three_tiles(distance, allowed, connect):
         assert round_state.last_fail_at == {}
 
 
+def test_fail_cooldown_is_15_seconds_over_websocket(connect, clock):
+    names = PLAYER_SETS[0][0]
+    connections, _code, _public, _start = start_classic(connect, names)
+    round_state = classic_for(names[0])
+    fr_id = next(player for player, role in round_state.roles.items() if role == "FR")
+    hp_ids = [player for player, role in round_state.roles.items() if role == "HP"]
+    lobby = app.state.lobbies.lobby_of(fr_id)
+    place_players(lobby, names, {player: (100.0, 100.0) for player in names})
+
+    connections[fr_id].send_json({"type": "fail"})
+    assert connections[fr_id].receive_json()["type"] == "classic_fail"
+    drain_fail(connections, round_state, fr_id, hp_ids[0])
+
+    clock.wait(14.0)
+    connections[fr_id].send_json({"type": "fail"})
+    assert connections[fr_id].receive_json()["code"] == "fail_rejected"
+    assert len(round_state.eliminated) == 1
+
+    clock.wait(1.0)
+    connections[fr_id].send_json({"type": "fail"})
+    assert connections[fr_id].receive_json()["type"] == "classic_fail"
+
+
 def test_fail_button_english_label_and_server_timestamp_fill_with_fixed_times():
     import json
     import subprocess
@@ -182,10 +205,10 @@ def test_fail_button_english_label_and_server_timestamp_fill_with_fixed_times():
     helper = root / "client/js/classic/fail-button.js"
     script = f"""
       const ui = require({json.dumps(str(helper))});
-      const status = {{ cooldown_until: 1125, server_time: 1100 }};
+      const status = {{ cooldown_until: 1115, server_time: 1100 }};
       const startFill = ui.fillFraction(status, 5000, 5000);
-      const middleFill = ui.fillFraction(status, 5000, 17500);
-      const readyFill = ui.fillFraction(status, 5000, 30000);
+      const middleFill = ui.fillFraction(status, 5000, 12500);
+      const readyFill = ui.fillFraction(status, 5000, 20000);
       process.stdout.write(JSON.stringify([startFill, middleFill, readyFill]));
     """
     result = subprocess.run(["node", "-e", script], check=True, capture_output=True, text=True)

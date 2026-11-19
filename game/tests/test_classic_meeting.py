@@ -67,6 +67,16 @@ def test_chat_history_snapshot_is_identical_for_every_participant():
     ]
 
 
+def test_meeting_snapshot_includes_trigger_reason_and_dead_players():
+    meeting = new_meeting()
+    meeting["reason"] = "report"
+    meeting["trigger_player_id"] = "Mara"
+    snapshot = meeting_snapshot(meeting, 101.0)
+    assert snapshot["reason"] == "report"
+    assert snapshot["trigger_player_id"] == "Mara"
+    assert snapshot["ghosts"] == ["Ines"]
+
+
 def voting_state(roles, votes):
     living = list(roles)
     state = start_discussion(
