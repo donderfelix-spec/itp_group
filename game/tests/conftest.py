@@ -12,6 +12,7 @@ import pytest
 # a Postgres store while the tests run.
 os.environ.pop("DATABASE_URL", None)
 
+from server.accounts.statistics_store import MemoryStatisticsStore  # noqa: E402
 from server.accounts.store import MemoryAccountStore  # noqa: E402
 from server import main  # noqa: E402
 from server.main import app  # noqa: E402
@@ -22,6 +23,7 @@ from server.net.sessions import Sessions  # noqa: E402
 @pytest.fixture(autouse=True)
 def fresh_accounts_and_sessions():
     app.state.account_store = MemoryAccountStore()
+    app.state.statistics_store = MemoryStatisticsStore()
     app.state.sessions = Sessions()
     app.state.lobbies = Lobbies()
     main.taking_positions.clear()

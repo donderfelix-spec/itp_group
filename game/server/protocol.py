@@ -75,6 +75,9 @@ REJECTIONS = {
     "no_task_open": "You have no task open.",
     "too_fast": "That was too fast. Try again.",
     "task_failed": "Something went wrong. Try again.",
+    # Statistics (S-40).
+    "guest_no_statistics": "Guests have no statistics. Sign up to keep yours.",
+    "statistics_unavailable": "Statistics are unavailable right now.",
 }
 
 
@@ -191,6 +194,10 @@ CLIENT_MESSAGES = {
     "open_station": {"station": _check_station},
     "close_station": {},
     "finish_station": {},
+    # Statistics (S-40). Neither carries a name: the profile is always the
+    # one of the account the connection is signed in with.
+    "get_profile": {},
+    "get_leaderboard": {},
 }
 
 
@@ -328,6 +335,37 @@ def duel_result(ranking, time_up: bool) -> dict:
         for row in ranking
     ]
     return {"type": "duel_result", "ranking": listed, "time_up": time_up}
+
+
+def profile(name: str, modes, best_duel_seconds) -> dict:
+    """Sent only to the account it is about (S-40).
+
+    `modes` is a list of (mode, rounds, wins) triples. The title of each
+    mode comes along, so the browser can show a mode it does not know yet.
+    """
+    listed = [
+        {"mode": mode, "title": MODE_NAMES[mode], "rounds": rounds, "wins": wins}
+        for mode, rounds, wins in modes
+    ]
+    return {"type": "profile", "name": name, "modes": listed, "best_duel_seconds": best_duel_seconds}
+
+
+def leaderboard(rows) -> dict:
+    """`rows` is the list from `statistics.leaderboard_rows`, best first.
+
+    Each field is copied by name, so nothing else that is known about an
+    account can end up in the message.
+    """
+    listed = [
+        {
+            "place": row["place"],
+            "name": row["name"],
+            "wins": row["wins"],
+            "best_duel_seconds": row["best_seconds"],
+        }
+        for row in rows
+    ]
+    return {"type": "leaderboard", "players": listed}
 
 
 def notice(message: str) -> dict:

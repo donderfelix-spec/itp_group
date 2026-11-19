@@ -94,6 +94,7 @@ window.Game = window.Game || {};
   function whenSignedIn(message) {
     Game.lobby.setOwnName(message.name);
     Game.duel.setOwnName(message.name);
+    Game.statistics.setOwnName(message.name);
     callWorld('setOwnName', message.name);
     Game.forms.showSignedIn(message.name, message.guest);
   }
@@ -202,6 +203,7 @@ window.Game = window.Game || {};
   Game.forms.setup();
   Game.lobby.setup();
   Game.duel.setup();
+  Game.statistics.setup();
   callWorld('setUseHandler', openStation);
 
   Game.net.on('open', Game.screens.hideMessage);
@@ -217,6 +219,8 @@ window.Game = window.Game || {};
   Game.net.on('duel_state', whenDuelState);
   Game.net.on('duel_progress', Game.duel.showProgress);
   Game.net.on('duel_result', whenDuelResult);
+  Game.net.on('profile', Game.statistics.showProfile);
+  Game.net.on('leaderboard', Game.statistics.showLeaderboard);
   Game.net.on('notice', (message) => Game.screens.showMessage(message.message, false));
   Game.net.on('error', whenError);
 

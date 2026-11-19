@@ -83,8 +83,8 @@ All characters are the same size and the same speed, they differ only in how the
 | 9 | Vote result | Who received how many votes, the character drifts out to sea, and whether it was a Free Rider |
 | 10 | End | Who won, who was a Free Rider, “Back to lobby” |
 | 11 | Duel ranking | Placement with times |
-| 12 | Profile | Rounds and wins per mode, best Duel time |
-| 13 | Leaderboard | All accounts by wins. If time allows: filter “Friends” |
+| 12 | Profile | Rounds and wins per mode, best Duel time. Opened with “Profile” on the Home screen, only for an account: one row per mode with “Rounds” and “Wins”, below it “Best Duel time” written like in the Duel ranking (“1:12.4”), or “–” as long as there is none, and “Back”. A guest gets the message “Guests have no statistics. Sign up to keep yours.” instead |
+| 13 | Leaderboard | All accounts by wins. Opened with “Leaderboard” on the Home screen, also for a guest: the best 20 accounts with “Place”, “Player”, “Wins” and “Best Duel time”, ordered by wins, then by the better Duel time, then by name; the own row is yellow. Before the first round it says “No rounds played yet.”. “Back” leads to the Home screen. If time allows: filter “Friends” |
 
 **Displays in the game**
 
@@ -261,6 +261,8 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Closing or finishing while no task is open | “You have no task open.” |
 | Reporting a task as done faster than it can be played | “That was too fast. Try again.” |
 | The server fails while opening, closing or finishing a task | “Something went wrong. Try again.” |
+| A guest asks for a profile | “Guests have no statistics. Sign up to keep yours.” |
+| Profile or leaderboard while the database is not reachable | “Statistics are unavailable right now.” |
 | A minigame gets content from the server that it cannot show | “This task could not be loaded.” (shown inside the minigame window) |
 
 ## 10. What is deliberately not included

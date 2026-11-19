@@ -1610,3 +1610,72 @@ input {
   /* The whole page scrolls here, so the middle needs no scrolling of its own. */
   .panel-middle { overflow-y: visible; }
 }
+
+/* ---- Profile and Leaderboard (js/lobby/statistics.js) ---- */
+
+/* On the Home screen: the two buttons share the row equally. In a window
+   too narrow for both they stand under each other instead of sticking out. */
+.stats-buttons { flex-wrap: wrap; }
+.stats-buttons > .button { flex: 1 1 auto; }
+
+/* The leaderboard has four columns and needs more room than a form. */
+.stats-card { width: min(100%, 520px); }
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  /* Fixed widths, so a long name is cut off instead of widening the card. */
+  table-layout: fixed;
+}
+
+.stats-table th,
+.stats-table td {
+  padding: 6px 10px;
+  border-bottom: 2px solid var(--ink);
+  text-align: left;
+}
+
+.stats-table th { font-size: 15px; }
+
+/* Numbers and times stand under each other, digit under digit. */
+.stats-table .stats-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The narrow columns of the leaderboard. The name gets all the rest. */
+.stats-column-place { width: 70px; }
+.stats-column-wins { width: 64px; }
+.stats-column-time { width: 100px; }
+
+.stats-name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The player's own row, like in the Duel ranking. */
+.stats-row-own { background: var(--sun); }
+
+.stats-best strong {
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The short heading of the time column, for a narrow window only. */
+.stats-narrow-only { display: none; }
+
+/* A narrow window: the name is what tells players apart, so everything
+   else gives up room for it. */
+@media (max-width: 560px) {
+  .stats-card { padding: 18px; }
+  .stats-table th,
+  .stats-table td { padding: 6px 4px; }
+  .stats-table th { font-size: 13px; }
+  .stats-column-place { width: 40px; }
+  .stats-column-wins { width: 38px; }
+  .stats-column-time { width: 64px; }
+  .stats-wide-only { display: none; }
+  .stats-narrow-only { display: inline; }
+}
