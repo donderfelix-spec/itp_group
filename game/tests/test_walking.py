@@ -4,6 +4,7 @@ import math
 
 import pytest
 
+from countdown_helpers import start_round_at_once
 from server.net.lobbies import Lobbies
 from server.net.walking import Walkers
 from server.world.campus import load_campus
@@ -300,7 +301,7 @@ def test_starting_a_round_puts_the_lobby_back_on_the_spawn():
     walk_for_one_second(lobby.walkers, open_field())
     lobby.walkers.set_direction("Tiago", 0, 0)
 
-    assert lobbies.start("Mara")[1] is None
+    assert start_round_at_once(lobbies, "Mara")[1] is None
     lobby.walkers.advance(ONE_TICK, open_field())
     assert lobby.walkers.positions() == [("Mara", 100, 200), ("Tiago", 100, 200)]
 
@@ -314,7 +315,7 @@ def test_a_rejected_start_moves_nobody():
     lobby.walkers.set_direction("Tiago", 0, 0)
     before = lobby.walkers.positions()
 
-    assert lobbies.start("Tiago") == (None, "not_host")
+    assert start_round_at_once(lobbies, "Tiago") == (None, "not_host")
     lobby.walkers.advance(ONE_TICK, open_field())
     assert lobby.walkers.positions() == before
 

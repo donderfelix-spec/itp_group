@@ -47,8 +47,10 @@ MODE_NAMES = {"duel": "Duel", "classic": "Classic"}
 # on the server where these numbers stand.
 MIN_PLAYERS = {"duel": 2, "classic": 4}
 
-# A lobby is either waiting for its host to start, or its round is running.
+# A lobby is waiting for its host to start, counting down to the start of
+# the round (S-102), or its round is running.
 PHASE_LOBBY = "lobby"
+PHASE_COUNTDOWN = "countdown"
 PHASE_ROUND = "round"
 
 # Fixed texts for actions the server refuses because of the state of the game
@@ -276,6 +278,16 @@ def lobby_state(code: str, host: str, players, mode: str = DEFAULT_MODE, phase: 
         "mode": mode,
         "phase": phase,
     }
+
+
+def countdown(seconds: int) -> dict:
+    """Sent to everybody in the lobby when the host has started the countdown (S-102).
+
+    `seconds` is how long it is until the round starts. The browser counts
+    its display down from it; the round itself starts only with the lobby's
+    state in phase "round".
+    """
+    return {"type": "countdown", "seconds": seconds}
 
 
 def left_lobby() -> dict:
