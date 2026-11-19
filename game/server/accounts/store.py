@@ -19,6 +19,8 @@ import threading
 import psycopg
 
 logger = logging.getLogger(__name__)
+# psycopg's own WARNING about a failed rollback can contain the host and the user.
+logging.getLogger("psycopg").setLevel(logging.ERROR)
 
 CONNECT_TIMEOUT_SECONDS = 5
 # After connecting, no statement may run longer than 5 seconds (5000 ms).
@@ -44,6 +46,47 @@ INSERT_ACCOUNT = """
 """
 SELECT_ACCOUNT = "SELECT name, password_hash FROM accounts WHERE name_key = %s"
 
+# Why the database could not be used, for the server log. The log only ever
+# shows one of these fixed texts, never the text of the error itself: that
+# text can contain the host, the port and the user name of the database.
+
+# Postgres gives most errors a five-character code, the SQLSTATE.
+REASON_BY_SQLSTATE = {
+    "28P01": "password rejected",
+    "28000": "user or project not found",
+    "3D000": "database name not found",
+    "53300": "too many connections",
+    "57014": "statement timed out",
+    "42501": "no permission",
+    "42P01": "table missing",
+}
+# An error while connecting has no SQLSTATE, only a text. Each reason is
+# listed with the words that give it away, in lower case. The order matters:
+# the first match wins, and "ssl" comes last because it also appears in the
+# text of other problems.
+REASONS_BY_WORDS = [
+    ("password rejected", ["password authentication failed"]),
+    # "Tenant or user not found" is what Supabase's pooler answers when the
+    # user name or the project in the URL is wrong.
+    ("user or project not found", ["tenant or user not found"]),
+    (
+        "host name not found",
+        [
+            "could not translate host name",
+            "name or service not known",
+            "nodename nor servname",
+            "failed to resolve host",  # psycopg's own wording, on every system
+        ],
+    ),
+    ("network unreachable", ["network is unreachable", "no route to host"]),
+    ("connection refused", ["connection refused"]),
+    ("connection timed out", ["timeout expired", "timed out"]),
+    ("too many connections", ["too many clients", "max client connections"]),
+    ("encrypted connection failed", ["ssl"]),
+]
+URL_NOT_READABLE = "database URL could not be read"
+OTHER_REASON = "other database error"
+
 
 class StoreUnavailable(Exception):
     """The accounts cannot be read or written right now."""
@@ -52,6 +95,36 @@ class StoreUnavailable(Exception):
 def name_key(name: str) -> str:
     """The form of a name used to compare: "Mara" and "mara" give the same key."""
     return name.lower()
+
+
+def describe_problem(problem: Exception, step: str = "query") -> str:
+    """The reason for a database error, as one of the fixed texts above.
+
+    `step` is what the store was doing: "connect", "create table" or "query".
+    """
+    sqlstate = getattr(problem, "sqlstate", None)
+    if sqlstate in REASON_BY_SQLSTATE:
+        return REASON_BY_SQLSTATE[sqlstate]
+    text = str(problem).lower()
+    # A wrong database name while connecting comes without its SQLSTATE.
+    if 'database "' in text and "does not exist" in text:
+        return REASON_BY_SQLSTATE["3D000"]
+    for reason, words in REASONS_BY_WORDS:
+        if any(word in text for word in words):
+            return reason
+    # psycopg could not even take the URL apart (ProgrammingError), or the
+    # host name in it cannot be a host name at all (UnicodeError).
+    if step == "connect" and isinstance(problem, (psycopg.ProgrammingError, UnicodeError)):
+        return URL_NOT_READABLE
+    return OTHER_REASON
+
+
+def problem_log_line(problem: Exception, step: str) -> str:
+    """The one line written to the log for a database error. No secrets in it."""
+    reason = describe_problem(problem, step)
+    kind = type(problem).__name__
+    sqlstate = getattr(problem, "sqlstate", None) or "none"
+    return f"Accounts database problem during {step}: {reason} ({kind}, SQLSTATE {sqlstate})"
 
 
 class MemoryAccountStore:
@@ -95,42 +168,53 @@ class PostgresAccountStore:
         self._table_lock = threading.Lock()
 
     def add(self, name: str, password_hash: str) -> bool:
+        connection = self._connect()
         try:
-            with self._connect() as connection:
+            with connection:
+                connection.execute(SET_STATEMENT_TIMEOUT)
                 cursor = connection.execute(INSERT_ACCOUNT, (name_key(name), name, password_hash))
                 # No row was inserted when the name already existed.
                 return cursor.rowcount == 1
         except psycopg.Error as problem:
-            raise self._unavailable(problem) from None
+            raise self._unavailable("query", problem) from None
 
     def find(self, name: str):
+        connection = self._connect()
         try:
-            with self._connect() as connection:
+            with connection:
+                connection.execute(SET_STATEMENT_TIMEOUT)
                 row = connection.execute(SELECT_ACCOUNT, (name_key(name),)).fetchone()
         except psycopg.Error as problem:
-            raise self._unavailable(problem) from None
+            raise self._unavailable("query", problem) from None
         if row is None:
             return None
         return (row[0], row[1])
 
     def _connect(self):
-        """Open a connection, ready for one `add` or `find`.
+        """Open a connection, with the table `accounts` in place.
 
-        Used as `with self._connect() as connection:`, which saves the changes
-        and closes the connection at the end.
+        Used as `with connection:`, which saves the changes and closes the
+        connection at the end. Raises `StoreUnavailable` when connecting or
+        creating the table fails; the log then says which of the two it was.
         """
-        connection = psycopg.connect(
-            self._database_url,
-            connect_timeout=CONNECT_TIMEOUT_SECONDS,
-            # Supabase's connection pooler does not support prepared statements.
-            prepare_threshold=None,
-        )
+        try:
+            connection = psycopg.connect(
+                self._database_url,
+                connect_timeout=CONNECT_TIMEOUT_SECONDS,
+                # Supabase's connection pooler does not support prepared statements.
+                prepare_threshold=None,
+            )
+        # UnicodeError is not a psycopg error: Python raises it itself when the
+        # host in the URL cannot be a host name (for example "db..example.com",
+        # or a part longer than 63 letters). Without catching it here, a typing
+        # mistake in the URL would not become StoreUnavailable.
+        except (psycopg.Error, UnicodeError) as problem:
+            raise self._unavailable("connect", problem) from None
         try:
             self._create_table_once(connection)
-            connection.execute(SET_STATEMENT_TIMEOUT)
-        except psycopg.Error:
+        except psycopg.Error as problem:
             connection.close()
-            raise
+            raise self._unavailable("create table", problem) from None
         return connection
 
     def _create_table_once(self, connection):
@@ -146,10 +230,10 @@ class PostgresAccountStore:
             connection.commit()
             self._table_exists = True
 
-    def _unavailable(self, problem: Exception) -> StoreUnavailable:
-        # Only the kind of error is logged. The full text could contain details
-        # of the connection, and those stay out of the logs.
-        logger.warning("Accounts database problem: %s", type(problem).__name__)
+    def _unavailable(self, step: str, problem: Exception) -> StoreUnavailable:
+        # The log gets a fixed reason, never the text of the error. That text
+        # could contain details of the connection, and those stay out of the logs.
+        logger.warning(problem_log_line(problem, step))
         return StoreUnavailable("The accounts database could not be used.")
 
 
