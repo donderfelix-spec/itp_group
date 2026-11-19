@@ -1393,10 +1393,11 @@ input {
 
 /* The countdown before a round: a card over the upper part of the map, so it
    does not hide the players, who mostly stand around the spawn in the middle.
+   It hangs from the top edge of the map, so it never sticks out above it.
    It takes no clicks, so the map and the ranking stay usable underneath. */
 .countdown {
   position: absolute;
-  top: 20%;
+  top: 40px;
   left: 50%;
   z-index: 2;
   display: flex;
@@ -1408,7 +1409,7 @@ input {
   background: var(--cream);
   box-shadow: 6px 6px 0 var(--ink);
   pointer-events: none;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
 }
 
 .countdown-line {
@@ -1426,17 +1427,41 @@ input {
   font-variant-numeric: tabular-nums;
 }
 
-/* While the ranking of the last round is still open, the countdown moves to
-   the top left corner and gets smaller, so the ranking stays readable. */
-.duel-ranking:not([hidden]) ~ .countdown {
-  top: 28px;
-  left: 28px;
-  padding: 10px 18px;
-  transform: none;
+/* On a narrow or low window the map is small: a smaller card, so it stays
+   off the player's own character and name in the middle of the map. */
+@media (max-width: 800px), (max-height: 620px) {
+  .countdown {
+    top: 24px;
+    padding: 6px 16px;
+    border-radius: 14px;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+
+  .countdown-line { font-size: 14px; }
+  .countdown-number { font-size: 40px; }
 }
 
-.duel-ranking:not([hidden]) ~ .countdown .countdown-line { font-size: 15px; }
-.duel-ranking:not([hidden]) ~ .countdown .countdown-number { font-size: 48px; }
+/* While the ranking of the last round is still open, the countdown is one
+   slim line ("Round starts in 3") at the very top of the map. The ranking
+   keeps 32px free around its card (see .duel-ranking), and the line stays
+   inside that strip: so it can never cover any part of the card, however
+   small the window and however long the ranking. */
+.duel-ranking:not([hidden]) ~ .countdown {
+  top: 3px;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+.duel-ranking:not([hidden]) ~ .countdown .countdown-line,
+.duel-ranking:not([hidden]) ~ .countdown .countdown-number {
+  font-size: 15px;
+  line-height: 20px;
+}
 
 .panel {
   display: flex;
