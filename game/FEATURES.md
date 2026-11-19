@@ -33,7 +33,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Display of the current room | M2 | Planned |
 | Nicer, more detailed map: floors, furniture and plants | M2 | In progress |
 | Larger characters | M2 | Planned |
-| Walking animation: moving feet, head turned in the walking direction | M2 | In progress |
+| Walking animation: moving feet, head turned in the walking direction | M2 | Done |
 | Hair, buns and headwear follow the head when it turns in the walking direction | M2 | Planned |
 | Limited view: You only see what is nearby and not behind a wall | M3 | Planned |
 | Show failed players as ghosts | M3 | Planned |
