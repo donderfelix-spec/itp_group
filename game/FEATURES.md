@@ -31,9 +31,10 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E done; R and Q come with Classic) | M2 | In progress |
 | Choose a character from the list of stereotypes | M2 | Done |
 | Display of the current room | M2 | Planned |
-| Nicer, more detailed map: floors, furniture and plants | M2 | Planned |
+| Nicer, more detailed map: floors, furniture and plants | M2 | In progress |
 | Larger characters | M2 | Planned |
-| Walking animation: moving feet, head turned in the walking direction | M2 | Planned |
+| Walking animation: moving feet, head turned in the walking direction | M2 | In progress |
+| Hair, buns and headwear follow the head when it turns in the walking direction | M2 | Planned |
 | Limited view: You only see what is nearby and not behind a wall | M3 | Planned |
 | Show failed players as ghosts | M3 | Planned |
 | Four hiding spots in which you are visible only from close by | M3 | Planned |
@@ -63,8 +64,8 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Player list in the lobby, the creator is the host | M1 | Done |
 | Continuously synchronise the positions of all players, with smoothed movement of the others | M1 | Done |
 | Host chooses the mode and starts the round (settings: M4) | M2 | Done |
-| After the round back to the lobby, new round without a new code | M2 | Planned |
-| If someone leaves the game, the round continues, and the host changes if needed | M2 | Planned |
+| After the round back to the lobby, new round without a new code | M2 | In progress |
+| If someone leaves the game, the round continues, and the host changes if needed | M2 | In progress |
 | Players who were disconnected for a short time come back into their round | M3 | Planned |
 | Each client gets only the information that its player is allowed to know | M3 | Planned |
 | Game reachable at a public URL, deployed automatically from `main` | M0 | Done |
@@ -101,9 +102,9 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Lecture Hall: put slides into the right order | M2 | Done |
 | CTT Student Hall: sort books by number onto the shelf | M2 | Done |
 | Pingo Doce: scan products until exactly the target amount comes out | M2 | Done |
-| Duel: three stations per player, own random route with a walking distance of equal length | M2 | Planned |
-| Duel: progress of the opponents as 1/3 at the edge | M2 | Planned |
-| Duel: leaderboard with times at the end | M2 | Planned |
+| Duel: three stations per player, own random route with a walking distance of equal length | M2 | Done |
+| Duel: progress of the opponents as 1/3 at the edge | M2 | Done |
+| Duel: leaderboard with times at the end | M2 | Done |
 | Beach exit: “Catch the wave”, click at the right moment (first “If time allows” minigame) | M4 | Planned |
 | Canteen: stop the microwave at the right moment | M4 | Planned |
 | Lecture Hall: record attendance by QR code | M4 | Planned |
