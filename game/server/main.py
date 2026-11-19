@@ -29,6 +29,7 @@ from server.accounts.statistics_store import make_statistics_store
 from server.accounts.store import StoreUnavailable, make_account_store
 from server.modes import duel, minigames, tasks
 from server.net.lobbies import Lobbies
+from server.net.repeated_faults import RepeatedFaults
 from server.net.sessions import GUEST_NUMBERS, Sessions
 from server.protocol import PROTOCOL_VERSION, ProtocolError, error, parse_client_message, welcome
 from server.world import paths
@@ -74,6 +75,8 @@ app.state.leaderboard_call = None
 app.state.hasher = service.Argon2Hasher()
 app.state.sessions = Sessions()
 app.state.lobbies = Lobbies()
+# Which faults of the tick were logged lately, so that a repeating fault does not flood the log.
+app.state.repeated_faults = RepeatedFaults()
 # The map is read once, when the server starts. A broken map file stops the
 # start with a clear message, which is better than a game without walls.
 app.state.campus = load_campus()
@@ -649,8 +652,26 @@ async def run_ticks():
             # `tick` already catches what goes wrong in one lobby. This is the
             # last line of defence: whatever else fails, the loop goes on and
             # the next tick tries again. Only the kind of error is logged.
-            logger.error("A tick failed: %s", type(problem).__name__)
+            log_tick_fault("A tick failed", None, problem)
         previous = now
+
+
+def log_tick_fault(what_failed: str, lobby_code, problem: Exception):
+    """Log a fault of the tick, but not every time the same fault repeats.
+
+    The tick runs many times per second, so a lobby that fails on every tick
+    would flood the log. The same fault (the same place in the same lobby) is
+    logged at once the first time and then at most once a minute, with the
+    number of times it happened in between. Only the kind of error is logged.
+    """
+    log_it, swallowed = app.state.repeated_faults.happened((what_failed, lobby_code), seconds_now())
+    if not log_it:
+        return
+    kind = type(problem).__name__
+    if swallowed:
+        logger.error("%s: %s (and %d more times since the last such line)", what_failed, kind, swallowed)
+    else:
+        logger.error("%s: %s", what_failed, kind)
 
 
 def tick(seconds: float):
@@ -666,7 +687,7 @@ def tick(seconds: float):
         except Exception as problem:
             # A fault in one lobby must not freeze the lobbies after it.
             # Only the kind of error is logged.
-            logger.error("The tick failed for one lobby: %s", type(problem).__name__)
+            log_tick_fault("The tick failed for one lobby", lobby.code, problem)
         try:
             # A round whose time is up ends here, with no message from a
             # browser needed. A try of its own: a fault in the walking above
@@ -675,7 +696,7 @@ def tick(seconds: float):
             if farewells:
                 run_in_background(tell_round_ended(lobby, farewells, result))
         except Exception as problem:
-            logger.error("The check for the end of a round failed: %s", type(problem).__name__)
+            log_tick_fault("The check for the end of a round failed", lobby.code, problem)
 
 
 def tell_positions(lobby):
