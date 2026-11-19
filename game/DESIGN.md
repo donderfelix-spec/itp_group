@@ -73,7 +73,7 @@ All characters are the same size and the same speed, they differ only in how the
 | No. | Screen | Content |
 |---|---|---|
 | 1 | Start | Logo, “Log in”, “Sign up”, “Play as guest” |
-| 2 | Sign up / Log in | Username, password, error message directly at the field. When signing up, the rules stand below the fields from the start: “3–16 letters or numbers” and “8–64 characters” |
+| 2 | Sign up / Log in | Username, password, error message directly at the field. When signing up, the rules stand below the fields from the start: “3–16 letters or numbers” and “8–64 characters”. A button with an eye in each password field shows or hides what was typed (“Show password” / “Hide password” for screen readers); the password is hidden again whenever the form is left |
 | 3 | Home | “Create lobby” (yellow), “Join with code”, own profile, “Leaderboard”. If time allows: friends list with status |
 | 4 | Lobby | Code in large letters for reading aloud, player list with characters, character selection. Characters taken by other players are greyed out. Until “Start game” exists, everyone in the lobby already walks on the map, with the lobby shown next to it. The host chooses the mode: “Duel” or “Classic”. A mode that is not built yet is greyed out with “Coming with the next milestone”; everyone sees the chosen mode. At the bottom right is the yellow button “Start game”, which only the host sees. It is grey as long as too few players are there, and below it there is then a text such as “Classic needs 2 more players”. All others see “Waiting for the host” in that place. While a round is running, the panel shows “Round running” instead of the character selection and the start button |
 | 5 | Role reveal | Three seconds: “You are a High Performer” or “You are the Free Rider” in coral |
@@ -241,6 +241,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Connection lost | “Connection lost. Reconnecting…” |
 | Database not reachable | “Accounts are unavailable right now. You can still play as a guest.” |
 | Host has left the lobby | “The host left. Mara is the new host.” |
+| The same account logged in somewhere else, so this browser was signed out | “You were signed in somewhere else.” (shown by the browser on the Start screen) |
 | Password too long | “Passwords can have at most 64 characters.” |
 | Password with a character that cannot be stored | “Passwords cannot contain that character.” |
 | Lobby code is not four letters | “Lobby codes are 4 letters.” |

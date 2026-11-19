@@ -36,8 +36,8 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 **Security and accounts (area 2)**
 
 - [ ] **M1-2.6** Limit log-in attempts and lobby-code guessing per connection (found in the code reviews, S-83)
-- [ ] **M1-2.7** Show or hide the password with an eye icon in the sign-up and log-in forms
-- [ ] **M1-2.8** Tell a player why they were signed out when the same account logs in somewhere else (needs a text in DESIGN.md, section 9)
+- [x] **M1-2.7** Show or hide the password with an eye icon in the sign-up and log-in forms. Played in the browser with mouse and keyboard, at 1280 and 360 px (2026-11-19)
+- [x] **M1-2.8** Tell a player why they were signed out when the same account logs in somewhere else (needs a text in DESIGN.md, section 9). The browser shows “You were signed in somewhere else.”; the text is a proposal (S-104). Played with two browsers (2026-11-19)
 - [ ] **M1-2.9** Add `sslmode=require` to `DATABASE_URL` on Render, as Supabase recommends, and check that sign up still works
 - [ ] **M1-2.10** Check in the Supabase dashboard that the Data API returns no rows of `accounts` with the public key (row level security is on, S-90)
 - [ ] **M1-2.11** Before the demo: open the Supabase project and make sure it is not paused (free projects pause after a week without activity, S-39)
