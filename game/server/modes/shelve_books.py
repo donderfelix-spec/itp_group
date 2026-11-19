@@ -14,8 +14,9 @@ LOWEST_NUMBER = 100
 HIGHEST_NUMBER = 999
 # How often the books are mixed again if they came out already sorted.
 SHUFFLE_TRIES = 5
-# Nobody reads six numbers and clicks six books in less time than this.
-MIN_SECONDS = 3
+# Stops a script that reports "done" at once; a quick, correct player is
+# not punished.
+MIN_SECONDS = 1
 
 
 def is_ascending(numbers: list) -> bool:

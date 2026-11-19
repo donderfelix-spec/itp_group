@@ -163,7 +163,7 @@ def test_station_4_is_shelve_the_books():
     assert minigame is shelve_books.MINIGAME
     assert isinstance(minigame, Minigame)
     assert minigame.title == "Shelve the books"
-    assert minigame.min_seconds == 3
+    assert minigame.min_seconds == 1
     assert minigame.make_content is shelve_books.make_content
 
 
@@ -233,7 +233,7 @@ def test_station_4_opens_with_six_books_and_counts_after_the_minimum_time(connec
     expected = shelve_books.make_content(random.Random(4))
     assert answer == {"type": "station_opened", "station": 4, "title": "Shelve the books", "content": expected}
 
-    clock.wait(3)
+    clock.wait(1)
     assert ask(mara, {"type": "finish_station"}) == {"type": "station_done", "station": 4}
 
 
@@ -243,7 +243,7 @@ def test_station_4_reported_done_too_fast_does_not_count_and_reopens_with_new_bo
     monkeypatch.setattr(main, "random", random.Random(4))
     first = ask(mara, {"type": "open_station", "station": 4})["content"]
 
-    clock.wait(2.9)
+    clock.wait(0.9)
     assert ask(mara, {"type": "finish_station"})["code"] == "too_fast"
     assert mara.receive_json() == {"type": "station_closed", "station": 4}
 
