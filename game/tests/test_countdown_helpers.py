@@ -6,12 +6,21 @@ after a real countdown: these tests compare the two.
 """
 
 from countdown_helpers import no_countdown, start_round_at_once  # noqa: F401
-from server import protocol
+from server import main, protocol
 from server.net.lobbies import Lobbies
 from task_helpers import ask, client, clock, connect, lobby_named, player  # noqa: F401
 from task_helpers import placeholder_at_every_station  # noqa: F401
 from test_server_duel import fixed_routes  # noqa: F401
-from test_server_duel import FIXED_ROUTES, lobby_of, news, progress, state
+from test_server_duel import (
+    FIXED_ROUTES,
+    REAL_TICK,
+    lobby_of,
+    news,
+    progress,
+    state,
+    types_of,
+    wait_for_news,
+)
 
 NOT_HOST = protocol.rejection("not_host")
 ROUND_RUNNING = protocol.rejection("round_running")
@@ -54,8 +63,6 @@ def test_with_no_countdown_the_start_tells_everybody_the_round_and_nothing_of_a_
     players["Mara"].send_json({"type": "start_game"})
     listed = [("Mara", FIRST), ("Tiago", SECOND)]
     for place, name in enumerate(players):
-        # The same three messages, in the same order, as after a real
-        # countdown (see test_server_countdown.py).
         assert news(players[name]) == [
             protocol.lobby_state(code, "Mara", listed, "duel", "round"),
             state(FIXED_ROUTES[place][0], 0),
@@ -64,6 +71,42 @@ def test_with_no_countdown_the_start_tells_everybody_the_round_and_nothing_of_a_
     lobby = lobby_named("Mara")
     assert lobby.phase == "round" and lobby.round_starts_at is None
     assert lobby.tasks is not None and lobby.duel is not None
+
+
+def test_the_stand_in_and_the_real_countdown_send_the_same_messages_about_the_round(
+    connect, clock, fixed_routes, monkeypatch
+):
+    # First lobby: the stand-in of `no_countdown`.
+    codes = iter(["AAAA", "BBBB"])
+    monkeypatch.setattr(main, "pick_lobby_code", lambda: next(codes))
+    quick, _ = lobby_of(connect, ["Mara", "Tiago"])
+    quick["Mara"].send_json({"type": "start_game"})
+    told_by_stand_in = [news(connection) for connection in quick.values()]
+
+    # Second lobby: the server's real handler, five seconds and the real tick.
+    monkeypatch.setitem(main.LOBBY_HANDLERS, "start_game", main.handle_start_game)
+    real, _ = lobby_of(connect, ["Ines", "Rui"])
+    real["Ines"].send_json({"type": "start_game"})
+    announced = [news(connection) for connection in real.values()]
+    assert [types_of(messages) for messages in announced] == [["lobby_state", "countdown"]] * 2
+    clock.wait(5)
+    real["Ines"].portal.call(REAL_TICK, 0.0)
+    told_by_server = [wait_for_news(connection, "duel_progress") for connection in real.values()]
+
+    # The same messages in the same order, apart from the names and the lobby's code.
+    assert [types_of(messages) for messages in told_by_stand_in] == [
+        ["lobby_state", "duel_state", "duel_progress"]
+    ] * 2
+    assert renamed(told_by_stand_in) == renamed(told_by_server)
+
+
+def renamed(told):
+    """The messages with the players called by their place in the lobby and without the lobby's code."""
+    places = {"Mara": "first", "Tiago": "second", "Ines": "first", "Rui": "second"}
+    text = repr(told).replace("AAAA", "code").replace("BBBB", "code")
+    for name, place in places.items():
+        text = text.replace(repr(name), repr(place))
+    return text
 
 
 def test_with_no_countdown_the_checks_of_the_start_are_the_server_s_own(connect):

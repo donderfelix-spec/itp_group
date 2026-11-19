@@ -35,14 +35,15 @@ async def start_without_countdown(websocket, name: str, message: dict):
     """Stands in for `main.handle_start_game`: the countdown is over the moment it begins.
 
     The checks, the start of the round and its messages are the server's
-    own. Only the five seconds, and the two messages that announce them, are
-    left out, so the players are told about the round in the host's own
-    handler: the lobby's state with phase "round", then what the mode tells.
+    own. The countdown is begun five seconds in the past, through the
+    rules' own `Lobbies.start`, so it is due at once. Only the waiting, and
+    the two messages that announce it, are left out: the players are told
+    about the round in the host's own handler, with the lobby's state in
+    phase "round" and then what the mode tells.
     """
     now = main.seconds_now()
-    lobby, rejection_code = app.state.lobbies.start(name, now)
+    lobby, rejection_code = app.state.lobbies.start(name, now - COUNTDOWN_SECONDS)
     if rejection_code is None:
-        lobby.round_starts_at = now
         assert main.start_round_if_due(lobby)
         await main.tell_round_begins(lobby)
     return rejection_code
