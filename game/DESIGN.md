@@ -245,6 +245,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Opening a station while a task is open | “Close your current task first.” |
 | Closing or finishing while no task is open | “You have no task open.” |
 | Reporting a task as done faster than it can be played | “That was too fast. Try again.” |
+| The server fails while opening, closing or finishing a task | “Something went wrong. Try again.” |
 
 ## 10. What is deliberately not included
 
