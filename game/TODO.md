@@ -22,7 +22,7 @@ These points hold up the start. The reasoning behind them is under “Open decis
 - [x] **K8** “We Be(a)t” is put aside for now (S-27)
 - [x] **K9** Render account created and service set up (2026-11-18)
 - [ ] **K10** Names and student numbers of all members for the README (S-36)
-- [ ] **K16** Three questions from the play test of M2-2.2: may players walk while the ranking card covers the map (they can, unseen)? May the host start the next round while others still read the ranking (their card is taken away)? Should a finished player have to wait up to three minutes for the slowest one, or does the round end earlier?
+- [x] **K16** Settled 2026-11-19 (S-102): players may walk while the ranking card is up; a start by the host begins with a countdown of 5 seconds (M2-2.5); a finished player waits for the others as before
 
 ## M0: Preparation
 
@@ -90,6 +90,7 @@ Milestone 2 was built up to the Duel by Claude as lead (pull requests #19 to #26
 - [x] **M2-2.2** Back to the lobby after the round (Felix). Played through with three players in real browsers, also with the time running out and three rounds in a row; the run is `tests/test_play_back_to_lobby.py`. What the panel shows and where the players stand is decided in S-101 (2026-11-19)
 - [ ] **M2-2.3** A player leaves the round, the host changes (Felix). For Duel the server part is built and tested: a player who leaves, logs out, disconnects or logs in elsewhere is taken out of the progress and the ranking, the round goes on, also for one player, and ends when the rest have finished; the host changes as in the lobby. Left to do: a play test with real browsers, and what a player who lost the connection sees when coming back (they cannot rejoin a running round, M3-2.2)
 - [ ] **M2-2.4** Statistics: the server writes the result of every round, profile with wins and best Duel time, leaderboard (Felix). Not started. `Duel.ranking()` in `server/modes/duel.py` gives place, name, time and stations done at the end of a round; the place to write from is where `server/main.py` ends the round. Only the server writes results (S-40), guests have no statistics (S-38). Writing must not hold up or break the end of the round: see how the Duel takes back a count when something fails after it (M2-4.7a)
+- [ ] **M2-2.5** Countdown before a round: when the host presses “Start game”, everybody sees a countdown of 5 seconds, and only then the round starts. A ranking card that is still open stays readable during the countdown and closes when the round starts. The server counts (rule 1); decide while building what the players may do during the countdown, and add the text to DESIGN.md (Felix)
 
 A complete Duel round needs nothing more from area 2: start, play, ranking and the next round work. M2-2.2 and M2-2.3 are about what is shown and about playing it with several people; M2-2.4 is the only part of the required scope (S-40) that is not built at all.
 
