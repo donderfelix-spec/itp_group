@@ -315,3 +315,34 @@ def test_a_huge_number_is_refused_as_a_broken_map_and_not_as_a_crash(campus, cha
 def test_a_giant_map_that_still_fits_into_a_float_does_not_crash(campus):
     # 10 ** 300 still fits into a float. Everything else then lies inside this giant map.
     assert check_campus(broken(campus, lambda bad: bad.update(width=10 ** 300, height=10 ** 300)))
+
+
+# The range for using a station and the ids of the stations (M2-1.1)
+
+def test_the_map_says_how_close_a_station_must_be(campus):
+    assert campus["use_range"] == 25
+
+
+def test_every_station_has_its_own_id(campus):
+    assert sorted(station["id"] for station in campus["stations"]) == [1, 2, 3, 4, 5, 6]
+
+
+def test_a_map_without_use_range_is_refused_and_names_it(campus):
+    with pytest.raises(CampusError, match="use_range"):
+        check_campus(broken(campus, lambda bad: bad.pop("use_range")))
+
+
+@pytest.mark.parametrize("use_range", [0, -25, "25", None, True, [25], float("nan"), float("inf"), HUGE])
+def test_a_use_range_that_is_not_a_positive_number_is_refused(campus, use_range):
+    with pytest.raises(CampusError, match="use_range"):
+        check_campus(broken(campus, lambda bad: bad.update(use_range=use_range)))
+
+
+@pytest.mark.parametrize("use_range", [1, 0.5, 25.5, 100])
+def test_any_use_range_above_0_is_accepted(campus, use_range):
+    assert check_campus(broken(campus, lambda bad: bad.update(use_range=use_range)))
+
+
+def test_two_stations_with_the_same_id_are_refused(campus):
+    with pytest.raises(CampusError, match=r"stations\[1\] has the id 1 of another station"):
+        check_campus(broken(campus, lambda bad: bad["stations"][1].update(id=1)))

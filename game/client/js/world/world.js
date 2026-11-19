@@ -1,5 +1,5 @@
-// The world on the canvas: the drawing loop, the camera, the keyboard and the
-// smoothing of the players' movement.
+// The world on the canvas: the drawing loop, the camera, the keyboard, the
+// smoothing of the players' movement and the task stations a player can use.
 //
 // The browser decides nothing here (AGENTS.md, rule 1). The keyboard only
 // tells the server where the player wants to go, and every position that is
@@ -53,6 +53,11 @@ Game.world = Game.world || {};
     KeyD: "right", ArrowRight: "right"
   };
 
+  // The key that uses a station, and the text on its button (DESIGN.md,
+  // section 4).
+  var USE_KEY_CODE = "KeyE"; // `event.code` of the key in the E position
+  var USE_BUTTON_TEXT = "E Use";
+
   // ---- State -----------------------------------------------------------
 
   var campus = null; // the map data, once loaded
@@ -67,6 +72,9 @@ Game.world = Game.world || {};
   var players = new Map(); // name -> player record, see newPlayer()
   var pressedKeys = {}; // event.code -> true while the key is held down
   var sentDirection = { dx: 0, dy: 0 }; // what the server heard last
+  var usableStations = null; // ids of the stations that count, null = all
+  var useHandler = null; // called with the id of the station that is opened
+  var useButton = null; // the button "E Use", while the world runs
 
   // ---- Players and smoothing -------------------------------------------
 
@@ -179,6 +187,156 @@ Game.world = Game.world || {};
     });
   }
 
+  // ---- Stations: which one is in range, and opening it -----------------
+
+  // The id of the station a player at (x, y) can use, or null: the closest
+  // station whose centre is at most `useRange` away. Exactly at the range
+  // still counts, and an exact tie goes to the smaller id. `usableIds` is an
+  // array of the ids that count at all, or null for all stations.
+  //
+  // The server has the very same rule in server/world/stations.py, function
+  // station_in_range. Change both together.
+  function nearestStationInRange(x, y, stations, useRange, usableIds) {
+    var bestId = null;
+    var bestDistance = null;
+    for (var i = 0; i < stations.length; i++) {
+      var station = stations[i];
+      if (usableIds !== null && usableIds.indexOf(station.id) === -1) {
+        continue;
+      }
+      var distance = squaredDistance(x, y, station);
+      // Written as "not at most" so that a broken position (not a number)
+      // is in range of nothing: every comparison with it is false.
+      if (!(distance <= useRange * useRange)) {
+        continue;
+      }
+      if (isBetter(distance, station.id, bestDistance, bestId)) {
+        bestId = station.id;
+        bestDistance = distance;
+      }
+    }
+    return bestId;
+  }
+
+  // Squared distances are compared instead of real ones: no square root is
+  // needed, and JavaScript and Python then calculate exactly the same numbers.
+  function squaredDistance(x, y, station) {
+    var dx = station.x - x;
+    var dy = station.y - y;
+    return dx * dx + dy * dy;
+  }
+
+  // Is this station closer than the best one so far, or as close with a
+  // smaller id?
+  function isBetter(distance, stationId, bestDistance, bestId) {
+    if (bestId === null) {
+      return true;
+    }
+    if (distance !== bestDistance) {
+      return distance < bestDistance;
+    }
+    return stationId < bestId;
+  }
+
+  // The id of the station the own player can use right now, or null. It
+  // counts from the position the server sent last, not from where the
+  // gliding character is drawn, so what glows is what the server will accept.
+  function stationInRange() {
+    var own = ownName !== null && players.has(ownName) ? players.get(ownName).to : null;
+    if (!running || !campus || !own || !Array.isArray(campus.stations)) {
+      return null;
+    }
+    return nearestStationInRange(own.x, own.y, campus.stations, campus.use_range, usableStations);
+  }
+
+  function stationWithId(id) {
+    var stations = campus.stations;
+    for (var i = 0; i < stations.length; i++) {
+      if (stations[i].id === id) {
+        return stations[i];
+      }
+    }
+    return null;
+  }
+
+  // Which stations count as targets. The others are still drawn but never
+  // glow. Only `null` means all of them. An array or a Set is the list of
+  // ids. Anything else (nothing at all, a number, a text, an object) is a
+  // mistake of the caller and means no station: a mistake must never open
+  // every station.
+  function setUsableStations(ids) {
+    if (ids === null) {
+      usableStations = null;
+    } else if (Array.isArray(ids) || ids instanceof Set) {
+      usableStations = Array.from(ids);
+    } else {
+      usableStations = [];
+    }
+  }
+
+  // `handler(stationId)` is called when the player opens a station. Another
+  // area sets it (the minigames); it stays set when the world stops.
+  function setUseHandler(handler) {
+    useHandler = typeof handler === "function" ? handler : null;
+  }
+
+  // Opens the station in range: with the key E or a click on the button.
+  // Without a station in range or without a handler nothing happens, and
+  // there is no message either (DESIGN.md, section 4).
+  function useStationInRange() {
+    var id = stationInRange();
+    if (id !== null && useHandler) {
+      useHandler(id);
+    }
+  }
+
+  // The button "E Use" at the bottom right of the map. It is made here and
+  // not in index.html, so it only exists while the world runs.
+  function addUseButton() {
+    if (useButton) {
+      return; // never two buttons
+    }
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "button use-button";
+    button.textContent = USE_BUTTON_TEXT;
+    button.disabled = true; // grey until a station is in range
+    button.addEventListener("click", onUseButtonClick);
+    canvas.parentNode.appendChild(button);
+    useButton = button; // remembered only once it is on the page
+  }
+
+  // A clicked button keeps the keyboard focus. Space and Enter would then
+  // "click" it again (and again while held), so the focus is taken off
+  // before the station opens.
+  function onUseButtonClick() {
+    useButton.blur();
+    useStationInRange();
+  }
+
+  function removeUseButton() {
+    if (useButton) {
+      useButton.remove();
+      useButton = null;
+    }
+  }
+
+  // Grey and switched off while it would do nothing, yellow otherwise. The
+  // stylesheet gives the two looks.
+  function updateUseButton(idInRange) {
+    var shouldBeDisabled = idInRange === null;
+    if (!useButton || useButton.disabled === shouldBeDisabled) {
+      return;
+    }
+    // Some browsers swallow key events while a switched-off button has the
+    // focus. A lost release of a walk key would leave the player walking,
+    // so the focus goes first.
+    if (shouldBeDisabled && document.activeElement === useButton) {
+      useButton.blur();
+    }
+    useButton.disabled = shouldBeDisabled;
+  }
+
   // ---- Keyboard --------------------------------------------------------
 
   // Is the player writing into a field right now?
@@ -220,15 +378,32 @@ Game.world = Game.world || {};
     return event.key === "Meta";
   }
 
+  // `event.code` names the place of the key on the keyboard, like the walk
+  // keys do: this is the key in the E position (next to W), whatever letter
+  // the layout writes with it. Caps Lock and Shift do not change the code.
+  function isUseKey(event) {
+    return event.code === USE_KEY_CODE;
+  }
+
   function onKeyDown(event) {
     if (isMetaKey(event)) {
       releaseAllKeys();
       return;
     }
-    var isWalkKey = Object.prototype.hasOwnProperty.call(KEY_DIRECTIONS, event.code);
     // With Ctrl, Alt or Cmd held, the key is a shortcut of the browser.
     var isShortcut = event.ctrlKey || event.altKey || event.metaKey;
-    if (!isWalkKey || isShortcut || isTyping(event)) {
+    if (isShortcut || isTyping(event)) {
+      return;
+    }
+    if (isUseKey(event)) {
+      // A key that is held down reports itself again and again: only the
+      // first press opens the station.
+      if (!event.repeat) {
+        useStationInRange();
+      }
+      return;
+    }
+    if (!Object.prototype.hasOwnProperty.call(KEY_DIRECTIONS, event.code)) {
       return;
     }
     if (event.code.indexOf("Arrow") === 0) {
@@ -461,6 +636,11 @@ Game.world = Game.world || {};
     }
     var view = aimCamera(cameraCentre(now));
     Game.world.drawMap(ctx, campus, view);
+    var idInRange = stationInRange();
+    if (idInRange !== null) {
+      Game.world.drawStationGlow(ctx, stationWithId(idInRange), now);
+    }
+    updateUseButton(idInRange);
     drawPlayers(now);
   }
 
@@ -525,6 +705,8 @@ Game.world = Game.world || {};
     if (running || !ctx) {
       return;
     }
+    // The button comes first: if it cannot be made, nothing has started yet.
+    addUseButton();
     running = true;
     // A retry may still wait from an earlier start: begin afresh.
     window.clearTimeout(retryTimer);
@@ -533,7 +715,8 @@ Game.world = Game.world || {};
     frameRequest = window.requestAnimationFrame(onFrame);
   }
 
-  // Stops the loop and the keyboard and forgets players and pressed keys.
+  // Stops the loop and the keyboard, takes the button "E Use" away and
+  // forgets players, pressed keys and which stations were usable.
   // Nothing is sent: whoever stops the world has left the lobby already.
   function stop() {
     if (running) {
@@ -541,7 +724,9 @@ Game.world = Game.world || {};
       window.clearTimeout(retryTimer);
       stopListeningToKeyboard();
     }
+    removeUseButton();
     running = false;
+    usableStations = null; // the next lobby starts with all stations again
     players.clear();
     pressedKeys = {};
     sentDirection = { dx: 0, dy: 0 };
@@ -553,4 +738,8 @@ Game.world = Game.world || {};
   Game.world.setOwnName = setOwnName;
   Game.world.setPlayers = setPlayers;
   Game.world.setPositions = setPositions;
+  Game.world.setUsableStations = setUsableStations;
+  Game.world.setUseHandler = setUseHandler;
+  Game.world.stationInRange = stationInRange;
+  Game.world.nearestStationInRange = nearestStationInRange;
 })();

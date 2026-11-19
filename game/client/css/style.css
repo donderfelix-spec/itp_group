@@ -238,6 +238,16 @@ input {
   transform: translateX(-50%);
 }
 
+/* "E Use" at the bottom right of the map, made by js/world/world.js. Yellow
+   while a station is in range; while it is disabled, the grey of
+   .button:disabled wins over this yellow. */
+.use-button {
+  position: absolute;
+  right: 34px;
+  bottom: 34px;
+  background: var(--sun);
+}
+
 .panel {
   display: flex;
   flex-direction: column;
