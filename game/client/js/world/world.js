@@ -55,7 +55,7 @@ Game.world = Game.world || {};
 
   // The key that uses a station, and the text on its button (DESIGN.md,
   // section 4).
-  var USE_KEY = "e";
+  var USE_KEY_CODE = "KeyE"; // `event.code` of the key in the E position
   var USE_BUTTON_TEXT = "E Use";
 
   // ---- State -----------------------------------------------------------
@@ -259,10 +259,19 @@ Game.world = Game.world || {};
     return null;
   }
 
-  // Which stations count as targets: an array of station ids, or null for
-  // all of them. The others are still drawn but never glow.
+  // Which stations count as targets. The others are still drawn but never
+  // glow. Only `null` means all of them. An array or a Set is the list of
+  // ids. Anything else (nothing at all, a number, a text, an object) is a
+  // mistake of the caller and means no station: a mistake must never open
+  // every station.
   function setUsableStations(ids) {
-    usableStations = Array.isArray(ids) ? ids.slice() : null;
+    if (ids === null) {
+      usableStations = null;
+    } else if (Array.isArray(ids) || ids instanceof Set) {
+      usableStations = Array.from(ids);
+    } else {
+      usableStations = [];
+    }
   }
 
   // `handler(stationId)` is called when the player opens a station. Another
@@ -287,13 +296,22 @@ Game.world = Game.world || {};
     if (useButton) {
       return; // never two buttons
     }
-    useButton = document.createElement("button");
-    useButton.type = "button";
-    useButton.className = "button use-button";
-    useButton.textContent = USE_BUTTON_TEXT;
-    useButton.disabled = true; // grey until a station is in range
-    useButton.addEventListener("click", useStationInRange);
-    canvas.parentNode.appendChild(useButton);
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "button use-button";
+    button.textContent = USE_BUTTON_TEXT;
+    button.disabled = true; // grey until a station is in range
+    button.addEventListener("click", onUseButtonClick);
+    canvas.parentNode.appendChild(button);
+    useButton = button; // remembered only once it is on the page
+  }
+
+  // A clicked button keeps the keyboard focus. Space and Enter would then
+  // "click" it again (and again while held), so the focus is taken off
+  // before the station opens.
+  function onUseButtonClick() {
+    useButton.blur();
+    useStationInRange();
   }
 
   function removeUseButton() {
@@ -307,9 +325,16 @@ Game.world = Game.world || {};
   // stylesheet gives the two looks.
   function updateUseButton(idInRange) {
     var shouldBeDisabled = idInRange === null;
-    if (useButton && useButton.disabled !== shouldBeDisabled) {
-      useButton.disabled = shouldBeDisabled;
+    if (!useButton || useButton.disabled === shouldBeDisabled) {
+      return;
     }
+    // Some browsers swallow key events while a switched-off button has the
+    // focus. A lost release of a walk key would leave the player walking,
+    // so the focus goes first.
+    if (shouldBeDisabled && document.activeElement === useButton) {
+      useButton.blur();
+    }
+    useButton.disabled = shouldBeDisabled;
   }
 
   // ---- Keyboard --------------------------------------------------------
@@ -353,10 +378,11 @@ Game.world = Game.world || {};
     return event.key === "Meta";
   }
 
-  // `event.key` is the letter the key writes, so this is the key with an E
-  // on it on every keyboard layout. With Caps Lock or Shift it is "E".
+  // `event.code` names the place of the key on the keyboard, like the walk
+  // keys do: this is the key in the E position (next to W), whatever letter
+  // the layout writes with it. Caps Lock and Shift do not change the code.
   function isUseKey(event) {
-    return typeof event.key === "string" && event.key.toLowerCase() === USE_KEY;
+    return event.code === USE_KEY_CODE;
   }
 
   function onKeyDown(event) {
@@ -679,12 +705,13 @@ Game.world = Game.world || {};
     if (running || !ctx) {
       return;
     }
+    // The button comes first: if it cannot be made, nothing has started yet.
+    addUseButton();
     running = true;
     // A retry may still wait from an earlier start: begin afresh.
     window.clearTimeout(retryTimer);
     loadCampus();
     listenToKeyboard();
-    addUseButton();
     frameRequest = window.requestAnimationFrame(onFrame);
   }
 
