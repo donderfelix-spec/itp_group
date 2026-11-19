@@ -293,6 +293,45 @@ def test_three_players_of_whom_two_leave_cancel_only_at_the_second():
     assert lobbies.leave("Tiago")[0].is_open()
 
 
+# The cancel rule follows the mode. Classic is not built yet, so the message
+# check refuses it (S-91); the rule itself stores the mode it is given, and
+# `protocol.MIN_PLAYERS` already says that Classic needs four players.
+
+
+def classic_lobby(*names):
+    lobbies = lobby_with(*names)
+    assert lobbies.choose_mode(names[0], "classic")[1] is None
+    return lobbies
+
+
+def test_classic_needs_four_players_for_its_countdown():
+    assert protocol.MIN_PLAYERS["classic"] == 4
+    lobbies = classic_lobby("Mara", "Tiago", "Ines")
+    assert lobbies.find("ABCD").has_too_few_players()
+    assert lobbies.start("Mara", START) == (None, "too_few_players")
+    lobbies.join("Rui", "ABCD")
+    assert not lobbies.find("ABCD").has_too_few_players()
+    assert lobbies.start("Mara", START)[1] is None
+    assert lobbies.find("ABCD").countdown_is_running()
+
+
+def test_a_classic_countdown_of_five_goes_on_with_four_and_is_cancelled_with_three():
+    lobbies = classic_lobby("Mara", "Tiago", "Ines", "Rui", "Sofia")
+    lobbies.start("Mara", START)
+    lobby = lobbies.leave("Sofia")[0]
+    assert lobby.countdown_is_running() and lobby.round_starts_at == START + 5
+    # Three players would be enough for a Duel, but this lobby plays Classic.
+    lobbies.leave("Rui")
+    assert lobby.is_open() and lobby.round_starts_at is None
+    assert lobby.mode == "classic" and lobby.names() == ["Mara", "Tiago", "Ines"]
+    assert lobby.start_round_if_due(START + 5) is False
+
+
+def test_a_duel_countdown_of_three_is_not_cancelled_where_classic_would_be():
+    lobbies = counting_lobby("Mara", "Tiago", "Ines")
+    assert lobbies.leave("Ines")[0].countdown_is_running()
+
+
 def test_a_lobby_that_empties_during_the_countdown_is_deleted():
     lobbies = counting_lobby("Mara", "Tiago")
     lobbies.leave("Mara")

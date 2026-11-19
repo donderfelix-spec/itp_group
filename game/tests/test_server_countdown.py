@@ -20,6 +20,7 @@ from server.modes import duel
 # station gives every task a known content and a minimum time of 1 second.
 from task_helpers import (  # noqa: F401
     NOT_IN_ROUND,
+    PASSWORD,
     SPAWN,
     client,
     clock,
@@ -574,6 +575,118 @@ def test_both_players_close_their_connections_during_the_countdown(connect, cloc
     tick_after(watcher, clock, 5)
     assert app.state.lobbies.count() == 0
     assert ask(watcher, {"type": "join_lobby", "code": code})["code"] == "no_lobby"
+
+
+# A newer log-in replaces a player during the countdown (S-76)
+
+
+def log_in_again(connect, name):
+    """The account logs in on a new connection, which takes the old one's place. Returns the new connection."""
+    newer = connect()
+    newer.send_json({"type": "log_in", "name": name, "password": PASSWORD})
+    assert newer.receive_json() == {"type": "signed_in", "name": name, "guest": False}
+    return newer
+
+
+def test_a_newer_log_in_of_one_of_two_players_cancels_the_countdown(connect, clock):
+    players, code = counting_lobby(connect, ["Mara", "Tiago"])
+    newer = log_in_again(connect, "Tiago")
+    open_again = lobby_state(code, "Mara", ("Mara", FIRST), phase="lobby")
+    assert wait_for_news(players["Mara"]) == [open_again]
+    assert wait_for_news(players["Tiago"], "signed_out") == [{"type": "signed_out"}]
+
+    # The five seconds pass: no round for anybody.
+    tick_after(players["Mara"], clock, 5)
+    lobby = lobby_named("Mara")
+    assert lobby.phase == "lobby" and lobby.duel is None and lobby.tasks is None
+    assert nothing_new_for({"Mara": players["Mara"], "old Tiago": players["Tiago"], "new Tiago": newer})
+
+    # The new connection starts outside of any lobby and can join the open one.
+    assert ask(newer, {"type": "join_lobby", "code": code}) == lobby_state(
+        code, "Mara", ("Mara", FIRST), ("Tiago", SECOND), phase="lobby"
+    )
+
+
+def test_a_newer_log_in_of_the_host_of_three_changes_the_host_and_the_countdown_goes_on(
+    connect, clock, fixed_routes
+):
+    players, code = counting_lobby(connect, ["Mara", "Tiago", "Ines"])
+    newer = log_in_again(connect, "Mara")
+    expected = [
+        protocol.notice("The host left. Tiago is the new host."),
+        lobby_state(code, "Tiago", ("Tiago", SECOND), ("Ines", THIRD), phase="countdown"),
+    ]
+    stayed = {name: players[name] for name in ("Tiago", "Ines")}
+    for name in stayed:
+        assert wait_for_news(players[name]) == expected
+    assert wait_for_news(players["Mara"], "signed_out") == [{"type": "signed_out"}]
+    assert lobby_named("Tiago").round_starts_at == CLOCK_START + 5
+
+    # The new connection is outside and stays outside: the lobby is closed.
+    assert lobby_named("Mara") is None
+    assert ask(newer, {"type": "join_lobby", "code": code}) == ROUND_RUNNING
+
+    tick_after(players["Tiago"], clock, 5)
+    told = round_news(stayed)
+    for name in stayed:
+        assert told[name][0] == lobby_state(code, "Tiago", ("Tiago", SECOND), ("Ines", THIRD), phase="round")
+        assert told[name][2] == progress(180, ("Tiago", 0), ("Ines", 0))
+    lobby = lobby_named("Tiago")
+    assert sorted(lobby.duel.names()) == sorted(lobby.names()) == ["Ines", "Tiago"]
+    # Neither connection of the replaced player hears anything of the round.
+    assert nothing_new_for({"old Mara": players["Mara"], "new Mara": newer})
+
+
+# The seconds in a `countdown` message that is sent late
+
+
+@pytest.mark.parametrize("seconds_later, seconds_sent", [(0, 5), (0.5, 5), (2, 3), (2.5, 3), (4.9, 1)])
+def test_a_countdown_message_sent_late_carries_the_whole_seconds_that_are_left(
+    connect, clock, seconds_later, seconds_sent
+):
+    # A slow send of the lobby's state delays the `countdown` message after
+    # it. Here the time passes between the two, and the message is sent as
+    # the server sends it.
+    players, code = counting_lobby(connect, ["Mara", "Tiago"])
+    clock.wait(seconds_later)
+    players["Mara"].portal.call(main.tell_countdown, lobby_named("Mara"))
+    for connection in players.values():
+        assert news(connection) == [{"type": "countdown", "seconds": seconds_sent}]
+
+
+def test_no_countdown_message_is_sent_once_the_round_has_started(connect, clock, fixed_routes):
+    players, code = counting_lobby(connect, ["Mara", "Tiago"])
+    tick_after(players["Mara"], clock, 5)
+    round_news(players)
+    players["Mara"].portal.call(main.tell_countdown, lobby_named("Mara"))
+    assert nothing_new_for(players)
+
+
+def test_no_countdown_message_is_sent_once_the_countdown_was_cancelled_or_to_who_left(connect, clock):
+    players, code = counting_lobby(connect, ["Mara", "Tiago", "Ines"])
+    lobby = lobby_named("Mara")
+    assert ask(players["Ines"], {"type": "leave_lobby"}) == {"type": "left_lobby"}
+    for name in ("Mara", "Tiago"):
+        wait_for_news(players[name])
+    clock.wait(1)
+    players["Mara"].portal.call(main.tell_countdown, lobby)
+    assert news(players["Mara"]) == [{"type": "countdown", "seconds": 4}]
+    assert news(players["Tiago"]) == [{"type": "countdown", "seconds": 4}]
+    assert news(players["Ines"]) == []  # who left is not told
+
+    assert ask(players["Tiago"], {"type": "leave_lobby"}) == {"type": "left_lobby"}
+    wait_for_news(players["Mara"])
+    assert lobby.phase == "lobby"
+    players["Mara"].portal.call(main.tell_countdown, lobby)
+    assert nothing_new_for(players)
+
+
+def test_a_countdown_message_after_the_time_is_up_but_before_the_tick_says_zero(connect, clock):
+    # Cannot be shown wrongly: the page ignores a countdown that is not above zero.
+    players, code = counting_lobby(connect, ["Mara", "Tiago"])
+    clock.wait(7)
+    players["Mara"].portal.call(main.tell_countdown, lobby_named("Mara"))
+    assert news(players["Mara"]) == [{"type": "countdown", "seconds": 0}]
 
 
 # After the countdown
