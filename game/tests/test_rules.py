@@ -3,8 +3,17 @@ import random
 import pytest
 
 from rules import (
-    apply_fail, assign_roles, assign_tasks, call_emergency, can_emergency,
-    can_fail, can_report, check_winner, progress, report_sheet,
+    apply_fail,
+    assign_roles,
+    assign_tasks,
+    call_emergency,
+    can_emergency,
+    can_fail,
+    can_report,
+    check_winner,
+    progress,
+    role_reveal_for,
+    report_sheet,
 )
 
 
@@ -270,3 +279,44 @@ def test_meeting_pauses_timers_without_changing_their_values(reason):
     assert state["task_timers"] == {"task-1": 12.5}
 
 
+@pytest.mark.parametrize(("done", "expected"), [(0, 0.0), (4, 0.5), (8, 1.0)])
+def test_progress_is_zero_half_or_full(done, expected):
+    state = {
+        "roles": {"hp1": "HP", "hp2": "HP", "fr": "FR"},
+        "tasks": {"hp1": ["a", "b", "c", "d"], "hp2": ["e", "f", "g", "h"], "fr": ["i", "j", "k", "l"]},
+        "completed_tasks": {"hp1": ["a", "b", "c", "d"][:min(done, 4)], "hp2": ["e", "f", "g", "h"][:max(0, done - 4)], "fr": ["i", "j", "k", "l"]},
+        "eliminated": set(),
+    }
+    assert progress(state) == pytest.approx(expected)
+
+
+def test_end_reason_reports_each_winner_condition_in_order():
+    from rules import end_reason
+
+    base = {
+        "roles": {"hp1": "HP", "hp2": "HP", "hp3": "HP", "fr": "FR"},
+        "tasks": {"hp1": ["a"], "hp2": ["b"], "hp3": ["c"], "fr": ["fake"]},
+        "completed_tasks": {},
+        "eliminated": set(),
+    }
+    assert end_reason(base) is None
+    assert end_reason({**base, "completed_tasks": {"hp1": ["a"], "hp2": ["b"], "hp3": ["c"]}}) == "bar_full"
+    assert end_reason({**base, "eliminated": {"fr"}}) == "all_free_riders_eliminated"
+    assert end_reason({**base, "eliminated": {"hp1", "hp2"}}) == "free_riders_reached_parity"
+
+
+def test_role_reveal_is_private_for_living_players_and_absent_for_ghosts():
+    from rules import role_reveal_for
+
+    state = {
+        "roles": {"hp": "HP", "fr1": "FR", "fr2": "FR"},
+        "tasks": {},
+        "completed_tasks": {},
+        "eliminated": set(),
+    }
+    start_cards = {player_id: role_reveal_for(state, player_id) for player_id in state["roles"]}
+    assert all(card is not None for card in start_cards.values())
+    assert start_cards["hp"] == {"role": "HP"}
+    assert role_reveal_for({**state, "eliminated": {"hp"}}, "hp") is None
+    assert role_reveal_for(state, "fr1") == {"role": "FR", "other_free_riders": ["fr2"]}
+    assert role_reveal_for(state, "fr2") == {"role": "FR", "other_free_riders": ["fr1"]}

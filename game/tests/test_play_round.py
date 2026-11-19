@@ -452,7 +452,7 @@ def test_a_malformed_message_of_the_host_is_refused_and_changes_nothing(connect,
 
 def test_a_malformed_message_during_the_round_does_not_disturb_it(connect):
     (mara, tiago), code = running_round_of(connect, "Mara", "Tiago")
-    assert answer_to(mara, {"type": "choose_mode", "mode": "classic"}) == BAD_MODE
+    assert answer_to(mara, {"type": "choose_mode", "mode": "classic"}) == ROUND_RUNNING
     assert answer_to(tiago, {"type": "start_game", "again": 1})["code"] == "unknown_field"
     assert news(mara) == [] and news(tiago) == []
     move(tiago, 0, 1)

@@ -38,7 +38,7 @@ CHARACTERS = (
 )
 
 # The modes that are built and can be chosen (S-91). Classic follows later.
-MODES = ("duel",)
+MODES = ("duel", "classic")
 # The mode of a new lobby.
 DEFAULT_MODE = "duel"
 # The name of each mode as the players read it.
@@ -148,7 +148,7 @@ def _check_character(value):
 
 
 def _check_mode(value):
-    # A mode not built yet is refused like an unknown mode (S-91).
+    # Modes are enabled only when their round setup is registered.
     if not isinstance(value, str) or value not in MODES:
         raise ProtocolError("bad_mode", "That mode does not exist.")
     return value

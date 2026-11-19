@@ -127,6 +127,14 @@
 
           <!-- In its place during a Duel: next station, clock and everybody's
                progress, filled by js/minigames/duel.js. -->
+          <div id="classic-progress" class="classic-progress" hidden aria-live="polite">
+            <h2 class="panel-heading">Group progress</h2>
+            <p id="classic-progress-label">0% complete</p>
+            <div class="classic-progress-track" role="progressbar" aria-label="Group task progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div id="classic-progress-fill" class="classic-progress-fill"></div>
+            </div>
+          </div>
+
           <div id="duel-panel" class="duel-panel" hidden>
             <h2 class="panel-heading">Duel</h2>
             <p id="duel-next" class="duel-next" role="status"></p>
@@ -168,6 +176,31 @@
     </div>
   </section>
 
+  <section id="classic-role-card" class="classic-overlay" aria-label="Your role" hidden>
+    <div class="classic-end-window">
+      <p class="classic-eyebrow">Your role</p>
+      <h1 id="classic-role-name"></h1>
+      <p id="classic-role-instructions"></p>
+      <p id="classic-role-partners" class="classic-role-partners"></p>
+    </div>
+  </section>
+  <section id="classic-end-screen" class="classic-overlay" aria-label="Round result" hidden>
+    <div class="classic-end-window">
+      <p class="classic-eyebrow">Round complete</p>
+      <h1 id="classic-winner"></h1>
+      <p id="classic-end-reason"></p>
+      <h2>Roles</h2>
+      <ul id="classic-role-list" class="classic-role-list"></ul>
+      <h2>Statistics</h2>
+      <ul id="classic-stat-list" class="classic-stat-list"></ul>
+      <div class="button-row">
+        <button type="button" id="classic-new-round" class="button button-main">New Round</button>
+        <button type="button" id="classic-back-lobby" class="button">Back to Lobby</button>
+      </div>
+      <p id="classic-host-hint" class="rule"></p>
+    </div>
+  </section>
+
   <script src="js/net.js"></script>
   <script src="js/world/characters.js"></script>
   <script src="js/world/draw.js"></script>
@@ -183,6 +216,7 @@
   <script src="js/minigames/self_checkout.js"></script>
   <script src="js/minigames/duel.js"></script>
   <script src="js/classic/meeting.js"></script>
+  <script src="js/classic/round.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

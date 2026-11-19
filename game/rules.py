@@ -318,3 +318,44 @@ def start_meeting(
         }
 
     return updated_state
+
+
+def end_reason(state: ClassicState) -> Literal[
+    "bar_full", "all_free_riders_eliminated", "free_riders_reached_parity"
+] | None:
+    """Return the user-facing result key in the documented win-check order."""
+    if progress(state) >= 1.0:
+        return "bar_full"
+
+    roles = state["roles"]
+    eliminated = set(state["eliminated"])
+    free_riders = {player_id for player_id, role in roles.items() if role == "FR"}
+    if free_riders and free_riders <= eliminated:
+        return "all_free_riders_eliminated"
+
+    living_free_riders = sum(
+        role == "FR" and player_id not in eliminated
+        for player_id, role in roles.items()
+    )
+    living_high_performers = sum(
+        role == "HP" and player_id not in eliminated
+        for player_id, role in roles.items()
+    )
+    if living_free_riders >= living_high_performers:
+        return "free_riders_reached_parity"
+    return None
+
+
+def role_reveal_for(state: ClassicState, player_id: str) -> dict | None:
+    """Build the private start-of-round role card, or None for a ghost/unknown player."""
+    role = state["roles"].get(player_id)
+    if role not in ("HP", "FR") or player_id in state["eliminated"]:
+        return None
+    reveal = {"role": role}
+    if role == "FR":
+        reveal["other_free_riders"] = [
+            other_id
+            for other_id, other_role in state["roles"].items()
+            if other_role == "FR" and other_id != player_id
+        ]
+    return reveal

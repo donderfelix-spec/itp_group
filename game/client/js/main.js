@@ -57,6 +57,7 @@ window.Game = window.Game || {};
   function stopWorld() {
     Game.minigames.close(); // before the world stops, so its keys are not left paused
     Game.classicMeeting.hide();
+    Game.classicRound.hide();
     Game.duel.reset();
     roundIsRunning = false;
     finishedStations = new Set();
@@ -96,6 +97,7 @@ window.Game = window.Game || {};
     Game.lobby.setOwnName(message.name);
     Game.duel.setOwnName(message.name);
     Game.classicMeeting.setOwnName(message.name);
+    Game.classicRound.setOwnName(message.name);
     callWorld('setOwnName', message.name);
     Game.forms.showSignedIn(message.name, message.guest);
   }
@@ -129,6 +131,7 @@ window.Game = window.Game || {};
     noteThePhase(message.phase);
     mode = message.mode;
     Game.duel.noteLobby(message);
+    Game.classicRound.setLobby(message);
     showUsableStations();
   }
 
@@ -205,6 +208,7 @@ window.Game = window.Game || {};
   Game.lobby.setup();
   Game.duel.setup();
   Game.classicMeeting.setup();
+  Game.classicRound.setup();
   callWorld('setUseHandler', openStation);
 
   Game.net.on('open', Game.screens.hideMessage);

@@ -135,12 +135,24 @@ def test_a_member_who_is_not_host_cannot_choose_the_mode(connect):
     assert still_works(ines)
 
 
-@pytest.mark.parametrize("mode", ["classic", "chess", "", None, 2, ["duel"]])
-def test_a_mode_that_is_not_built_is_refused_and_the_connection_stays_usable(connect, mode):
+@pytest.mark.parametrize("mode", ["chess", "", None, 2, ["duel"]])
+def test_an_unknown_or_malformed_mode_is_refused_and_connection_stays_usable(connect, mode):
     mara, tiago, ines, code = lobby_of_three(connect)
     assert choose_mode(mara, mode) == BAD_MODE
     assert still_works(tiago)
     assert choose_mode(mara, "duel")["mode"] == "duel"
+
+
+def test_classic_can_be_chosen_and_needs_four_players(connect):
+    mara, tiago, ines, code = lobby_of_three(connect)
+    chosen = choose_mode(mara, "classic")
+    assert chosen["mode"] == "classic"
+    assert tiago.receive_json() == chosen
+    assert ines.receive_json() == chosen
+    assert start(mara) == {
+        "type": "error", "code": "too_few_players",
+        "message": "Classic needs at least 4 players.",
+    }
 
 
 def test_choose_mode_outside_a_lobby_is_rejected(connect):
@@ -288,3 +300,28 @@ def test_a_round_that_everybody_left_is_gone(connect):
     ask(tiago, {"type": "leave_lobby"})
     assert app.state.lobbies.find(code) is None
     assert ask(player(connect, "Ines"), {"type": "join_lobby", "code": code})["code"] == "no_lobby"
+
+
+def test_classic_round_sends_each_living_player_a_private_role_card(connect):
+    mara, tiago, ines, code = lobby_of_three(connect)
+    rui = player(connect, "Rui")
+    assert ask(rui, {"type": "join_lobby", "code": code})["phase"] == "lobby"
+    for connection in (mara, tiago, ines):
+        connection.receive_json()
+
+    chosen = choose_mode(mara, "classic")
+    for connection in (tiago, ines, rui):
+        connection.receive_json()
+    assert chosen["mode"] == "classic"
+
+    assert start(mara)["phase"] == "round"
+    for connection in (tiago, ines, rui):
+        connection.receive_json()
+
+    cards = [connection.receive_json() for connection in (mara, tiago, ines, rui)]
+    assert all(card["type"] == "classic_role" for card in cards)
+    assert all(card["role"] in {"HP", "FR"} for card in cards)
+    assert sum(card["role"] == "FR" for card in cards) == 1
+    assert all("other_free_riders" not in card for card in cards if card["role"] == "HP")
+    progress_messages = [connection.receive_json() for connection in (mara, tiago, ines, rui)]
+    assert all(message == {"type": "classic_progress", "progress": 0.0} for message in progress_messages)

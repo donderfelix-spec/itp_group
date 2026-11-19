@@ -461,7 +461,7 @@ BAD_MODE = ("bad_mode", "That mode does not exist.")
 
 
 def test_duel_and_classic_are_built_modes():
-    assert protocol.MODES == ("duel",)
+    assert protocol.MODES == ("duel", "classic")
     assert protocol.DEFAULT_MODE in protocol.MODES
 
 
@@ -474,9 +474,14 @@ def test_start_game_is_accepted_without_fields():
     assert parse_client_message('{"type": "start_game"}') == {"type": "start_game"}
 
 
+def test_choose_mode_with_classic_is_accepted():
+    message = {"type": "choose_mode", "mode": "classic"}
+    assert parse_client_message(json.dumps(message)) == message
+
+
 @pytest.mark.parametrize(
     "mode",
-    ["classic", "deadline", "", "Duel", "DUEL", "duel ", None, 1, True, ["duel"], {"mode": "duel"}],
+    ["deadline", "", "Duel", "DUEL", "duel ", None, 1, True, ["duel"], {"mode": "duel"}],
 )
 def test_unknown_or_malformed_modes_are_rejected(mode):
     assert rejected({"type": "choose_mode", "mode": mode}) == BAD_MODE

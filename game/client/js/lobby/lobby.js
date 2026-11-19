@@ -30,7 +30,7 @@ window.Game = window.Game || {};
   // for the hint under the start button: the server checks it again (S-53).
   const MODES = [
     { id: 'duel', name: 'Duel', minPlayers: 2, isBuilt: true },
-    { id: 'classic', name: 'Classic', minPlayers: 4, isBuilt: false },
+    { id: 'classic', name: 'Classic', minPlayers: 4, isBuilt: true },
   ];
 
   const codeElement = document.getElementById('lobby-code');
@@ -159,16 +159,12 @@ window.Game = window.Game || {};
 
   // ---- Mode ----
 
-  // Built once, like the character buttons. A mode that is not built yet
-  // stays switched off for good and says when it comes.
+  // Built once, like the character buttons.
   function addModeButton(mode) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'mode';
     button.appendChild(makeText('span', 'mode-name', mode.name));
-    if (!mode.isBuilt) {
-      button.appendChild(makeText('span', 'mode-note', 'Coming with the next milestone'));
-    }
     button.addEventListener('click', () => {
       Game.net.ask({ type: 'choose_mode', mode: mode.id });
     });

@@ -26,10 +26,12 @@ from server import protocol
 from server.accounts import service
 from server.accounts.store import make_account_store
 from server.classic import meeting as classic_meeting
+from server.classic.round import ClassicRound
 from server.modes import duel, minigames, tasks
 from server.net.lobbies import Lobbies
 from server.net.sessions import GUEST_NUMBERS, Sessions
 from server.protocol import PROTOCOL_VERSION, ProtocolError, error, parse_client_message, welcome
+from rules import check_winner, end_reason
 from server.world import paths
 from server.world.campus import load_campus
 
@@ -649,6 +651,9 @@ def handle_finish_station(lobby, name: str, message: dict) -> list:
 
 def count_for_the_mode(lobby, name: str, station: int, now: float) -> list:
     """Tell the round's mode about a counted task. Returns what the mode adds to the player's answers."""
+    if lobby.classic_round is not None:
+        lobby.classic_round.station_done(name, station)
+        return []
     if lobby.duel is None:
         return []
     if not lobby.duel.station_done(name, station, now):
@@ -763,8 +768,18 @@ def set_up_duel(lobby):
     )
 
 
+def set_up_classic(lobby):
+    campus = app.state.campus
+    lobby.classic_round = ClassicRound(lobby.names(), sorted(minigames.MINIGAMES), random)
+    lobby.tasks = tasks.RoundTasks(
+        campus["stations"], campus["use_range"],
+        needed_stations=lobby.classic_round.stations_needed,
+    )
+
+
 ROUND_SETUPS = {
     "duel": set_up_duel,
+    "classic": set_up_classic,
 }
 
 
@@ -791,11 +806,32 @@ def is_in_duel(name: str, lobby, the_duel) -> bool:
 
 async def tell_round_started(lobby):
     """After the lobby's state with phase "round": what the mode tells at the start."""
+    if lobby.classic_round is not None:
+        classic = lobby.classic_round
+        await asyncio.gather(*(tell_classic_start(name, lobby, classic) for name in classic.roles))
+        await tell_classic_progress(lobby)
+        return
     the_duel = lobby.duel
     if the_duel is None:
         return
     the_duel.take_news()  # everybody is told right now
     await asyncio.gather(*(tell_duel_start(name, lobby, the_duel) for name in the_duel.names()))
+
+
+async def tell_classic_start(name: str, lobby, classic):
+    if not is_member(name, lobby) or lobby.classic_round is not classic:
+        return
+    reveal = classic.role_reveal(name)
+    if reveal is not None:
+        await send_to(name, {"type": "classic_role", **reveal})
+
+
+async def tell_classic_progress(lobby):
+    classic = lobby.classic_round
+    if classic is None:
+        return
+    message = {"type": "classic_progress", "progress": classic.progress()}
+    await asyncio.gather(*(send_to(name, message) for name in lobby.names()))
 
 
 async def tell_duel_start(name: str, lobby, the_duel):
@@ -817,6 +853,9 @@ async def tell_round_news(lobby):
     player who left. If nothing changed, nothing is sent.
     """
     try:
+        classic = lobby.classic_round
+        if classic is not None and classic.take_news():
+            await tell_classic_progress(lobby)
         the_duel = lobby.duel
         if the_duel is not None and the_duel.take_news():
             await asyncio.gather(*(tell_duel_progress(name, lobby, the_duel) for name in the_duel.names()))
@@ -838,6 +877,20 @@ def end_round_if_over(lobby) -> dict:
     exactly once, even if the last task and the time limit fall together
     and the tick and a player's handler both ask.
     """
+    classic = lobby.classic_round
+    if classic is not None:
+        state = classic.state()
+        winner = check_winner(state)
+        if winner is None:
+            return {}
+        result = classic.result(winner, end_reason(state))
+        open_stations = {name: lobby.tasks.open_station_of(name) for name in lobby.names()}
+        lobby.end_round()
+        return {
+            name: ([] if station is None else [protocol.station_closed(station)]) + [result]
+            for name, station in open_stations.items()
+        }
+
     the_duel = lobby.duel
     if the_duel is None or not the_duel.is_over(seconds_now()):
         return {}
