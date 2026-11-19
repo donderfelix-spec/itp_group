@@ -62,13 +62,41 @@
       && typeof product.name === 'string' && isAmount(product.cents);
   }
 
+  // Can some of the products add up to exactly the target? Every product is
+  // either taken or not, so six products give 2 * 2 * 2 * 2 * 2 * 2 = 64
+  // combinations. Combination 5 is 000101 in binary: it takes the products
+  // at places 0 and 2.
+  function canReachTarget(products, targetCents) {
+    const combinationCount = 2 ** products.length;
+    for (let combination = 1; combination < combinationCount; combination += 1) {
+      let totalCents = 0;
+      for (let place = 0; place < products.length; place += 1) {
+        const isTaken = Math.floor(combination / 2 ** place) % 2 === 1;
+        if (isTaken) totalCents += products[place].cents;
+      }
+      if (totalCents === targetCents) return true;
+    }
+    return false;
+  }
+
+  // A loop over the places, not `every`: `every` skips a hole in the list,
+  // and a list with a hole is broken content.
+  function areAllProducts(products) {
+    for (let place = 0; place < products.length; place += 1) {
+      if (!isProduct(products[place])) return false;
+    }
+    return true;
+  }
+
   // The content comes over the network: check it before building anything.
+  // A target that no combination reaches could never be solved.
   function isUsable(content) {
     return Boolean(content) && typeof content === 'object'
       && Array.isArray(content.products)
       && content.products.length === PRODUCT_COUNT
-      && content.products.every(isProduct)
-      && isAmount(content.target_cents);
+      && areAllProducts(content.products)
+      && isAmount(content.target_cents)
+      && canReachTarget(content.products, content.target_cents);
   }
 
   // One line of the display: "Target" on the left, "€7.50" on the right.
@@ -191,7 +219,9 @@
       belt.slots[place].append(button);
     }
 
-    content.products.forEach(addProduct);
+    for (let place = 0; place < PRODUCT_COUNT; place += 1) {
+      addProduct(content.products[place], place);
+    }
     body.append(display, belt.area, bag.area);
 
     // The frame calls this when the window closes: no timer is left behind.
