@@ -421,3 +421,229 @@ def test_postgres_closes_the_connection_when_a_query_fails(database, postgres):
     finally:
         FakeConnection.execute = original
     assert database.events[-1] == ("close",)
+
+
+# Diagnosing database problems from the log without leaking secrets (M1-2.5).
+# The fake values below are easy to recognise, so a test can check that none
+# of them reaches the log.
+
+from server.accounts.store import describe_problem, problem_log_line  # noqa: E402
+
+SECRET_URL = "postgresql://postgres.abcdefgh:hunter2secret@aws-0-eu-west-9.pooler.supabase.example:6543/gamedb"
+SECRET_PARTS = [
+    SECRET_URL,
+    "postgres.abcdefgh",  # user name
+    "abcdefgh",  # project
+    "hunter2secret",  # password
+    "pooler.supabase.example",  # host
+    "203.0.113.5",  # IP address
+    "6543",  # port
+    "gamedb",  # database name
+]
+CONNECTION_FAILED = 'connection failed: connection to server at "203.0.113.5", port 6543 failed: '
+PASSWORD_REJECTED = CONNECTION_FAILED + 'FATAL:  password authentication failed for user "postgres.abcdefgh"'
+
+
+class StandInError(Exception):
+    """An error with a SQLSTATE that psycopg has no class of its own for here."""
+
+    def __init__(self, message, sqlstate=None):
+        super().__init__(message)
+        self.sqlstate = sqlstate
+
+
+@pytest.mark.parametrize(
+    "problem, reason",
+    [
+        (psycopg.OperationalError(PASSWORD_REJECTED), "password rejected"),
+        (psycopg.errors.InvalidPassword("FATAL:  no access"), "password rejected"),
+        (psycopg.OperationalError(CONNECTION_FAILED + "FATAL:  Tenant or user not found"), "user or project not found"),
+        (psycopg.errors.InvalidAuthorizationSpecification("FATAL:  no such role"), "user or project not found"),
+        (psycopg.errors.InvalidCatalogName("FATAL:  no such thing"), "database name not found"),
+        (psycopg.OperationalError(CONNECTION_FAILED + 'FATAL:  database "gamedb" does not exist'), "database name not found"),
+        (
+            psycopg.OperationalError('could not translate host name "pooler.supabase.example" to address'),
+            "host name not found",
+        ),
+        (
+            psycopg.OperationalError("failed to resolve host 'pooler.supabase.example': [Errno -2] Name or service not known"),
+            "host name not found",
+        ),
+        (
+            psycopg.OperationalError("[Errno 8] nodename nor servname provided, or not known"),
+            "host name not found",
+        ),
+        (psycopg.OperationalError(CONNECTION_FAILED + "Network is unreachable"), "network unreachable"),
+        (psycopg.OperationalError(CONNECTION_FAILED + "No route to host"), "network unreachable"),
+        (psycopg.OperationalError(CONNECTION_FAILED + "Connection refused"), "connection refused"),
+        (psycopg.errors.ConnectionTimeout("connection timeout expired"), "connection timed out"),
+        (psycopg.OperationalError(CONNECTION_FAILED + "Operation timed out"), "connection timed out"),
+        (psycopg.errors.TooManyConnections("FATAL:  go away"), "too many connections"),
+        (psycopg.OperationalError(CONNECTION_FAILED + "FATAL:  sorry, too many clients already"), "too many connections"),
+        (psycopg.OperationalError(CONNECTION_FAILED + "FATAL:  Max client connections reached"), "too many connections"),
+        (psycopg.OperationalError(CONNECTION_FAILED + "server does not support SSL, but SSL was required"), "encrypted connection failed"),
+        (psycopg.errors.QueryCanceled("canceling statement due to statement timeout"), "statement timed out"),
+        (psycopg.errors.InsufficientPrivilege("permission denied for schema public"), "no permission"),
+        (psycopg.errors.UndefinedTable('relation "accounts" does not exist'), "table missing"),
+        (StandInError("something unusual", sqlstate="57014"), "statement timed out"),
+        (StandInError("something unusual", sqlstate="XX000"), "other database error"),
+        (psycopg.OperationalError("something nobody has seen before"), "other database error"),
+        (psycopg.OperationalError(""), "other database error"),
+    ],
+)
+def test_describe_problem_names_the_reason(problem, reason):
+    assert describe_problem(problem, "connect") == reason
+
+
+def test_describe_problem_trusts_the_sqlstate_more_than_the_text():
+    problem = StandInError("connection refused", sqlstate="42501")
+    assert describe_problem(problem) == "no permission"
+
+
+def test_describe_problem_takes_the_first_matching_reason():
+    # The text of a rejected password may also mention SSL.
+    problem = psycopg.OperationalError(PASSWORD_REJECTED + ", SSL off")
+    assert describe_problem(problem, "connect") == "password rejected"
+
+
+def test_a_url_that_cannot_be_read_is_named_only_while_connecting():
+    problem = psycopg.ProgrammingError('missing "=" after "postgres" in connection info string')
+    assert describe_problem(problem, "connect") == "database URL could not be read"
+    assert describe_problem(problem, "query") == "other database error"
+    assert describe_problem(problem) == "other database error"
+
+
+def test_a_real_malformed_url_is_a_url_that_cannot_be_read(caplog):
+    # Nothing is replaced here: psycopg itself refuses the text before any
+    # network is used.
+    store = PostgresAccountStore("postgres ql://user:hunter2secret@example.invalid/db")
+    with caplog.at_level("WARNING"), pytest.raises(StoreUnavailable):
+        store.find("Mara")
+    assert caplog.messages == [
+        "Accounts database problem during connect: database URL could not be read (ProgrammingError, SQLSTATE none)"
+    ]
+
+
+def test_a_host_that_cannot_be_a_host_name_is_store_unavailable(caplog):
+    # Python raises UnicodeError for this host, not a psycopg error, and does
+    # so before any network is used.
+    store = PostgresAccountStore("postgresql://user:hunter2secret@db..example.invalid:6543/db")
+    with caplog.at_level("WARNING"), pytest.raises(StoreUnavailable):
+        store.add("Mara", "hash-1")
+    assert caplog.messages == [
+        "Accounts database problem during connect: database URL could not be read (UnicodeEncodeError, SQLSTATE none)"
+    ]
+
+
+def test_the_log_line_has_reason_step_class_and_sqlstate():
+    line = problem_log_line(psycopg.errors.InsufficientPrivilege("permission denied"), "create table")
+    assert line == "Accounts database problem during create table: no permission (InsufficientPrivilege, SQLSTATE 42501)"
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        PASSWORD_REJECTED,
+        f"invalid connection option in {SECRET_URL}",
+        f'FATAL:  database "gamedb" does not exist on aws-0-eu-west-9.pooler.supabase.example ({SECRET_URL})',
+    ],
+)
+def test_the_log_never_shows_the_connection_details(monkeypatch, caplog, message):
+    def fail(*args, **kwargs):
+        raise psycopg.OperationalError(message)
+
+    monkeypatch.setattr(psycopg, "connect", fail)
+    store = PostgresAccountStore(SECRET_URL)
+    with caplog.at_level("DEBUG"), pytest.raises(StoreUnavailable) as caught:
+        store.find("Mara")
+
+    assert len(caplog.records) == 1
+    logged = caplog.text
+    assert "Accounts database problem during connect: " in logged
+    assert "(OperationalError, SQLSTATE none)" in logged
+    for secret in SECRET_PARTS:
+        assert secret not in logged
+        assert secret not in str(caught.value)
+    # Nothing of the raw text beyond the fixed reason.
+    for raw in ["FATAL", "connection to server", "authentication", "invalid connection option", "does not exist"]:
+        assert raw not in logged
+
+
+def test_the_whole_log_line_for_a_rejected_password(monkeypatch, caplog):
+    def fail(*args, **kwargs):
+        raise psycopg.OperationalError(PASSWORD_REJECTED)
+
+    monkeypatch.setattr(psycopg, "connect", fail)
+    with caplog.at_level("WARNING"), pytest.raises(StoreUnavailable):
+        PostgresAccountStore(SECRET_URL).add("Mara", "hash-1")
+    assert caplog.messages == [
+        "Accounts database problem during connect: password rejected (OperationalError, SQLSTATE none)"
+    ]
+
+
+def test_a_failure_in_create_table_logs_the_step_create_table(database, postgres, caplog):
+    database.fail_on = "create"
+    with caplog.at_level("WARNING"), pytest.raises(StoreUnavailable):
+        postgres.find("Mara")
+    assert caplog.messages == [
+        "Accounts database problem during create table: other database error (OperationalError, SQLSTATE none)"
+    ]
+
+
+def test_a_failure_saving_the_table_logs_the_step_create_table(database, postgres, caplog):
+    database.fail_on = "commit"
+    with caplog.at_level("WARNING"), pytest.raises(StoreUnavailable):
+        postgres.add("Mara", "hash-1")
+    assert len(caplog.messages) == 1
+    assert "during create table: " in caplog.messages[0]
+
+
+@pytest.mark.parametrize("failing_query", ["SET", "INSERT", "SELECT"])
+def test_a_failure_in_the_query_logs_the_step_query(database, postgres, caplog, monkeypatch, failing_query):
+    postgres.find("Mara")  # creates the table
+
+    def failing_execute(self, query, params=None):
+        if query.strip().startswith(failing_query):
+            raise psycopg.errors.QueryCanceled("canceling statement due to statement timeout")
+        return FakeCursor()
+
+    monkeypatch.setattr(FakeConnection, "execute", failing_execute)
+    with caplog.at_level("WARNING"), pytest.raises(StoreUnavailable):
+        postgres.add("Mara", "hash-1")
+        postgres.find("Mara")
+    assert caplog.messages == [
+        "Accounts database problem during query: statement timed out (QueryCanceled, SQLSTATE 57014)"
+    ]
+    assert database.events[-1] == ("close",)
+
+
+def test_a_failure_saving_the_query_logs_the_step_query(database, postgres, caplog):
+    postgres.find("Mara")  # creates the table
+    database.fail_on = "commit"
+    with caplog.at_level("WARNING"), pytest.raises(StoreUnavailable):
+        postgres.add("Mara", "hash-1")
+    assert len(caplog.messages) == 1
+    assert "during query: " in caplog.messages[0]
+
+
+@pytest.mark.parametrize("rule", [service.sign_up, service.log_in])
+def test_players_still_get_accounts_unavailable_for_every_step(monkeypatch, hasher, rule):
+    def fail(*args, **kwargs):
+        raise psycopg.OperationalError(PASSWORD_REJECTED)
+
+    monkeypatch.setattr(psycopg, "connect", fail)
+    store = PostgresAccountStore(SECRET_URL)
+    assert rule(store, hasher, "Mara", "password123") == (None, "accounts_unavailable")
+
+
+def test_postgres_turns_prepared_statements_off_for_the_pooler(database, postgres):
+    postgres.find("Mara")
+    args, kwargs = database.connect_arguments
+    assert kwargs["prepare_threshold"] is None
+
+
+def test_psycopg_itself_only_logs_errors():
+    # Its WARNING about a failed rollback can contain the host and the user.
+    import logging
+
+    assert logging.getLogger("psycopg").level == logging.ERROR
