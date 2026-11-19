@@ -29,6 +29,7 @@ window.Game = window.Game || {};
 
   let worldIsRunning = false;
   let roundIsRunning = false;
+  let mode = null; // the lobby's mode, from the last `lobby_state`
   // The stations this player has finished in the running round. The server
   // keeps the real list; this one only decides which stations glow.
   let finishedStations = new Set();
@@ -55,6 +56,7 @@ window.Game = window.Game || {};
   // (leaving, logging out, a lost connection) comes through here.
   function stopWorld() {
     Game.minigames.close(); // before the world stops, so its keys are not left paused
+    Game.duel.reset();
     roundIsRunning = false;
     finishedStations = new Set();
     if (!worldIsRunning) return;
@@ -66,13 +68,20 @@ window.Game = window.Game || {};
     Game.net.ask({ type: 'open_station', station: station });
   }
 
-  // Which stations glow and can be used: outside a round none, in a round
-  // the ones in use that this player has not finished yet.
+  // Which stations glow and can be used: outside a round none. In a Duel
+  // only the player's next station, and none once all are done (S-94). In
+  // any other round the ones in use that this player has not finished yet.
+  function usableStations() {
+    if (!roundIsRunning) return [];
+    if (mode === 'duel') {
+      const next = Game.duel.nextStation();
+      return next === null ? [] : [next];
+    }
+    return STATIONS_IN_USE.filter((station) => !finishedStations.has(station));
+  }
+
   function showUsableStations() {
-    const usable = roundIsRunning
-      ? STATIONS_IN_USE.filter((station) => !finishedStations.has(station))
-      : [];
-    callWorld('setUsableStations', usable);
+    callWorld('setUsableStations', usableStations());
   }
 
   function noteThePhase(phase) {
@@ -84,6 +93,7 @@ window.Game = window.Game || {};
 
   function whenSignedIn(message) {
     Game.lobby.setOwnName(message.name);
+    Game.duel.setOwnName(message.name);
     callWorld('setOwnName', message.name);
     Game.forms.showSignedIn(message.name, message.guest);
   }
@@ -115,6 +125,8 @@ window.Game = window.Game || {};
     startWorld(); // After the screen is visible, so the canvas has its size.
     // After the start: a world that stops forgets which stations were usable.
     noteThePhase(message.phase);
+    mode = message.mode;
+    Game.duel.noteLobby(message);
     showUsableStations();
   }
 
@@ -153,6 +165,19 @@ window.Game = window.Game || {};
     Game.minigames.showDone();
   }
 
+  // The player's own next station in a Duel: only that one glows from now on.
+  function whenDuelState(message) {
+    Game.duel.showState(message);
+    showUsableStations();
+  }
+
+  // The round is over. The server has closed an open task already; the
+  // window goes too, so the ranking is not hidden behind it.
+  function whenDuelResult(message) {
+    Game.minigames.close();
+    Game.duel.showResult(message);
+  }
+
   function whenError(message) {
     Game.forms.stopWaiting(); // Every error is an answer, also one that belongs to no field.
     if (ERRORS_THAT_CLOSE_THE_TASK.includes(message.code)) Game.minigames.close();
@@ -176,6 +201,7 @@ window.Game = window.Game || {};
 
   Game.forms.setup();
   Game.lobby.setup();
+  Game.duel.setup();
   callWorld('setUseHandler', openStation);
 
   Game.net.on('open', Game.screens.hideMessage);
@@ -188,6 +214,9 @@ window.Game = window.Game || {};
   Game.net.on('station_opened', whenStationOpened);
   Game.net.on('station_closed', Game.minigames.close);
   Game.net.on('station_done', whenStationDone);
+  Game.net.on('duel_state', whenDuelState);
+  Game.net.on('duel_progress', Game.duel.showProgress);
+  Game.net.on('duel_result', whenDuelResult);
   Game.net.on('notice', (message) => Game.screens.showMessage(message.message, false));
   Game.net.on('error', whenError);
 

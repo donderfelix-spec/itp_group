@@ -1274,6 +1274,123 @@ input {
 .checkout-picture-box::before { left: 6px; top: 8px; width: 28px; height: 25px; border-radius: 4px; background: var(--sand); }
 .checkout-picture-box::after { display: none; }
 
+/* ---- Duel: the panel during the round and the ranking, built by js/minigames/duel.js ---- */
+
+/* In the lobby panel, where the character selection stands outside a round. */
+.duel-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.duel-next {
+  margin: 0;
+  padding: 8px 10px;
+  border: var(--outline);
+  border-radius: 12px;
+  background: var(--sun);
+  font-weight: 800;
+}
+
+/* All three done: green like every "done". */
+.duel-next-finished { background: var(--green); }
+
+/* Large, like the lobby code: the one number everybody watches. */
+.duel-clock {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.duel-players,
+.duel-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.duel-player,
+.duel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.duel-player-name,
+.duel-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duel-player-done,
+.duel-row-result {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.duel-player-own { font-weight: 800; }
+
+/* The ranking lies over the map only, like the window of a minigame. */
+.duel-ranking {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgba(46, 42, 59, 0.35);
+}
+
+.duel-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(100%, 420px);
+  max-height: 100%;
+  padding: 22px;
+  border: var(--outline);
+  border-radius: 18px;
+  background: var(--cream);
+  box-shadow: 6px 6px 0 var(--ink);
+  overflow: auto;
+}
+
+.duel-title {
+  margin: 0;
+  font-size: 24px;
+}
+
+.duel-time-up {
+  margin: 0;
+  color: var(--coral);
+  font-weight: 800;
+}
+
+.duel-row {
+  padding: 6px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  font-size: 18px;
+}
+
+.duel-row-place {
+  min-width: 28px;
+  font-weight: 800;
+}
+
+/* The player's own row. */
+.duel-row-own { background: var(--sun); }
+
 .panel {
   display: flex;
   flex-direction: column;
