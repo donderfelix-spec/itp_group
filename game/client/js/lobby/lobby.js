@@ -139,7 +139,7 @@ window.Game = window.Game || {};
     return text;
   }
 
-  function showCharacters(players) {
+  function showCharacters(players, isOpen) {
     const own = players.find((player) => player.name === ownName);
     const takenByOthers = players
       .filter((player) => player.name !== ownName)
@@ -151,9 +151,10 @@ window.Game = window.Game || {};
       const isTaken = takenByOthers.includes(characterId);
       button.classList.toggle('character-own', isOwn);
       button.setAttribute('aria-pressed', String(isOwn));
-      // The server rejects a taken character anyway (S-81); switching the
-      // button off only saves the player the error.
-      button.disabled = isTaken;
+      // The server rejects a taken character anyway (S-81), and every
+      // character during the countdown (S-102); switching the button off
+      // only saves the player the error.
+      button.disabled = isTaken || !isOpen;
     });
   }
 
@@ -188,7 +189,7 @@ window.Game = window.Game || {};
   }
 
   // The host gets the buttons, everybody else only the text.
-  function showMode(modeId, isHost, isRunning) {
+  function showMode(modeId, isHost, isOpen) {
     modeGrid.hidden = !isHost;
     const modeText = document.getElementById('lobby-mode-text');
     modeText.hidden = isHost;
@@ -201,15 +202,17 @@ window.Game = window.Game || {};
       button.setAttribute('aria-pressed', String(isChosen));
       // The server refuses these anyway (S-91); switching the button off
       // only saves the host the error.
-      button.disabled = !mode.isBuilt || isRunning;
+      button.disabled = !mode.isBuilt || !isOpen;
     });
   }
 
   // ---- Start button ----
 
-  function showStartButton(state) {
+  // Switched off while too few players are there, and during the countdown:
+  // the host has pressed it already (S-102).
+  function showStartButton(state, isOpen) {
     const missing = playersMissing(state.mode, state.players.length);
-    startButton.disabled = missing > 0;
+    startButton.disabled = missing > 0 || !isOpen;
     const hint = document.getElementById('lobby-start-hint');
     hint.textContent = missing > 0 ? startHint(state.mode, missing) : '';
     hint.hidden = missing === 0;
@@ -263,11 +266,14 @@ window.Game = window.Game || {};
   function show(state) {
     codeElement.textContent = state.code;
     showPlayers(state);
-    showCharacters(state.players);
     const isHost = state.host === ownName;
     const isRunning = state.phase === 'round';
-    showMode(state.mode, isHost, isRunning);
-    showStartButton(state);
+    // Open: neither the countdown nor a round is running. Only then the
+    // characters, the mode and the start button can be used.
+    const isOpen = state.phase === 'lobby';
+    showCharacters(state.players, isOpen);
+    showMode(state.mode, isHost, isOpen);
+    showStartButton(state, isOpen);
     // During a round "Round running" stands where the character selection
     // and the start button (or "Waiting for the host") were.
     document.getElementById('lobby-character-area').hidden = isRunning;

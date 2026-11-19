@@ -599,3 +599,23 @@ def test_the_second_round_counts_down_again_and_starts_fresh(connect, clock, mon
         assert types_of(told[name]) == ["lobby_state", "duel_state", "duel_progress"]
         assert told[name][1] == state(second_duel._players[name].route[0], 0)
         assert told[name][2] == progress(180, ("Mara", 0), ("Tiago", 0))
+
+
+# The page
+
+
+def test_the_countdown_script_is_served_and_loaded_after_the_lobby_and_before_main(client):
+    assert client.get("/js/lobby/countdown.js").status_code == 200
+    page = client.get("/").text
+    scripts = ["js/lobby/lobby.js", "js/lobby/countdown.js", "js/main.js"]
+    places = [page.index(f'<script src="{script}">') for script in scripts]
+    assert places == sorted(places)
+
+
+def test_the_page_has_the_text_of_the_countdown_and_leaves_the_number_to_the_server(client):
+    page = client.get("/").text
+    assert ">Round starts in<" in page
+    # The number is empty in the page: it comes with the `countdown` message.
+    assert '<p id="countdown-number" class="countdown-number"></p>' in page
+    script = client.get("/js/lobby/countdown.js").text
+    assert "message.seconds" in script

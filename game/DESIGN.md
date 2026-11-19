@@ -75,7 +75,7 @@ All characters are the same size and the same speed, they differ only in how the
 | 1 | Start | Logo, “Log in”, “Sign up”, “Play as guest” |
 | 2 | Sign up / Log in | Username, password, error message directly at the field. When signing up, the rules stand below the fields from the start: “3–16 letters or numbers” and “8–64 characters” |
 | 3 | Home | “Create lobby” (yellow), “Join with code”, own profile, “Leaderboard”. If time allows: friends list with status |
-| 4 | Lobby | Code in large letters for reading aloud, player list with characters, character selection. Characters taken by other players are greyed out. Until “Start game” exists, everyone in the lobby already walks on the map, with the lobby shown next to it. The host chooses the mode: “Duel” or “Classic”. A mode that is not built yet is greyed out with “Coming with the next milestone”; everyone sees the chosen mode. At the bottom right is the yellow button “Start game”, which only the host sees. It is grey as long as too few players are there, and below it there is then a text such as “Classic needs 2 more players”. All others see “Waiting for the host” in that place. While a round is running, the panel shows “Round running” instead of the character selection and the start button |
+| 4 | Lobby | Code in large letters for reading aloud, player list with characters, character selection. Characters taken by other players are greyed out. Until “Start game” exists, everyone in the lobby already walks on the map, with the lobby shown next to it. The host chooses the mode: “Duel” or “Classic”. A mode that is not built yet is greyed out with “Coming with the next milestone”; everyone sees the chosen mode. At the bottom right is the yellow button “Start game”, which only the host sees. It is grey as long as too few players are there, and below it there is then a text such as “Classic needs 2 more players”. All others see “Waiting for the host” in that place. When the host presses “Start game”, the round does not begin at once: everybody sees “Round starts in” and a large number over the map that counts 5, 4, 3, 2, 1, and then the round starts. During this countdown everybody can still walk, but the characters, the mode and the start button are switched off, and nobody can join. A ranking that is still open stays readable; the countdown then stands smaller in the top left corner of the map. If so many players leave during the countdown that too few are left for the mode, the countdown ends without a round and the lobby is open again. While a round is running, the panel shows “Round running” instead of the character selection and the start button |
 | 5 | Role reveal | Three seconds: “You are a High Performer” or “You are the Free Rider” in coral |
 | 6 | Game | Map with displays, see below |
 | 7 | Minigame | Window on top of the map, closes with Esc |
@@ -236,7 +236,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Username or password too short or with characters that are not allowed | “Usernames are 3–16 letters or numbers.” / “Passwords need at least 8 characters.” |
 | Wrong password | “Wrong username or password.” |
 | Lobby code does not exist | “No lobby with that code.” |
-| Lobby is full or round is already running | “This lobby is full.” / “This round has already started.” |
+| Lobby is full, or its countdown or round is already running | “This lobby is full.” / “This round has already started.” |
 | Too few players for the mode | “Classic needs at least 4 players.” |
 | Connection lost | “Connection lost. Reconnecting…” |
 | Database not reachable | “Accounts are unavailable right now. You can still play as a guest.” |
@@ -252,7 +252,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Choosing the mode or starting the round without being the host | “Only the host can do that.” |
 | Choosing a mode that does not exist or is not built yet (only when someone bypasses the page) | “That mode does not exist.” |
 | Starting Duel with fewer than 2 players | “Duel needs at least 2 players.” |
-| Choosing the mode, choosing a character or starting the round while a round is running | “This round has already started.” |
+| Choosing the mode, choosing a character or starting the round during the countdown or while a round is running | “This round has already started.” |
 | Opening, closing or finishing a task while no round is running | “No round is running.” |
 | Opening a station that does not exist or is not in use (only when someone bypasses the page) | “That station does not exist.” |
 | Opening a station from too far away | “You are too far away.” |
