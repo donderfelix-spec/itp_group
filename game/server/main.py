@@ -24,6 +24,7 @@ from starlette.websockets import WebSocketState
 
 from server import protocol
 from server.accounts import service, statistics
+from server.accounts.leaderboard_cache import LeaderboardCache
 from server.accounts.statistics_store import make_statistics_store
 from server.accounts.store import StoreUnavailable, make_account_store
 from server.modes import duel, minigames, tasks
@@ -65,6 +66,11 @@ app = FastAPI(title="Group Project", docs_url=None, redoc_url=None, openapi_url=
 app.state.account_store = make_account_store(os.environ.get("DATABASE_URL"))
 # Statistics live next to the accounts: in Postgres or in memory (S-39).
 app.state.statistics_store = make_statistics_store(os.environ.get("DATABASE_URL"))
+# The last answer for the leaderboard, kept for a few seconds, and the
+# question to the store that is running right now, as `(store, task)` or None
+# (see `leaderboard_totals`).
+app.state.leaderboard_cache = LeaderboardCache()
+app.state.leaderboard_call = None
 app.state.hasher = service.Argon2Hasher()
 app.state.sessions = Sessions()
 app.state.lobbies = Lobbies()
@@ -299,11 +305,51 @@ async def handle_get_leaderboard(websocket: WebSocket) -> dict:
     """The leaderboard, for accounts and guests alike."""
     if not app.state.sessions.is_signed_in(websocket):
         return protocol.rejection("not_signed_in")
-    totals = await ask_statistics_store(app.state.statistics_store.top, statistics.LEADERBOARD_SIZE)
+    totals = await leaderboard_totals()
     if totals is None:
         return protocol.rejection("statistics_unavailable")
     # Cut again here: whatever a store returns, nobody gets more than 20 rows.
     return protocol.leaderboard(statistics.leaderboard_rows(totals[: statistics.LEADERBOARD_SIZE]))
+
+
+async def leaderboard_totals():
+    """The accounts of the leaderboard, best first, or None when the statistics cannot be used.
+
+    The store is asked at most once in 10 seconds (see `LeaderboardCache`).
+    Players who ask while a question to the store is running wait for its
+    answer instead of starting a question of their own.
+    """
+    store = app.state.statistics_store
+    cached = app.state.leaderboard_cache.get(store, seconds_now())
+    if cached is not None:
+        return cached
+    running = app.state.leaderboard_call
+    if running is None or running[0] is not store or running[1].done():
+        running = (store, asyncio.create_task(load_leaderboard(store)))
+        app.state.leaderboard_call = running
+    # `shield`: if this player leaves while waiting, the question goes on
+    # for the others who wait for the same answer.
+    return await asyncio.shield(running[1])
+
+
+async def load_leaderboard(store):
+    """Ask the store for the leaderboard and keep its answer. Never raises. A failure is not kept."""
+    cache = app.state.leaderboard_cache
+    ticket = cache.ticket()
+    totals = await ask_statistics_store(store.top, statistics.LEADERBOARD_SIZE)
+    if totals is not None:
+        # Refused by the cache if a result was written in the meantime:
+        # this answer may be older than that result.
+        cache.put(store, totals, seconds_now(), ticket)
+    return totals
+
+
+def forget_leaderboard():
+    """The numbers have changed: the next look at the leaderboard asks the store again."""
+    app.state.leaderboard_cache.drop()
+    # A question that is still running may be answered with the old
+    # numbers, so nobody new waits for it.
+    app.state.leaderboard_call = None
 
 
 async def ask_statistics_store(method, *values):
@@ -369,6 +415,9 @@ async def write_result(mode: str, changes: list):
     # If the database cannot be reached, the result of this round is lost.
     # The store has logged why; the round itself ended long before.
     await ask_statistics_store(app.state.statistics_store.record_round, mode, changes)
+    # Also after a failed write: it costs one question to the store, and
+    # nobody has to work out here what a failure left behind.
+    forget_leaderboard()
 
 
 STATISTICS_HANDLERS = {
@@ -664,7 +713,10 @@ async def send_positions(name: str, connection, lobby, message: dict):
 
 
 def seconds_now() -> float:
-    """The server's clock for the tasks. A function of its own, so tests can replace it."""
+    """The server's clock for the tasks, the rounds and the leaderboard's cache.
+
+    A function of its own, so tests can replace it.
+    """
     return time.monotonic()
 
 

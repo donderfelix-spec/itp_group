@@ -16,6 +16,7 @@ import time
 import pytest
 
 from server import main, protocol
+from server.accounts.leaderboard_cache import LeaderboardCache
 from server.accounts.statistics_store import MemoryStatisticsStore
 from server.accounts.store import StoreUnavailable
 from server.main import app
@@ -62,10 +63,15 @@ class CountingStore(MemoryStatisticsStore):
     def __init__(self):
         super().__init__()
         self.rounds = []  # (mode, changes), in the order written
+        self.tops = 0  # how often the leaderboard was asked for
 
     def record_round(self, mode, changes):
         super().record_round(mode, changes)
         self.rounds.append((mode, changes))
+
+    def top(self, limit):
+        self.tops += 1
+        return super().top(limit)
 
 
 class BrokenStore:
@@ -111,6 +117,8 @@ class WaitingStore(CountingStore):
 @pytest.fixture(autouse=True)
 def store():
     app.state.statistics_store = CountingStore()
+    app.state.leaderboard_cache = LeaderboardCache()
+    app.state.leaderboard_call = None
     return app.state.statistics_store
 
 
@@ -568,6 +576,116 @@ def test_the_answers_carry_nothing_else_about_an_account(connect, clock, fixed_r
     for answer in (own, board):
         text = str(answer)
         assert "hash" not in text and "argon2" not in text and "name_key" not in text and "password" not in text
+
+
+# The leaderboard's cache: the store is asked at most once in 10 seconds
+
+
+def names_on(board):
+    return [row["name"] for row in board["players"]]
+
+
+def one_round(name, wins=1):
+    return ("duel", [{"name": name, "rounds": 1, "wins": wins, "best_seconds": None}])
+
+
+def test_within_10_seconds_the_leaderboard_comes_from_the_cache(connect, clock, store):
+    store.record_round(*one_round("Mara"))
+    mara, tiago = player(connect, "Mara"), player(connect, "Tiago")
+    first = ask(mara, {"type": "get_leaderboard"})
+    # Written past the server, so nothing drops the cache: the old answer stays.
+    store.record_round(*one_round("Tiago", wins=5))
+    clock.wait(9.9)
+    assert ask(mara, {"type": "get_leaderboard"}) == first
+    assert ask(tiago, {"type": "get_leaderboard"}) == first
+    assert store.tops == 1
+
+
+def test_after_10_seconds_the_store_is_asked_again(connect, clock, store):
+    store.record_round(*one_round("Mara"))
+    mara = player(connect, "Mara")
+    ask(mara, {"type": "get_leaderboard"})
+    store.record_round(*one_round("Tiago", wins=5))
+    clock.wait(10)
+    assert names_on(ask(mara, {"type": "get_leaderboard"})) == ["Tiago", "Mara"]
+    assert store.tops == 2
+    # The new answer is kept for its own 10 seconds.
+    clock.wait(9.9)
+    ask(mara, {"type": "get_leaderboard"})
+    assert store.tops == 2
+
+
+def test_a_written_result_drops_the_cache_so_the_new_numbers_show(connect, clock, fixed_routes, store):
+    players, code = duel_of(connect, ["Mara", "Tiago"])
+    assert leaderboard_for(players["Mara"]) == protocol.leaderboard([])
+    assert leaderboard_for(players["Tiago"]) == protocol.leaderboard([])
+    assert store.tops == 1
+    play_route(players["Mara"], "Mara", clock)
+    play_route(players["Tiago"], "Tiago", clock)
+    wait_for_rounds(store, 1)
+    # The server's clock stands still here, so only the drop can bring new
+    # numbers. It follows the write within a moment.
+    deadline = time.monotonic() + DEADLINE_SECONDS
+    while names_on(leaderboard_for(players["Mara"])) != ["Mara", "Tiago"]:
+        assert time.monotonic() < deadline, "the cache was not dropped after the result was written"
+        time.sleep(0.01)
+    assert store.tops == 2
+
+
+def test_a_failed_question_is_not_cached(connect, clock):
+    class FailingOnce(CountingStore):
+        def top(self, limit):
+            self.tops += 1
+            if self.tops == 1:
+                raise StoreUnavailable("down")
+            return MemoryStatisticsStore.top(self, limit)
+
+    app.state.statistics_store = FailingOnce()
+    app.state.statistics_store.record_round(*one_round("Mara"))
+    mara = player(connect, "Mara")
+    assert ask(mara, {"type": "get_leaderboard"}) == UNAVAILABLE
+    # At once, without waiting 10 seconds: the store is asked again.
+    assert names_on(ask(mara, {"type": "get_leaderboard"})) == ["Mara"]
+    assert app.state.statistics_store.tops == 2
+
+
+def test_players_who_ask_while_the_store_is_busy_wait_for_the_same_answer(connect, clock):
+    class SlowTop(CountingStore):
+        def __init__(self):
+            super().__init__()
+            self.started = threading.Event()
+            self.go = threading.Event()
+
+        def top(self, limit):
+            self.started.set()
+            assert self.go.wait(DEADLINE_SECONDS), "the test never let the store go on"
+            return super().top(limit)
+
+    slow = SlowTop()
+    app.state.statistics_store = slow
+    slow.record_round(*one_round("Mara"))
+    mara, tiago, ines = player(connect, "Mara"), player(connect, "Tiago"), player(connect, "Ines")
+    try:
+        mara.send_json({"type": "get_leaderboard"})
+        assert slow.started.wait(DEADLINE_SECONDS)
+        tiago.send_json({"type": "get_leaderboard"})
+        ines.send_json({"type": "get_leaderboard"})
+        # Both have arrived at the server when their hello is answered... which
+        # is only after the leaderboard, so a short wait has to do here.
+        time.sleep(0.2)
+    finally:
+        slow.go.set()
+    answers = [connection.receive_json() for connection in (mara, tiago, ines)]
+    assert [names_on(answer) for answer in answers] == [["Mara"]] * 3
+    assert slow.tops == 1
+
+
+def test_the_answer_of_another_store_is_never_served(connect, clock, store):
+    store.record_round(*one_round("Mara"))
+    mara = player(connect, "Mara")
+    assert names_on(ask(mara, {"type": "get_leaderboard"})) == ["Mara"]
+    app.state.statistics_store = CountingStore()
+    assert ask(mara, {"type": "get_leaderboard"}) == protocol.leaderboard([])
 
 
 # The page
