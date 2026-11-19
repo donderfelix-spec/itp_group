@@ -8,13 +8,14 @@ A result is written in the background, after the players were told. So a
 test that wants to read it waits for it first (`wait_for_rounds`).
 """
 
+import asyncio
 import logging
 import threading
 import time
 
 import pytest
 
-from server import protocol
+from server import main, protocol
 from server.accounts.statistics_store import MemoryStatisticsStore
 from server.accounts.store import StoreUnavailable
 from server.main import app
@@ -302,6 +303,68 @@ def test_nothing_is_written_while_the_round_is_still_running(connect, clock, fix
     time.sleep(0.1)
     assert store.rounds == []
     assert profile_of(players["Mara"]) == profile("Mara", 0, 0, None)
+
+
+def test_a_round_that_goes_on_has_no_result_to_write(connect, clock, fixed_routes):
+    players, code = duel_of(connect, ["Mara", "Tiago"])
+    assert main.end_round_if_over(lobby_named("Mara")) == ({}, None)
+
+
+def test_two_ends_in_one_lobby_each_write_their_own_result_after_their_own_players_were_told(monkeypatch, store):
+    """The second round of a lobby ends while the first is still being told.
+
+    Each call of `tell_round_ended` carries its own result: the second one
+    writes only its own, and the first is written only once its own
+    players have been told, however long that takes.
+    """
+    first_result = ("duel", [{"name": "Mara", "rounds": 1, "wins": 1, "best_seconds": 30.0}])
+    second_result = ("duel", [{"name": "Mara", "rounds": 1, "wins": 0, "best_seconds": 40.0}])
+    lobby = object()
+    told = []
+
+    async def scenario():
+        first_may_finish = asyncio.Event()
+
+        async def slow_for_the_first(name, the_lobby, messages):
+            if messages == ["first"]:
+                await first_may_finish.wait()
+            told.append(messages[0])
+
+        async def no_lobby_state(the_lobby, new_host=None):
+            pass
+
+        monkeypatch.setattr(main, "tell_farewell", slow_for_the_first)
+        monkeypatch.setattr(main, "tell_lobby", no_lobby_state)
+
+        first = asyncio.create_task(main.tell_round_ended(lobby, {"Mara": ["first"]}, first_result))
+        await asyncio.sleep(0)  # the first call is now waiting for its player
+        await main.tell_round_ended(lobby, {"Mara": ["second"]}, second_result)
+        await asyncio.gather(*main.background_sends)
+        written_while_the_first_waits = list(store.rounds)
+
+        first_may_finish.set()
+        await first
+        await asyncio.gather(*main.background_sends)
+        return written_while_the_first_waits
+
+    written_while_the_first_waits = asyncio.run(scenario())
+    assert written_while_the_first_waits == [second_result]
+    assert told == ["second", "first"]
+    assert store.rounds == [second_result, first_result]
+
+
+def test_a_round_without_a_result_writes_nothing(monkeypatch, store):
+    async def scenario():
+        async def told_at_once(*values):
+            pass
+
+        monkeypatch.setattr(main, "tell_farewell", told_at_once)
+        monkeypatch.setattr(main, "tell_lobby", told_at_once)
+        await main.tell_round_ended(object(), {"Guest0001": ["bye"]}, None)
+        await asyncio.gather(*main.background_sends)
+
+    asyncio.run(scenario())
+    assert store.rounds == []
 
 
 # Writing does not delay or break the end of the round
