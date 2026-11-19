@@ -22,6 +22,7 @@ These points hold up the start. The reasoning behind them is under “Open decis
 - [x] **K8** “We Be(a)t” is put aside for now (S-27)
 - [x] **K9** Render account created and service set up (2026-11-18)
 - [ ] **K10** Names and student numbers of all members for the README (S-36)
+- [ ] **K16** Three questions from the play test of M2-2.2: may players walk while the ranking card covers the map (they can, unseen)? May the host start the next round while others still read the ranking (their card is taken away)? Should a finished player have to wait up to three minutes for the slowest one, or does the round end earlier?
 
 ## M0: Preparation
 
@@ -86,7 +87,7 @@ Milestone 2 was built up to the Duel by Claude as lead (pull requests #19 to #26
 
 **Area 2 (Felix)**
 
-- [ ] **M2-2.2** Back to the lobby after the round (Felix). The Duel already ends its round on the server (`Lobby.end_round`, S-94): the lobby is in phase `lobby` again, the ranking has a button “Back to lobby” that takes the card away, and the host can start the next round without a new code. Left to do: decide what the panel shows after a round, where the players stand when the round ends (they stay where they are for now), and play it through with three players
+- [x] **M2-2.2** Back to the lobby after the round (Felix). Played through with three players in real browsers, also with the time running out and three rounds in a row; the run is `tests/test_play_back_to_lobby.py`. What the panel shows and where the players stand is decided in S-101 (2026-11-19)
 - [ ] **M2-2.3** A player leaves the round, the host changes (Felix). For Duel the server part is built and tested: a player who leaves, logs out, disconnects or logs in elsewhere is taken out of the progress and the ranking, the round goes on, also for one player, and ends when the rest have finished; the host changes as in the lobby. Left to do: a play test with real browsers, and what a player who lost the connection sees when coming back (they cannot rejoin a running round, M3-2.2)
 - [ ] **M2-2.4** Statistics: the server writes the result of every round, profile with wins and best Duel time, leaderboard (Felix). Not started. `Duel.ranking()` in `server/modes/duel.py` gives place, name, time and stations done at the end of a round; the place to write from is where `server/main.py` ends the round. Only the server writes results (S-40), guests have no statistics (S-38). Writing must not hold up or break the end of the round: see how the Duel takes back a count when something fails after it (M2-4.7a)
 
@@ -97,6 +98,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M2-4.7a** A fault after a task was counted takes the count back, in the frame and in the Duel, so the server never counts a station the browser was not told about (solved with M2-4.7)
 - [x] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard (S-94). In the pull request after #26
 - [ ] **M2-4.8** Play test: two players play a Duel through to the leaderboard (Lennart). A scripted run with two browsers and the real minigames exists from the building of M2-4.7 (both finish, ranking, second round, time running out). Left to do: two people on two computers on the deployed server, and write down what gets in the way
+- [ ] **M2-4.9** After a solved minigame the “Done” window stays for one second and the walking keys are ignored during it; a key that is already held only counts again when the window has closed. In a Duel that is three seconds of standing per route and feels like lag (found in the play test of M2-2.2, after Felix reported lag). Let a held or newly pressed walking key take effect at once, or shorten the window (Lennart)
 
 **Known and open after the Duel**
 
