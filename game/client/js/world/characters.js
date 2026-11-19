@@ -413,11 +413,10 @@ Game.world = Game.world || {};
       sideBehind: nothing,
       sideClothes: function (ctx) {
         box(ctx, -14, 68, 28, 14, 5, "#F08A3C", 2);
-        // The necklace and the surfboard print are on the front of the
-        // shirt; from the side only their near ends are seen.
+        // The necklace is seen from the side by its near end. The surfboard
+        // print is on the front of the shirt and not seen from the side.
         circle(ctx, 8.5, 42.5, 1.8, "#FFFFFF", 0);
         circle(ctx, 12, 45, 1.8, "#FFFFFF", 0);
-        stroke(ctx, "M5 64 q3 -4 6 0 q1.5 2 3 0", "#FFFFFF", 1.8);
       },
       sideObject: nothing,
       sideHead: function (ctx) {

@@ -719,11 +719,59 @@ Game.world = Game.world || {};
     ctx.fillText(label.name, label.x, label.y + 0.3);
   }
 
+  // ---- Stations under a character -------------------------------------
+
+  // A character that stands on a station hides its number. Such a station
+  // gets its number again in a small badge at its lower edge, drawn over
+  // the characters, so it can still be told which station it is.
+  var BADGE_RADIUS = 4.5;
+  var BADGE_TEXT_SIZE = 6.5;
+  var YELLOW = "#FFD23F"; // the colour of the stations in draw.js
+  // A drawn character hides this much to the left and right of its middle.
+  var FIGURE_HALF_WIDTH = 9;
+
+  // Does the drawing of this character lie over the middle of the station?
+  // The figure reaches from its feet up by CHARACTER_HEIGHT.
+  function hidesNumberOf(entry, station) {
+    var feetY = entry.y + FEET_BELOW_POSITION;
+    var isOverIt = feetY > station.y - station.r / 2 && feetY - CHARACTER_HEIGHT < station.y + station.r / 2;
+    return isOverIt && Math.abs(entry.x - station.x) < FIGURE_HALF_WIDTH;
+  }
+
+  function drawBadge(station) {
+    var y = station.y + station.r;
+    ctx.beginPath();
+    ctx.arc(station.x, y, BADGE_RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = YELLOW;
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = OUTLINE;
+    ctx.stroke();
+    ctx.fillStyle = OUTLINE;
+    ctx.fillText(String(station.id), station.x, y + 0.3);
+  }
+
+  function drawBadgesOfHiddenStations(visible) {
+    var stations = Array.isArray(campus.stations) ? campus.stations : [];
+    ctx.font = "bold " + BADGE_TEXT_SIZE + "px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (var i = 0; i < stations.length; i++) {
+      for (var j = 0; j < visible.length; j++) {
+        if (hidesNumberOf(visible[j], stations[i])) {
+          drawBadge(stations[i]);
+          break; // one badge per station is enough
+        }
+      }
+    }
+  }
+
   function drawPlayers(now) {
     var visible = visiblePlayers(now);
     visible.forEach(function (entry) {
       drawPlayer(entry, now);
     });
+    drawBadgesOfHiddenStations(visible);
     // All names after all characters, so no name is hidden behind a head.
     useNameFont();
     placeLabels(visible).forEach(drawLabel);
