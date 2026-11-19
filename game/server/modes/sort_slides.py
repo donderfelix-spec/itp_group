@@ -42,5 +42,6 @@ def make_content(rng) -> dict:
     return {"kind": "sort_slides", "order": list(RIGHT_ORDER), "slides": shuffled_pile(rng)}
 
 
-# Nobody drags five slides into place in under three seconds (S-93).
-MINIGAME = Minigame(title="Sort the slides", min_seconds=3, make_content=make_content)
+# Stops a script that reports "done" at once; a quick, correct player is
+# not punished (S-93).
+MINIGAME = Minigame(title="Sort the slides", min_seconds=1, make_content=make_content)

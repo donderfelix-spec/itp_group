@@ -131,7 +131,7 @@ def test_station_1_is_sort_the_slides():
     minigame = minigames.MINIGAMES[1]
     assert minigame is sort_slides.MINIGAME
     assert minigame.title == "Sort the slides"
-    assert minigame.min_seconds == 3
+    assert minigame.min_seconds == 1
     assert minigame.make_content is sort_slides.make_content
 
 
@@ -235,14 +235,14 @@ def test_a_reopened_station_1_has_a_new_pile(connect, clock, monkeypatch):
     assert first["content"]["slides"] != second["content"]["slides"]
 
 
-def test_station_1_is_too_fast_before_three_seconds_and_counts_after(connect, clock):
+def test_station_1_is_too_fast_before_one_second_and_counts_after(connect, clock):
     mara = mara_at_station_1(connect)
     open_station_1(mara)
-    clock.wait(2.9)
+    clock.wait(0.9)
     too_fast = ask(mara, {"type": "finish_station"})
     assert (too_fast["type"], too_fast["code"]) == ("error", "too_fast")
     # After "too fast" the server closes the task (see test_server_tasks.py).
     assert mara.receive_json() == {"type": "station_closed", "station": 1}
     open_station_1(mara)
-    clock.wait(3)
+    clock.wait(1)
     assert ask(mara, {"type": "finish_station"}) == {"type": "station_done", "station": 1}
