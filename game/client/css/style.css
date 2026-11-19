@@ -251,10 +251,13 @@ input {
 /* ---- The window of a minigame, built by js/minigames/frame.js ---- */
 
 /* Lies over the map only: the lobby panel next to it stays visible. The
-   veil catches the clicks, so nothing behind the window can be pressed. */
+   veil catches the clicks, so nothing behind the window can be pressed.
+   The z-index puts it over the "E Use" button, which comes later in the
+   page and would otherwise be drawn over a corner of the window. */
 .minigame {
   position: absolute;
   inset: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
