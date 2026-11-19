@@ -2,7 +2,7 @@
 
 There is no JavaScript test runner in this project, so these tests read the
 files the server hands to the browser: the eye button at each password field
-(M1-2.7).
+(M1-2.7) and the text for being signed out by a second log-in (M1-2.8).
 """
 
 import re
@@ -15,6 +15,7 @@ from server.main import app
 
 CLIENT_FOLDER = Path(__file__).resolve().parent.parent / "client"
 FORMS = ["signup", "login"]
+SIGNED_OUT_TEXT = "You were signed in somewhere else."
 
 
 @pytest.fixture(scope="module")
@@ -106,3 +107,16 @@ def test_the_stylesheet_is_served_with_the_rules_for_the_eye():
         answer = client.get("/css/style.css")
     assert answer.status_code == 200
     assert ".password-eye" in answer.text
+
+
+def test_the_signed_out_text_stands_in_the_client_exactly_once():
+    files = [path for path in CLIENT_FOLDER.rglob("*") if path.suffix in {".html", ".js", ".css"}]
+    count = sum(path.read_text(encoding="utf-8").count(SIGNED_OUT_TEXT) for path in files)
+    assert count == 1
+
+
+def test_the_signed_out_text_is_not_sent_by_the_server():
+    # The browser works out by itself why it was signed out (see main.js).
+    server_folder = CLIENT_FOLDER.parent / "server"
+    for path in server_folder.rglob("*.py"):
+        assert SIGNED_OUT_TEXT not in path.read_text(encoding="utf-8"), path

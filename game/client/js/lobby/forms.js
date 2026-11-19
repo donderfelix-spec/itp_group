@@ -25,14 +25,15 @@ window.Game = window.Game || {};
     { field: 'login-password', button: 'login-password-eye' },
   ];
 
-  function setup() {
+  // `logOut` is the function of main.js that asks the server to log out.
+  function setup(logOut) {
     onClick('start-login', () => openForm('login'));
     onClick('start-signup', () => openForm('signup'));
     onClick('start-guest', () => Game.net.ask({ type: 'guest' }));
     onClick('signup-back', backToStart);
     onClick('login-back', backToStart);
     onClick('home-create', () => Game.net.ask({ type: 'create_lobby' }));
-    onClick('home-logout', () => Game.net.ask({ type: 'log_out' }));
+    onClick('home-logout', logOut);
 
     // A form's "submit" fires for its button and for Enter in a field.
     signupForm.addEventListener('submit', (event) => submitAccountForm(event, signupForm, 'sign_up'));
