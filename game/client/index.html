@@ -110,15 +110,24 @@
           <h2 class="panel-heading">Players</h2>
           <ul id="lobby-players" class="players"></ul>
 
-          <h2 class="panel-heading">Character</h2>
-          <div id="lobby-characters" class="characters"></div>
+          <h2 class="panel-heading">Mode</h2>
+          <!-- The host chooses here; the others only read the mode. -->
+          <div id="lobby-modes" class="modes" hidden></div>
+          <p id="lobby-mode-text" class="mode-text"></p>
+
+          <!-- Hidden while the round is running: characters stay as they are then. -->
+          <div id="lobby-character-area" class="character-area">
+            <h2 class="panel-heading">Character</h2>
+            <div id="lobby-characters" class="characters"></div>
+          </div>
         </div>
 
         <div class="panel-bottom">
+          <p id="lobby-round" class="waiting" hidden>Round running</p>
           <p id="lobby-waiting" class="waiting">Waiting for the host</p>
           <div id="lobby-host-area" hidden>
-            <button type="button" class="button button-main" disabled>Start game</button>
-            <p class="rule">Coming with the next milestone</p>
+            <button type="button" id="lobby-start" class="button button-main" disabled>Start game</button>
+            <p id="lobby-start-hint" class="rule"></p>
           </div>
           <button type="button" id="lobby-leave" class="button">Leave lobby</button>
         </div>
