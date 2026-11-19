@@ -817,6 +817,191 @@ input {
   background: radial-gradient(circle, #D9D3C5 1.5px, transparent 2px) 0 0 / 9px 7px, #FFFFFF;
 }
 
+/* ---- Minigame "Sort the slides", built by js/minigames/sort_slides.js ---- */
+
+.slides-board {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 100%;
+  padding: 4px;
+  -webkit-user-select: none; /* Safari */
+  user-select: none;
+}
+
+/* Five columns: the places on top, the pile below, one above the other. */
+.slides-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.slides-place,
+.slides-spot {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+}
+
+.slides-place {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2.5px dashed var(--ink);
+  background: var(--sand);
+}
+
+.slides-place.slides-filled { border-style: solid; border-color: var(--green); }
+
+.slides-number {
+  font-size: 30px;
+  font-weight: 800;
+  opacity: 0.45;
+}
+
+/* The room a slide left in the pile. */
+.slides-spot { background: rgba(46, 42, 59, 0.08); }
+
+/* One slide: a small white sheet with its name and a sketch. */
+.slides-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 6px 6px;
+  border: var(--outline);
+  border-radius: 8px;
+  background: #FFFFFF;
+  box-shadow: 3px 3px 0 var(--ink);
+  cursor: grab;
+  /* The browser must not scroll or select instead of dragging. */
+  touch-action: none;
+}
+
+.slides-slide.slides-dragging {
+  z-index: 2;
+  box-shadow: 7px 7px 0 rgba(46, 42, 59, 0.45);
+  cursor: grabbing;
+  rotate: -3deg;
+}
+
+/* On a wrong place, just before the slide jumps back. As long as SHAKE_MS. */
+.slides-slide.slides-shaking {
+  z-index: 2;
+  border-color: var(--coral);
+  animation: slides-shake 0.35s linear;
+}
+
+@keyframes slides-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-7px); }
+  40%, 80% { transform: translateX(7px); }
+}
+
+/* In its right place: it stays, with a green outline and a tick. */
+.slides-slide.slides-locked {
+  inset: -2.5px; /* lies exactly on the outline of its place */
+  border-color: var(--green);
+  box-shadow: none;
+  cursor: default;
+}
+
+.slides-slide.slides-locked::after {
+  content: "\2713";
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--green);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+}
+
+.slides-name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The sketches. They are only decoration, so they let the pointer through. */
+.slides-sketch {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  pointer-events: none;
+}
+
+.slides-sketch-title,
+.slides-sketch-agenda {
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.slides-sketch-title { align-items: center; }
+
+.slides-line-thick { width: 80%; height: 6px; border-radius: 3px; background: var(--ink); }
+.slides-line-thin { width: 50%; height: 3px; border-radius: 2px; background: var(--ink); opacity: 0.5; }
+
+/* A dot and a line: one point of the agenda. */
+.slides-bullet {
+  height: 4px;
+  margin-left: 9px;
+  border-radius: 2px;
+  background: var(--ink);
+  opacity: 0.6;
+  box-shadow: -8px 0 0 var(--ink);
+}
+
+.slides-bullet:nth-child(2) { width: 55%; }
+.slides-bullet:nth-child(3) { width: 70%; }
+
+.slides-sketch-analysis {
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.slides-bar { width: 16%; border: 2px solid var(--ink); border-bottom: none; background: var(--water); }
+.slides-bar:nth-child(1) { height: 35%; }
+.slides-bar:nth-child(2) { height: 60%; }
+.slides-bar:nth-child(3) { height: 45%; background: var(--sun); }
+.slides-bar:nth-child(4) { height: 90%; background: var(--coral); }
+
+.slides-sketch-results,
+.slides-sketch-question {
+  align-items: center;
+  justify-content: center;
+}
+
+.slides-pie {
+  height: 100%;
+  aspect-ratio: 1;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: conic-gradient(var(--green) 0 65%, var(--sun) 65% 100%);
+}
+
+.slides-question {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--coral);
+}
+
+.slides-error { color: var(--coral); font-weight: 700; }
+
 .panel {
   display: flex;
   flex-direction: column;
