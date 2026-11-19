@@ -393,7 +393,15 @@ Game.world = Game.world || {};
     }
     // With Ctrl, Alt or Cmd held, the key is a shortcut of the browser.
     var isShortcut = event.ctrlKey || event.altKey || event.metaKey;
-    if (isShortcut || isTyping(event) || inputPaused) {
+    if (isShortcut || isTyping(event)) {
+      return;
+    }
+    if (inputPaused) {
+      // A minigame is open: the keys do nothing on the map, but the arrow
+      // keys must not scroll the page behind the window either.
+      if (event.code.indexOf("Arrow") === 0) {
+        event.preventDefault();
+      }
       return;
     }
     if (isUseKey(event)) {
