@@ -645,7 +645,7 @@ Game.world = Game.world || {};
   var pose = { mirrored: false, walkPhase: null, stride: 0 };
 
   // Every player is drawn by the same rule, from the positions the server
-  // sent: the side view, mirrored when the character faces left.
+  // sent: the turned view, mirrored when the character faces left.
   function drawPlayer(entry, now) {
     var player = entry.player;
     pose.mirrored = player.facingLeft;
