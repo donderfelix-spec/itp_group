@@ -263,6 +263,9 @@ Game.world = Game.world || {};
   // its back is seen (the back of the hair, a bun, a backpack).
   //   turnedLeftHand, turnedRightHand  where the hands are, as [x, y]
   //   handsSwing          true if the hands are free and swing while walking
+  //   holdsInRightHand    true if the object is held in the right hand alone.
+  //                       It then stays in that hand, on the right of the
+  //                       screen, when the character is turned to the left.
   //   turnedBehind(ctx)   drawn behind the body
   //   turnedClothes(ctx)  drawn on the body
   //   turnedObject(ctx)   the thing in the hand
@@ -293,7 +296,7 @@ Game.world = Game.world || {};
       head: function (ctx) {
         shape(ctx, "M-18 19 A18 18 0 0 1 18 19 Q10 7 -3 9 Q-12 10 -18 19 Z", "#3B2F2F", 2);
       },
-      turnedLeftHand: [-21, 65], turnedRightHand: [23, 68],
+      turnedLeftHand: [-21, 65], turnedRightHand: [23, 68], holdsInRightHand: true,
       turnedBehind: nothing,
       turnedClothes: function (ctx) {
         shape(ctx, "M-4 39 L13 39 L5 63 Z", "#FFFFFF", 1.5);
@@ -328,7 +331,7 @@ Game.world = Game.world || {};
       head: function (ctx) {
         shape(ctx, "M-18 19 A18 18 0 0 1 18 19 Q14 6 0 7 Q-14 6 -18 19 Z", "#8A6A3B", 2);
       },
-      turnedLeftHand: [-21, 65], turnedRightHand: [25, 63],
+      turnedLeftHand: [-21, 65], turnedRightHand: [25, 63], holdsInRightHand: true,
       turnedBehind: nothing,
       turnedClothes: function (ctx) {
         // The half of the vest on the side the character is turned to is
@@ -368,7 +371,7 @@ Game.world = Game.world || {};
         circle(ctx, 38, 91, 2.5, OUTLINE, 0);
       },
       head: drawBucketHat,
-      turnedLeftHand: [-21, 65], turnedRightHand: [32, 50],
+      turnedLeftHand: [-21, 65], turnedRightHand: [32, 50], holdsInRightHand: true,
       turnedBehind: function (ctx) {
         // The backpack on the back shows on the left, behind the shoulder.
         box(ctx, -31, 36, 44, 36, 12, "#3E8FD0", 2.5);
@@ -500,7 +503,7 @@ Game.world = Game.world || {};
         shape(ctx, "M-18 19 A18 18 0 0 1 18 19 Q9 9 0 9 Q-9 9 -18 19 Z", "#5A3E2B", 2);
         drawGlasses(ctx);
       },
-      turnedLeftHand: [-21, 65], turnedRightHand: [31, 70],
+      turnedLeftHand: [-21, 65], turnedRightHand: [31, 70], holdsInRightHand: true,
       turnedBehind: function (ctx) {
         // The bun is at the back of the head, so it moves against the face.
         circle(ctx, -8, -2, 8, "#5A3E2B", 2);
@@ -541,7 +544,7 @@ Game.world = Game.world || {};
         shape(ctx, "M-18 19 Q-23 7 -13 4 Q-15 -5 -5 0 Q-2 -9 4 -1 Q11 -8 13 3 Q23 5 18 19 Q10 9 0 11 Q-10 9 -18 19 Z", "#7A4B2A", 2);
         drawSweatDrop(ctx);
       },
-      turnedLeftHand: [-21, 65], turnedRightHand: [25, 67],
+      turnedLeftHand: [-21, 65], turnedRightHand: [25, 67], holdsInRightHand: true,
       // The speed lines trail behind, which is where they are in the sketch.
       turnedBehind: drawSpeedLines,
       turnedClothes: function (ctx) {
@@ -746,10 +749,16 @@ Game.world = Game.world || {};
     box(ctx, legX, 74 - raised, 11, 18 + raised - lift, 4, look.legs, 2);
   }
 
-  // One arm from the shoulder to (handX, handY - 3), like drawArm() of the
-  // portrait, but the shoulders are where the turned body has them.
-  function drawTurnedArm(ctx, side, handX, handY, colour) {
-    var shoulderX = side < 0 ? -16 : 15;
+  // Where the arms start in the turned view. The body is a little narrower
+  // on the side the character is turned to, so the shoulder there is closer
+  // to the middle than the one at the back.
+  var FRONT_SHOULDER = 15;
+  var BACK_SHOULDER = 16;
+
+  // One arm from the shoulder at `shoulderX` to (handX, handY - 3), like
+  // drawArm() of the portrait. `side` is -1 if the arm is on the left of
+  // the body and 1 if it is on the right: the elbow points that way.
+  function drawTurnedArm(ctx, shoulderX, side, handX, handY, colour) {
     var shoulderY = 45;
     var endY = handY - 3;
     ctx.beginPath();
@@ -761,22 +770,44 @@ Game.world = Game.world || {};
     ctx.stroke();
   }
 
-  // Arms, object and hands. Free hands swing against the legs, as in real
-  // walking; a hand that holds something stays where the object is.
+  // Arms, object and hands of the character as it is drawn turned to the
+  // right. Free hands swing against the legs, as in real walking; a hand
+  // that holds something stays where the object is.
   function drawTurnedArmsObjectAndHands(ctx, look, swing) {
     var handSwing = look.handsSwing ? swing * HAND_SWING : 0;
     var left = look.turnedLeftHand;
     var right = look.turnedRightHand;
-    drawTurnedArm(ctx, -1, left[0] - handSwing, left[1], look.body);
-    drawTurnedArm(ctx, 1, right[0] + handSwing, right[1], look.body);
+    drawTurnedArm(ctx, -BACK_SHOULDER, -1, left[0] - handSwing, left[1], look.body);
+    drawTurnedArm(ctx, FRONT_SHOULDER, 1, right[0] + handSwing, right[1], look.body);
     look.turnedObject(ctx);
     circle(ctx, left[0] - handSwing, left[1], 5, SKIN, 2);
     circle(ctx, right[0] + handSwing, right[1], 5, SKIN, 2);
   }
 
+  // The same for a character that is turned to the left and holds its
+  // object in the right hand. The whole drawing is mirrored at this point.
+  // A plain mirror image would put the object into the other hand, so the
+  // hand with the object is mirrored back: it is drawn exactly as in the
+  // view to the right, on the right of the screen. Only its shoulder moves,
+  // because that side of the body is now the back. The free hand goes to
+  // the other side, which is the side the character is turned to.
+  function drawArmsWithObjectKeptInHand(ctx, look) {
+    var free = look.turnedLeftHand;
+    var holding = look.turnedRightHand;
+    drawTurnedArm(ctx, FRONT_SHOULDER, 1, -free[0], free[1], look.body);
+    circle(ctx, -free[0], free[1], 5, SKIN, 2);
+    ctx.save();
+    ctx.scale(-1, 1); // mirrored back: from here x grows to the right of the screen
+    drawTurnedArm(ctx, BACK_SHOULDER, 1, holding[0], holding[1], look.body);
+    look.turnedObject(ctx);
+    circle(ctx, holding[0], holding[1], 5, SKIN, 2);
+    ctx.restore();
+  }
+
   // The turned character. `swing` is where it is in its step and `stride`
-  // how big its steps are (0 when it stands).
-  function drawTurnedView(ctx, look, swing, stride) {
+  // how big its steps are (0 when it stands). `isMirrored` says that the
+  // drawing is mirrored right now, so the character is turned to the left.
+  function drawTurnedView(ctx, look, swing, stride, isMirrored) {
     var raised = Math.abs(swing) * BODY_BOB;
     // The shadow stays flat on the ground while the body rises above it,
     // so a step reads as a small hop.
@@ -798,7 +829,11 @@ Game.world = Game.world || {};
     // The body is a little narrower on the side the character is turned to.
     box(ctx, -18, 38, 35, 42, 11, look.body, 2.5);
     look.turnedClothes(ctx);
-    drawTurnedArmsObjectAndHands(ctx, look, swing);
+    if (isMirrored && look.holdsInRightHand) {
+      drawArmsWithObjectKeptInHand(ctx, look);
+    } else {
+      drawTurnedArmsObjectAndHands(ctx, look, swing);
+    }
     drawTurnedFace(ctx);
     look.turnedHead(ctx);
   }
@@ -818,7 +853,8 @@ Game.world = Game.world || {};
   // With `pose` it is the turned view (the map). `pose` is an object with
   // these fields, each of which may be left out:
   //   mirrored   false or left out: the character is turned to the right.
-  //              true: the whole drawing is mirrored and turned to the left.
+  //              true: the drawing is mirrored and turned to the left. Only
+  //              what is held in one hand stays in that hand.
   //   walkPhase  a number that runs from 0 to 1 during one walking cycle
   //              (two steps); 0 and 0.5 are the moments with both feet on
   //              the ground. Leave it out or pass null for a standing
@@ -845,7 +881,7 @@ Game.world = Game.world || {};
     ctx.lineCap = "round";
     thinnestLine = THINNEST_LINE_IN_PIXELS / (pixelsPerUnit(ctx) || 1);
     if (pose) {
-      drawTurnedView(ctx, lookOf(characterId), swingOf(pose), strideOf(pose));
+      drawTurnedView(ctx, lookOf(characterId), swingOf(pose), strideOf(pose), isMirrored);
     } else {
       drawPortrait(ctx, lookOf(characterId));
     }
