@@ -89,11 +89,20 @@ def check_campus(campus) -> dict:
     stations = _list(campus, "stations")
     if len(stations) != STATION_COUNT:
         raise CampusError(f"The map needs exactly {STATION_COUNT} stations, found {len(stations)}.")
+    station_ids = set()
     for index, station in enumerate(stations):
         _check_point(station, f"stations[{index}]", width, height)
         station_id = _entry(station, "id", f"stations[{index}]")
         if isinstance(station_id, bool) or not isinstance(station_id, int):
             raise CampusError(f"\"id\" of stations[{index}] must be a whole number.")
+        if station_id in station_ids:
+            raise CampusError(f"stations[{index}] has the id {station_id} of another station.")
+        station_ids.add(station_id)
+
+    # How close the centre of a player must be to the centre of a station to
+    # use it (server/world/stations.py).
+    if _number(campus, "use_range", "the map") <= 0:
+        raise CampusError("\"use_range\" of the map must be above 0.")
 
     _check_point(_entry(campus, "button", "the map"), "button", width, height)
     for index, spot in enumerate(_list(campus, "hiding_spots")):

@@ -391,6 +391,39 @@ Game.world = Game.world || {};
     }
   }
 
+  // How long one pulse of the glowing border takes, in milliseconds
+  // (DESIGN.md, section 4: "pulses slowly").
+  var PULSE_MILLISECONDS = 1400;
+
+  // The border around the station the player can use right now: a yellow
+  // ring that grows and shrinks a little. `now` is the time of the frame in
+  // milliseconds; nothing is remembered between two frames.
+  function drawStationGlow(ctx, station, now) {
+    if (!ctx || !station) {
+      return;
+    }
+    // Swings between 0 and 1 and back, once per pulse.
+    var pulse = 0.5 - 0.5 * Math.cos(now / PULSE_MILLISECONDS * Math.PI * 2);
+    var radius = station.r + 3.5 + pulse * 2;
+    ctx.save();
+    // A soft, see-through yellow halo that gets stronger with the pulse.
+    ctx.globalAlpha = 0.25 + 0.4 * pulse;
+    circle(ctx, station.x, station.y, radius, null, 0);
+    ctx.strokeStyle = YELLOW;
+    ctx.lineWidth = 7 + 3 * pulse;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    // The ring itself: yellow on a slightly thicker dark ring, so it has an
+    // outline and shows on every floor colour.
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 4.4;
+    ctx.stroke();
+    ctx.strokeStyle = YELLOW;
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // ---- The whole map ---------------------------------------------------
 
   // Draws the map in map units. `view` ({x, y, w, h}, optional) is the part
@@ -416,4 +449,5 @@ Game.world = Game.world || {};
   }
 
   Game.world.drawMap = drawMap;
+  Game.world.drawStationGlow = drawStationGlow;
 })();
