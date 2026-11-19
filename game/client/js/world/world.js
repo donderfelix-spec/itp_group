@@ -39,10 +39,18 @@ Game.world = Game.world || {};
   // A longer way than this in one message is a respawn: jump, do not glide.
   var JUMP_DISTANCE = 60;
   // How long after its last step a character still counts as walking. Longer
-  // than one interval, so the bobbing does not flicker between two messages.
+  // than one interval, so the feet do not stop between two messages.
   var STILL_WALKING_MILLISECONDS = 160;
-  var BOB_HEIGHT = 1.2; // map units
-  var BOB_MILLISECONDS = 280; // one step up and down
+  // One walking cycle is two steps: left foot, right foot.
+  var WALK_CYCLE_MILLISECONDS = 420;
+  // A change of position smaller than this, in map units, is not a step: it
+  // neither turns the character nor moves its feet. A real step is about 6
+  // units (90 units per second, 15 messages per second, S-86).
+  var SMALLEST_STEP = 1;
+  // A walking character rises a little on every step (characters.js). The
+  // names are placed this much higher, in map units, so a head never
+  // touches its name.
+  var BOB_HEIGHT = 1.2;
 
   // Which keys walk where. `event.code` names the place of a key on the
   // keyboard, so WASD also sits right on a keyboard with another layout.
@@ -88,7 +96,10 @@ Game.world = Game.world || {};
       from: null,
       to: null,
       arrivedAt: 0, // when `to` arrived, in milliseconds
-      lastStepAt: -Infinity, // when the position last changed
+      lastStepAt: -Infinity, // when the character last took a step
+      walkingSince: 0, // when it started to walk; the walking cycle starts here
+      // Where the character looks. It keeps both after it stopped.
+      direction: "front", // "front", "side" or "back", see drawCharacter()
       facingLeft: false
     };
   }
@@ -131,23 +142,53 @@ Game.world = Game.world || {};
     if (isJump) {
       start = { x: x, y: y };
     }
-    var hasStepped = player.to && (player.to.x !== x || player.to.y !== y);
-    if (hasStepped && !isJump) {
-      player.lastStepAt = now;
-      // Walking straight up or down keeps the side the character faced.
-      if (x < player.to.x) {
-        player.facingLeft = true;
-      } else if (x > player.to.x) {
-        player.facingLeft = false;
-      }
+    if (player.to && !isJump) {
+      takeStep(player, x - player.to.x, y - player.to.y, now);
     }
     player.from = start;
     player.to = { x: x, y: y };
     player.arrivedAt = now;
   }
 
+  // Looks at the way between the last two positions from the server, (dx, dy),
+  // and remembers that the character walks and which way it looks.
+  // The same position again, or a tiny change, is not a step and changes
+  // nothing: so a character pressing against a wall does not twitch.
+  function takeStep(player, dx, dy, now) {
+    var stepsSideways = Math.abs(dx) >= SMALLEST_STEP;
+    var stepsUpOrDown = Math.abs(dy) >= SMALLEST_STEP;
+    if (!stepsSideways && !stepsUpOrDown) {
+      return;
+    }
+    if (!isWalking(player, now)) {
+      player.walkingSince = now;
+    }
+    player.lastStepAt = now;
+    // On a diagonal, up or down decides between face and back of the head,
+    // and left or right decides the mirroring. Walking straight up or down
+    // keeps the side the character faced.
+    if (stepsSideways) {
+      player.facingLeft = dx < 0;
+    }
+    if (stepsUpOrDown) {
+      player.direction = dy > 0 ? "front" : "back";
+    } else {
+      player.direction = "side";
+    }
+  }
+
   function isWalking(player, now) {
     return now - player.lastStepAt < STILL_WALKING_MILLISECONDS;
+  }
+
+  // How far the player is in its walking cycle, from 0 to 1, or null when
+  // it stands. The cycle starts with both feet on the ground.
+  function walkPhase(player, now) {
+    if (!isWalking(player, now)) {
+      return null;
+    }
+    var walkedFor = Math.max(0, now - player.walkingSince);
+    return (walkedFor / WALK_CYCLE_MILLISECONDS) % 1;
   }
 
   // ---- What the lobby page tells the world -----------------------------
@@ -552,17 +593,13 @@ Game.world = Game.world || {};
   }
 
   function drawPlayer(entry, now) {
-    var bob = 0;
-    if (isWalking(entry.player, now)) {
-      bob = Math.abs(Math.sin(now / BOB_MILLISECONDS * Math.PI)) * BOB_HEIGHT;
-    }
-    ctx.save();
-    ctx.translate(entry.x, figureMiddleY(entry.y) - bob);
-    if (entry.player.facingLeft) {
-      ctx.scale(-1, 1); // mirrored: the character looks to the left
-    }
-    Game.world.drawCharacter(ctx, entry.player.character, 0, 0, CHARACTER_HEIGHT);
-    ctx.restore();
+    var player = entry.player;
+    var pose = {
+      direction: player.direction,
+      mirrored: player.facingLeft,
+      walkPhase: walkPhase(player, now)
+    };
+    Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
   }
 
   function useNameFont() {
