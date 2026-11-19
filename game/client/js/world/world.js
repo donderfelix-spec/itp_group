@@ -25,9 +25,12 @@ Game.world = Game.world || {};
   // After a failed download of the map, try again after this time.
   var RETRY_MILLISECONDS = 2000;
 
-  // Height of a drawn character, in map units. Its body is then about as
-  // wide as the 10 units the server counts for a player (S-86).
-  var CHARACTER_HEIGHT = 26;
+  // Height of a drawn character, in map units: one size for all. With it a
+  // character is about as tall as a door is wide (40) and stands clearly
+  // above a table (24). Only the drawing is this big: the server still
+  // counts a player as a square of 10 by 10 units (S-86), which is about
+  // as wide as the drawn body and legs.
+  var CHARACTER_HEIGHT = 39;
   // The server's position is the middle of that 10 x 10 square. The feet are
   // drawn at its lower edge, so a character stands in front of a wall the
   // way it collides with it.
@@ -57,10 +60,10 @@ Game.world = Game.world || {};
   var SMALLEST_STEP = 1;
   // Free room between the top of a standing character and its name, in map
   // units. A walking character rises on every step (BODY_BOB in
-  // characters.js: 3 of its 112 design units, which is 0.7 map units at
+  // characters.js: 3 of its 112 design units, which is 1.05 map units at
   // CHARACTER_HEIGHT). This room must be at least that rise, so a head
   // never touches its name.
-  var HEAD_ROOM_BELOW_NAME = 1.2;
+  var HEAD_ROOM_BELOW_NAME = 1.5;
 
   // Which keys walk where. `event.code` names the place of a key on the
   // keyboard, so WASD also sits right on a keyboard with another layout.
@@ -109,8 +112,8 @@ Game.world = Game.world || {};
       lastStepAt: -Infinity, // when the character last took a step
       strideAtLastStep: 0, // how big its steps were at that moment, 0 to 1
       walkingSince: 0, // when it started to walk; the walking cycle starts here
-      // Where the character looks. It keeps both after it stopped.
-      direction: "front", // "front", "side" or "back", see drawCharacter()
+      // Which side the character faces. It only ever faces left or right,
+      // keeps the side after it stopped, and faces right until it has moved.
       facingLeft: false
     };
   }
@@ -157,7 +160,7 @@ Game.world = Game.world || {};
       var dx = x - player.to.x;
       var dy = y - player.to.y;
       if (isJump || isLongerThanAStep(dx, dy)) {
-        standFacingFront(player);
+        standStill(player);
       } else {
         takeStep(player, dx, dy, now);
       }
@@ -168,7 +171,7 @@ Game.world = Game.world || {};
   }
 
   // Looks at the way between the last two positions from the server, (dx, dy),
-  // and remembers that the character walks and which way it looks.
+  // and remembers that the character walks and which side it faces.
   // The same position again, or a tiny change, is not a step and changes
   // nothing: so a character pressing against a wall does not twitch.
   function takeStep(player, dx, dy, now) {
@@ -183,16 +186,11 @@ Game.world = Game.world || {};
     // Remember how big the steps are right now: they grow on from there.
     player.strideAtLastStep = stride(player, now);
     player.lastStepAt = now;
-    // On a diagonal, up or down decides between face and back of the head,
-    // and left or right decides the mirroring. Walking straight up or down
-    // keeps the side the character faced.
+    // Only the sideways part of a step turns the character, so a diagonal
+    // takes the side of its sideways part. Walking straight up or down
+    // keeps the side the character faced and still moves its feet.
     if (stepsSideways) {
       player.facingLeft = dx < 0;
-    }
-    if (stepsUpOrDown) {
-      player.direction = dy > 0 ? "front" : "back";
-    } else {
-      player.direction = "side";
     }
   }
 
@@ -200,12 +198,12 @@ Game.world = Game.world || {};
     return Math.abs(dx) > LONGEST_STEP || Math.abs(dy) > LONGEST_STEP;
   }
 
-  // The server put the player somewhere else. The character stands there
-  // and looks at the viewer, like everybody else who was put there.
-  function standFacingFront(player) {
+  // The server put the player somewhere else. That is not a step: the
+  // character stands there and faces right, like everybody else who was
+  // put there and like a character that has not moved yet.
+  function standStill(player) {
     player.lastStepAt = -Infinity;
     player.strideAtLastStep = 0;
-    player.direction = "front";
     player.facingLeft = false;
   }
 
@@ -642,14 +640,17 @@ Game.world = Game.world || {};
     return y + FEET_BELOW_POSITION - CHARACTER_HEIGHT / 2;
   }
 
+  // The pose passed to drawCharacter(). One object, filled in again for
+  // every character, so that drawing makes no new object per frame.
+  var pose = { mirrored: false, walkPhase: null, stride: 0 };
+
+  // Every player is drawn by the same rule, from the positions the server
+  // sent: the side view, mirrored when the character faces left.
   function drawPlayer(entry, now) {
     var player = entry.player;
-    var pose = {
-      direction: player.direction,
-      mirrored: player.facingLeft,
-      walkPhase: walkPhase(player, now),
-      stride: stride(player, now)
-    };
+    pose.mirrored = player.facingLeft;
+    pose.walkPhase = walkPhase(player, now);
+    pose.stride = stride(player, now);
     Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
   }
 
