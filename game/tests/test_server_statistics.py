@@ -505,3 +505,28 @@ def test_the_answers_carry_nothing_else_about_an_account(connect, clock, fixed_r
     for answer in (own, board):
         text = str(answer)
         assert "hash" not in text and "argon2" not in text and "name_key" not in text and "password" not in text
+
+
+# The page
+
+
+def test_the_page_has_the_two_buttons_and_the_two_screens(client):
+    page = client.get("/").text
+    for element_id in ("home-profile", "home-leaderboard", "screen-profile", "screen-leaderboard"):
+        assert f'id="{element_id}"' in page
+    assert page.count(">Back</button>") == 4  # sign up, log in, profile, leaderboard
+
+
+def test_the_statistics_script_is_served_and_loaded_between_the_duel_and_the_start(client):
+    assert client.get("/js/lobby/statistics.js").status_code == 200
+    page = client.get("/").text
+    # It uses the Duel's way of writing a time, and main.js calls it.
+    scripts = ["js/lobby/forms.js", "js/minigames/duel.js", "js/lobby/statistics.js", "js/main.js"]
+    places = [page.index(f'<script src="{script}">') for script in scripts]
+    assert places == sorted(places)
+
+
+def test_the_statistics_script_never_writes_html(client):
+    script = client.get("/js/lobby/statistics.js").text
+    code = "\n".join(line for line in script.splitlines() if not line.strip().startswith("//"))
+    assert "innerHTML" not in code and "insertAdjacentHTML" not in code

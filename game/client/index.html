@@ -88,7 +88,51 @@
           </div>
           <p id="join-code-error" class="field-error" role="alert"></p>
         </form>
+        <div class="button-row stats-buttons">
+          <button type="button" id="home-profile" class="button">Profile</button>
+          <button type="button" id="home-leaderboard" class="button">Leaderboard</button>
+        </div>
         <button type="button" id="home-logout" class="button">Log out</button>
+      </div>
+    </section>
+
+    <!-- Screen 12: Profile, filled by js/lobby/statistics.js -->
+    <section id="screen-profile" class="screen screen-centred" hidden>
+      <div class="card">
+        <h2>Profile</h2>
+        <p class="profile">Signed in as <strong id="profile-name"></strong></p>
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th scope="col">Mode</th>
+              <th scope="col" class="stats-number">Rounds</th>
+              <th scope="col" class="stats-number">Wins</th>
+            </tr>
+          </thead>
+          <tbody id="profile-modes"></tbody>
+        </table>
+        <p class="stats-best">Best Duel time <strong id="profile-best"></strong></p>
+        <button type="button" id="profile-back" class="button">Back</button>
+      </div>
+    </section>
+
+    <!-- Screen 13: Leaderboard, filled by js/lobby/statistics.js -->
+    <section id="screen-leaderboard" class="screen screen-centred" hidden>
+      <div class="card stats-card">
+        <h2>Leaderboard</h2>
+        <table id="leaderboard-table" class="stats-table">
+          <thead>
+            <tr>
+              <th scope="col" class="stats-number stats-column-place">Place</th>
+              <th scope="col">Player</th>
+              <th scope="col" class="stats-number stats-column-wins">Wins</th>
+              <th scope="col" class="stats-number stats-column-time">Best Duel time</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-rows"></tbody>
+        </table>
+        <p id="leaderboard-empty" hidden>No rounds played yet.</p>
+        <button type="button" id="leaderboard-back" class="button">Back</button>
       </div>
     </section>
 
@@ -162,6 +206,7 @@
   <script src="js/minigames/shelve_books.js"></script>
   <script src="js/minigames/self_checkout.js"></script>
   <script src="js/minigames/duel.js"></script>
+  <script src="js/lobby/statistics.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
