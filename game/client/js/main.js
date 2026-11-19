@@ -75,6 +75,20 @@ window.Game = window.Game || {};
     if (mode === 'classic' && roundIsRunning) Game.net.send({ type: 'fail' });
   }
 
+  function requestReport(sheetId, position) {
+    if (mode === 'classic' && roundIsRunning) {
+      Game.net.send({ type: 'report', sheet_id: sheetId, position: position });
+    }
+  }
+
+  function requestEmergency() {
+    if (mode === 'classic' && roundIsRunning) Game.net.send({ type: 'emergency' });
+  }
+
+  function whenClassicFail(message) {
+    if (mode === 'classic' && roundIsRunning) callWorld('addBloodSheet', message);
+  }
+
   // Which stations glow and can be used: outside a round none. In a Duel
   // only the player's next station, and none once all are done (S-94). In
   // any other round the ones in use that this player has not finished yet.
@@ -216,6 +230,8 @@ window.Game = window.Game || {};
   Game.classicRound.setup();
   callWorld('setUseHandler', openStation);
   callWorld('setFailHandler', requestFail);
+  callWorld('setReportHandler', requestReport);
+  callWorld('setEmergencyHandler', requestEmergency);
 
   Game.net.on('open', Game.screens.hideMessage);
   Game.net.on('close', whenConnectionLost);
@@ -230,6 +246,7 @@ window.Game = window.Game || {};
   Game.net.on('duel_state', whenDuelState);
   Game.net.on('duel_progress', Game.duel.showProgress);
   Game.net.on('duel_result', whenDuelResult);
+  Game.net.on('classic_fail', whenClassicFail);
   Game.net.on('notice', (message) => Game.screens.showMessage(message.message, false));
   Game.net.on('error', whenError);
   Game.net.on('you_are_fr', () => Game.classicRound.setOwnFreeRider(true));

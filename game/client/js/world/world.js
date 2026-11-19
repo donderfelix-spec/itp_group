@@ -58,6 +58,8 @@ Game.world = Game.world || {};
   var USE_KEY_CODE = "KeyE"; // `event.code` of the key in the E position
   var USE_BUTTON_TEXT = "E Use";
   var FAIL_KEY_CODE = "KeyQ";
+  var REPORT_KEY_CODE = "KeyR";
+  var REPORT_RANGE = 2;
 
   // ---- State -----------------------------------------------------------
 
@@ -77,7 +79,10 @@ Game.world = Game.world || {};
   var usableStations = null; // ids of the stations that count, null = all
   var useHandler = null; // called with the id of the station that is opened
   var failHandler = null; // called when the player presses Q in Classic
-  var useButton = null; // the button "E Use", while the world runs
+  var reportHandler = null; // called with an F-sheet id and position on R
+  var emergencyHandler = null; // called on E at the red button
+  var bloodSheets = new Map(); // sheet id -> map position
+  var useButton = null; // the button for E, while the world runs
   var inputPaused = false; // true while a minigame is open, see setInputPaused()
 
   // ---- Players and smoothing -------------------------------------------
@@ -292,6 +297,69 @@ Game.world = Game.world || {};
     failHandler = typeof handler === "function" ? handler : null;
   }
 
+  function setReportHandler(handler) {
+    reportHandler = typeof handler === "function" ? handler : null;
+  }
+
+  function setEmergencyHandler(handler) {
+    emergencyHandler = typeof handler === "function" ? handler : null;
+  }
+
+  function addBloodSheet(message) {
+    if (!message || typeof message.sheet_id !== "string" || !message.position) return;
+    var x = message.position.x;
+    var y = message.position.y;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    bloodSheets.set(message.sheet_id, { x: x, y: y });
+  }
+
+  function clearBloodSheets() {
+    bloodSheets.clear();
+  }
+
+  function ownServerPosition() {
+    if (ownName === null || !players.has(ownName)) return null;
+    return players.get(ownName).to;
+  }
+
+  function nearestSheetInRange() {
+    var position = ownServerPosition();
+    if (!position) return null;
+    var nearest = null;
+    var nearestDistance = REPORT_RANGE;
+    bloodSheets.forEach(function (sheet, sheetId) {
+      var distance = Math.hypot(position.x - sheet.x, position.y - sheet.y);
+      if (distance <= nearestDistance) {
+        nearest = { sheet_id: sheetId, position: { x: position.x, y: position.y } };
+        nearestDistance = distance;
+      }
+    });
+    return nearest;
+  }
+
+  function isAtEmergencyButton() {
+    if (!campus || !campus.button || !emergencyHandler) return false;
+    var position = ownServerPosition();
+    if (!position) return false;
+    var button = campus.button;
+    return Math.hypot(position.x - button.x, position.y - button.y) <= (button.r || 0) + REPORT_RANGE;
+  }
+
+  function useActionInRange() {
+    if (inputPaused) return;
+    if (isAtEmergencyButton()) {
+      emergencyHandler();
+      return;
+    }
+    useStationInRange();
+  }
+
+  function reportSheetInRange() {
+    if (inputPaused || !reportHandler) return;
+    var sheet = nearestSheetInRange();
+    if (sheet) reportHandler(sheet.sheet_id, sheet.position);
+  }
+
   // Opens the station in range: with the key E or a click on the button.
   // Without a station in range or without a handler nothing happens, and
   // there is no message either (DESIGN.md, section 4).
@@ -323,7 +391,7 @@ Game.world = Game.world || {};
   // before the station opens.
   function onUseButtonClick() {
     useButton.blur();
-    useStationInRange();
+    useActionInRange();
   }
 
   function removeUseButton() {
@@ -336,10 +404,11 @@ Game.world = Game.world || {};
   // Grey and switched off while it would do nothing, yellow otherwise. The
   // stylesheet gives the two looks.
   function updateUseButton(idInRange) {
-    var shouldBeDisabled = idInRange === null || inputPaused;
-    if (!useButton || useButton.disabled === shouldBeDisabled) {
-      return;
-    }
+    var emergencyNearby = isAtEmergencyButton();
+    var shouldBeDisabled = (idInRange === null && !emergencyNearby) || inputPaused;
+    if (!useButton) return;
+    useButton.textContent = emergencyNearby ? "E Emergency" : USE_BUTTON_TEXT;
+    if (useButton.disabled === shouldBeDisabled) return;
     // Some browsers swallow key events while a switched-off button has the
     // focus. A lost release of a walk key would leave the player walking,
     // so the focus goes first.
@@ -401,6 +470,10 @@ Game.world = Game.world || {};
     return event.code === FAIL_KEY_CODE;
   }
 
+  function isReportKey(event) {
+    return event.code === REPORT_KEY_CODE;
+  }
+
   function onKeyDown(event) {
     if (isMetaKey(event)) {
       releaseAllKeys();
@@ -421,10 +494,12 @@ Game.world = Game.world || {};
     }
     if (isUseKey(event)) {
       // A key that is held down reports itself again and again: only the
-      // first press opens the station.
-      if (!event.repeat) {
-        useStationInRange();
-      }
+      // first press uses a station or calls the emergency meeting.
+      if (!event.repeat) useActionInRange();
+      return;
+    }
+    if (isReportKey(event)) {
+      if (!event.repeat) reportSheetInRange();
       return;
     }
     if (isFailKey(event)) {
@@ -660,6 +735,23 @@ Game.world = Game.world || {};
     placeLabels(visible).forEach(drawLabel);
   }
 
+  function drawBloodSheets() {
+    bloodSheets.forEach(function (sheet) {
+      ctx.beginPath();
+      ctx.arc(sheet.x, sheet.y, 2.2, 0, Math.PI * 2);
+      ctx.fillStyle = "#F2695C";
+      ctx.fill();
+      ctx.lineWidth = 0.55;
+      ctx.strokeStyle = "#2E2A3B";
+      ctx.stroke();
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 2.5px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("F", sheet.x, sheet.y);
+    });
+  }
+
   // ---- The loop --------------------------------------------------------
 
   function drawFrame(now) {
@@ -676,6 +768,7 @@ Game.world = Game.world || {};
     }
     var view = aimCamera(cameraCentre(now));
     Game.world.drawMap(ctx, campus, view);
+    drawBloodSheets();
     var idInRange = stationInRange();
     if (idInRange !== null) {
       Game.world.drawStationGlow(ctx, stationWithId(idInRange), now);
@@ -768,6 +861,7 @@ Game.world = Game.world || {};
     running = false;
     usableStations = null; // the next lobby starts with all stations again
     players.clear();
+    bloodSheets.clear();
     pressedKeys = {};
     sentDirection = { dx: 0, dy: 0 };
     sendMove = null;
@@ -782,6 +876,10 @@ Game.world = Game.world || {};
   Game.world.setUsableStations = setUsableStations;
   Game.world.setUseHandler = setUseHandler;
   Game.world.setFailHandler = setFailHandler;
+  Game.world.setReportHandler = setReportHandler;
+  Game.world.setEmergencyHandler = setEmergencyHandler;
+  Game.world.addBloodSheet = addBloodSheet;
+  Game.world.clearBloodSheets = clearBloodSheets;
   Game.world.stationInRange = stationInRange;
   Game.world.setInputPaused = setInputPaused;
   Game.world.nearestStationInRange = nearestStationInRange;

@@ -127,6 +127,8 @@ VALID_MESSAGES = [
     {"type": "close_station"},
     {"type": "finish_station"},
     {"type": "fail"},
+    {"type": "report", "sheet_id": "f-sheet-1", "position": {"x": 12.5, "y": 30.0}},
+    {"type": "emergency"},
     {"type": "chat", "text": "Hello there."},
     {"type": "vote", "target_id": "Mara"},
 ]
@@ -386,6 +388,8 @@ REJECTION_TEXTS = {
     "fail_rejected": "You cannot fail a player right now.",
     "chat_rejected": "You cannot send that chat message right now.",
     "vote_rejected": "You cannot cast that vote right now.",
+    "report_rejected": "You cannot report that F-sheet right now. Stand at the sheet and try again.",
+    "emergency_rejected": "You cannot call an emergency meeting right now.",
 }
 
 

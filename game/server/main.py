@@ -147,6 +147,10 @@ async def read_messages(websocket: WebSocket):
             await answer_task_message(websocket, message)
         elif message["type"] == "fail":
             await answer_fail_message(websocket)
+        elif message["type"] == "report":
+            await answer_report_message(websocket, message)
+        elif message["type"] == "emergency":
+            await answer_emergency_message(websocket)
         elif message["type"] == "chat":
             await answer_chat_message(websocket, message)
         elif message["type"] == "vote":
@@ -735,15 +739,101 @@ async def answer_fail_message(websocket: WebSocket):
     await tell_round_news(lobby)
 
 
+async def answer_report_message(websocket: WebSocket, message: dict):
+    """Validate a living player's position and start a meeting for an F-sheet."""
+    name = app.state.sessions.name_of(websocket)
+    if name is None:
+        await websocket.send_json(protocol.rejection("not_signed_in"))
+        return
+    lobby = app.state.lobbies.lobby_of(name)
+    if lobby is None:
+        await websocket.send_json(protocol.rejection("not_in_lobby"))
+        return
+    classic = lobby.classic_round
+    if classic is None:
+        await websocket.send_json(protocol.rejection("report_rejected"))
+        return
+
+    position = lobby.walkers.position_of(name)
+    claimed = message["position"]
+    claimed_position = (claimed["x"], claimed["y"])
+    if position is None or math.dist(position, claimed_position) > 2.0:
+        await websocket.send_json(protocol.rejection("report_rejected"))
+        return
+    now = seconds_now()
+    try:
+        classic.positions = {
+            player_id: lobby.walkers.position_of(player_id)
+            for player_id in classic.roles
+            if player_id in lobby.names()
+        }
+        meeting = classic.report(name, message["sheet_id"], position, now)
+    except (KeyError, ValueError):
+        await websocket.send_json(protocol.rejection("report_rejected"))
+        return
+
+    meeting["reason"] = "report"
+    lobby.meeting = meeting
+    lobby.meeting_clock = None
+    await tell_meeting_state(lobby, now)
+
+
+async def answer_emergency_message(websocket: WebSocket):
+    """Validate a living player's unused emergency button and start a meeting."""
+    name = app.state.sessions.name_of(websocket)
+    if name is None:
+        await websocket.send_json(protocol.rejection("not_signed_in"))
+        return
+    lobby = app.state.lobbies.lobby_of(name)
+    if lobby is None:
+        await websocket.send_json(protocol.rejection("not_in_lobby"))
+        return
+    classic = lobby.classic_round
+    if classic is None:
+        await websocket.send_json(protocol.rejection("emergency_rejected"))
+        return
+
+    try:
+        meeting = classic.emergency(name, seconds_now())
+    except ValueError:
+        await websocket.send_json(protocol.rejection("emergency_rejected"))
+        return
+    meeting["reason"] = "emergency"
+    lobby.meeting = meeting
+    lobby.meeting_clock = None
+    await tell_meeting_state(lobby)
+
+
+def sync_classic_after_meeting(lobby):
+    """Return Classic to play and retain any ejection from a finished meeting."""
+    classic = lobby.classic_round
+    meeting = lobby.meeting
+    if classic is None or meeting is None or meeting.get("phase") != "result":
+        return
+    classic.eliminated = set(meeting.get("eliminated", classic.eliminated))
+    classic.phase = "round"
+    classic.timers_paused = False
+    classic.meeting = meeting
+    classic._has_news = True
+
+
+async def publish_meeting_and_round_result(lobby, now):
+    await tell_meeting_state(lobby, now)
+    farewells = end_round_if_over(lobby)
+    if farewells:
+        await tell_round_ended(lobby, farewells)
+
+
 def update_meeting_clock(lobby):
     """Advance a meeting from the server clock and publish each clock second."""
     now = seconds_now()
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
+    sync_classic_after_meeting(lobby)
     snapshot = classic_meeting.meeting_snapshot(lobby.meeting, now)
     clock = (snapshot["phase"], snapshot["seconds_left"])
     if clock != lobby.meeting_clock:
         lobby.meeting_clock = clock
-        run_in_background(tell_meeting_state(lobby, now))
+        run_in_background(publish_meeting_and_round_result(lobby, now))
 
 
 async def answer_chat_message(websocket: WebSocket, message: dict):
@@ -762,6 +852,7 @@ async def answer_chat_message(websocket: WebSocket, message: dict):
 
     now = seconds_now()
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
+    sync_classic_after_meeting(lobby)
     if not classic_meeting.can_send_chat(lobby.meeting, name, message["text"], now):
         await websocket.send_json(protocol.rejection("chat_rejected"))
         await tell_meeting_state(lobby, now)
@@ -796,13 +887,18 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
 
     now = seconds_now()
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
+    sync_classic_after_meeting(lobby)
     try:
         lobby.meeting = classic_meeting.cast_vote(
             lobby.meeting, name, message["target_id"]
         )
     except ValueError:
         await websocket.send_json(protocol.rejection("vote_rejected"))
+    sync_classic_after_meeting(lobby)
     await tell_meeting_state(lobby, now)
+    farewells = end_round_if_over(lobby)
+    if farewells:
+        await tell_round_ended(lobby, farewells)
 
 
 # The round of each mode. The rules of Duel are in `server/modes/duel.py`

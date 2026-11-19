@@ -9,6 +9,7 @@ Role = Literal["HP", "FR"]
 TASKS_PER_PLAYER = 4
 FAIL_RANGE = 2.0
 FAIL_COOLDOWN = 25.0
+REPORT_RANGE = 2.0
 Position = tuple[float, float]
 
 
@@ -214,7 +215,7 @@ def _valid_position(position: object) -> bool:
 def can_report(
     state: ClassicState, player_id: str, blood_sheet_id: str, position: Position
 ) -> bool:
-    """Return whether a living player is standing on an unreported F sheet."""
+    """Return whether a living player is within the 2-field F-sheet interaction range."""
     if state.get("phase") == "meeting" or state.get("timers_paused", False):
         return False
     if player_id in state["eliminated"] or state["roles"].get(player_id) not in ("HP", "FR"):
@@ -222,7 +223,7 @@ def can_report(
     sheet_position = state.get("f_sheets", {}).get(blood_sheet_id)
     if not _valid_position(position) or not _valid_position(sheet_position):
         return False
-    return tuple(position) == tuple(sheet_position)
+    return math.dist(position, sheet_position) <= REPORT_RANGE
 
 
 def can_emergency(state: ClassicState, player_id: str) -> bool:

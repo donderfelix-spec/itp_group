@@ -53,6 +53,9 @@ Game.classicMeeting = Game.classicMeeting || {};
   function show(message) {
     if (!isMeetingState(message)) return;
     state = message;
+    if (Game.world && typeof Game.world.clearBloodSheets === "function") {
+      Game.world.clearBloodSheets();
+    }
     screen.hidden = false;
     updateInput();
     updateVoting();
