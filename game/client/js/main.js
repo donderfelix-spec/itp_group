@@ -132,9 +132,17 @@ window.Game = window.Game || {};
       && typeof message.title === 'string'
       && Boolean(message.content) && typeof message.content === 'object';
     // A late answer after the player left the round opens nothing.
-    if (isReadable && worldIsRunning && roundIsRunning) {
-      Game.minigames.open(message.station, message.title, message.content);
-    }
+    const canBeShown = isReadable && worldIsRunning && roundIsRunning;
+    const wasShown = canBeShown && Game.minigames.open(message.station, message.title, message.content);
+    if (!wasShown) closeTaskWithoutWindow();
+  }
+
+  // The server has a task open for this player, but the page shows no
+  // window for it. The server lets a player with an open task stand still,
+  // and without a window there is no × to end that: so the page closes the
+  // task itself. `send` and not `ask`: this must not wait behind another action.
+  function closeTaskWithoutWindow() {
+    Game.net.send({ type: 'close_station' });
   }
 
   function whenStationDone(message) {
@@ -146,6 +154,8 @@ window.Game = window.Game || {};
   function whenError(message) {
     Game.forms.stopWaiting(); // Every error is an answer, also one that belongs to no field.
     if (ERRORS_THAT_CLOSE_THE_TASK.includes(message.code)) Game.minigames.close();
+    // "Close your current task first." with no window to close: see above.
+    if (message.code === 'task_open' && !Game.minigames.isOpen()) closeTaskWithoutWindow();
     const place = ERROR_PLACES[message.code];
     const shownAtField = Boolean(place) && Game.forms.showError(place, message.message);
     if (!shownAtField) Game.screens.showMessage(message.message, true);

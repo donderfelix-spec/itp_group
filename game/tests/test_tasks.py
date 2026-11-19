@@ -432,7 +432,14 @@ def test_asking_about_a_player_does_not_create_one():
     round_tasks = new_round()
     round_tasks.has_open_task("Mara")
     round_tasks.finished_by("Mara")
-    assert round_tasks._players == {}
+    round_tasks.open_station_of("Mara")
+    # Asked about, Mara still has nothing: no task open, nothing finished,
+    # and she can open and finish a station like a player nobody asked about.
+    assert round_tasks.open_station_of("Mara") is None
+    assert round_tasks.finished_by("Mara") == set()
+    assert round_tasks.open("Mara", 1, AT[1], 0.0, FakeRandom(1))[1] is None
+    assert round_tasks.finish("Mara", 50.0) == (1, None)
+    assert round_tasks.finished_by("Mara") == {1}
 
 
 def test_a_new_round_starts_with_nothing_finished():

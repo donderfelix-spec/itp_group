@@ -556,9 +556,23 @@ async def answer_task_message(websocket: WebSocket, message: dict):
         # A fault in a minigame must not close the player's connection.
         # Only the kind of error is logged.
         logger.error("The task message %s failed: %s", message["type"], type(problem).__name__)
-        return
+        answers = answers_after_fault(lobby, name)
     for answer in answers:
         await websocket.send_json(answer)
+
+
+def answers_after_fault(lobby, name: str) -> list:
+    """What the player is told when a task handler failed.
+
+    The browser waits for an answer to every task message, so it always gets
+    one. The fault may have happened after the task was opened: then the task
+    is forgotten and the browser is told, so page and server agree again.
+    """
+    answers = [protocol.rejection("task_failed")]
+    station, _ = tasks.close_station(lobby.tasks, name)
+    if station is not None:
+        answers.append(protocol.station_closed(station))
+    return answers
 
 
 def handle_open_station(lobby, name: str, message: dict) -> list:

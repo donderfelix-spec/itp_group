@@ -447,7 +447,9 @@ def test_leaving_with_a_task_open_forgets_it_and_disturbs_nobody(connect):
     assert tiago.receive_json() == NEW_HOST
     assert tiago.receive_json() == protocol.lobby_state(code, "Tiago", [("Tiago", protocol.CHARACTERS[1])], "duel", "round")
     assert not lobby.tasks.has_open_task("Mara")
-    assert lobby.tasks._players == {}
+    assert lobby.tasks.open_station_of("Mara") is None
+    assert lobby.tasks.finished_by("Mara") == set()
+    assert lobby.tasks.open_station_of("Tiago") is None
     assert close_station(mara) == NOT_IN_LOBBY
     # Tiago plays on as if nothing had happened.
     put_at_station("Tiago", 1)
@@ -462,11 +464,16 @@ def test_disconnecting_with_a_task_open_forgets_it_and_disturbs_nobody(connect, 
     mara.close()
     assert tiago.receive_json() == NEW_HOST
     assert tiago.receive_json()["host"] == "Tiago"
-    assert lobby.tasks._players == {}
+    assert lobby.tasks.open_station_of("Mara") is None
+    assert lobby.tasks.finished_by("Mara") == set()
+    assert lobby.tasks.open_station_of("Tiago") is None
     put_at_station("Tiago", 2)
     assert open_station(tiago, 2) == opened(2)
     clock.wait(2)
     assert finish_station(tiago) == {"type": "station_done", "station": 2}
+
+
+TASK_FAILED = {"type": "error", "code": "task_failed", "message": "Something went wrong. Try again."}
 
 
 def test_a_fault_in_a_minigame_does_not_close_the_connection(connect, monkeypatch):
@@ -476,8 +483,70 @@ def test_a_fault_in_a_minigame_does_not_close_the_connection(connect, monkeypatc
     monkeypatch.setitem(minigames.MINIGAMES, 1, Minigame(title="Sort the slides", min_seconds=1, make_content=broken))
     mara, tiago, _ = running_round(connect)
     put_at_station("Mara", 1)
-    mara.send_json({"type": "open_station", "station": 1})
+    # The server answers the fault with an error (review of M2-4.1): with no
+    # answer the browser would wait for one forever.
+    assert open_station(mara, 1) == TASK_FAILED
     assert still_works(mara)
     # The other stations still work.
     put_at_station("Mara", 2)
     assert open_station(mara, 2) == opened(2)
+
+
+def test_a_fault_in_a_minigame_is_answered_with_an_error_and_the_player_can_go_on(connect, monkeypatch):
+    def broken(rng):
+        raise ValueError("this minigame is broken")
+
+    monkeypatch.setitem(minigames.MINIGAMES, 1, Minigame(title="Sort the slides", min_seconds=1, make_content=broken))
+    mara, tiago, _ = running_round(connect)
+    put_at_station("Mara", 1)
+    # The browser waits for an answer to every task message, so one must come.
+    assert open_station(mara, 1) == TASK_FAILED
+    # No task was left open: nothing more is sent, and another station opens.
+    assert not lobby_named("Mara").tasks.has_open_task("Mara")
+    assert still_works(mara)
+    assert still_works(tiago)
+    put_at_station("Mara", 2)
+    assert open_station(mara, 2) == opened(2)
+
+
+def test_a_fault_after_the_task_was_opened_forgets_the_task_and_tells_the_player(connect, monkeypatch):
+    def broken(station, title, content):
+        raise ValueError("the answer could not be built")
+
+    mara, tiago, _ = running_round(connect)
+    put_at_station("Mara", 1)
+    with monkeypatch.context() as patched:
+        patched.setattr(protocol, "station_opened", broken)
+        # The error comes first, then the news that the task is closed.
+        assert open_station(mara, 1) == TASK_FAILED
+        assert mara.receive_json() == {"type": "station_closed", "station": 1}
+    assert not lobby_named("Mara").tasks.has_open_task("Mara")
+    assert still_works(mara)
+    # The same station opens again, and nothing counted as finished.
+    assert lobby_named("Mara").tasks.finished_by("Mara") == set()
+    assert open_station(mara, 1) == opened(1)
+
+
+def test_a_fault_while_closing_or_finishing_is_answered_too(connect, monkeypatch):
+    def broken(station):
+        raise ValueError("the answer could not be built")
+
+    mara, tiago, _ = round_with_station_open(connect, 1)
+    with monkeypatch.context() as patched:
+        patched.setattr(protocol, "station_closed", broken)
+        # The rules had closed the task before the fault: only the error comes.
+        assert close_station(mara) == TASK_FAILED
+    assert still_works(mara)
+    assert open_station(mara, 1) == opened(1)
+
+
+def test_a_fault_is_logged_by_its_kind_only(connect, monkeypatch, caplog):
+    def broken(rng):
+        raise ValueError("secret detail")
+
+    monkeypatch.setitem(minigames.MINIGAMES, 1, Minigame(title="Sort the slides", min_seconds=1, make_content=broken))
+    mara, tiago, _ = running_round(connect)
+    put_at_station("Mara", 1)
+    assert open_station(mara, 1) == TASK_FAILED
+    assert "ValueError" in caplog.text
+    assert "secret detail" not in caplog.text

@@ -22,7 +22,8 @@
 // minigame draws (server/modes/minigames.py says how to add that part).
 //
 // main.js uses the rest:
-//   Game.minigames.open(station, title, content)   the server opened a station
+//   Game.minigames.open(station, title, content)   the server opened a station;
+//                                                  false if no window could be shown
 //   Game.minigames.showDone()                      the server counted the task
 //   Game.minigames.close()                         take the window away now
 //   Game.minigames.isOpen()
@@ -95,13 +96,14 @@ window.Game = window.Game || {};
     }
   }
 
-  // Shows the window for a station the server has just opened.
+  // Shows the window for a station the server has just opened. Returns
+  // whether a window is shown now: if not, main.js has to tell the server,
+  // which otherwise keeps the task open and the player standing still.
   function open(station, title, content) {
     container = container || document.getElementById('minigame');
-    if (!container) return;
     close(); // never two windows
     const minigame = minigameFor(content);
-    if (!minigame) return;
+    if (!container || !minigame) return false;
 
     const parts = buildWindow(String(title), String(minigame.instructions || ''));
     container.append(parts.card);
@@ -114,6 +116,7 @@ window.Game = window.Game || {};
     document.addEventListener('keydown', onKeyDown);
     parts.card.focus();
     startMinigame(minigame, parts.body, content, opening);
+    return true;
   }
 
   function startMinigame(minigame, body, content, thisOpening) {
