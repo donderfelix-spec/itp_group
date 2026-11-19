@@ -53,7 +53,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 - [ ] **M1-1.5** Close or widen the gap between the third tree and the hedge on the Main Deck: it is exactly one player wide, and a player squeezing through is drawn over both
 - [ ] **M1-1.6** Give each room a label position in `campus.json`: “Pingo Doce” is drawn in the middle of the room instead of at the right as in the sketch, and “Main Deck” sits on the spawn point
-- [ ] **M1-1.7** Narrow windows (under about 800 px): the walking hint overlaps a room name and the top message overlaps the lobby code
+- [ ] **M1-1.7** Narrow windows (under about 800 px): the walking hint overlaps a room name and the top message overlaps the lobby code. Between about 800 and 920 px the button “E Use” also covers the end of the walking hint (seen in the play test of M2-1.1)
 - [ ] **M1-1.8** Keep the list of characters in one place: the lobby panel has its own fallback copy next to `world/characters.js` and `protocol.CHARACTERS`
 - [ ] **M1-1.9** Add the new texts to DESIGN.md: “Loading the campus…”, “Signed in as”, “Players”, “Character”, “Lobby code”, “Coming with the next milestone”
 
@@ -72,11 +72,10 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 **Area 1**
 
-- [ ] **M2-1.1** Stations on the map, highlight when nearby, key to open
 - [x] **M2-1.2** Character selection in the lobby, first version of the eight stereotypes (came with M1-2.1)
 - [ ] **M2-1.3** Display of the current room
 - [ ] **M2-1.4** Make the map nicer and more detailed: floors, furniture and plants with more detail, still drawn from `campus.json`
-- [ ] **M2-1.5** Draw the characters larger. The server decides collisions, so check the collision size and the narrow passages of the map with it
+- [ ] **M2-1.5** Draw the characters larger. A character standing on a station already hides its number (seen in the play test of M2-1.1), so check that too. The server decides collisions, so check the collision size and the narrow passages of the map with it
 - [ ] **M2-1.6** More realistic walking: feet that move while walking, and the head turned in the walking direction
 
 **Area 2**
@@ -138,6 +137,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 ## Done
 
+- [x] **M2-1.1** Stations on the map: within 25 units the nearest station pulses yellow and the button “E Use” turns yellow, E or a click opens it (S-92). The rule also exists on the server (`server/world/stations.py`) for the check in M2-4.1. Play test in the browser at all six stations and with two players, kept as `tests/test_play_stations.py` (2026-11-19)
 - [x] **M2-2.1** The host chooses the mode and starts the round: mode choice and “Start game” in the lobby panel, the server checks host, player count and running round (S-91), play test with two and three browsers and eight connections (`tests/test_play_round.py`). A round cannot end yet: that comes with M2-4.7 and M2-2.2 (2026-11-19)
 - [x] **M1-2.5** Accounts run against the real Supabase database: sign up on the deployed URL stores the account with an Argon2 hash, the table has row level security (S-90). The cause of the first failure was a database password with special characters in `DATABASE_URL` (2026-11-19)
 - [x] **M1-2.4** Play test: automated test with three players (`tests/test_play_walking.py`) and a run in the browser with two tabs and a full lobby (2026-11-19)

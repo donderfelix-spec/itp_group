@@ -27,8 +27,8 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Walls and furniture stop the character | M1 | Done |
 | Camera follows your own character | M1 | Done |
 | See other players with their names above the character | M1 | Done |
-| Stations for tasks on the map | M2 | Planned |
-| Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E, R, Q) | M2 | Planned |
+| Stations for tasks on the map | M2 | Done |
+| Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E done; R and Q come with Classic) | M2 | In progress |
 | Choose a character from the list of stereotypes | M2 | Done |
 | Display of the current room | M2 | Planned |
 | Nicer, more detailed map: floors, furniture and plants | M2 | Planned |
