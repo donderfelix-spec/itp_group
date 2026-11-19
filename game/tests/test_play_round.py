@@ -78,13 +78,20 @@ def waiting_messages(connection):
         messages.append(message)
 
 
-def without_positions(messages):
-    return [message for message in messages if message["type"] != "positions"]
+# What the server sends on its own while a round runs: the positions of the
+# tick, and since S-94 the Duel's messages after the start and after a player
+# left. The tests here are about the lobby and the start of a round; the
+# Duel's messages are tested in test_server_duel.py.
+ROUND_TRAFFIC = ("positions", "duel_state", "duel_progress")
+
+
+def without_round_traffic(messages):
+    return [message for message in messages if message["type"] not in ROUND_TRAFFIC]
 
 
 def news(connection):
-    """What is waiting for this player, without the `positions` messages of the tick."""
-    return without_positions(waiting_messages(connection))
+    """What is waiting for this player, without the messages in ROUND_TRAFFIC."""
+    return without_round_traffic(waiting_messages(connection))
 
 
 def answer_to(connection, message):

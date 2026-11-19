@@ -303,5 +303,32 @@ def station_done(station: int) -> dict:
     return {"type": "station_done", "station": station}
 
 
+def duel_state(next_station, done: int, total: int, seconds=None) -> dict:
+    """Sent only to the player it is about (S-94): nobody learns another player's route.
+
+    `next_station` is None once the player has finished. Only then the
+    message carries "seconds", the player's time.
+    """
+    message = {"type": "duel_state", "next_station": next_station, "done": done, "total": total}
+    if seconds is not None:
+        message["seconds"] = seconds
+    return message
+
+
+def duel_progress(players, total: int, seconds_left: int) -> dict:
+    """`players` is a list of (name, done) pairs in joining order. Sent to everybody."""
+    listed = [{"name": name, "done": done} for name, done in players]
+    return {"type": "duel_progress", "players": listed, "total": total, "seconds_left": seconds_left}
+
+
+def duel_result(ranking, time_up: bool) -> dict:
+    """`ranking` is the list of rows from `Duel.ranking`, best first. Sent to everybody."""
+    listed = [
+        {"place": row["place"], "name": row["name"], "seconds": row["seconds"], "done": row["done"]}
+        for row in ranking
+    ]
+    return {"type": "duel_result", "ranking": listed, "time_up": time_up}
+
+
 def notice(message: str) -> dict:
     return {"type": "notice", "message": message}

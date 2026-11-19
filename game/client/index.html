@@ -99,6 +99,8 @@
         <p class="hint">Walk with WASD or the arrow keys</p>
         <!-- The window of a minigame, built by js/minigames/frame.js. -->
         <div id="minigame" class="minigame" hidden></div>
+        <!-- The ranking at the end of a Duel, built by js/minigames/duel.js. -->
+        <div id="duel-ranking" class="duel-ranking" hidden></div>
       </div>
       <!-- The top and the bottom of the panel always stay visible. Only the
            middle scrolls when the window is too low for it. -->
@@ -121,6 +123,15 @@
           <div id="lobby-character-area" class="character-area">
             <h2 class="panel-heading">Character</h2>
             <div id="lobby-characters" class="characters"></div>
+          </div>
+
+          <!-- In its place during a Duel: next station, clock and everybody's
+               progress, filled by js/minigames/duel.js. -->
+          <div id="duel-panel" class="duel-panel" hidden>
+            <h2 class="panel-heading">Duel</h2>
+            <p id="duel-next" class="duel-next" role="status"></p>
+            <p id="duel-clock" class="duel-clock" aria-label="Time left"></p>
+            <ul id="duel-players" class="duel-players"></ul>
           </div>
         </div>
 
@@ -150,6 +161,7 @@
   <script src="js/minigames/sort_slides.js"></script>
   <script src="js/minigames/shelve_books.js"></script>
   <script src="js/minigames/self_checkout.js"></script>
+  <script src="js/minigames/duel.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

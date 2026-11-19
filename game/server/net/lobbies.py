@@ -37,6 +37,9 @@ class Lobby:
         # round's object here at the start (`server/modes/tasks.py`). Kept
         # here so that it goes away with the lobby, like the positions.
         self.tasks = None
+        # The Duel of the running round (`server/modes/duel.py`), or None:
+        # no round is running, or it is a round of another mode.
+        self.duel = None
 
     def names(self) -> list:
         """The names of the players, in the order they joined."""
@@ -67,6 +70,17 @@ class Lobby:
         self.phase = PHASE_ROUND
         self.walkers.back_to_spawn()
 
+    def end_round(self):
+        """The round is over: the lobby is open again, as before the start (S-94).
+
+        The tasks and the state of the mode belong to the round and go with
+        it, so the next round starts with nothing open and nothing finished.
+        The players stay where they stand.
+        """
+        self.phase = PHASE_LOBBY
+        self.tasks = None
+        self.duel = None
+
     def add(self, name: str):
         """Put the player in with the first character nobody here has (S-75)."""
         self._characters[name] = self._first_free_character()
@@ -80,6 +94,8 @@ class Lobby:
         self.walkers.remove(name)
         if self.tasks is not None:
             self.tasks.remove(name)
+        if self.duel is not None:
+            self.duel.remove(name)
         if name != self.host:
             return None
         # The first name left is the player who has been here longest.

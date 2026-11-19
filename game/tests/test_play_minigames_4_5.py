@@ -16,6 +16,7 @@ import pytest
 
 from server.modes import minigames
 from task_helpers import client, clock, connect  # noqa: F401
+from task_helpers import round_without_duel  # noqa: F401
 from task_helpers import (
     NO_TASK_OPEN,
     NOT_NEEDED,

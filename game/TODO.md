@@ -18,7 +18,7 @@ These points hold up the start. The reasoning behind them is under “Open decis
 - [x] **K12** Ask the teaching staff whether a Python server with a JavaScript client is acceptable (S-42). Settled (2026-11-19)
 - [x] **K5** The third mode is “Deadline”, only if time allows (S-12, S-33)
 - [x] **K6** Name of the game: “Group Project” (S-37)
-- [ ] **K7** Who takes on which of the four areas?
+- [x] **K7** The four areas: area 1 Hanna, area 2 Felix, area 3 Laurin, area 4 Lennart (2026-11-19). The name after an open to-do below says who takes it
 - [x] **K8** “We Be(a)t” is put aside for now (S-27)
 - [x] **K9** Render account created and service set up (2026-11-18)
 - [ ] **K10** Names and student numbers of all members for the README (S-36)
@@ -73,53 +73,70 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 ## M2: Duel
 
-**Area 1**
+Milestone 2 was built up to the Duel by Claude as lead (pull requests #19 to #26 and the Duel pull request). What is left is listed here per area, with what the next person needs to know. The process is in the [WORKFLOW.md](WORKFLOW.md); new work starts from `main`.
+
+**Area 1 (Hanna)**
 
 - [x] **M2-1.2** Character selection in the lobby, first version of the eight stereotypes (came with M1-2.1)
-- [ ] **M2-1.3** Display of the current room
-- [ ] **M2-1.4** Make the map nicer and more detailed: floors, furniture and plants with more detail, still drawn from `campus.json`
-- [ ] **M2-1.5** Draw the characters larger. A character standing on a station already hides its number (seen in the play test of M2-1.1), so check that too. The server decides collisions, so check the collision size and the narrow passages of the map with it
-- [ ] **M2-1.6** More realistic walking: feet that move while walking, and the head turned in the walking direction
+- [ ] **M2-1.3** Display of the current room (Hanna). Not started. The browser can find the room from the own position and the rooms in `campus.json`; `draw.js` already has `roomAt`. DESIGN.md, section 4: the name stands at the top left
+- [ ] **M2-1.4** Make the map nicer and more detailed: floors, furniture and plants with more detail, still drawn from `campus.json` (Hanna). **Started, not merged.** Branch `game/m2-1.4-map-detail`: built, full suite green, one code review without blocking findings. No geometry changed; `campus.json` gained `pattern` on rooms, `faces` and `holds` on some solids and a list `decor` that only the browser draws. Branch `game/m2-1.4-map-detail-wip` holds the unfinished and untested fixes of that review: door mats and door leaves vanish at the edge of the view, six leaves lie on the walkable deck (decor must not lie where players walk; a test for that rule was started), the round café tables look smaller than the area they block, the canteen tables read as cassettes. Missing: finish and test those fixes, second review, play test, lists, pull request. Drawing the map costs about twice as much as before, still far inside one frame
+- [ ] **M2-1.5** Draw the characters larger (Hanna). Not started. A character standing on a station already hides its number (seen in the play test of M2-1.1), so check that too. The server decides collisions, so check the collision size and the narrow passages of the map with it. If the collision size changes, the walking distances of the Duel change with it: `server/world/paths.py` measures them with the player's size, and its tests name the narrow places
+- [ ] **M2-1.6** More realistic walking: feet that move while walking, and the head turned in the walking direction (Hanna). **Started, not merged.** Branch `game/m2-1.6-walking-animation`, the version the owner chose (the branch `game/campus-and-characters` is not merged): front, side and back view of all eight characters, alternating feet, a soft stop; one code review and its three findings fixed; full suite green; the icons in the lobby are unchanged. Missing: second review of the fix, play test with two players, lists, pull request. Only `characters.js` and `world.js` are touched
+- [ ] **M2-1.7** The hair, buns and headwear of the characters follow the head when it turns in the walking direction, instead of staying in place (Hanna). Not started. Build it on top of M2-1.6: in the side view only the face is shifted so far, hair and headwear are still drawn from the front
 
-**Area 2**
+**Area 2 (Felix)**
 
-- [ ] **M2-2.2** Back to the lobby after the round
-- [ ] **M2-2.3** A player leaves the round, the host changes
-- [ ] **M2-2.4** Statistics: the server writes the result of every round, profile with wins and best Duel time, leaderboard
+- [ ] **M2-2.2** Back to the lobby after the round (Felix). The Duel already ends its round on the server (`Lobby.end_round`, S-94): the lobby is in phase `lobby` again, the ranking has a button “Back to lobby” that takes the card away, and the host can start the next round without a new code. Left to do: decide what the panel shows after a round, where the players stand when the round ends (they stay where they are for now), and play it through with three players
+- [ ] **M2-2.3** A player leaves the round, the host changes (Felix). For Duel the server part is built and tested: a player who leaves, logs out, disconnects or logs in elsewhere is taken out of the progress and the ranking, the round goes on, also for one player, and ends when the rest have finished; the host changes as in the lobby. Left to do: a play test with real browsers, and what a player who lost the connection sees when coming back (they cannot rejoin a running round, M3-2.2)
+- [ ] **M2-2.4** Statistics: the server writes the result of every round, profile with wins and best Duel time, leaderboard (Felix). Not started. `Duel.ranking()` in `server/modes/duel.py` gives place, name, time and stations done at the end of a round; the place to write from is where `server/main.py` ends the round. Only the server writes results (S-40), guests have no statistics (S-38). Writing must not hold up or break the end of the round: see how the Duel takes back a count when something fails after it (M2-4.7a)
 
-**Area 4**
+A complete Duel round needs nothing more from area 2: start, play, ranking and the next round work. M2-2.2 and M2-2.3 are about what is shown and about playing it with several people; M2-2.4 is the only part of the required scope (S-40) that is not built at all.
 
-- [ ] **M2-4.7a** When more work is added after a task is counted (progress to the others, the win check, statistics): a fault there must not leave the station counted on the server while the browser was never told “done”. Found in the review of M2-4.1; cannot happen yet
-- [ ] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard
-- [ ] **M2-4.8** Play test: two players play a Duel through to the leaderboard
+**Area 4 (Lennart)**
+
+- [x] **M2-4.7a** A fault after a task was counted takes the count back, in the frame and in the Duel, so the server never counts a station the browser was not told about (solved with M2-4.7)
+- [x] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard (S-94). In the pull request after #26
+- [ ] **M2-4.8** Play test: two players play a Duel through to the leaderboard (Lennart). A scripted run with two browsers and the real minigames exists from the building of M2-4.7 (both finish, ranking, second round, time running out). Left to do: two people on two computers on the deployed server, and write down what gets in the way
+- [ ] **K15** belongs here too: “Brew the order” and “Build the tray” are short and can be solved by clicking everything, which matters most in Duel (see “For the team to settle”)
+
+**Known and open after the Duel**
+
+- With 7 or 8 players a few draws do not find enough routes within 10 % of the first one; then the nearest routes in length are taken (S-94). The 60 routes are between about 15 and 29 seconds of walking
+- A finish that reaches the server after the 180 seconds does not count
+- **M2-4.9** (Lennart) If setting up a round ever failed at the start (`handle_start_game` in `server/main.py`), the lobby would stay in phase `round` with nothing to play and nobody could start, join or end it. Nothing in the code can fail there today; catch it, end the round and answer “Something went wrong. Try again.”, with a test. Found in the review of M2-4.7
+- **M2-4.10** (Lennart) A fault while building the ranking would keep a round from ending and write a log line on every tick; only the building of the message is guarded so far. Found in the review of M2-4.7
+- **M2-4.11** (Felix) A host who starts the next round in the same instant the old one ends can leave the old ranking card over the new round for a player. And `client/js/net.js` treats the Duel's progress messages as “the answer” to a click, so a double click can slip through while another player finishes a station (the server refuses it with “Close your current task first.”). Both found in the review of M2-4.7
+- Two tests in `tests/test_play_round.py` sometimes read a position message from the tick first and fail about once in 25 runs (`test_a_player_who_became_host_during_the_round_can_neither_start_nor_choose`, `test_the_start_is_refused_when_the_only_other_player_has_just_closed_the_connection`). Same family as M1-2.20; they were not changed
 
 ## M3: Classic
 
-**Area 1**
+**Area 1 (Hanna)**
 
-- [ ] **M3-1.1** Limited vision
-- [ ] **M3-1.2** Show ghosts, a failed character stays on the ground until it is reported
-- [ ] **M3-1.3** Overview map with open tasks
-- [ ] **M3-1.4** Four hiding spots (S-62), after the core of Classic
+- [ ] **M3-1.1** Limited vision (Hanna)
+- [ ] **M3-1.2** Show ghosts, a failed character stays on the ground until it is reported (Hanna)
+- [ ] **M3-1.3** Overview map with open tasks (Hanna)
+- [ ] **M3-1.4** Four hiding spots (S-62), after the core of Classic (Hanna)
 
-**Area 2**
+**Area 2 (Felix)**
 
-- [ ] **M3-2.1** Every client receives only what its player is allowed to know (roles, ghost chat)
-- [ ] **M3-2.2** Reconnect after a short disconnection
+- [ ] **M3-2.1** Every client receives only what its player is allowed to know (roles, ghost chat) (Felix)
+- [ ] **M3-2.2** Reconnect after a short disconnection (Felix)
 
-**Area 3**
+**Area 3 (Laurin)**
 
-- [ ] **M3-3.1** Rules as pure functions: assign roles, assign tasks, win conditions, with tests
-- [ ] **M3-3.2** Failing someone, with range and cooldown
-- [ ] **M3-3.3** Reporting and emergency meeting
-- [ ] **M3-3.4** Meeting screen with chat and time limit
-- [ ] **M3-3.5** Vote and result
-- [ ] **M3-3.6** Progress bar, role display, end screen
-- [ ] **M3-3.7** Play test: one complete round with five players, once the students win, once the Free Rider wins
+- [ ] **M3-3.1** Rules as pure functions: assign roles, assign tasks, win conditions, with tests (Laurin)
+- [ ] **M3-3.2** Failing someone, with range and cooldown (Laurin)
+- [ ] **M3-3.3** Reporting and emergency meeting (Laurin)
+- [ ] **M3-3.4** Meeting screen with chat and time limit (Laurin)
+- [ ] **M3-3.5** Vote and result (Laurin)
+- [ ] **M3-3.6** Progress bar, role display, end screen (Laurin)
+- [ ] **M3-3.7** Play test: one complete round with five players, once the students win, once the Free Rider wins (Laurin)
 
-**Area 4**
+Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with one entry per mode, and `protocol.MODES` lists the modes the host can choose. A new mode adds one entry to each.
 
-- [ ] **M3-4.1** Connect the minigames to the task list of the Classic mode
+**Area 4 (Lennart)**
+
+- [ ] **M3-4.1** Connect the minigames to the task list of the Classic mode (Lennart). The frame asks a function which stations a player needs (`needed_stations` in `server/modes/tasks.py`); Duel passes “only the next one”, Classic passes the player's task list
 
 ## M4: Extension
 
@@ -135,6 +152,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 ## Done
 
+- [x] **M2-4.7** and **M2-4.7a** Duel: every player gets an own route of three stations with about the same walking distance, measured on the real map; only the next station opens; the panel shows the next station, the clock and everybody’s progress; the round ends when all have finished or after three minutes, with a ranking, and the lobby is open again (S-94) (2026-11-19)
 - [x] **M2-4.6** Minigame Pingo Doce “Self-checkout”: scan products until the total is exactly the target, a product that goes over is refused. All five minigames were played in one round with two browsers; the runs are kept as `tests/test_play_minigames_1_3.py` and `tests/test_play_minigames_4_5.py` (2026-11-19)
 - [x] **M2-4.5** Minigame CTT Student Hall “Shelve the books”: six books with numbers from 100 to 999 are clicked onto the shelf from the lowest to the highest, a wrong book falls back. Played in the browser in a real round (2026-11-19)
 - [x] **M2-4.4** Minigame Lecture Hall “Sort the slides”: five slides are dragged onto five numbered places, a slide on a wrong place shakes and jumps back. Played in the browser in a real round (2026-11-19)

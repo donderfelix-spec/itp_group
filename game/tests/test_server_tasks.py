@@ -50,6 +50,7 @@ from task_helpers import (  # noqa: F401
     open_station,
     opened,
     placeholder_at_every_station,
+    round_without_duel,
     player,
     put,
     put_at_station,
