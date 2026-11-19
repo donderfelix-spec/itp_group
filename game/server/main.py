@@ -989,4 +989,24 @@ def run_in_background(coroutine):
 
 
 # Mounted last, so /health and /ws win over files of the same name.
-app.mount("/", StaticFiles(directory=CLIENT_DIR, html=True), name="client")
+class ClientFiles(StaticFiles):
+    """The files of the client, each sent with `Cache-Control: no-cache`.
+
+    `no-cache` means: the browser may keep its copy, but it asks the server
+    before every use whether the copy is still current. An unchanged file is
+    answered with a short `304 Not Modified`, so nothing is downloaded twice.
+    Without the header a browser guesses how long a file stays fresh, and a
+    normal reload after a deploy showed an old script.
+
+    Not `no-store`: then every file would be downloaded again on every visit.
+    Not a long `max-age`: that is only safe when a changed file gets a new
+    name (a version in the file name), and without a build step ours never do.
+    """
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
+app.mount("/", ClientFiles(directory=CLIENT_DIR, html=True), name="client")
