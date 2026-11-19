@@ -527,39 +527,33 @@ Game.world = Game.world || {};
       }
     },
 
-    // Orange jacket, messy hair, coffee cup, drops of sweat.
+    // Orange jacket, messy hair, coffee cup.
     latecomer: {
       body: "#F08A3C", legs: "#3F5F8A", leftHand: [-22, 65], rightHand: [25, 67],
-      behind: drawSpeedLines,
+      behind: nothing,
       clothes: function (ctx) {
         box(ctx, -6, 39, 12, 40, 0, "#FFFFFF", 1.5);
       },
       object: function (ctx) {
-        stroke(ctx, "M23 46 q-3 -4 0 -8 M29 47 q3 -4 0 -8", "#B9B4A6", 1.8);
         shape(ctx, "M17 56 L34 56 L32 78 L19 78 Z", "#FFFFFF", 2);
         box(ctx, 16, 52, 19, 5, 2, "#8A5A3B", 1.5);
         box(ctx, 19, 63, 13, 7, 0, "#C9A27A", 0);
       },
       head: function (ctx) {
         shape(ctx, "M-18 19 Q-23 7 -13 4 Q-15 -5 -5 0 Q-2 -9 4 -1 Q11 -8 13 3 Q23 5 18 19 Q10 9 0 11 Q-10 9 -18 19 Z", "#7A4B2A", 2);
-        drawSweatDrop(ctx);
       },
       turnedLeftHand: [-21, 65], turnedRightHand: [25, 67], holdsInRightHand: true,
-      // The speed lines trail behind, which is where they are in the sketch.
-      turnedBehind: drawSpeedLines,
+      turnedBehind: nothing,
       turnedClothes: function (ctx) {
         box(ctx, -1, 39, 11, 40, 0, "#FFFFFF", 1.5);
       },
       turnedObject: function (ctx) {
-        stroke(ctx, "M23 46 q-3 -4 0 -8 M29 47 q3 -4 0 -8", "#B9B4A6", 1.8);
         shape(ctx, "M17 56 L34 56 L32 78 L19 78 Z", "#FFFFFF", 2);
         box(ctx, 16, 52, 19, 5, 2, "#8A5A3B", 1.5);
         box(ctx, 19, 63, 13, 7, 0, "#C9A27A", 0);
       },
       turnedHead: function (ctx) {
         shape(ctx, "M-17 26 Q-24 18 -19 10 Q-25 2 -13 3 Q-15 -6 -4 -1 Q-1 -10 6 -2 Q13 -8 14.5 3 Q23 6 17 15 Q12 8 4 10 Q-6 11 -9.5 18 Q-11 24 -17 26 Z", "#7A4B2A", 2);
-        // The drop of sweat flies off behind the head.
-        shape(ctx, "M-27 12 q4 6 0 10 q-4 -4 0 -10 Z", "#6FB8E8", 1.2);
       }
     },
 
@@ -638,15 +632,6 @@ Game.world = Game.world || {};
   function traceNarrowLens(ctx) {
     ctx.beginPath();
     ctx.ellipse(11.3, 22, 5, 6, 0, 0, Math.PI * 2);
-  }
-
-  // Speed lines: the Latecomer is always in a hurry.
-  function drawSpeedLines(ctx) {
-    stroke(ctx, "M-44 50 h10 M-46 60 h14 M-44 70 h10", "#B9B4A6", 2.5);
-  }
-
-  function drawSweatDrop(ctx) {
-    shape(ctx, "M24 14 q4 6 0 10 q-4 -4 0 -10 Z", "#6FB8E8", 1.2);
   }
 
   function drawHeadphones(ctx) {
