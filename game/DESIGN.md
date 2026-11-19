@@ -205,6 +205,13 @@ A minigame opens with E or the button “E Use” at its station, only while a r
 
 Minigame 6 is the only one with timing instead of sorting, selecting or calculating. It comes first of the “If time allows” minigames. As soon as it is built, everyone in Classic gets four of six tasks, and in Duel three of six stations are drawn.
 
+**Sentences and names in the minigames**
+
+- **Build the tray:** “Put the four dishes from the order slip on the tray.” The six dishes are Soup, Bacalhau, Rice, Salad, Pastel de nata and Fruit. The areas are labelled “Order slip”, “Counter” and “Tray”.
+- **Brew the order:** “Press the buttons in the order of the recipe.” The slip is headed “Order”. A second press of the button that was just accepted is ignored, so a double click is not shown as a mistake.
+- **Sort the slides:** “Drag the slides into the right order.” Five numbered places stand above the pile. A slide dropped on its right place stays there; on a wrong or filled place it shakes and jumps back; released outside the window it returns without counting.
+- **Shelve the books:** “Click the books onto the shelf, lowest number first.” The numbers are six different numbers from 100 to 999.
+
 About the drinks in minigame 2: Bica (Cup, Espresso), Abatanado (Cup, Espresso, Hot water), Meia de leite (Cup, Espresso, Milk), Galão (Glass, Espresso, Milk), Cappuccino (Cup, Espresso, Milk, Foam).
 
 About minigame 5: The prices are multiples of 50 cents, and the target amount is always the total of three of the six products. So there is always a solution, and every combination that hits the amount counts.
