@@ -13,9 +13,11 @@ Game.world = Game.world || {};
 (function () {
   var MAP_FILE = "js/world/campus.json";
 
-  // The camera shows about one room: this many map units along the longer
-  // side of the canvas.
-  var VIEW_SIZE = 260;
+  // The camera shows about one room with some of what lies around it: this
+  // many map units along the longer side of the canvas (the largest room,
+  // the CTT Student Hall, is 330 long, most are about 200). Everything on
+  // the map is drawn in map units, so it all scales with this number.
+  var VIEW_SIZE = 320;
 
   // Shown until the map file has arrived (background colour of DESIGN.md).
   var BACKGROUND = "#EADFC8";
