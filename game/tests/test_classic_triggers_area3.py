@@ -35,6 +35,7 @@ def failed_sheet(names, connect, clock):
             assert event["target_id"] == fail_message["target_id"]
     for connection in connections.values():
         assert connection.receive_json()["type"] == "classic_progress"
+    assert connections[fr_id].receive_json()["type"] == "classic_fail_status"
 
     ghost_id = fail_message["target_id"]
     reporter_id = next(player for player in hp_ids if player != ghost_id)

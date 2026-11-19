@@ -73,6 +73,9 @@ Game.world = Game.world || {};
   var frameRequest = 0; // id of the waiting requestAnimationFrame
   var ownName = null;
   var ownIsFreeRider = false;
+  var failAvailable = false;
+  var failInRange = false;
+  var failCooldownUntil = null;
   var players = new Map(); // name -> player record, see newPlayer()
   var pressedKeys = {}; // event.code -> true while the key is held down
   var sentDirection = { dx: 0, dy: 0 }; // what the server heard last
@@ -166,6 +169,20 @@ Game.world = Game.world || {};
 
   function setOwnFreeRider(value) {
     ownIsFreeRider = value === true;
+    if (!ownIsFreeRider) {
+      failAvailable = false;
+      failInRange = false;
+      failCooldownUntil = null;
+    }
+  }
+
+  function setFailStatus(message) {
+    if (!ownIsFreeRider || !message || message.type !== "classic_fail_status") return;
+    failAvailable = message.available === true;
+    failInRange = message.in_range === true;
+    failCooldownUntil = Number.isFinite(message.cooldown_until)
+      ? message.cooldown_until
+      : null;
   }
 
   // The players of the lobby with their characters: [{name, character}].
@@ -391,7 +408,11 @@ Game.world = Game.world || {};
   // before the station opens.
   function onUseButtonClick() {
     useButton.blur();
-    useActionInRange();
+    if (ownIsFreeRider) {
+      if (isFailButtonActive() && typeof failHandler === "function") failHandler();
+    } else {
+      useActionInRange();
+    }
   }
 
   function removeUseButton() {
@@ -404,6 +425,19 @@ Game.world = Game.world || {};
   // Grey and switched off while it would do nothing, yellow otherwise. The
   // stylesheet gives the two looks.
   function updateUseButton(idInRange) {
+    if (!useButton) return;
+    if (ownIsFreeRider) {
+      var secondsLeft = failCooldownSeconds();
+      useButton.textContent = secondsLeft > 0
+        ? "Durchfallen lassen (" + secondsLeft + " s)"
+        : "Durchfallen lassen";
+      var shouldDisableFail = !isFailButtonActive() || inputPaused;
+      if (useButton.disabled !== shouldDisableFail) {
+        if (shouldDisableFail && document.activeElement === useButton) useButton.blur();
+        useButton.disabled = shouldDisableFail;
+      }
+      return;
+    }
     var emergencyNearby = isAtEmergencyButton();
     var shouldBeDisabled = (idInRange === null && !emergencyNearby) || inputPaused;
     if (!useButton) return;
@@ -416,6 +450,17 @@ Game.world = Game.world || {};
       useButton.blur();
     }
     useButton.disabled = shouldBeDisabled;
+  }
+
+  function failCooldownSeconds() {
+    if (failCooldownUntil === null) return 0;
+    return Math.max(0, Math.ceil(failCooldownUntil - Date.now() / 1000));
+  }
+
+  function isFailButtonActive() {
+    return ownIsFreeRider && failInRange && (
+      failAvailable || (failCooldownUntil !== null && failCooldownSeconds() === 0)
+    );
   }
 
   // ---- Keyboard --------------------------------------------------------
@@ -503,7 +548,7 @@ Game.world = Game.world || {};
       return;
     }
     if (isFailKey(event)) {
-      if (!event.repeat && typeof failHandler === "function") failHandler();
+      if (!event.repeat && isFailButtonActive() && typeof failHandler === "function") failHandler();
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(KEY_DIRECTIONS, event.code)) {
@@ -871,6 +916,7 @@ Game.world = Game.world || {};
   Game.world.stop = stop;
   Game.world.setOwnName = setOwnName;
   Game.world.setOwnFreeRider = setOwnFreeRider;
+  Game.world.setFailStatus = setFailStatus;
   Game.world.setPlayers = setPlayers;
   Game.world.setPositions = setPositions;
   Game.world.setUsableStations = setUsableStations;

@@ -326,5 +326,8 @@ def test_classic_round_sends_each_living_player_a_private_role_card(connect):
     for connection, card in zip((mara, tiago, ines, rui), cards):
         if card["role"] == "FR":
             assert connection.receive_json() == {"type": "you_are_fr"}
+            fail_status = connection.receive_json()
+            assert fail_status["type"] == "classic_fail_status"
+            assert fail_status["cooldown_until"] is None
     progress_messages = [connection.receive_json() for connection in (mara, tiago, ines, rui)]
     assert all(message == {"type": "classic_progress", "progress": 0.0} for message in progress_messages)

@@ -131,9 +131,14 @@ def test_only_free_rider_can_fail_and_fail_cooldown_is_checked_by_server(connect
             continue
         assert connection.receive_json()["type"] == "classic_fail"
         assert connection.receive_json()["type"] == "classic_progress"
+    assert connections[fr_id].receive_json()["type"] == "classic_fail_status"
 
     clock.wait(24.99)
-    assert ask(connections[fr_id], {"type": "fail"}) == protocol.rejection("fail_rejected")
+    cooldown_rejection = ask(connections[fr_id], {"type": "fail"})
+    assert cooldown_rejection["type"] == "error"
+    assert cooldown_rejection["code"] == "fail_rejected"
+    assert isinstance(cooldown_rejection["cooldown_until"], (int, float))
+    assert "second" in cooldown_rejection["message"]
     assert len(round_state.eliminated) == 1
 
 

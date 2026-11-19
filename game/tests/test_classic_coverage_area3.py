@@ -29,6 +29,8 @@ def drain_fail_result(connections, fr_id, expected_target, final=False):
             assert result["winner"] == "FR"
             assert result["reason"] == "free_riders_reached_parity"
             connection.receive_json()  # lobby_state after the result
+    else:
+        assert connections[fr_id].receive_json()["type"] == "classic_fail_status"
 
 
 @pytest.mark.parametrize("names", PLAYER_SETS)
@@ -52,6 +54,7 @@ def test_classic_q_selects_the_nearest_living_hp(names, connect):
         if player != fr_id:
             assert connection.receive_json()["type"] == "classic_fail"
         assert connection.receive_json()["type"] == "classic_progress"
+    assert connections[fr_id].receive_json()["type"] == "classic_fail_status"
 
 
 @pytest.mark.parametrize("names", PLAYER_SETS)
@@ -75,6 +78,7 @@ def test_classic_q_distance_tie_uses_lobby_join_order(names, connect):
         if player != fr_id:
             assert connection.receive_json()["type"] == "classic_fail"
         assert connection.receive_json()["type"] == "classic_progress"
+    assert connections[fr_id].receive_json()["type"] == "classic_fail_status"
 
 
 @pytest.mark.parametrize("names,fail_count", [(PLAYER_SETS[0], 2), (PLAYER_SETS[1], 3)])

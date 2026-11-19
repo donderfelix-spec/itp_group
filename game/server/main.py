@@ -32,7 +32,7 @@ from server.modes import duel, minigames, tasks
 from server.net.lobbies import Lobbies
 from server.net.sessions import GUEST_NUMBERS, Sessions
 from server.protocol import PROTOCOL_VERSION, ProtocolError, error, parse_client_message, welcome
-from rules import can_fail, check_winner, end_reason
+from rules import FAIL_COOLDOWN, FAIL_RANGE, can_fail, check_winner, end_reason
 from server.world import paths
 from server.world.campus import load_campus
 
@@ -519,6 +519,8 @@ def tick(seconds: float):
         try:
             if lobby.walkers.advance(seconds, app.state.campus):
                 tell_positions(lobby)
+                if lobby.classic_round is not None:
+                    run_in_background(tell_classic_fail_status(lobby))
         except Exception as problem:
             # A fault in one lobby must not freeze the lobbies after it.
             # Only the kind of error is logged.
@@ -718,7 +720,21 @@ async def answer_fail_message(websocket: WebSocket):
         if role == "HP" and can_fail(state, name, player_id, now)
     ]
     if not targets:
-        await websocket.send_json(protocol.rejection("fail_rejected"))
+        last_fail = classic.last_fail_at.get(name)
+        cooldown_end = None if last_fail is None else last_fail + FAIL_COOLDOWN
+        if cooldown_end is not None and cooldown_end > now:
+            remaining = cooldown_end - now
+            rejection = protocol.rejection("fail_rejected")
+            remaining_seconds = math.ceil(remaining)
+            unit = "second" if remaining_seconds == 1 else "seconds"
+            rejection["message"] = f"You can fail again in {remaining_seconds} {unit}."
+            rejection["cooldown_until"] = time.time() + remaining
+            await websocket.send_json(rejection)
+        else:
+            rejection = protocol.rejection("fail_rejected")
+            if classic.roles.get(name) == "FR":
+                rejection["cooldown_until"] = None
+            await websocket.send_json(rejection)
         return
 
     source_position = classic.positions[name]
@@ -737,6 +753,7 @@ async def answer_fail_message(websocket: WebSocket):
     }
     await asyncio.gather(*(send_to(player_id, event) for player_id in lobby.names()))
     await tell_round_news(lobby)
+    await tell_classic_fail_status(lobby)
 
 
 async def answer_report_message(websocket: WebSocket, message: dict):
@@ -984,6 +1001,54 @@ async def tell_classic_start(name: str, lobby, classic):
         await send_to(name, {"type": "classic_role", **reveal})
         if reveal["role"] == "FR":
             await send_to(name, {"type": "you_are_fr"})
+            await tell_classic_fail_status(lobby, name)
+
+
+async def tell_classic_fail_status(lobby, only_player=None):
+    """Send the FR a private fail-button state and a browser-comparable deadline."""
+    classic = lobby.classic_round
+    if classic is None or classic.phase != "round":
+        return
+    members = set(lobby.names())
+    classic.positions = {
+        player_id: lobby.walkers.position_of(player_id)
+        for player_id in classic.roles
+        if player_id in members
+    }
+    now = seconds_now()
+    for player_id, role in classic.roles.items():
+        if role != "FR" or player_id not in members:
+            continue
+        if only_player is not None and player_id != only_player:
+            continue
+        state = classic.rule_state()
+        in_range = any(
+            target_role == "HP"
+            and target_id not in classic.eliminated
+            and target_id in classic.positions
+            and player_id in classic.positions
+            and classic.positions[player_id] is not None
+            and classic.positions[target_id] is not None
+            and math.dist(classic.positions[player_id], classic.positions[target_id]) <= FAIL_RANGE
+            for target_id, target_role in classic.roles.items()
+        )
+        available = any(
+            target_role == "HP" and can_fail(state, player_id, target_id, now)
+            for target_id, target_role in classic.roles.items()
+        )
+        last_fail = classic.last_fail_at.get(player_id)
+        cooldown_end = None if last_fail is None else last_fail + FAIL_COOLDOWN
+        cooldown_until = (
+            time.time() + max(0.0, cooldown_end - now)
+            if cooldown_end is not None and cooldown_end > now
+            else None
+        )
+        await send_to(player_id, {
+            "type": "classic_fail_status",
+            "available": available,
+            "in_range": in_range,
+            "cooldown_until": cooldown_until,
+        })
 
 
 async def tell_classic_progress(lobby):
