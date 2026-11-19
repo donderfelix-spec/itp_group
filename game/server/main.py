@@ -957,11 +957,13 @@ def end_round_if_over(lobby) -> tuple:
     return farewells, result_to_write
 
 
-async def tell_round_ended(lobby, farewells: dict, result=None):
+async def tell_round_ended(lobby, farewells: dict, result):
     """Send what `end_round_if_over` returned, then the lobby's state: it is open again.
 
-    `result` is this round's result for the statistics. It is written once
-    this round's players have been told, and only by this call.
+    `result` is this round's result for the statistics, or None when there
+    is nothing to write. It is written once this round's players have been
+    told, and only by this call. It has no default, so that no caller can
+    forget it and lose a round's statistics without anybody noticing.
     """
     if not farewells:
         return

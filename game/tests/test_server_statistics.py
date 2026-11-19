@@ -680,6 +680,63 @@ def test_players_who_ask_while_the_store_is_busy_wait_for_the_same_answer(connec
     assert slow.tops == 1
 
 
+def test_three_calls_while_the_store_is_busy_share_one_question_and_one_answer():
+    """The same rule as the test above, without the network and without waiting for a time.
+
+    Three calls of `leaderboard_totals` run in one event loop against a
+    store whose `top` blocks until the test lets it go on.
+    """
+
+    class BlockedTop(CountingStore):
+        def __init__(self, loop, started):
+            super().__init__()
+            self.loop = loop
+            self.started = started  # an asyncio.Event of the test's loop
+            self.go = threading.Event()
+
+        def top(self, limit):
+            # `top` runs in a worker thread, so the event of the loop is
+            # set through the loop.
+            self.loop.call_soon_threadsafe(self.started.set)
+            assert self.go.wait(DEADLINE_SECONDS), "the test never let the store go on"
+            return super().top(limit)
+
+    async def scenario():
+        started = asyncio.Event()
+        slow = BlockedTop(asyncio.get_running_loop(), started)
+        app.state.statistics_store = slow
+        slow.record_round(*one_round("Mara"))
+        calls = [asyncio.create_task(main.leaderboard_totals()) for _ in range(3)]
+        try:
+            # Why all three are waiting once `started` is set, whatever the
+            # speed of the machine: the event loop runs its tasks in the
+            # order they were created. The three calls were created first,
+            # and the question to the store is a task created by the first
+            # of them, so it is behind all three in the line. Each call runs
+            # without a pause until it waits for that question. So the
+            # store's `top` cannot even begin before all three are waiting.
+            await asyncio.wait_for(started.wait(), DEADLINE_SECONDS)
+            assert not any(call.done() for call in calls)
+        finally:
+            slow.go.set()
+        return slow, await asyncio.gather(*calls)
+
+    slow, answers = asyncio.run(scenario())
+    # What the store itself says, asked past the counter: one account, Mara.
+    expected = MemoryStatisticsStore.top(slow, 20)
+    assert len(expected) == 1
+    assert answers == [expected] * 3
+    assert slow.tops == 1
+
+
+def test_the_end_of_a_round_cannot_be_told_without_a_result():
+    async def scenario():
+        await main.tell_round_ended(object(), {"Guest0001": ["bye"]})
+
+    with pytest.raises(TypeError):
+        asyncio.run(scenario())
+
+
 def test_the_answer_of_another_store_is_never_served(connect, clock, store):
     store.record_round(*one_round("Mara"))
     mara = player(connect, "Mara")
