@@ -1613,8 +1613,10 @@ input {
 
 /* ---- Profile and Leaderboard (js/lobby/statistics.js) ---- */
 
-/* On the Home screen: the two buttons share the row equally. */
-.stats-buttons > .button { flex: 1; }
+/* On the Home screen: the two buttons share the row equally. In a window
+   too narrow for both they stand under each other instead of sticking out. */
+.stats-buttons { flex-wrap: wrap; }
+.stats-buttons > .button { flex: 1 1 auto; }
 
 /* The leaderboard has four columns and needs more room than a form. */
 .stats-card { width: min(100%, 520px); }
@@ -1659,4 +1661,21 @@ input {
 .stats-best strong {
   margin-left: 6px;
   font-variant-numeric: tabular-nums;
+}
+
+/* The short heading of the time column, for a narrow window only. */
+.stats-narrow-only { display: none; }
+
+/* A narrow window: the name is what tells players apart, so everything
+   else gives up room for it. */
+@media (max-width: 560px) {
+  .stats-card { padding: 18px; }
+  .stats-table th,
+  .stats-table td { padding: 6px 4px; }
+  .stats-table th { font-size: 13px; }
+  .stats-column-place { width: 40px; }
+  .stats-column-wins { width: 38px; }
+  .stats-column-time { width: 64px; }
+  .stats-wide-only { display: none; }
+  .stats-narrow-only { display: inline; }
 }
