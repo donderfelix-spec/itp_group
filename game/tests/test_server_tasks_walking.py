@@ -15,6 +15,7 @@ from server.main import app
 # Used by every test here without being asked for: the placeholder stands at
 # all five stations, whatever real minigames the game has by now.
 from task_helpers import placeholder_at_every_station  # noqa: F401
+from task_helpers import round_without_duel  # noqa: F401
 
 CAMPUS = app.state.campus
 STATION_2 = next(station for station in CAMPUS["stations"] if station["id"] == 2)

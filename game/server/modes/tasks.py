@@ -99,6 +99,18 @@ class RoundTasks:
         player.finished.add(station)
         return (station, None)
 
+    def take_back(self, name: str, station: int):
+        """Undo a `finish` that counted: the station is not finished after all.
+
+        For the server, when something failed right after the count and
+        before the player could be told "done". The player can then open the
+        station again instead of being left with a station that is counted
+        here but still open in the browser.
+        """
+        player = self._players.get(name)
+        if player is not None:
+            player.finished.discard(station)
+
     def has_open_task(self, name: str) -> bool:
         """While this is true, the player stands still (S-93)."""
         return self.open_station_of(name) is not None

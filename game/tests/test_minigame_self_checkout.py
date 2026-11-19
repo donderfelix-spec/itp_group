@@ -16,6 +16,7 @@ from server import main
 from server.main import app
 from server.modes import minigames, self_checkout
 from server.modes.self_checkout import make_content
+from task_helpers import round_without_duel  # noqa: F401  (fixture)
 
 NAMES = ["Water", "Bread", "Cheese", "Apples", "Coffee", "Chocolate"]
 SEEDS = range(300)

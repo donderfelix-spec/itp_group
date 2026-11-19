@@ -16,6 +16,7 @@ from server import main
 from server.main import app
 from server.modes import minigames, shelve_books
 from server.modes.minigame import Minigame
+from task_helpers import round_without_duel  # noqa: F401  (fixture)
 
 SEEDS = range(500)
 PASSWORD = "password123"

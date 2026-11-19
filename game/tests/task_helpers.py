@@ -22,7 +22,7 @@ from fastapi.testclient import TestClient
 
 from server import main, protocol
 from server.main import app
-from server.modes import minigames
+from server.modes import minigames, tasks
 from server.modes.placeholder import placeholder
 
 PASSWORD = "password123"
@@ -177,3 +177,23 @@ def round_with_station_open(connect, station=1):
     put_at_station("Mara", station)
     assert open_station(mara, station) == opened(station)
     return mara, tiago, code
+
+
+@pytest.fixture(autouse=True)
+def round_without_duel(monkeypatch):
+    """Start rounds without the Duel while a test of the frame or of a minigame runs.
+
+    In a real Duel a player can only open the next station of their route
+    (S-94), and the server sends Duel messages between the answers. These
+    tests check opening, closing and finishing at any station, so their
+    rounds get the plain frame: every station in use can be opened, nothing
+    about a Duel is sent and the round does not end. The Duel itself is
+    tested in test_duel.py and test_server_duel.py.
+
+    Like `placeholder_at_every_station`, it is used by every test of a file
+    that imports it by name.
+    """
+    def set_up_plain_round(lobby):
+        lobby.tasks = tasks.RoundTasks(CAMPUS["stations"], CAMPUS["use_range"])
+
+    monkeypatch.setitem(main.ROUND_SETUPS, "duel", set_up_plain_round)
