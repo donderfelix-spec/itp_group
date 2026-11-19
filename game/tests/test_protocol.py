@@ -126,9 +126,12 @@ VALID_MESSAGES = [
     {"type": "open_station", "station": 3},
     {"type": "close_station"},
     {"type": "finish_station"},
+    {"type": "get_profile"},
+    {"type": "get_leaderboard"},
 ]
 MESSAGES_WITHOUT_FIELDS = [
     "guest", "log_out", "create_lobby", "leave_lobby", "start_game", "close_station", "finish_station",
+    "get_profile", "get_leaderboard",
 ]
 
 
@@ -368,6 +371,8 @@ REJECTION_TEXTS = {
     "no_task_open": "You have no task open.",
     "too_fast": "That was too fast. Try again.",
     "task_failed": "Something went wrong. Try again.",
+    "guest_no_statistics": "Guests have no statistics. Sign up to keep yours.",
+    "statistics_unavailable": "Statistics are unavailable right now.",
 }
 
 
