@@ -209,3 +209,112 @@ def _valid_position(position: object) -> bool:
             for coordinate in position
         )
     )
+
+
+def can_report(
+    state: ClassicState, player_id: str, blood_sheet_id: str, position: Position
+) -> bool:
+    """Return whether a living player is standing on an unreported F sheet."""
+    if state.get("phase") == "meeting" or state.get("timers_paused", False):
+        return False
+    if player_id in state["eliminated"] or state["roles"].get(player_id) not in ("HP", "FR"):
+        return False
+    sheet_position = state.get("f_sheets", {}).get(blood_sheet_id)
+    if not _valid_position(position) or not _valid_position(sheet_position):
+        return False
+    return tuple(position) == tuple(sheet_position)
+
+
+def can_emergency(state: ClassicState, player_id: str) -> bool:
+    """Return whether a living player can still use their emergency button."""
+    return (
+        state.get("phase") != "meeting"
+        and not state.get("timers_paused", False)
+        and player_id in state["roles"]
+        and state["roles"][player_id] in ("HP", "FR")
+        and player_id not in state["eliminated"]
+        and player_id not in state.get("emergency_used", ())
+    )
+
+
+def report_sheet(
+    state: ClassicState, player_id: str, blood_sheet_id: str, position: Position
+) -> ClassicState:
+    """Report an F sheet and start its one meeting, returning a new state."""
+    if not can_report(state, player_id, blood_sheet_id, position):
+        raise ValueError("The player cannot report this F sheet.")
+    triggered_state = dict(state)
+    triggered_state["pending_meeting_trigger"] = {
+        "player_id": player_id,
+        "blood_sheet_id": blood_sheet_id,
+        "position": tuple(position),
+    }
+    return start_meeting(triggered_state, "report")
+
+
+def call_emergency(state: ClassicState, player_id: str) -> ClassicState:
+    """Use this player's one emergency call and start the meeting."""
+    if not can_emergency(state, player_id):
+        raise ValueError("The player cannot call an emergency meeting.")
+    triggered_state = dict(state)
+    triggered_state["pending_meeting_trigger"] = {"player_id": player_id}
+    return start_meeting(triggered_state, "emergency")
+
+
+def start_meeting(
+    state: ClassicState, reason: Literal["report", "emergency"]
+) -> ClassicState:
+    """Start a meeting for a validated trigger and pause round timers."""
+    if reason not in ("report", "emergency"):
+        raise ValueError("Meeting reason must be 'report' or 'emergency'.")
+    if state.get("phase") == "meeting":
+        raise ValueError("A meeting is already active.")
+
+    trigger = state.get("pending_meeting_trigger")
+    if not isinstance(trigger, Mapping) or not isinstance(trigger.get("player_id"), str):
+        raise ValueError("A meeting needs a validated player trigger.")
+    player_id = trigger["player_id"]
+    if reason == "report":
+        blood_sheet_id = trigger.get("blood_sheet_id")
+        position = trigger.get("position")
+        if not isinstance(blood_sheet_id, str) or not can_report(
+            state, player_id, blood_sheet_id, position
+        ):
+            raise ValueError("A meeting report needs an unreported F sheet.")
+        trigger_id = f"report:{blood_sheet_id}"
+    else:
+        if not can_emergency(state, player_id):
+            raise ValueError("A meeting emergency needs an unused player button.")
+        trigger_id = f"emergency:{player_id}"
+
+    meeting_triggers = set(state.get("meeting_triggers", ()))
+    if trigger_id in meeting_triggers:
+        raise ValueError("This meeting trigger has already been used.")
+    meeting_triggers.add(trigger_id)
+
+    updated_state = dict(state)
+    living_players = tuple(
+        current_id
+        for current_id in state["roles"]
+        if current_id not in state["eliminated"]
+    )
+    updated_state["phase"] = "meeting"
+    updated_state["meeting"] = {
+        "active": True,
+        "reason": reason,
+        "players": living_players,
+    }
+    updated_state["timers_paused"] = True
+    updated_state["meeting_triggers"] = meeting_triggers
+    updated_state.pop("pending_meeting_trigger", None)
+
+    if reason == "report":
+        remaining_sheets = dict(state.get("f_sheets", {}))
+        del remaining_sheets[blood_sheet_id]
+        updated_state["f_sheets"] = remaining_sheets
+    else:
+        updated_state["emergency_used"] = set(state.get("emergency_used", ())) | {
+            player_id
+        }
+
+    return updated_state

@@ -2,7 +2,10 @@ import random
 
 import pytest
 
-from rules import apply_fail, assign_roles, assign_tasks, can_fail, check_winner, progress
+from rules import (
+    apply_fail, assign_roles, assign_tasks, call_emergency, can_emergency,
+    can_fail, can_report, check_winner, progress, report_sheet,
+)
 
 
 @pytest.mark.parametrize(
@@ -197,5 +200,73 @@ def test_a_free_rider_cannot_fail_themselves():
     assert not can_fail(state, "fr", "fr", 100.0)
     with pytest.raises(ValueError, match="cannot fail"):
         apply_fail(state, "fr", "fr", 100.0, (0.0, 0.0))
+
+
+def meeting_state():
+    return {
+        **failure_state(),
+        "f_sheets": {"sheet-1": (3.0, 4.0)},
+        "task_timers": {"task-1": 12.5},
+        "emergency_used": set(),
+        "meeting_triggers": set(),
+        "phase": "playing",
+    }
+
+
+def test_ghost_cannot_report_or_call_emergency():
+    state = meeting_state()
+    state["eliminated"].add("hp")
+
+    assert not can_report(state, "hp", "sheet-1", (3.0, 4.0))
+    assert not can_emergency(state, "hp")
+    with pytest.raises(ValueError, match="cannot report"):
+        report_sheet(state, "hp", "sheet-1", (3.0, 4.0))
+    with pytest.raises(ValueError, match="cannot call"):
+        call_emergency(state, "hp")
+
+
+def test_report_starts_meeting_removes_sheet_and_cannot_be_repeated():
+    state = meeting_state()
+
+    assert can_report(state, "hp", "sheet-1", (3.0, 4.0))
+    updated = report_sheet(state, "hp", "sheet-1", (3.0, 4.0))
+
+    assert updated["phase"] == "meeting"
+    assert updated["meeting"]["active"] is True
+    assert updated["meeting"]["reason"] == "report"
+    assert "sheet-1" not in updated["f_sheets"]
+    assert not can_report(updated, "fr", "sheet-1", (3.0, 4.0))
+    with pytest.raises(ValueError, match="cannot report"):
+        report_sheet(updated, "fr", "sheet-1", (3.0, 4.0))
+
+
+def test_emergency_button_can_be_used_once_per_player():
+    state = meeting_state()
+
+    assert can_emergency(state, "fr")
+    updated = call_emergency(state, "fr")
+
+    assert updated["phase"] == "meeting"
+    assert updated["meeting"]["reason"] == "emergency"
+    assert "fr" in updated["emergency_used"]
+    with pytest.raises(ValueError, match="cannot call"):
+        call_emergency(updated, "fr")
+
+
+@pytest.mark.parametrize("reason", ["report", "emergency"])
+def test_meeting_pauses_timers_without_changing_their_values(reason):
+    state = meeting_state()
+    state["last_fail_at"] = {"fr": 90.0}
+    if reason == "report":
+        updated = report_sheet(state, "hp", "sheet-1", (3.0, 4.0))
+    else:
+        updated = call_emergency(state, "hp")
+
+    assert updated["timers_paused"] is True
+    assert updated["task_timers"] == {"task-1": 12.5}
+    assert updated["last_fail_at"] == {"fr": 90.0}
+    assert not can_fail(updated, "fr", "hp2", 100.0)
+    assert "timers_paused" not in state
+    assert state["task_timers"] == {"task-1": 12.5}
 
 
