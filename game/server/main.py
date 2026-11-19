@@ -988,7 +988,6 @@ def run_in_background(coroutine):
     task.add_done_callback(background_sends.discard)
 
 
-# Mounted last, so /health and /ws win over files of the same name.
 class ClientFiles(StaticFiles):
     """The files of the client, each sent with `Cache-Control: no-cache`.
 
@@ -1009,4 +1008,5 @@ class ClientFiles(StaticFiles):
         return response
 
 
+# Mounted last, so /health and /ws win over files of the same name.
 app.mount("/", ClientFiles(directory=CLIENT_DIR, html=True), name="client")
