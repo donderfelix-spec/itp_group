@@ -216,19 +216,25 @@ window.Game = window.Game || {};
       return places.find((place) => contains(place.box.getBoundingClientRect(), middle)) || null;
     }
 
-    // True if the pointer itself is inside the board.
-    function isOverBoard(event) {
+    // True if the pointer itself is inside the minigame's window (the frame's
+    // element with the title, the instructions and `body`). The whole window
+    // and not only the board: the slide stops at the edge of the board, which
+    // is just a few pixels away from the places, so a player who overshoots
+    // a place by a little still has the slide lying on it. That must count.
+    // A release away from the task (over the map, the lobby panel or outside
+    // the browser) must not.
+    function isPointerInsideWindow(event) {
+      const taskWindow = body.closest('.minigame-window') || body;
       const pointer = { x: event.clientX, y: event.clientY };
-      return contains(board.getBoundingClientRect(), pointer);
+      return contains(taskWindow.getBoundingClientRect(), pointer);
     }
 
     function endDrag(event, slide) {
       if (!isDragOf(event, slide)) return;
       const name = drag.name;
       // The slide is held inside the board, so it can lie on a place while
-      // the pointer is far away (over the map or outside the browser). A
-      // release out there is no drop: only a release inside the board counts.
-      const place = isOverBoard(event) ? placeUnder(slide) : null;
+      // the pointer is far away. Only a release inside the window is a drop.
+      const place = isPointerInsideWindow(event) ? placeUnder(slide) : null;
       letGo();
       if (!place) {
         backToPile(slide);
