@@ -35,6 +35,20 @@ CHARACTERS = (
     "library_local",
 )
 
+# The modes that are built and can be chosen (S-91). Classic follows later.
+MODES = ("duel",)
+# The mode of a new lobby.
+DEFAULT_MODE = "duel"
+# The name of each mode as the players read it.
+MODE_NAMES = {"duel": "Duel", "classic": "Classic"}
+# How many players a round of each mode needs at least (S-53). The only place
+# on the server where these numbers stand.
+MIN_PLAYERS = {"duel": 2, "classic": 4}
+
+# A lobby is either waiting for its host to start, or its round is running.
+PHASE_LOBBY = "lobby"
+PHASE_ROUND = "round"
+
 # Fixed texts for actions the server refuses because of the state of the game
 # (not because the message was malformed). Build the message with `rejection`.
 REJECTIONS = {
@@ -48,6 +62,8 @@ REJECTIONS = {
     "not_in_lobby": "You are not in a lobby.",
     "already_in_lobby": "Leave your lobby first.",
     "character_taken": "That character is taken.",
+    "not_host": "Only the host can do that.",
+    "round_running": "This round has already started.",
 }
 
 
@@ -118,6 +134,14 @@ def _check_character(value):
     return value
 
 
+def _check_mode(value):
+    # A mode that is not built yet ("classic") is refused like one that does
+    # not exist, so no round without rules can start (S-91).
+    if not isinstance(value, str) or value not in MODES:
+        raise ProtocolError("bad_mode", "That mode does not exist.")
+    return value
+
+
 def _check_step(value):
     """One direction of a move: -1, 0 or 1."""
     # `type(value) is int` and not isinstance: True and False count as ints in
@@ -138,6 +162,8 @@ CLIENT_MESSAGES = {
     "join_lobby": {"code": _check_lobby_code},
     "leave_lobby": {},
     "choose_character": {"character": _check_character},
+    "choose_mode": {"mode": _check_mode},
+    "start_game": {},
     "move": {"dx": _check_step, "dy": _check_step},
 }
 
@@ -185,6 +211,15 @@ def rejection(code: str) -> dict:
     return {"type": "error", "code": code, "message": REJECTIONS[code]}
 
 
+def too_few_players(mode: str) -> dict:
+    """The error message for a start with too few players.
+
+    Its text depends on the mode, so it cannot be a fixed text in REJECTIONS.
+    """
+    text = f"{MODE_NAMES[mode]} needs at least {MIN_PLAYERS[mode]} players."
+    return {"type": "error", "code": "too_few_players", "message": text}
+
+
 def signed_in(name: str, guest: bool) -> dict:
     return {"type": "signed_in", "name": name, "guest": guest}
 
@@ -193,13 +228,21 @@ def signed_out() -> dict:
     return {"type": "signed_out"}
 
 
-def lobby_state(code: str, host: str, players) -> dict:
+def lobby_state(code: str, host: str, players, mode: str = DEFAULT_MODE, phase: str = PHASE_LOBBY) -> dict:
     """`players` is a list of (name, character) pairs, in the order they joined.
 
-    Every player has a character from the moment they join (S-75).
+    Every player has a character from the moment they join (S-75). Without
+    `mode` and `phase` this is the state of a new lobby (S-91).
     """
     listed = [{"name": name, "character": character} for name, character in players]
-    return {"type": "lobby_state", "code": code, "host": host, "players": listed}
+    return {
+        "type": "lobby_state",
+        "code": code,
+        "host": host,
+        "players": listed,
+        "mode": mode,
+        "phase": phase,
+    }
 
 
 def left_lobby() -> dict:

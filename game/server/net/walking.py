@@ -40,6 +40,18 @@ class Walkers:
         del self._walkers[name]
         self._everybody_needs_news()
 
+    def back_to_spawn(self):
+        """Put every player back on the spawn, for the start of a round.
+
+        The next `advance` places them, exactly like newcomers. The direction
+        a player is holding stays: the browser sends a direction only when it
+        changes (S-74), so a player holding a key would otherwise stand still
+        until they let go and press again.
+        """
+        for walker in self._walkers.values():
+            walker.position = None
+        self._everybody_needs_news()
+
     def set_direction(self, name: str, dx: int, dy: int):
         """Remember where the player wants to go. It stays until it is set again."""
         walker = self._walkers[name]
@@ -64,7 +76,8 @@ class Walkers:
     def positions(self) -> list:
         """(name, x, y) triples in joining order, as `protocol.positions` wants them.
 
-        A newcomer is listed from the first `advance` after joining.
+        A newcomer is listed from the first `advance` after joining, and so
+        is a player who was put back on the spawn.
         """
         return [
             (name, walker.position[0], walker.position[1])
