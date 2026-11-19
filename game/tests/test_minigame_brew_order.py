@@ -142,7 +142,7 @@ def test_station_2_is_brew_the_order():
     assert minigame is brew_order.MINIGAME
     assert isinstance(minigame, Minigame)
     assert minigame.title == "Brew the order"
-    assert minigame.min_seconds == 2
+    assert minigame.min_seconds == 1
     assert minigame.make_content is brew_order.make_content
 
 
@@ -218,14 +218,14 @@ def test_opening_station_2_in_a_round_sends_a_drink_and_the_buttons(connect, clo
     assert sorted(content["buttons"]) == sorted(BUTTONS)
 
 
-def test_station_2_counts_after_two_seconds_and_not_sooner(connect, clock):
+def test_station_2_counts_after_one_second_and_not_sooner(connect, clock):
     mara = mara_at_station_2(connect)
     ask(mara, {"type": "open_station", "station": 2})
-    clock.wait(1.9)
+    clock.wait(0.9)
     assert ask(mara, {"type": "finish_station"})["code"] == "too_fast"
     assert mara.receive_json() == {"type": "station_closed", "station": 2}
     ask(mara, {"type": "open_station", "station": 2})
-    clock.wait(2)
+    clock.wait(1)
     assert ask(mara, {"type": "finish_station"}) == {"type": "station_done", "station": 2}
 
 

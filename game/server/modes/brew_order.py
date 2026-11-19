@@ -20,8 +20,9 @@ RECIPES = {
     "Cappuccino": ["Cup", "Espresso", "Milk", "Foam"],
 }
 
-# Bica has only two steps: a quick player needs about this long for it.
-MIN_SECONDS = 2
+# Stops a script that reports "done" at once; a quick, correct player is
+# not punished.
+MIN_SECONDS = 1
 
 
 def make_content(rng) -> dict:
