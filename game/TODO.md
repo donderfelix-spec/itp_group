@@ -130,6 +130,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [ ] **M3-3.4** Meeting screen with chat and time limit (Laurin)
 - [ ] **M3-3.5** Vote and result (Laurin)
 - [ ] **M3-3.6** Progress bar, role display, end screen (Laurin)
+- [ ] **M3-3.8** When so many players leave a running Classic round that the ratio of High Performers to Free Riders no longer fits (S-48: one Free Rider with 4 or 5 players, two with 6 to 8), the round is stopped: everybody returns to the lobby with a clear message (Laurin, with Felix for the leaving). Requested by Felix on 2026-11-19. To decide while building: the exact limit, and the text for DESIGN.md, section 9
 - [ ] **M3-3.7** Play test: one complete round with five players, once the students win, once the Free Rider wins (Laurin)
 
 Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with one entry per mode, and `protocol.MODES` lists the modes the host can choose. A new mode adds one entry to each.
