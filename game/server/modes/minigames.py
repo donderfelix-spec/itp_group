@@ -31,14 +31,17 @@ A station that is not in this table is not in use: station 6, "Catch the
 wave", comes only if time allows.
 """
 
+from server.modes import brew_order
+from server.modes import build_tray
 from server.modes import shelve_books
+from server.modes import sort_slides
 from server.modes.placeholder import placeholder
 
 # Station id -> its minigame. The titles are the ones of DESIGN.md, section 8.
 MINIGAMES = {
-    1: placeholder("Sort the slides"),
-    2: placeholder("Brew the order"),
-    3: placeholder("Build the tray"),
+    1: sort_slides.MINIGAME,
+    2: brew_order.MINIGAME,
+    3: build_tray.MINIGAME,
     4: shelve_books.MINIGAME,
     5: placeholder("Self-checkout"),
 }

@@ -86,12 +86,12 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 **Area 4**
 
-- [ ] **M2-4.1** Frame for minigames: open, close, report “done”, plausibility check on the server
 - [ ] **M2-4.2** Minigame Canteen: put a tray together
 - [ ] **M2-4.3** Minigame Mon Café: Brew the order
 - [ ] **M2-4.4** Minigame Lecture Hall: sort slides
 - [ ] **M2-4.5** Minigame CTT Student Hall: sort books
 - [ ] **M2-4.6** Minigame Pingo Doce: Self-checkout with a target amount
+- [ ] **M2-4.7a** When more work is added after a task is counted (progress to the others, the win check, statistics): a fault there must not leave the station counted on the server while the browser was never told “done”. Found in the review of M2-4.1; cannot happen yet
 - [ ] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard
 - [ ] **M2-4.8** Play test: two players play a Duel through to the leaderboard
 
@@ -137,6 +137,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 ## Done
 
+- [x] **M2-4.1** Frame for minigames: E at a station opens a window over the map, the server checks round, station, range and a minimum time before “done” counts (S-93). Every station shows a placeholder until its minigame is merged. Play test with two browsers, kept as `tests/test_play_tasks.py` (2026-11-19)
 - [x] **M2-1.1** Stations on the map: within 25 units the nearest station pulses yellow and the button “E Use” turns yellow, E or a click opens it (S-92). The rule also exists on the server (`server/world/stations.py`) for the check in M2-4.1. Play test in the browser at all six stations and with two players, kept as `tests/test_play_stations.py` (2026-11-19)
 - [x] **M2-2.1** The host chooses the mode and starts the round: mode choice and “Start game” in the lobby panel, the server checks host, player count and running round (S-91), play test with two and three browsers and eight connections (`tests/test_play_round.py`). A round cannot end yet: that comes with M2-4.7 and M2-2.2 (2026-11-19)
 - [x] **M1-2.5** Accounts run against the real Supabase database: sign up on the deployed URL stores the account with an Argon2 hash, the table has row level security (S-90). The cause of the first failure was a database password with special characters in `DATABASE_URL` (2026-11-19)
