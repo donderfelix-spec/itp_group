@@ -233,6 +233,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Action that needs a lobby | “You are not in a lobby.” |
 | Creating or joining a lobby while in one | “Leave your lobby first.” |
 | Choosing the mode or starting the round without being the host | “Only the host can do that.” |
+| Choosing a mode that does not exist or is not built yet (only when someone bypasses the page) | “That mode does not exist.” |
 | Starting Duel with fewer than 2 players | “Duel needs at least 2 players.” |
 | Choosing the mode, choosing a character or starting the round while a round is running | “This round has already started.” |
 

@@ -81,7 +81,6 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 **Area 2**
 
-- [ ] **M2-2.1** The host chooses the mode and starts the round
 - [ ] **M2-2.2** Back to the lobby after the round
 - [ ] **M2-2.3** A player leaves the round, the host changes
 - [ ] **M2-2.4** Statistics: the server writes the result of every round, profile with wins and best Duel time, leaderboard
@@ -139,6 +138,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 ## Done
 
+- [x] **M2-2.1** The host chooses the mode and starts the round: mode choice and “Start game” in the lobby panel, the server checks host, player count and running round (S-91), play test with two and three browsers and eight connections (`tests/test_play_round.py`). A round cannot end yet: that comes with M2-4.7 and M2-2.2 (2026-11-19)
 - [x] **M1-2.5** Accounts run against the real Supabase database: sign up on the deployed URL stores the account with an Argon2 hash, the table has row level security (S-90). The cause of the first failure was a database password with special characters in `DATABASE_URL` (2026-11-19)
 - [x] **M1-2.4** Play test: automated test with three players (`tests/test_play_walking.py`) and a run in the browser with two tabs and a full lobby (2026-11-19)
 - [x] **M1-2.3** Positions: the server moves every player about 15 times per second and tells the lobby, the browser smooths in between (2026-11-19)
