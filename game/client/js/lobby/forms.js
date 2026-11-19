@@ -19,6 +19,12 @@ window.Game = window.Game || {};
   const loginForm = document.getElementById('login-form');
   const joinForm = document.getElementById('join-form');
 
+  // Each password field has its own eye button that shows or hides it.
+  const PASSWORD_EYES = [
+    { field: 'signup-password', button: 'signup-password-eye' },
+    { field: 'login-password', button: 'login-password-eye' },
+  ];
+
   function setup() {
     onClick('start-login', () => openForm('login'));
     onClick('start-signup', () => openForm('signup'));
@@ -32,6 +38,8 @@ window.Game = window.Game || {};
     signupForm.addEventListener('submit', (event) => submitAccountForm(event, signupForm, 'sign_up'));
     loginForm.addEventListener('submit', (event) => submitAccountForm(event, loginForm, 'log_in'));
     joinForm.addEventListener('submit', submitJoinForm);
+
+    PASSWORD_EYES.forEach(setupPasswordEye);
   }
 
   function onClick(id, action) {
@@ -40,6 +48,7 @@ window.Game = window.Game || {};
 
   function openForm(name) {
     stopWaiting();
+    hidePasswords();
     clearErrors();
     Game.screens.show(name);
   }
@@ -82,9 +91,43 @@ window.Game = window.Game || {};
 
   // The password lives only in its field while the player types it. It is
   // never stored or logged, and the field is emptied as soon as possible.
+  // A field that is emptied is hidden as well, so no form is ever found
+  // again with its password readable.
   function forgetTypedPasswords() {
     signupForm.elements.password.value = '';
     loginForm.elements.password.value = '';
+    hidePasswords();
+  }
+
+  function setupPasswordEye(eye) {
+    const field = document.getElementById(eye.field);
+    const button = document.getElementById(eye.button);
+    // A click with the mouse would take the keyboard out of the field.
+    // Stopping that keeps the caret where the player was typing. Tab still
+    // reaches the button, and Enter and Space press it.
+    button.addEventListener('mousedown', (event) => event.preventDefault());
+    button.addEventListener('click', () => {
+      setPasswordShown(eye, field.type === 'password');
+    });
+  }
+
+  // Shows the password as plain text or hides it again. The button's name
+  // says what the next press does, and its icon follows `aria-pressed`.
+  function setPasswordShown(eye, isShown) {
+    const field = document.getElementById(eye.field);
+    const button = document.getElementById(eye.button);
+    if ((field.type === 'text') === isShown) return;
+    // Some browsers move the caret to the start when the type changes.
+    const caretStart = field.selectionStart;
+    const caretEnd = field.selectionEnd;
+    field.type = isShown ? 'text' : 'password';
+    if (document.activeElement === field) field.setSelectionRange(caretStart, caretEnd);
+    button.setAttribute('aria-pressed', String(isShown));
+    button.setAttribute('aria-label', isShown ? 'Hide password' : 'Show password');
+  }
+
+  function hidePasswords() {
+    PASSWORD_EYES.forEach((eye) => setPasswordShown(eye, false));
   }
 
   function clearErrors() {

@@ -36,8 +36,18 @@
         </div>
         <div class="field">
           <label for="signup-password">Password</label>
-          <input id="signup-password" name="password" type="password" autocomplete="new-password" maxlength="64"
-                 aria-describedby="signup-password-rule signup-password-error">
+          <div class="password-box">
+            <input id="signup-password" name="password" type="password" autocomplete="new-password" maxlength="64"
+                   aria-describedby="signup-password-rule signup-password-error">
+            <button type="button" id="signup-password-eye" class="password-eye"
+                    aria-label="Show password" aria-pressed="false" aria-controls="signup-password">
+              <svg class="eye-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+                <circle cx="12" cy="12" r="3"/>
+                <line class="eye-stroke" x1="4" y1="20" x2="20" y2="4"/>
+              </svg>
+            </button>
+          </div>
           <p id="signup-password-rule" class="rule">8–64 characters</p>
           <p id="signup-password-error" class="field-error" role="alert"></p>
         </div>
@@ -60,7 +70,17 @@
         </div>
         <div class="field">
           <label for="login-password">Password</label>
-          <input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="64">
+          <div class="password-box">
+            <input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="64">
+            <button type="button" id="login-password-eye" class="password-eye"
+                    aria-label="Show password" aria-pressed="false" aria-controls="login-password">
+              <svg class="eye-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+                <circle cx="12" cy="12" r="3"/>
+                <line class="eye-stroke" x1="4" y1="20" x2="20" y2="4"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <p id="login-form-error" class="field-error" role="alert"></p>
         <div class="button-row">
