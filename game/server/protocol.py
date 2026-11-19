@@ -12,6 +12,8 @@ area, so it is a team decision (see WORKFLOW.md, step 4).
 import json
 import re
 
+from server.world.campus import STATION_COUNT
+
 PROTOCOL_VERSION = 1
 MAX_MESSAGE_BYTES = 2048
 
@@ -64,6 +66,14 @@ REJECTIONS = {
     "character_taken": "That character is taken.",
     "not_host": "Only the host can do that.",
     "round_running": "This round has already started.",
+    # The tasks at the stations (S-93).
+    "not_in_round": "No round is running.",
+    "no_station": "That station does not exist.",
+    "too_far": "You are too far away.",
+    "station_not_needed": "You do not need that station.",
+    "task_open": "Close your current task first.",
+    "no_task_open": "You have no task open.",
+    "too_fast": "That was too fast. Try again.",
 }
 
 
@@ -151,6 +161,18 @@ def _check_step(value):
     return value
 
 
+def _check_station(value):
+    """The id of a station on the map: 1 to STATION_COUNT.
+
+    Whether that station is in use and whether the player may open it is a
+    question for the rules (`server/modes/tasks.py`), not for this check.
+    """
+    # `type(value) is int` for the same reason as in `_check_step`.
+    if type(value) is not int or not 1 <= value <= STATION_COUNT:
+        raise ProtocolError("bad_station", "That station does not exist.")
+    return value
+
+
 # Each client message type with its required fields and the check for each field.
 CLIENT_MESSAGES = {
     "hello": {"name": _check_name},
@@ -165,6 +187,9 @@ CLIENT_MESSAGES = {
     "choose_mode": {"mode": _check_mode},
     "start_game": {},
     "move": {"dx": _check_step, "dy": _check_step},
+    "open_station": {"station": _check_station},
+    "close_station": {},
+    "finish_station": {},
 }
 
 
@@ -256,6 +281,25 @@ def positions(players) -> dict:
     """
     listed = [{"name": name, "x": round(x, 1), "y": round(y, 1)} for name, x, y in players]
     return {"type": "positions", "players": listed}
+
+
+def station_opened(station: int, title: str, content: dict) -> dict:
+    """Sent only to the player who opened the station (S-93).
+
+    `content` is what the station's minigame drew for this opening. The title
+    comes along so the browser can show it for any minigame.
+    """
+    return {"type": "station_opened", "station": station, "title": title, "content": content}
+
+
+def station_closed(station: int) -> dict:
+    """The player's task is closed and did not count."""
+    return {"type": "station_closed", "station": station}
+
+
+def station_done(station: int) -> dict:
+    """The player's task counted: the station is finished for this round."""
+    return {"type": "station_done", "station": station}
 
 
 def notice(message: str) -> dict:

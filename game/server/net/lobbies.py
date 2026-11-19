@@ -33,6 +33,10 @@ class Lobby:
         # What the host has chosen to play, and whether the round is running (S-91).
         self.mode = DEFAULT_MODE
         self.phase = PHASE_LOBBY
+        # The tasks of the running round: None until the server puts the
+        # round's object here at the start (`server/modes/tasks.py`). Kept
+        # here so that it goes away with the lobby, like the positions.
+        self.tasks = None
 
     def names(self) -> list:
         """The names of the players, in the order they joined."""
@@ -74,6 +78,8 @@ class Lobby:
         """Take the player out. Returns the new host's name if the host changed, else None."""
         del self._characters[name]
         self.walkers.remove(name)
+        if self.tasks is not None:
+            self.tasks.remove(name)
         if name != self.host:
             return None
         # The first name left is the player who has been here longest.

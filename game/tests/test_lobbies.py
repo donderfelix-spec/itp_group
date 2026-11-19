@@ -450,3 +450,41 @@ def test_a_running_round_that_everybody_left_is_deleted():
 @pytest.mark.parametrize("code", ["not_host", "round_running"])
 def test_the_new_rejection_codes_have_a_text(code):
     assert protocol.rejection(code)["message"]
+
+
+# The tasks of the round (M2-4.1): the lobby only holds the object
+
+
+class RememberingTasks:
+    """Stands in for the round's tasks: remembers who was removed."""
+
+    def __init__(self):
+        self.removed = []
+
+    def remove(self, name):
+        self.removed.append(name)
+
+
+def test_a_lobby_has_no_tasks_before_and_right_after_the_start():
+    lobbies = Lobbies()
+    lobby, _ = lobbies.create("Mara", lambda: "ABCD")
+    assert lobby.tasks is None
+    lobbies.join("Tiago", "ABCD")
+    lobbies.start("Mara")
+    # The server puts the round's tasks in; the lobby rules know nothing about them.
+    assert lobby.tasks is None
+
+
+def test_leaving_without_tasks_works_as_before():
+    lobbies = Lobbies()
+    lobbies.create("Mara", lambda: "ABCD")
+    assert lobbies.leave("Mara")[2] is None
+
+
+def test_a_player_who_leaves_is_taken_out_of_the_rounds_tasks():
+    lobbies = Lobbies()
+    lobby, _ = lobbies.create("Mara", lambda: "ABCD")
+    lobbies.join("Tiago", "ABCD")
+    lobby.tasks = RememberingTasks()
+    lobbies.leave("Tiago")
+    assert lobby.tasks.removed == ["Tiago"]

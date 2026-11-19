@@ -1,0 +1,483 @@
+"""The tasks at the stations over the WebSocket, with several players (M2-4.1, S-93).
+
+The tick is switched off here (see conftest.py), so no `positions` messages
+mix with the answers. The tests put the players where they need them, and the
+server's clock for the tasks is replaced by one the tests set. How a player
+with an open task stands still while the real tick runs is tested in
+test_server_tasks_walking.py.
+"""
+
+import contextlib
+import random
+
+import pytest
+from fastapi.testclient import TestClient
+
+from server import main, protocol
+from server.main import app
+from server.modes import minigames
+from server.modes.minigame import Minigame
+
+PASSWORD = "password123"
+CAMPUS = app.state.campus
+STATION = {station["id"]: station for station in CAMPUS["stations"]}
+SPAWN = (CAMPUS["spawn"]["x"], CAMPUS["spawn"]["y"])
+
+NOT_SIGNED_IN = protocol.rejection("not_signed_in")
+NOT_IN_LOBBY = protocol.rejection("not_in_lobby")
+NOT_IN_ROUND = {"type": "error", "code": "not_in_round", "message": "No round is running."}
+NO_STATION = {"type": "error", "code": "no_station", "message": "That station does not exist."}
+BAD_STATION = {"type": "error", "code": "bad_station", "message": "That station does not exist."}
+TOO_FAR = {"type": "error", "code": "too_far", "message": "You are too far away."}
+NOT_NEEDED = {"type": "error", "code": "station_not_needed", "message": "You do not need that station."}
+TASK_OPEN = {"type": "error", "code": "task_open", "message": "Close your current task first."}
+NO_TASK_OPEN = {"type": "error", "code": "no_task_open", "message": "You have no task open."}
+TOO_FAST = {"type": "error", "code": "too_fast", "message": "That was too fast. Try again."}
+
+NEW_HOST = {"type": "notice", "message": "The host left. Tiago is the new host."}
+
+PLACEHOLDER = {"kind": "placeholder"}
+TITLES = {1: "Sort the slides", 2: "Brew the order", 3: "Build the tray", 4: "Shelve the books", 5: "Self-checkout"}
+
+
+class Clock:
+    """The server's clock for the tasks, set by the test."""
+
+    def __init__(self):
+        self.now = 1000.0
+
+    def __call__(self):
+        return self.now
+
+    def wait(self, seconds):
+        self.now += seconds
+
+
+@pytest.fixture(autouse=True)
+def clock(monkeypatch):
+    test_clock = Clock()
+    monkeypatch.setattr(main, "seconds_now", test_clock)
+    return test_clock
+
+
+@pytest.fixture
+def client():
+    # One event loop for all connections, like the real server (see test_server_lobby.py).
+    with TestClient(app) as shared_client:
+        yield shared_client
+
+
+@pytest.fixture
+def connect(client):
+    """A function that opens one more connection. All of them are closed after the test."""
+    with contextlib.ExitStack() as open_connections:
+        yield lambda: open_connections.enter_context(client.websocket_connect("/ws"))
+
+
+def ask(connection, message):
+    """Send one message and return the next message the server sends."""
+    connection.send_json(message)
+    return connection.receive_json()
+
+
+def player(connect, name):
+    """A new connection, signed in with a new account of this name."""
+    connection = connect()
+    assert ask(connection, {"type": "sign_up", "name": name, "password": PASSWORD})["type"] == "signed_in"
+    return connection
+
+
+def still_works(connection):
+    """True if the next message is the answer to a hello: nothing else was waiting."""
+    return ask(connection, {"type": "hello", "name": "Mara"})["type"] == "welcome"
+
+
+def lobby_of_two(connect):
+    """Mara creates a lobby and Tiago joins. Both have read every state so far."""
+    mara = player(connect, "Mara")
+    tiago = player(connect, "Tiago")
+    code = ask(mara, {"type": "create_lobby"})["code"]
+    ask(tiago, {"type": "join_lobby", "code": code})
+    mara.receive_json()
+    return mara, tiago, code
+
+
+def running_round(connect):
+    """A round of Mara and Tiago. Both stand on the spawn, as after the first tick."""
+    mara, tiago, code = lobby_of_two(connect)
+    assert ask(mara, {"type": "start_game"})["phase"] == "round"
+    tiago.receive_json()
+    put("Mara", SPAWN)
+    put("Tiago", SPAWN)
+    return mara, tiago, code
+
+
+def lobby_named(name):
+    return app.state.lobbies.lobby_of(name)
+
+
+def put(name, position):
+    """Place a player on the map, as the tick would after a long walk.
+
+    Walking to a station takes many seconds of real time, so the tests write
+    the position where the tick writes it.
+    """
+    lobby_named(name).walkers._walkers[name].position = (float(position[0]), float(position[1]))
+
+
+def put_at_station(name, station):
+    put(name, (STATION[station]["x"], STATION[station]["y"]))
+
+
+def open_station(connection, station):
+    return ask(connection, {"type": "open_station", "station": station})
+
+
+def close_station(connection):
+    return ask(connection, {"type": "close_station"})
+
+
+def finish_station(connection):
+    return ask(connection, {"type": "finish_station"})
+
+
+def opened(station, content=PLACEHOLDER):
+    return {"type": "station_opened", "station": station, "title": TITLES[station], "content": content}
+
+
+def round_with_station_open(connect, station=1):
+    """A running round in which Mara has the minigame of `station` open."""
+    mara, tiago, code = running_round(connect)
+    put_at_station("Mara", station)
+    assert open_station(mara, station) == opened(station)
+    return mara, tiago, code
+
+
+# Opening: accepted
+
+
+@pytest.mark.parametrize("station", [1, 2, 3, 4, 5])
+def test_a_player_in_range_opens_a_station_and_gets_title_and_content(connect, station):
+    mara, tiago, _ = running_round(connect)
+    put_at_station("Mara", station)
+    assert open_station(mara, station) == opened(station)
+
+
+def test_only_the_player_who_opened_is_told(connect):
+    mara, tiago, _ = round_with_station_open(connect)
+    assert still_works(tiago)
+    assert still_works(mara)
+
+
+def test_at_the_edge_of_the_range_the_station_opens(connect):
+    mara, tiago, _ = running_round(connect)
+    put("Mara", (STATION[1]["x"], STATION[1]["y"] + CAMPUS["use_range"]))
+    assert open_station(mara, 1) == opened(1)
+
+
+def test_two_players_can_open_the_same_station(connect):
+    mara, tiago, _ = round_with_station_open(connect, 2)
+    put_at_station("Tiago", 2)
+    assert open_station(tiago, 2) == opened(2)
+
+
+def test_the_lobby_state_does_not_change_when_a_station_opens(connect):
+    mara, tiago, code = round_with_station_open(connect)
+    lobby = lobby_named("Mara")
+    assert main.state_of(lobby) == protocol.lobby_state(code, "Mara", lobby.players(), "duel", "round")
+    assert set(main.state_of(lobby)) == {"type", "code", "host", "players", "mode", "phase"}
+
+
+# Opening: standing still
+
+
+def test_opening_stops_the_player(connect):
+    mara, tiago, _ = running_round(connect)
+    put_at_station("Mara", 1)
+    mara.send_json({"type": "move", "dx": 1, "dy": 0})
+    assert still_works(mara)
+    open_station(mara, 1)
+    walker = lobby_named("Mara").walkers._walkers["Mara"]
+    assert (walker.dx, walker.dy) == (0, 0)
+
+
+def test_moves_are_ignored_without_an_error_while_a_task_is_open(connect):
+    mara, tiago, _ = round_with_station_open(connect)
+    mara.send_json({"type": "move", "dx": 1, "dy": 1})
+    assert still_works(mara)  # No error was sent for the move.
+    walkers = lobby_named("Mara").walkers
+    before = walkers.position_of("Mara")
+    walkers.advance(1.0, CAMPUS)
+    assert walkers.position_of("Mara") == before
+
+
+def test_the_other_player_keeps_walking_while_a_task_is_open(connect):
+    mara, tiago, _ = round_with_station_open(connect)
+    tiago.send_json({"type": "move", "dx": 0, "dy": 1})
+    assert still_works(tiago)
+    walkers = lobby_named("Mara").walkers
+    before = walkers.position_of("Tiago")
+    walkers.advance(0.2, CAMPUS)
+    assert walkers.position_of("Tiago") != before
+
+
+@pytest.mark.parametrize("ending", ["close_station", "finish_station"])
+def test_after_the_task_ended_the_player_walks_again(connect, clock, ending):
+    mara, tiago, _ = round_with_station_open(connect, 2)
+    clock.wait(5)
+    ask(mara, {"type": ending})
+    mara.send_json({"type": "move", "dx": 0, "dy": 1})
+    assert still_works(mara)
+    walkers = lobby_named("Mara").walkers
+    before = walkers.position_of("Mara")
+    walkers.advance(0.2, CAMPUS)
+    assert walkers.position_of("Mara") != before
+
+
+def test_a_rejected_open_does_not_stop_the_player(connect):
+    mara, tiago, _ = running_round(connect)
+    mara.send_json({"type": "move", "dx": 1, "dy": 0})
+    assert open_station(mara, 1) == TOO_FAR
+    walker = lobby_named("Mara").walkers._walkers["Mara"]
+    assert (walker.dx, walker.dy) == (1, 0)
+
+
+# Opening: rejected
+
+
+def test_a_stranger_is_told_to_sign_in_first(connect):
+    stranger = connect()
+    for message in [{"type": "open_station", "station": 1}, {"type": "close_station"}, {"type": "finish_station"}]:
+        assert ask(stranger, message) == NOT_SIGNED_IN
+
+
+def test_a_player_outside_a_lobby_is_told_so(connect):
+    mara = player(connect, "Mara")
+    for message in [{"type": "open_station", "station": 1}, {"type": "close_station"}, {"type": "finish_station"}]:
+        assert ask(mara, message) == NOT_IN_LOBBY
+
+
+def test_before_the_round_starts_no_task_can_be_opened_closed_or_finished(connect):
+    mara, tiago, _ = lobby_of_two(connect)
+    lobby_named("Mara").walkers.advance(0.0, CAMPUS)  # Both stand on the spawn.
+    put_at_station("Mara", 1)
+    assert open_station(mara, 1) == NOT_IN_ROUND
+    assert close_station(mara) == NOT_IN_ROUND
+    assert finish_station(mara) == NOT_IN_ROUND
+    assert lobby_named("Mara").tasks is None
+
+
+def test_station_6_is_not_in_use(connect):
+    mara, tiago, _ = running_round(connect)
+    put_at_station("Mara", 6)
+    assert open_station(mara, 6) == NO_STATION
+    assert not lobby_named("Mara").tasks.has_open_task("Mara")
+
+
+@pytest.mark.parametrize("station", [0, 7, -1, 1.0, "1", True, None], ids=repr)
+def test_a_station_that_cannot_be_read_is_rejected_by_the_message_check(connect, station):
+    mara, tiago, _ = running_round(connect)
+    put_at_station("Mara", 1)
+    assert open_station(mara, station) == BAD_STATION
+    assert not lobby_named("Mara").tasks.has_open_task("Mara")
+    assert still_works(mara)
+
+
+def test_from_the_spawn_every_station_is_too_far(connect):
+    mara, tiago, _ = running_round(connect)
+    for station in [1, 2, 3, 4, 5]:
+        assert open_station(mara, station) == TOO_FAR
+    assert not lobby_named("Mara").tasks.has_open_task("Mara")
+
+
+def test_one_unit_beyond_the_range_is_too_far(connect):
+    mara, tiago, _ = running_round(connect)
+    put("Mara", (STATION[1]["x"], STATION[1]["y"] + CAMPUS["use_range"] + 1))
+    assert open_station(mara, 1) == TOO_FAR
+
+
+def test_before_the_first_tick_placed_the_player_everything_is_too_far(connect):
+    mara, tiago, _ = lobby_of_two(connect)
+    ask(mara, {"type": "start_game"})
+    assert lobby_named("Mara").walkers.position_of("Mara") is None
+    assert open_station(mara, 1) == TOO_FAR
+    assert not lobby_named("Mara").tasks.has_open_task("Mara")
+
+
+def test_a_second_station_cannot_be_opened_while_a_task_is_open(connect):
+    mara, tiago, _ = round_with_station_open(connect, 1)
+    assert open_station(mara, 1) == TASK_OPEN
+    put_at_station("Mara", 2)
+    assert open_station(mara, 2) == TASK_OPEN
+    assert lobby_named("Mara").tasks.open_station_of("Mara") == 1
+
+
+def test_a_finished_station_cannot_be_opened_again(connect, clock):
+    mara, tiago, _ = round_with_station_open(connect, 3)
+    clock.wait(1)
+    assert finish_station(mara) == {"type": "station_done", "station": 3}
+    assert open_station(mara, 3) == NOT_NEEDED
+    assert not lobby_named("Mara").tasks.has_open_task("Mara")
+    # The other player has not finished it and may still open it.
+    put_at_station("Tiago", 3)
+    assert open_station(tiago, 3) == opened(3)
+
+
+# Closing
+
+
+def test_closing_answers_station_closed_and_the_station_opens_again(connect):
+    mara, tiago, _ = round_with_station_open(connect, 4)
+    assert close_station(mara) == {"type": "station_closed", "station": 4}
+    assert open_station(mara, 4) == opened(4)
+    assert still_works(tiago)
+
+
+def test_closing_without_an_open_task_is_rejected(connect):
+    mara, tiago, _ = running_round(connect)
+    assert close_station(mara) == NO_TASK_OPEN
+    put_at_station("Mara", 1)
+    open_station(mara, 1)
+    close_station(mara)
+    assert close_station(mara) == NO_TASK_OPEN
+
+
+def test_a_reopened_station_draws_fresh_content(connect, monkeypatch):
+    def draw_number(rng):
+        return {"kind": "number", "number": rng.randrange(10**9)}
+
+    monkeypatch.setitem(minigames.MINIGAMES, 1, Minigame(title="Sort the slides", min_seconds=1, make_content=draw_number))
+    mara, tiago, _ = running_round(connect)
+    # Seeded only now: the lobby code was drawn from the same generator.
+    monkeypatch.setattr(main, "random", random.Random(4))
+    put_at_station("Mara", 1)
+    first = open_station(mara, 1)
+    close_station(mara)
+    second = open_station(mara, 1)
+    expected = random.Random(4)
+    assert first == opened(1, {"kind": "number", "number": expected.randrange(10**9)})
+    assert second == opened(1, {"kind": "number", "number": expected.randrange(10**9)})
+    assert first["content"] != second["content"]
+
+
+# Finishing
+
+
+def test_finishing_after_the_minimum_time_answers_station_done(connect, clock):
+    mara, tiago, _ = round_with_station_open(connect, 5)
+    clock.wait(12.5)
+    assert finish_station(mara) == {"type": "station_done", "station": 5}
+    assert lobby_named("Mara").tasks.finished_by("Mara") == {5}
+    assert still_works(tiago)
+
+
+def test_exactly_the_minimum_time_is_enough(connect, clock):
+    mara, tiago, _ = round_with_station_open(connect)
+    clock.wait(1)
+    assert finish_station(mara) == {"type": "station_done", "station": 1}
+
+
+def test_finishing_too_soon_sends_the_error_and_then_closes(connect, clock):
+    mara, tiago, _ = round_with_station_open(connect, 2)
+    clock.wait(0.9)
+    assert finish_station(mara) == TOO_FAST
+    assert mara.receive_json() == {"type": "station_closed", "station": 2}
+    assert still_works(mara)
+    assert lobby_named("Mara").tasks.finished_by("Mara") == set()
+    assert not lobby_named("Mara").tasks.has_open_task("Mara")
+
+
+def test_after_too_fast_the_station_can_be_opened_and_finished(connect, clock):
+    mara, tiago, _ = round_with_station_open(connect, 2)
+    finish_station(mara)
+    mara.receive_json()
+    assert open_station(mara, 2) == opened(2)
+    clock.wait(3)
+    assert finish_station(mara) == {"type": "station_done", "station": 2}
+
+
+def test_finishing_without_an_open_task_is_rejected(connect, clock):
+    mara, tiago, _ = running_round(connect)
+    assert finish_station(mara) == NO_TASK_OPEN
+    put_at_station("Mara", 1)
+    open_station(mara, 1)
+    clock.wait(2)
+    finish_station(mara)
+    assert finish_station(mara) == NO_TASK_OPEN
+
+
+def test_a_player_can_finish_all_five_stations(connect, clock):
+    mara, tiago, _ = running_round(connect)
+    for station in [1, 2, 3, 4, 5]:
+        put_at_station("Mara", station)
+        assert open_station(mara, station) == opened(station)
+        clock.wait(2)
+        assert finish_station(mara) == {"type": "station_done", "station": station}
+    assert lobby_named("Mara").tasks.finished_by("Mara") == {1, 2, 3, 4, 5}
+    assert lobby_named("Mara").tasks.finished_by("Tiago") == set()
+
+
+# New rounds, leaving, faults
+
+
+def test_a_new_lobby_starts_with_nothing_finished(connect, clock):
+    mara, tiago, _ = round_with_station_open(connect, 1)
+    clock.wait(2)
+    finish_station(mara)
+    assert ask(mara, {"type": "leave_lobby"}) == {"type": "left_lobby"}
+    assert tiago.receive_json() == NEW_HOST
+    assert tiago.receive_json()["type"] == "lobby_state"
+    assert ask(tiago, {"type": "leave_lobby"}) == {"type": "left_lobby"}
+    assert app.state.lobbies.count() == 0
+
+    code = ask(mara, {"type": "create_lobby"})["code"]
+    ask(tiago, {"type": "join_lobby", "code": code})
+    mara.receive_json()
+    assert lobby_named("Mara").tasks is None
+    ask(mara, {"type": "start_game"})
+    tiago.receive_json()
+    put_at_station("Mara", 1)
+    assert open_station(mara, 1) == opened(1)
+
+
+def test_leaving_with_a_task_open_forgets_it_and_disturbs_nobody(connect):
+    mara, tiago, code = round_with_station_open(connect, 1)
+    lobby = lobby_named("Mara")
+    assert ask(mara, {"type": "leave_lobby"}) == {"type": "left_lobby"}
+    assert tiago.receive_json() == NEW_HOST
+    assert tiago.receive_json() == protocol.lobby_state(code, "Tiago", [("Tiago", protocol.CHARACTERS[1])], "duel", "round")
+    assert not lobby.tasks.has_open_task("Mara")
+    assert lobby.tasks._players == {}
+    assert close_station(mara) == NOT_IN_LOBBY
+    # Tiago plays on as if nothing had happened.
+    put_at_station("Tiago", 1)
+    assert open_station(tiago, 1) == opened(1)
+
+
+def test_disconnecting_with_a_task_open_forgets_it_and_disturbs_nobody(connect, clock):
+    mara, tiago, code = running_round(connect)
+    put_at_station("Mara", 1)
+    assert open_station(mara, 1) == opened(1)
+    lobby = lobby_named("Mara")
+    mara.close()
+    assert tiago.receive_json() == NEW_HOST
+    assert tiago.receive_json()["host"] == "Tiago"
+    assert lobby.tasks._players == {}
+    put_at_station("Tiago", 2)
+    assert open_station(tiago, 2) == opened(2)
+    clock.wait(2)
+    assert finish_station(tiago) == {"type": "station_done", "station": 2}
+
+
+def test_a_fault_in_a_minigame_does_not_close_the_connection(connect, monkeypatch):
+    def broken(rng):
+        raise ValueError("this minigame is broken")
+
+    monkeypatch.setitem(minigames.MINIGAMES, 1, Minigame(title="Sort the slides", min_seconds=1, make_content=broken))
+    mara, tiago, _ = running_round(connect)
+    put_at_station("Mara", 1)
+    mara.send_json({"type": "open_station", "station": 1})
+    assert still_works(mara)
+    # The other stations still work.
+    put_at_station("Mara", 2)
+    assert open_station(mara, 2) == opened(2)

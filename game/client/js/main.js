@@ -20,7 +20,16 @@ window.Game = window.Game || {};
     bad_code: 'code',
   };
 
+  // The stations with a minigame (1 to 5; station 6 is not in use yet).
+  const STATIONS_IN_USE = [1, 2, 3, 4, 5];
+  // Errors after which no task is open on the server, so no window may stay.
+  const ERRORS_THAT_CLOSE_THE_TASK = ['no_task_open', 'not_in_round', 'not_in_lobby', 'not_signed_in'];
+
   let worldIsRunning = false;
+  let roundIsRunning = false;
+  // The stations this player has finished in the running round. The server
+  // keeps the real list; this one only decides which stations glow.
+  let finishedStations = new Set();
 
   // The map is built by another part of the team and may be missing or
   // unfinished. The page must work without it, so every call goes through here.
@@ -40,10 +49,35 @@ window.Game = window.Game || {};
     callWorld('start', document.getElementById('map'), sendMove);
   }
 
+  // Also the end of the round for this player: every way out of a lobby
+  // (leaving, logging out, a lost connection) comes through here.
   function stopWorld() {
+    Game.minigames.close(); // before the world stops, so its keys are not left paused
+    roundIsRunning = false;
+    finishedStations = new Set();
     if (!worldIsRunning) return;
     worldIsRunning = false;
     callWorld('stop');
+  }
+
+  function openStation(station) {
+    Game.net.ask({ type: 'open_station', station: station });
+  }
+
+  // Which stations glow and can be used: outside a round none, in a round
+  // the ones in use that this player has not finished yet.
+  function showUsableStations() {
+    const usable = roundIsRunning
+      ? STATIONS_IN_USE.filter((station) => !finishedStations.has(station))
+      : [];
+    callWorld('setUsableStations', usable);
+  }
+
+  function noteThePhase(phase) {
+    const isRound = phase === 'round';
+    if (isRound && !roundIsRunning) finishedStations = new Set(); // a new round
+    if (!isRound) Game.minigames.close(); // no round, no task
+    roundIsRunning = isRound;
   }
 
   function whenSignedIn(message) {
@@ -77,6 +111,9 @@ window.Game = window.Game || {};
     if (Game.screens.current() !== 'lobby') Game.screens.show('lobby');
     callWorld('setPlayers', message.players);
     startWorld(); // After the screen is visible, so the canvas has its size.
+    // After the start: a world that stops forgets which stations were usable.
+    noteThePhase(message.phase);
+    showUsableStations();
   }
 
   function whenLeftLobby() {
@@ -90,8 +127,25 @@ window.Game = window.Game || {};
     if (worldIsRunning) callWorld('setPositions', message.players);
   }
 
+  function whenStationOpened(message) {
+    const isReadable = Number.isInteger(message.station)
+      && typeof message.title === 'string'
+      && Boolean(message.content) && typeof message.content === 'object';
+    // A late answer after the player left the round opens nothing.
+    if (isReadable && worldIsRunning && roundIsRunning) {
+      Game.minigames.open(message.station, message.title, message.content);
+    }
+  }
+
+  function whenStationDone(message) {
+    finishedStations.add(message.station);
+    showUsableStations();
+    Game.minigames.showDone();
+  }
+
   function whenError(message) {
     Game.forms.stopWaiting(); // Every error is an answer, also one that belongs to no field.
+    if (ERRORS_THAT_CLOSE_THE_TASK.includes(message.code)) Game.minigames.close();
     const place = ERROR_PLACES[message.code];
     const shownAtField = Boolean(place) && Game.forms.showError(place, message.message);
     if (!shownAtField) Game.screens.showMessage(message.message, true);
@@ -110,6 +164,7 @@ window.Game = window.Game || {};
 
   Game.forms.setup();
   Game.lobby.setup();
+  callWorld('setUseHandler', openStation);
 
   Game.net.on('open', Game.screens.hideMessage);
   Game.net.on('close', whenConnectionLost);
@@ -118,6 +173,9 @@ window.Game = window.Game || {};
   Game.net.on('lobby_state', whenLobbyChanged);
   Game.net.on('left_lobby', whenLeftLobby);
   Game.net.on('positions', whenPositions);
+  Game.net.on('station_opened', whenStationOpened);
+  Game.net.on('station_closed', Game.minigames.close);
+  Game.net.on('station_done', whenStationDone);
   Game.net.on('notice', (message) => Game.screens.showMessage(message.message, false));
   Game.net.on('error', whenError);
 

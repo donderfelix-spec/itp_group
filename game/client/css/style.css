@@ -248,6 +248,76 @@ input {
   background: var(--sun);
 }
 
+/* ---- The window of a minigame, built by js/minigames/frame.js ---- */
+
+/* Lies over the map only: the lobby panel next to it stays visible. The
+   veil catches the clicks, so nothing behind the window can be pressed. */
+.minigame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgba(46, 42, 59, 0.35);
+}
+
+.minigame-window {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(100%, 520px);
+  max-height: 100%;
+  padding: 22px;
+  border: var(--outline);
+  border-radius: 18px;
+  background: var(--cream);
+  box-shadow: 6px 6px 0 var(--ink);
+  overflow: auto;
+}
+
+/* The window takes the focus when it opens, only so that the keys reach
+   it. It is not a control, so it shows no focus ring. */
+.minigame-window:focus { outline: none; }
+
+.minigame-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.minigame-title {
+  margin: 0;
+  font-size: 24px;
+}
+
+.minigame-close {
+  padding: 2px 12px;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.minigame-instructions { margin: 0; }
+
+.minigame-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-height: 80px;
+  justify-content: center;
+}
+
+.minigame-done {
+  margin: 0;
+  padding: 24px 0;
+  color: var(--green);
+  font-size: 40px;
+  font-weight: 800;
+  text-align: center;
+}
+
 .panel {
   display: flex;
   flex-direction: column;
