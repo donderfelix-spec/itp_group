@@ -1102,6 +1102,178 @@ input {
   text-align: center;
 }
 
+/* ---- Minigame 5, "Self-checkout", built by js/minigames/self_checkout.js ---- */
+
+/* The display of the checkout: dark like a screen, target and total side by side. */
+.checkout-display {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 14px;
+  border: var(--outline);
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.checkout-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* The total stands to the right of a thin line. */
+.checkout-line + .checkout-line {
+  padding-left: 12px;
+  border-left: 2px solid var(--cream);
+}
+
+.checkout-label { font-size: 15px; }
+
+.checkout-amount {
+  color: var(--sun);
+  font-size: 22px;
+  font-weight: 800;
+  /* Digits of the same width: the total does not wobble when it changes. */
+  font-variant-numeric: tabular-nums;
+}
+
+.checkout-display-solved .checkout-amount { color: var(--green); }
+
+.checkout-area { width: 100%; }
+
+/* The name of a row. The line is high enough for the message next to
+   "Bagging area", so nothing jumps when the message comes and goes. */
+.checkout-area-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 26px;
+}
+
+.checkout-area-label {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* "Unexpected item in the bagging area", in coral like every error. */
+.checkout-message {
+  padding: 0 8px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--coral);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.checkout-message:empty { display: none; }
+
+/* Belt and bagging area: six fixed places each. */
+.checkout-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+  padding: 5px;
+  border: var(--outline);
+  border-radius: 12px;
+}
+
+.checkout-belt { background: #B9B3A6; }
+.checkout-bag { background: #DCEFC8; }
+
+/* A place is as high as a product, also while it is empty. */
+.checkout-slot {
+  min-height: 86px;
+  border-radius: 9px;
+}
+
+.checkout-bag .checkout-slot { border: 2px dashed var(--ink); }
+.checkout-bag .checkout-slot:not(:empty) { border-color: transparent; }
+
+.checkout-product {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 82px;
+  padding: 3px 1px;
+  border: var(--outline);
+  border-radius: 9px;
+  background: var(--cream);
+  box-shadow: 2px 2px 0 var(--ink);
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.checkout-product:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.checkout-name { font-size: 12px; font-weight: 700; }
+.checkout-price { font-size: 14px; font-weight: 800; }
+
+.checkout-broken { text-align: center; }
+
+/* The drawings of the products: a box of 40 x 36 in which ::before draws
+   the shape and ::after one detail, both with the dark outline. */
+.checkout-picture {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 36px;
+}
+
+.checkout-picture::before,
+.checkout-picture::after {
+  content: "";
+  position: absolute;
+  border: var(--outline);
+}
+
+/* Water: a blue bottle with a dark cap. */
+.checkout-picture-water::before { left: 12px; top: 8px; width: 16px; height: 27px; border-radius: 5px; background: var(--water); }
+.checkout-picture-water::after { left: 16px; top: 2px; width: 8px; height: 7px; border-radius: 2px; background: var(--ink); }
+
+/* Bread: a loaf with two cuts. */
+.checkout-picture-bread::before { left: 3px; top: 10px; width: 34px; height: 23px; border-radius: 14px 14px 5px 5px; background: #E0A458; }
+.checkout-picture-bread::after { left: 14px; top: 13px; width: 12px; height: 9px; border-top: none; border-bottom: none; transform: skewX(-18deg); }
+
+/* Cheese: a yellow piece with two holes (the second is the shadow of the first). */
+.checkout-picture-cheese::before { left: 4px; top: 9px; width: 32px; height: 24px; border-radius: 4px 16px 4px 4px; background: var(--sun); }
+.checkout-picture-cheese::after { left: 10px; top: 19px; width: 8px; height: 8px; border-radius: 50%; background: #E0A800; box-shadow: 12px -4px 0 -1px var(--ink); }
+
+/* Apples: a red apple with a green leaf. */
+.checkout-picture-apples::before { left: 7px; top: 9px; width: 26px; height: 25px; border-radius: 50%; background: var(--coral); }
+.checkout-picture-apples::after { left: 19px; top: 2px; width: 12px; height: 9px; border-radius: 10px 0; background: var(--green); }
+
+/* Coffee: a white cup, full, with a handle. */
+.checkout-picture-coffee::before { left: 6px; top: 11px; width: 23px; height: 22px; border-radius: 3px 3px 10px 10px; background: linear-gradient(#7A4B2A 6px, #FFFFFF 6px); }
+.checkout-picture-coffee::after { left: 27px; top: 15px; width: 9px; height: 11px; border-left: none; border-radius: 0 7px 7px 0; }
+
+/* Chocolate: a brown bar, half in its red wrapper. */
+.checkout-picture-chocolate::before {
+  left: 6px; top: 4px; width: 28px; height: 30px; border-radius: 4px;
+  background:
+    linear-gradient(90deg, transparent 10px, var(--ink) 10px, var(--ink) 12.5px, transparent 12.5px),
+    linear-gradient(transparent 6px, var(--ink) 6px, var(--ink) 8.5px, transparent 8.5px),
+    #7A4B2A;
+}
+.checkout-picture-chocolate::after { left: 6px; top: 18px; width: 28px; height: 16px; border-radius: 0 0 4px 4px; background: var(--coral); }
+
+/* A product with a name nobody drew: a plain box. */
+.checkout-picture-box::before { left: 6px; top: 8px; width: 28px; height: 25px; border-radius: 4px; background: var(--sand); }
+.checkout-picture-box::after { display: none; }
+
 .panel {
   display: flex;
   flex-direction: column;

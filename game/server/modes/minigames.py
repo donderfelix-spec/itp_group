@@ -33,6 +33,7 @@ wave", comes only if time allows.
 
 from server.modes import brew_order
 from server.modes import build_tray
+from server.modes import self_checkout
 from server.modes import shelve_books
 from server.modes import sort_slides
 from server.modes.placeholder import placeholder
@@ -43,5 +44,5 @@ MINIGAMES = {
     2: brew_order.MINIGAME,
     3: build_tray.MINIGAME,
     4: shelve_books.MINIGAME,
-    5: placeholder("Self-checkout"),
+    5: self_checkout.MINIGAME,
 }
