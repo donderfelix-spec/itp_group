@@ -33,7 +33,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Display of the current room | M2 | Planned |
 | Nicer, more detailed map: floors, furniture and plants | M2 | In progress |
 | Larger characters | M2 | Planned |
-| Walking animation: moving feet, head turned in the walking direction | M2 | In progress |
+| Walking animation: moving feet, head turned in the walking direction | M2 | Done |
 | Hair, buns and headwear follow the head when it turns in the walking direction | M2 | Planned |
 | Limited view: You only see what is nearby and not behind a wall | M3 | Planned |
 | Show failed players as ghosts | M3 | Planned |
@@ -65,7 +65,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Continuously synchronise the positions of all players, with smoothed movement of the others | M1 | Done |
 | Host chooses the mode and starts the round (settings: M4) | M2 | Done |
 | After the round back to the lobby, new round without a new code | M2 | Done |
-| If someone leaves the game, the round continues, and the host changes if needed | M2 | In progress |
+| If someone leaves the game, the round continues, and the host changes if needed | M2 | Done |
 | Players who were disconnected for a short time come back into their round | M3 | Planned |
 | Each client gets only the information that its player is allowed to know | M3 | Planned |
 | Game reachable at a public URL, deployed automatically from `main` | M0 | Done |
