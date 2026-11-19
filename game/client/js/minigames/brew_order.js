@@ -17,8 +17,12 @@
   const SLIP_HEADING = 'Order';
   const TICK = '✓';
   const FLASH_MS = 400;
-  // The vessel under the machine has room for the cup or glass and five layers.
-  const MAX_STEPS = 6;
+  // How many layers fit into the vessel before they reach over its rim. The
+  // numbers come from the heights in the `brew-` block of style.css: the cup
+  // is 70px high with layers of 16px, the glass 82px with layers of 22px.
+  const MAX_LAYERS_IN_CUP = 4;
+  const MAX_LAYERS_IN_GLASS = 3;
+  const MAX_LAYERS = { Cup: MAX_LAYERS_IN_CUP, Glass: MAX_LAYERS_IN_GLASS };
 
   // What a right button puts under the machine: Cup and Glass put the
   // vessel there, every other button pours one layer into it.
@@ -41,22 +45,45 @@
     return BUTTON_NAMES.includes(value);
   }
 
+  // True if every entry of `list` is one of the six button names. A loop
+  // over the indexes and not `every`: `every` skips the holes of a list like
+  // ['Cup', , 'Milk'], and a hole is broken content too.
+  function hasOnlyButtonNames(list) {
+    for (let i = 0; i < list.length; i += 1) {
+      if (!isButtonName(list[i])) return false;
+    }
+    return true;
+  }
+
   // True if `buttons` is the six names, each exactly once, in any order.
   function isAllSixButtons(buttons) {
     if (!Array.isArray(buttons) || buttons.length !== BUTTON_NAMES.length) return false;
-    return BUTTON_NAMES.every((name) => buttons.includes(name));
+    // Six entries, all of them names, all different: each name exactly once.
+    return hasOnlyButtonNames(buttons) && new Set(buttons).size === BUTTON_NAMES.length;
   }
 
   function isVesselName(value) {
-    return Object.hasOwn(VESSEL_CLASS, value);
+    return Object.prototype.hasOwnProperty.call(VESSEL_CLASS, value);
   }
 
-  // True if the vessel can draw the recipe: the cup or glass comes first and
-  // only once (the layers are poured into it), and the layers fit into it.
+  // True if every step after the first pours a layer (no second cup or
+  // glass) and no step is the same as the one before it. The second rule is
+  // what the double-click rule in press() relies on.
+  function hasPlayableLayers(recipe) {
+    for (let i = 1; i < recipe.length; i += 1) {
+      if (isVesselName(recipe[i]) || recipe[i] === recipe[i - 1]) return false;
+    }
+    return true;
+  }
+
+  // True if the recipe can be drawn and played: the cup or glass comes
+  // first and only once (the layers are poured into it), the layers fit
+  // into it, and no button comes twice in a row.
   function isDrawableRecipe(recipe) {
-    if (!Array.isArray(recipe) || recipe.length === 0 || recipe.length > MAX_STEPS) return false;
-    if (!recipe.every(isButtonName)) return false;
-    return isVesselName(recipe[0]) && !recipe.slice(1).some(isVesselName);
+    if (!Array.isArray(recipe) || !hasOnlyButtonNames(recipe)) return false;
+    if (!isVesselName(recipe[0])) return false; // also says no to an empty recipe
+    const layerCount = recipe.length - 1;
+    return layerCount <= MAX_LAYERS[recipe[0]] && hasPlayableLayers(recipe);
   }
 
   // The content comes over the network, so nothing about it is taken for granted.
@@ -140,7 +167,7 @@
       if (isSolved) return;
       // A fast double click on a right button: the second click is not a
       // mistake, so it is ignored. No recipe has the same button twice in a
-      // row, so no right press is lost by this.
+      // row (isDrawableRecipe checks it), so no right press is lost by this.
       if (name === justAccepted) return;
       if (name === recipe[stepsDone]) {
         acceptStep(name);
