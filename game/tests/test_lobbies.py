@@ -283,3 +283,170 @@ def test_sessions_finds_the_connection_of_a_name():
     assert sessions.connection_of("Tiago") is None
     sessions.sign_out("a")
     assert sessions.connection_of("Mara") is None
+
+
+# Choosing the mode and starting the round (M2-2.1, S-91)
+
+
+def started_lobby(*names):
+    """Lobbies with one lobby whose round is running. The first name is the host."""
+    lobbies = lobby_with(*names)
+    assert lobbies.start(names[0])[1] is None
+    return lobbies
+
+
+def test_a_new_lobby_has_mode_duel_and_phase_lobby():
+    lobby = lobby_with("Mara").find("ABCD")
+    assert lobby.mode == "duel"
+    assert lobby.phase == "lobby"
+    assert not lobby.round_is_running()
+
+
+def test_the_host_chooses_the_mode():
+    lobbies = lobby_with("Mara", "Tiago")
+    lobby, rejection_code = lobbies.choose_mode("Mara", "duel")
+    assert rejection_code is None
+    assert lobby is lobbies.find("ABCD")
+    assert lobby.mode == "duel"
+
+
+def test_choose_mode_sets_the_mode_it_is_given():
+    # Only "duel" passes the message check today. The rule itself stores
+    # what it is given, so Classic needs no new code here later.
+    lobbies = lobby_with("Mara")
+    lobbies.choose_mode("Mara", "classic")
+    assert lobbies.find("ABCD").mode == "classic"
+
+
+def test_choose_mode_outside_a_lobby_is_rejected():
+    lobbies = lobby_with("Mara")
+    assert lobbies.choose_mode("Tiago", "duel") == (None, "not_in_lobby")
+
+
+def test_choose_mode_by_a_member_who_is_not_host_is_rejected():
+    lobbies = lobby_with("Mara", "Tiago")
+    assert lobbies.choose_mode("Tiago", "classic") == (None, "not_host")
+    assert lobbies.find("ABCD").mode == "duel"
+
+
+def test_choose_mode_during_a_round_is_rejected():
+    lobbies = started_lobby("Mara", "Tiago")
+    assert lobbies.choose_mode("Mara", "classic") == (None, "round_running")
+    assert lobbies.find("ABCD").mode == "duel"
+
+
+@pytest.mark.parametrize("number_of_players", range(2, MAX_PLAYERS + 1))
+def test_the_host_starts_duel_with_two_to_eight_players(number_of_players):
+    names = [f"Player{number}" for number in range(number_of_players)]
+    lobbies = lobby_with(*names)
+    lobby, rejection_code = lobbies.start("Player0")
+    assert rejection_code is None
+    assert lobby.phase == "round"
+    assert lobby.round_is_running()
+    assert lobby.names() == names
+
+
+def test_start_outside_a_lobby_is_rejected():
+    lobbies = lobby_with("Mara", "Tiago")
+    assert lobbies.start("Ines") == (None, "not_in_lobby")
+    assert lobbies.find("ABCD").phase == "lobby"
+
+
+def test_start_by_a_member_who_is_not_host_is_rejected():
+    lobbies = lobby_with("Mara", "Tiago")
+    assert lobbies.start("Tiago") == (None, "not_host")
+    assert lobbies.find("ABCD").phase == "lobby"
+
+
+def test_start_with_one_player_is_rejected():
+    lobbies = lobby_with("Mara")
+    assert lobbies.start("Mara") == (None, "too_few_players")
+    assert lobbies.find("ABCD").phase == "lobby"
+
+
+def test_the_minimum_depends_on_the_mode():
+    lobbies = lobby_with("Mara", "Tiago", "Ines")
+    lobbies.choose_mode("Mara", "classic")  # Needs 4 (S-53).
+    assert lobbies.start("Mara") == (None, "too_few_players")
+    lobbies.join("Rui", "ABCD")
+    assert lobbies.start("Mara")[1] is None
+
+
+def test_a_second_start_is_rejected():
+    lobbies = started_lobby("Mara", "Tiago")
+    assert lobbies.start("Mara") == (None, "round_running")
+    assert lobbies.find("ABCD").phase == "round"
+
+
+def test_not_host_is_checked_before_round_running_and_too_few_players():
+    assert started_lobby("Mara", "Tiago").start("Tiago") == (None, "not_host")
+    assert started_lobby("Mara", "Tiago").choose_mode("Tiago", "duel") == (None, "not_host")
+
+
+def test_round_running_is_checked_before_too_few_players():
+    lobbies = started_lobby("Mara", "Tiago")
+    lobbies.leave("Tiago")  # One player is left in the running round.
+    assert lobbies.start("Mara") == (None, "round_running")
+
+
+def test_joining_a_running_round_is_rejected():
+    lobbies = started_lobby("Mara", "Tiago")
+    assert lobbies.join("Ines", "ABCD") == (None, "round_running")
+    assert lobbies.find("ABCD").names() == ["Mara", "Tiago"]
+    assert lobbies.lobby_of("Ines") is None
+
+
+def test_a_full_running_round_says_round_running_not_lobby_full():
+    lobbies = full_lobby()
+    lobbies.start("Player0")
+    assert lobbies.join("Mara", "ABCD") == (None, "round_running")
+
+
+def test_a_player_in_another_lobby_is_told_to_leave_first_even_if_the_round_runs():
+    lobbies = started_lobby("Mara", "Tiago")
+    lobbies.create("Ines", codes("WXYZ"))
+    assert lobbies.join("Ines", "ABCD") == (None, "already_in_lobby")
+
+
+def test_choosing_a_character_during_a_round_is_rejected():
+    lobbies = started_lobby("Mara", "Tiago")
+    assert lobbies.choose_character("Tiago", "surfer") == (None, False, "round_running")
+    assert lobbies.find("ABCD").character_of("Tiago") == SECOND
+
+
+def test_a_taken_character_during_a_round_says_round_running():
+    lobbies = started_lobby("Mara", "Tiago")
+    assert lobbies.choose_character("Tiago", FIRST) == (None, False, "round_running")
+
+
+def test_a_member_leaves_a_running_round_and_the_others_stay_in_it():
+    lobbies = started_lobby("Mara", "Tiago", "Ines")
+    lobby, new_host, rejection_code = lobbies.leave("Tiago")
+    assert (new_host, rejection_code) == (None, None)
+    assert lobby.names() == ["Mara", "Ines"]
+    assert lobby.phase == "round"
+
+
+def test_the_host_leaves_a_running_round_and_the_next_player_is_host():
+    lobbies = started_lobby("Mara", "Tiago", "Ines")
+    lobby, new_host, rejection_code = lobbies.leave("Mara")
+    assert new_host == "Tiago"
+    assert lobby.host == "Tiago"
+    assert lobby.phase == "round"
+    # The new host cannot start the running round again either.
+    assert lobbies.start("Tiago") == (None, "round_running")
+
+
+def test_a_running_round_that_everybody_left_is_deleted():
+    lobbies = started_lobby("Mara", "Tiago")
+    lobbies.leave("Mara")
+    lobbies.leave("Tiago")
+    assert lobbies.find("ABCD") is None
+    # The code can be given out again, and the new lobby starts fresh.
+    lobby, rejection_code = lobbies.create("Mara", codes("ABCD"))
+    assert lobby.phase == "lobby"
+
+
+@pytest.mark.parametrize("code", ["not_host", "round_running"])
+def test_the_new_rejection_codes_have_a_text(code):
+    assert protocol.rejection(code)["message"]

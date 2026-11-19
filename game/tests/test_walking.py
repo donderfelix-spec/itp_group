@@ -242,3 +242,78 @@ def test_all_lists_every_lobby():
     assert lobbies.all() == [first, second]
     lobbies.leave("Mara")
     assert lobbies.all() == [second]
+
+
+# Back to the spawn at the start of a round (M2-2.1)
+
+
+def test_back_to_spawn_puts_everybody_on_the_spawn():
+    walkers = walkers_with("Mara", "Tiago")
+    walkers.set_direction("Mara", 1, 0)
+    walkers.set_direction("Tiago", 0, 1)
+    walk_for_one_second(walkers, open_field())
+    walkers.set_direction("Mara", 0, 0)
+    walkers.set_direction("Tiago", 0, 0)
+    assert position_of(walkers, "Mara") != (100, 200)
+    assert position_of(walkers, "Tiago") != (100, 200)
+
+    walkers.back_to_spawn()
+    assert walkers.advance(ONE_TICK, open_field()) is True
+    assert walkers.positions() == [("Mara", 100, 200), ("Tiago", 100, 200)]
+
+
+def test_back_to_spawn_is_news_for_everybody_even_if_nobody_moved():
+    walkers = walkers_with("Mara", "Tiago")  # Both stand on the spawn already.
+    assert walkers.names_to_tell() == []
+    walkers.back_to_spawn()
+    assert walkers.names_to_tell() == ["Mara", "Tiago"]
+    assert walkers.advance(ONE_TICK, open_field()) is True
+
+
+def test_a_player_holding_a_direction_walks_on_from_the_spawn():
+    # The browser sends a direction only when it changes. If the start of a
+    # round forgot it, a player holding a key would be stuck.
+    walkers = walkers_with("Mara")
+    walkers.set_direction("Mara", 1, 0)
+    walk_for_one_second(walkers, open_field())
+    far_x = position_of(walkers, "Mara")[0]
+
+    walkers.back_to_spawn()
+    walkers.advance(ONE_TICK, open_field())
+    x, y = position_of(walkers, "Mara")
+    assert 100 < x < far_x
+    assert y == 200
+
+
+def test_back_to_spawn_with_nobody_there_changes_nothing():
+    walkers = Walkers()
+    walkers.back_to_spawn()
+    assert walkers.positions() == []
+    assert walkers.advance(ONE_TICK, open_field()) is False
+
+
+def test_starting_a_round_puts_the_lobby_back_on_the_spawn():
+    lobbies = Lobbies()
+    lobby, rejection_code = lobbies.create("Mara", lambda: "ABCD")
+    lobbies.join("Tiago", "ABCD")
+    lobby.walkers.set_direction("Tiago", -1, 0)
+    walk_for_one_second(lobby.walkers, open_field())
+    lobby.walkers.set_direction("Tiago", 0, 0)
+
+    assert lobbies.start("Mara")[1] is None
+    lobby.walkers.advance(ONE_TICK, open_field())
+    assert lobby.walkers.positions() == [("Mara", 100, 200), ("Tiago", 100, 200)]
+
+
+def test_a_rejected_start_moves_nobody():
+    lobbies = Lobbies()
+    lobby, rejection_code = lobbies.create("Mara", lambda: "ABCD")
+    lobbies.join("Tiago", "ABCD")
+    lobby.walkers.set_direction("Tiago", -1, 0)
+    walk_for_one_second(lobby.walkers, open_field())
+    lobby.walkers.set_direction("Tiago", 0, 0)
+    before = lobby.walkers.positions()
+
+    assert lobbies.start("Tiago") == (None, "not_host")
+    lobby.walkers.advance(ONE_TICK, open_field())
+    assert lobby.walkers.positions() == before

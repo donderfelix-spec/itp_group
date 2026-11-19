@@ -7,12 +7,13 @@ A player is identified by name. Names are unique among connected players
 (S-76, S-77), and a player is in at most one lobby.
 
 Every action returns the rejection code as its last value: None when the
-action was accepted, otherwise a key of `protocol.REJECTIONS`. A rejected
-action changes nothing.
+action was accepted, otherwise a key of `protocol.REJECTIONS` or
+"too_few_players" (whose text depends on the mode, see
+`protocol.too_few_players`). A rejected action changes nothing.
 """
 
 from server.net.walking import Walkers
-from server.protocol import CHARACTERS
+from server.protocol import CHARACTERS, DEFAULT_MODE, MIN_PLAYERS, PHASE_LOBBY, PHASE_ROUND
 
 # Every player has a character of their own (S-75), so a lobby cannot hold
 # more players than there are characters.
@@ -29,6 +30,9 @@ class Lobby:
         # Where the players stand on the campus. Kept here so that a player
         # who leaves the lobby in any way loses their position with it.
         self.walkers = Walkers()
+        # What the host has chosen to play, and whether the round is running (S-91).
+        self.mode = DEFAULT_MODE
+        self.phase = PHASE_LOBBY
 
     def names(self) -> list:
         """The names of the players, in the order they joined."""
@@ -46,6 +50,18 @@ class Lobby:
 
     def is_empty(self) -> bool:
         return len(self._characters) == 0
+
+    def round_is_running(self) -> bool:
+        return self.phase == PHASE_ROUND
+
+    def has_too_few_players(self) -> bool:
+        """Whether a round of the chosen mode cannot start yet (S-53)."""
+        return len(self._characters) < MIN_PLAYERS[self.mode]
+
+    def start_round(self):
+        """The round begins: everybody starts from the spawn point."""
+        self.phase = PHASE_ROUND
+        self.walkers.back_to_spawn()
 
     def add(self, name: str):
         """Put the player in with the first character nobody here has (S-75)."""
@@ -129,6 +145,10 @@ class Lobbies:
         lobby = self._lobbies.get(code)
         if lobby is None:
             return (None, "no_lobby")
+        # Before the check for a full lobby: a full lobby whose round is
+        # running stays closed even when somebody leaves it.
+        if lobby.round_is_running():
+            return (None, "round_running")
         if lobby.is_full():
             return (None, "lobby_full")
         self._put_in(lobby, name)
@@ -143,11 +163,50 @@ class Lobbies:
         lobby = self.lobby_of(name)
         if lobby is None:
             return (None, False, "not_in_lobby")
+        # A character that changes during a round would confuse who is who (S-91).
+        if lobby.round_is_running():
+            return (None, False, "round_running")
         if lobby.character_is_taken_by_another(name, character):
             return (None, False, "character_taken")
         changed = lobby.character_of(name) != character
         lobby.set_character(name, character)
         return (lobby, changed, None)
+
+    def choose_mode(self, name: str, mode: str):
+        """The host sets what will be played. Returns `(lobby, rejection_code)`.
+
+        `mode` is one of `protocol.MODES`; the message check made sure of that.
+        """
+        lobby, rejection_code = self._lobby_hosted_by(name)
+        if rejection_code is not None:
+            return (None, rejection_code)
+        lobby.mode = mode
+        return (lobby, None)
+
+    def start(self, name: str):
+        """The host starts the round. Returns `(lobby, rejection_code)`."""
+        lobby, rejection_code = self._lobby_hosted_by(name)
+        if rejection_code is not None:
+            return (None, rejection_code)
+        if lobby.has_too_few_players():
+            return (None, "too_few_players")
+        lobby.start_round()
+        return (lobby, None)
+
+    def _lobby_hosted_by(self, name: str):
+        """The checks every action of the host begins with. Returns `(lobby, rejection_code)`.
+
+        The lobby is returned only if the player is in one, is its host and
+        its round is not running yet. The checks come in this order.
+        """
+        lobby = self.lobby_of(name)
+        if lobby is None:
+            return (None, "not_in_lobby")
+        if lobby.host != name:
+            return (None, "not_host")
+        if lobby.round_is_running():
+            return (None, "round_running")
+        return (lobby, None)
 
     def leave(self, name: str):
         """Take the player out of their lobby. Returns `(lobby, new_host, rejection_code)`.

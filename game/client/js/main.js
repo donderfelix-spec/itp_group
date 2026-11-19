@@ -14,6 +14,9 @@ window.Game = window.Game || {};
     accounts_unavailable: 'form',
     no_lobby: 'code',
     lobby_full: 'code',
+    // Joining a running round. In the lobby itself there is no code field,
+    // so the same error there appears at the top centre.
+    round_running: 'code',
     bad_code: 'code',
   };
 
@@ -54,12 +57,16 @@ window.Game = window.Game || {};
     Game.forms.showStart();
   }
 
+  const PHASES = ['lobby', 'round'];
+
   // Says whether a `lobby_state` has the parts the page reads from it.
   function isLobbyState(message) {
     const isPlayer = (player) => Boolean(player) && typeof player.name === 'string';
     return typeof message.code === 'string'
       && Array.isArray(message.players)
-      && message.players.every(isPlayer);
+      && message.players.every(isPlayer)
+      && typeof message.mode === 'string'
+      && PHASES.includes(message.phase);
   }
 
   function whenLobbyChanged(message) {

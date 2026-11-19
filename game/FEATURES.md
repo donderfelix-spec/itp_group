@@ -62,7 +62,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Join a lobby by code | M1 | Done |
 | Player list in the lobby, the creator is the host | M1 | Done |
 | Continuously synchronise the positions of all players, with smoothed movement of the others | M1 | Done |
-| Host chooses mode and settings and starts the round | M2 | Planned |
+| Host chooses the mode and starts the round (settings: M4) | M2 | Done |
 | After the round back to the lobby, new round without a new code | M2 | Planned |
 | If someone leaves the game, the round continues, and the host changes if needed | M2 | Planned |
 | Players who were disconnected for a short time come back into their round | M3 | Planned |
