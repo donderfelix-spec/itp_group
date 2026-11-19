@@ -86,7 +86,6 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 **Area 4**
 
-- [ ] **M2-4.5** Minigame CTT Student Hall: sort books
 - [ ] **M2-4.6** Minigame Pingo Doce: Self-checkout with a target amount
 - [ ] **M2-4.7a** When more work is added after a task is counted (progress to the others, the win check, statistics): a fault there must not leave the station counted on the server while the browser was never told “done”. Found in the review of M2-4.1; cannot happen yet
 - [ ] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard
@@ -134,6 +133,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 ## Done
 
+- [x] **M2-4.5** Minigame CTT Student Hall “Shelve the books”: six books with numbers from 100 to 999 are clicked onto the shelf from the lowest to the highest, a wrong book falls back. Played in the browser in a real round (2026-11-19)
 - [x] **M2-4.4** Minigame Lecture Hall “Sort the slides”: five slides are dragged onto five numbered places, a slide on a wrong place shakes and jumps back. Played in the browser in a real round (2026-11-19)
 - [x] **M2-4.3** Minigame Mon Café “Brew the order”: five drinks, six buttons in shuffled places, the cup fills step by step, a wrong button flashes. Played in the browser in a real round (2026-11-19)
 - [x] **M2-4.2** Minigame Canteen “Build the tray”: the order slip names four of six dishes, a wrong dish goes back to the counter. Played in the browser in a real round (2026-11-19)
