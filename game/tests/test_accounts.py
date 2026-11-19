@@ -333,7 +333,7 @@ def test_postgres_commits_the_table_before_anything_else_and_before_remembering_
     database.before_commit = lambda: flag_at_commit.append(postgres._table_exists)
     postgres.find("Mara")
     kinds = [event[1].split()[0] if event[0] == "execute" else event[0] for event in database.events]
-    assert kinds == ["SET", "CREATE", "commit", "SET", "SELECT", "commit", "close"]
+    assert kinds == ["SET", "CREATE", "ALTER", "commit", "SET", "SELECT", "commit", "close"]
     # At the first commit (the table) the store did not yet believe the table exists.
     assert flag_at_commit[0] is False
     assert postgres._table_exists is True
@@ -358,7 +358,7 @@ def test_postgres_limits_the_time_of_every_statement(database, postgres):
     postgres.find("Mara")
     kinds = [event[1].split()[0] if event[0] == "execute" else event[0] for event in database.events]
     # Each transaction starts with the time limit.
-    assert kinds == ["SET", "CREATE", "commit", "SET", "INSERT", "commit", "close", "SET", "SELECT", "commit", "close"]
+    assert kinds == ["SET", "CREATE", "ALTER", "commit", "SET", "INSERT", "commit", "close", "SET", "SELECT", "commit", "close"]
     for query, params in database.queries("SET"):
         assert query == "SET LOCAL statement_timeout = 5000"
 
@@ -647,3 +647,52 @@ def test_psycopg_itself_only_logs_errors():
     import logging
 
     assert logging.getLogger("psycopg").level == logging.ERROR
+
+
+# Row level security on the table `accounts` (M1-2.5): without it, Supabase's
+# Data API would show the table to anyone with the project's public key.
+
+ROW_LEVEL_SECURITY = "ALTER TABLE accounts ENABLE ROW LEVEL SECURITY"
+
+
+def test_postgres_turns_row_level_security_on_between_create_and_commit(database, postgres):
+    postgres.find("Mara")
+    assert database.events[1][1].strip().startswith("CREATE TABLE IF NOT EXISTS accounts")
+    assert database.events[2] == ("execute", ROW_LEVEL_SECURITY, None)
+    assert database.events[3] == ("commit",)
+
+
+def test_postgres_turns_row_level_security_on_once_only(database, postgres):
+    postgres.find("Mara")
+    postgres.add("Mara", "hash-1")
+    postgres.find("Mara")
+    assert database.queries("ALTER") == [(ROW_LEVEL_SECURITY, None)]
+
+
+def test_a_failure_turning_row_level_security_on_is_a_failed_create_table(database, postgres, caplog, monkeypatch):
+    working_execute = FakeConnection.execute
+
+    def failing_execute(self, query, params=None):
+        working_execute(self, query, params)  # writes the statement down
+        if query.startswith("ALTER"):
+            raise psycopg.errors.InsufficientPrivilege("must be owner of table accounts")
+        return FakeCursor()
+
+    monkeypatch.setattr(FakeConnection, "execute", failing_execute)
+    with caplog.at_level("WARNING"), pytest.raises(StoreUnavailable):
+        postgres.find("Mara")
+    assert caplog.messages == [
+        "Accounts database problem during create table: no permission (InsufficientPrivilege, SQLSTATE 42501)"
+    ]
+    assert postgres._table_exists is False
+    # Nothing was saved and no query was tried on the unprotected table.
+    assert ("commit",) not in database.events
+    assert database.queries("SELECT") == []
+    assert database.events[-1] == ("close",)
+
+    # The next call tries the whole step again.
+    monkeypatch.setattr(FakeConnection, "execute", working_execute)
+    assert postgres.find("Mara") is None
+    assert postgres._table_exists is True
+    assert len(database.queries("CREATE TABLE")) == 2
+    assert len(database.queries("ALTER")) == 2

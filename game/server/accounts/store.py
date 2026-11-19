@@ -37,6 +37,12 @@ CREATE_TABLE = """
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
 """
+# On Supabase, tables in the `public` schema can be reached through the
+# project's Data API with the public "anon" key. With row level security on
+# and no policy, the roles of that API see no rows and can change none. Our
+# server connects as the owner of the table, and the owner is not held back
+# by row level security, so it still reads and writes. Safe to repeat.
+ENABLE_ROW_LEVEL_SECURITY = "ALTER TABLE accounts ENABLE ROW LEVEL SECURITY"
 # The %s are filled in by the database driver, never by Python string
 # formatting. That is what keeps a name like "x'; DROP TABLE" harmless.
 INSERT_ACCOUNT = """
@@ -218,12 +224,13 @@ class PostgresAccountStore:
         return connection
 
     def _create_table_once(self, connection):
-        """Create the table `accounts` if this store has not done so yet."""
+        """Create and protect the table `accounts` if this store has not done so yet."""
         with self._table_lock:
             if self._table_exists:
                 return
             connection.execute(SET_STATEMENT_TIMEOUT)
             connection.execute(CREATE_TABLE)
+            connection.execute(ENABLE_ROW_LEVEL_SECURITY)
             # Saved on its own, before anything else happens on the connection.
             # Only then is it certain that the table exists, whatever goes
             # wrong later. If this fails, the next call tries again.
