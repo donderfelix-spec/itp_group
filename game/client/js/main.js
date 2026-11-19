@@ -23,7 +23,9 @@ window.Game = window.Game || {};
   // The stations with a minigame (1 to 5; station 6 is not in use yet).
   const STATIONS_IN_USE = [1, 2, 3, 4, 5];
   // Errors after which no task is open on the server, so no window may stay.
-  const ERRORS_THAT_CLOSE_THE_TASK = ['no_task_open', 'not_in_round', 'not_in_lobby', 'not_signed_in'];
+  // `task_failed` is in the list because a fault while closing or finishing
+  // is answered with this error only: no `station_closed` follows it.
+  const ERRORS_THAT_CLOSE_THE_TASK = ['no_task_open', 'not_in_round', 'not_in_lobby', 'not_signed_in', 'task_failed'];
 
   let worldIsRunning = false;
   let roundIsRunning = false;

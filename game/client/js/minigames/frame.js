@@ -35,6 +35,10 @@ window.Game = window.Game || {};
   const CLOSE_LABEL = 'Close';
   const DONE_VISIBLE_MS = 1000;
   const FALLBACK_KIND = 'placeholder';
+  const DONE_RETRY_MS = 250;
+  // What Tab can reach inside the window. Switched-off controls and those
+  // taken out of the Tab order (tabindex -1) are left out.
+  const FOCUSABLE = 'button, input, select, textarea, a[href], [tabindex]';
 
   // A Map and not a plain object, for the same reason as in net.js: a kind
   // like "constructor" must not find something that is no minigame.
@@ -43,7 +47,9 @@ window.Game = window.Game || {};
   let container = null; // the element in index.html the window is built in
   let cleanUp = null; // what the running minigame returned from start(), if a function
   let isOpenNow = false;
-  let doneWasReported = false;
+  let isSolved = false; // the open minigame called done()
+  let doneWasSent = false; // `finish_station` went to the server; never twice per opening
+  let doneRetryTimer = null;
   let isShowingDone = false; // "Done" is on show: the task is over, nothing is left to close
   let doneTimer = null;
   // Counts the openings. A minigame that calls done() after its window was
@@ -109,7 +115,8 @@ window.Game = window.Game || {};
     container.append(parts.card);
     container.hidden = false;
     isOpenNow = true;
-    doneWasReported = false;
+    isSolved = false;
+    doneWasSent = false;
     isShowingDone = false;
     opening += 1;
     pauseWorld(true);
@@ -133,9 +140,29 @@ window.Game = window.Game || {};
 
   // The minigame says the player solved it. The server decides whether it
   // counts: `station_done` or an error and `station_closed` come back.
+  //
+  // `Game.net.ask` sends nothing while there is no connection or another
+  // action still waits for its answer. A minigame calls done() only once
+  // and switches itself off after that, so a "done" that was not sent
+  // would be lost: the solved window would stay open for good. That is
+  // why the frame remembers that it is solved and tries again until the
+  // message was sent once.
   function reportDone(thisOpening) {
-    if (!isOpenNow || thisOpening !== opening || doneWasReported) return;
-    doneWasReported = Game.net.ask({ type: 'finish_station' });
+    if (!isOpenNow || thisOpening !== opening || isSolved) return;
+    isSolved = true;
+    sendDone();
+    if (!doneWasSent) doneRetryTimer = setInterval(sendDone, DONE_RETRY_MS);
+  }
+
+  function sendDone() {
+    if (!isOpenNow || doneWasSent) return;
+    doneWasSent = Game.net.ask({ type: 'finish_station' });
+    if (doneWasSent) stopRetryingDone();
+  }
+
+  function stopRetryingDone() {
+    clearInterval(doneRetryTimer);
+    doneRetryTimer = null;
   }
 
   // The player wants to close: × or Esc. The window stays until the server
@@ -149,6 +176,43 @@ window.Game = window.Game || {};
       event.preventDefault();
       askToClose();
     }
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      moveFocusInside(event.shiftKey ? -1 : 1);
+    }
+  }
+
+  // The controls inside the window that Tab stops at, in the order of the page.
+  function focusableInside(card) {
+    return Array.from(card.querySelectorAll(FOCUSABLE)).filter((control) => {
+      const isHidden = control.hidden || control.getClientRects().length === 0;
+      return !control.disabled && control.tabIndex >= 0 && !isHidden;
+    });
+  }
+
+  // Tab and Shift+Tab go round inside the window. Left to the browser, Tab
+  // would walk on into the lobby panel, where Space on "Leave lobby" leaves
+  // the lobby by accident. `step` is 1 for Tab and -1 for Shift+Tab.
+  function moveFocusInside(step) {
+    const card = container.querySelector('.minigame-window');
+    const controls = focusableInside(card);
+    if (controls.length === 0) {
+      card.focus(); // nothing to stop at: the window itself keeps the focus
+      return;
+    }
+    const current = controls.indexOf(document.activeElement);
+    // From outside the list (the window itself, or the lobby panel after a
+    // click there) Tab goes to the first control and Shift+Tab to the last.
+    const start = current === -1 && step === -1 ? 0 : current;
+    const next = (start + step + controls.length) % controls.length;
+    controls[next].focus();
+  }
+
+  // The focus goes back to the page, not to a button of the lobby panel.
+  // Only if it is inside the window: a focus elsewhere is left alone.
+  function giveFocusBack() {
+    const focused = document.activeElement;
+    if (focused && container.contains(focused)) focused.blur();
   }
 
   // "Done" in green for a moment, then the window closes by itself.
@@ -184,8 +248,10 @@ window.Game = window.Game || {};
     if (!isOpenNow) return;
     isOpenNow = false;
     clearTimeout(doneTimer);
+    stopRetryingDone();
     stopMinigame();
     document.removeEventListener('keydown', onKeyDown);
+    giveFocusBack();
     container.hidden = true;
     container.replaceChildren();
     pauseWorld(false);
