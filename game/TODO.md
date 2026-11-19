@@ -150,3 +150,11 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 - [x] **M0-2.4** Project skeleton: server, start page, message validation, 51 tests, CI with tests, dependency check and syntax check (2026-11-18)
 - [x] **M0-1.1** Floor plan of the map as a sketch (`design/map.svg`)
 - [x] Planning: feature overview, decision log, to-do list, workflow of the agents (2026-11-18)
+
+## Campus character appearance
+
+- [x] Eight individual campus mascots with distinct head shapes, bodies and student accessories, on branch game/campus-and-characters.
+
+- [x] Animate arms, legs and head while walking; neutral pose when stopped. Campus and Characters branch.
+
+- [x] Individual walk cycles, accessory motion, idle actions, blinking and front/side/back facing on the Campus and Characters branch.

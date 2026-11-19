@@ -80,7 +80,8 @@ Game.world = Game.world || {};
       to: null,
       arrivedAt: 0, // when `to` arrived, in milliseconds
       lastStepAt: -Infinity, // when the position last changed
-      facingLeft: false
+      facingLeft: false,
+      facing: "front"
     };
   }
 
@@ -125,7 +126,10 @@ Game.world = Game.world || {};
     var hasStepped = player.to && (player.to.x !== x || player.to.y !== y);
     if (hasStepped && !isJump) {
       player.lastStepAt = now;
-      // Walking straight up or down keeps the side the character faced.
+      var dx = x - player.to.x;
+      var dy = y - player.to.y;
+      player.facing = Math.abs(dy) > Math.abs(dx) ? (dy < 0 ? "back" : "front") : "side";
+      // Horizontal mirroring still chooses which side of the sprite is shown.
       if (x < player.to.x) {
         player.facingLeft = true;
       } else if (x > player.to.x) {
@@ -358,7 +362,9 @@ Game.world = Game.world || {};
 
   function drawPlayer(entry, now) {
     var bob = 0;
-    if (isWalking(entry.player, now)) {
+    var walking = isWalking(entry.player, now);
+    var stride = walking ? Math.sin(now / BOB_MILLISECONDS * Math.PI) : 0;
+    if (walking) {
       bob = Math.abs(Math.sin(now / BOB_MILLISECONDS * Math.PI)) * BOB_HEIGHT;
     }
     ctx.save();
@@ -366,7 +372,9 @@ Game.world = Game.world || {};
     if (entry.player.facingLeft) {
       ctx.scale(-1, 1); // mirrored: the character looks to the left
     }
-    Game.world.drawCharacter(ctx, entry.player.character, 0, 0, CHARACTER_HEIGHT);
+    Game.world.drawCharacter(ctx, entry.player.character, 0, 0, CHARACTER_HEIGHT, stride, {
+      time: now, walking: walking, facing: entry.player.facing
+    });
     ctx.restore();
   }
 

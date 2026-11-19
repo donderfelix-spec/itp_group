@@ -24,12 +24,14 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 |---|---|---|
 | Map with Lecture Hall, Mon Café, Canteen, CTT Student Hall and Pingo Doce, connected by the Main Deck | M1 | Done |
 | Move the character with the keyboard (WASD or arrow keys) | M1 | Done |
+| Character-specific walk cycles, animated accessories, idle poses, blinking and directional views | M1 | In progress |
 | Walls and furniture stop the character | M1 | Done |
 | Camera follows your own character | M1 | Done |
 | See other players with their names above the character | M1 | Done |
 | Stations for tasks on the map | M2 | Planned |
 | Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E, R, Q) | M2 | Planned |
 | Choose a character from the list of stereotypes | M2 | Done |
+| Eight individual campus mascots with distinct silhouettes and student accessories | M2 | In progress |
 | Display of the current room | M2 | Planned |
 | Limited view: You only see what is nearby and not behind a wall | M3 | Planned |
 | Show failed players as ghosts | M3 | Planned |
@@ -108,3 +110,4 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Mon Café: put chairs in rows for the event | M4 | Later |
 | Deadline mode: shared clock, progress bar, random disruptions | M4 | Planned |
 | Duel variants: best of 3, knockout rounds | M4 | Later |
+

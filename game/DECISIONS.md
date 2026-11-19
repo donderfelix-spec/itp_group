@@ -136,3 +136,15 @@ These entries follow from the team's answers and from the project description in
 |---|---|---|
 | Who creates the account at Render? | Area 2 | A team member has to do this themselves, with their own GitHub account. |
 | Who takes which of the four areas? | all | Area 2 is the fullest. |
+
+## Character appearance update
+
+2026-11-19: Hanna requested rounded suit characters with backpacks and reflective visors based on her screenshot. The renderer retains the existing eight character IDs, colours and campus accessories. This updates the visual direction for this branch.
+
+2026-11-19: Hanna requested a more original character design. Campus robots now have cream monitor heads, two luminous eyes, antennae, separate arms and boots, and student accessories. This replaces the rounded suit direction above on the Campus and Characters branch.
+
+2026-11-19: Hanna requested stronger recognition for every character. Each mascot now has a distinct head silhouette and body: briefcase, calculator, travelling suitcase, surfboard, hooded laptop, crowned planner, coffee cup and book stack. Colours and student roles still identify the same selectable characters.
+
+2026-11-19: Hanna requested animated arms, legs and head while walking. The renderer uses the existing walking detection and time-based stride, with opposite limb swings and a gentle head tilt. The optional stride argument defaults to a neutral pose for lobby previews.
+
+2026-11-19: Hanna requested distinct walk styles, animated accessories, idle actions, expressive eyes and directional views. Each role has cosmetic cadence, swing, lean and eye parameters. Facing is inferred from server position changes; rear views hide the face and show a backpack. Server movement and permissions remain authoritative.
