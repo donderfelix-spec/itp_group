@@ -127,6 +127,7 @@ VALID_MESSAGES = [
     {"type": "close_station"},
     {"type": "finish_station"},
     {"type": "chat", "text": "Hello there."},
+    {"type": "vote", "target_id": "Mara"},
 ]
 MESSAGES_WITHOUT_FIELDS = [
     "guest", "log_out", "create_lobby", "leave_lobby", "start_game", "close_station", "finish_station",
@@ -381,6 +382,7 @@ REJECTION_TEXTS = {
     "too_fast": "That was too fast. Try again.",
     "task_failed": "Something went wrong. Try again.",
     "chat_rejected": "You cannot send that chat message right now.",
+    "vote_rejected": "You cannot cast that vote right now.",
 }
 
 

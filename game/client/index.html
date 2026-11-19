@@ -152,6 +152,11 @@
   <section id="classic-meeting" class="classic-meeting" aria-label="Meeting" hidden>
     <div class="classic-meeting-window">
       <canvas id="classic-meeting-canvas" class="classic-meeting-canvas" aria-label="Meeting details"></canvas>
+      <section id="classic-vote-options" class="classic-vote-options" aria-label="Vote for a living player" hidden>
+        <h2>Who should be ejected?</h2>
+        <div id="classic-vote-players" class="classic-vote-players"></div>
+      </section>
+      <p id="classic-vote-result" class="classic-vote-result" aria-live="polite" hidden></p>
       <form id="classic-chat-form" class="classic-chat-form">
         <label for="classic-chat-input">Message</label>
         <div class="button-row">

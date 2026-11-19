@@ -6,7 +6,14 @@ import pytest
 
 from server import main
 from server.classic.meeting import (
-    advance_meeting, can_send_chat, meeting_snapshot, send_chat, start_discussion,
+    EjectResult,
+    advance_meeting,
+    cast_vote,
+    can_send_chat,
+    meeting_snapshot,
+    send_chat,
+    start_discussion,
+    tally_votes,
 )
 from server.net.lobbies import Lobbies
 from server.net.sessions import Sessions
@@ -58,6 +65,103 @@ def test_chat_history_snapshot_is_identical_for_every_participant():
     assert views[0]["messages"] == [
         {"player_id": "Mara", "text": "We should compare notes."}
     ]
+
+
+def voting_state(roles, votes):
+    living = list(roles)
+    state = start_discussion(
+        living,
+        [],
+        0.0,
+        {
+            "roles": roles,
+            "tasks": {player_id: ["1", "2", "3", "4"] for player_id in roles},
+            "completed_tasks": {},
+            "eliminated": set(),
+        },
+    )
+    state["phase"] = "voting"
+    state["deadline"] = 30.0
+    state["votes"] = dict(votes)
+    return state
+
+
+def test_the_majority_is_ejected_only_after_voting_ends():
+    state = voting_state(
+        {"A": "HP", "B": "HP", "C": "HP", "D": "HP", "F": "FR"},
+        {"A": "F", "B": "F", "C": "F", "D": "A", "F": "A"},
+    )
+
+    with pytest.raises(ValueError, match="hidden"):
+        tally_votes(state)
+    finished = advance_meeting(state, 29.99)
+    assert finished["phase"] == "voting"
+    result_state = advance_meeting(state, 30.0)
+
+    assert result_state["vote_result"] == EjectResult("F", False, "FR")
+    assert result_state["living"] == ("A", "B", "C", "D")
+    assert result_state["ghosts"] == ("F",)
+    assert result_state["winner"] == "HP"
+
+
+def test_a_tie_ejects_nobody():
+    state = voting_state(
+        {"A": "HP", "B": "HP", "C": "HP", "F": "FR"},
+        {"A": "B", "B": "A", "C": "A", "F": "B"},
+    )
+
+    result_state = advance_meeting(state, 30.0)
+
+    assert result_state["vote_result"] == EjectResult(None, True, None)
+    assert result_state["living"] == ("A", "B", "C", "F")
+    assert result_state["ghosts"] == ()
+
+
+def test_a_ghost_cannot_vote_and_a_vote_cannot_target_a_ghost():
+    state = voting_state({"A": "HP", "F": "FR"}, {})
+    state["living"] = ("A",)
+    state["ghosts"] = ("F",)
+
+    with pytest.raises(ValueError, match="living players"):
+        cast_vote(state, "F", "A")
+    with pytest.raises(ValueError, match="living player"):
+        cast_vote(state, "A", "F")
+
+
+def test_a_player_cannot_change_their_final_vote():
+    state = voting_state({"A": "HP", "B": "HP", "F": "FR"}, {})
+    cast = cast_vote(state, "A", "B")
+
+    assert cast["votes"] == {"A": "B"}
+    assert state["votes"] == {}
+    with pytest.raises(ValueError, match="final"):
+        cast_vote(cast, "A", "F")
+
+
+def test_ejecting_an_hp_leaves_the_round_running_when_hp_still_outnumber_fr():
+    state = voting_state(
+        {"A": "HP", "B": "HP", "C": "HP", "D": "HP", "F": "FR"},
+        {"A": "C", "B": "C", "D": "C", "C": "A", "F": "A"},
+    )
+
+    result_state = advance_meeting(state, 30.0)
+
+    assert result_state["vote_result"] == EjectResult("C", False, "HP")
+    assert result_state["winner"] is None
+
+
+def test_votes_are_not_shown_to_players_before_the_result():
+    state = voting_state(
+        {"A": "HP", "B": "HP", "F": "FR"}, {"A": "F"}
+    )
+
+    snapshot = meeting_snapshot(state, 10.0)
+
+    assert snapshot["voted"] == ["A"]
+    assert "votes" not in snapshot
+    assert snapshot["ejected_id"] is None
+    assert snapshot["revealed_role"] is None
+    assert "vote_targets" not in snapshot
 
 
 class FakeSocket:

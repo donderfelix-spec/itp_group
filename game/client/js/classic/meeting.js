@@ -16,6 +16,11 @@ Game.classicMeeting = Game.classicMeeting || {};
   var input;
   var sendButton;
   var hint;
+  var voteOptions;
+  var votePlayers;
+  var voteResult;
+  var voteListSignature = "";
+  var pendingVoteTarget = null;
 
   function setup() {
     screen = document.getElementById("classic-meeting");
@@ -25,6 +30,9 @@ Game.classicMeeting = Game.classicMeeting || {};
     input = document.getElementById("classic-chat-input");
     sendButton = document.getElementById("classic-chat-send");
     hint = document.getElementById("classic-chat-hint");
+    voteOptions = document.getElementById("classic-vote-options");
+    votePlayers = document.getElementById("classic-vote-players");
+    voteResult = document.getElementById("classic-vote-result");
     form.addEventListener("submit", sendMessage);
     window.addEventListener("resize", draw);
     Game.net.on("meeting_state", show);
@@ -40,11 +48,15 @@ Game.classicMeeting = Game.classicMeeting || {};
     state = message;
     screen.hidden = false;
     updateInput();
+    updateVoting();
+    updateVoteResult();
     draw();
   }
 
   function hide() {
     state = null;
+    pendingVoteTarget = null;
+    voteListSignature = "";
     screen.hidden = true;
   }
 
@@ -53,7 +65,8 @@ Game.classicMeeting = Game.classicMeeting || {};
       && Number.isInteger(message.seconds_left)
       && Array.isArray(message.living)
       && Array.isArray(message.ghosts)
-      && Array.isArray(message.messages);
+      && Array.isArray(message.messages)
+      && Array.isArray(message.voted);
   }
 
   function updateInput() {
@@ -63,9 +76,65 @@ Game.classicMeeting = Game.classicMeeting || {};
     input.disabled = !mayWrite;
     sendButton.disabled = !mayWrite;
     if (mayWrite) hint.textContent = "Living players can chat during the discussion.";
-    else if (state && state.phase === "voting") hint.textContent = "Chat is closed while the players vote.";
+    else if (state && state.phase === "voting") hint.textContent = "Chat is closed. Choose one living player to eject.";
     else if (state && state.phase === "result") hint.textContent = "The vote is over.";
     else hint.textContent = "Ghosts can read the chat but cannot write.";
+  }
+
+  function updateVoting() {
+    var voting = Boolean(state && state.phase === "voting");
+    voteOptions.hidden = !voting;
+    if (!voting) {
+      if (state && state.phase === "result") pendingVoteTarget = null;
+      return;
+    }
+    var signature = state.living.join("\u0000");
+    if (signature !== voteListSignature) {
+      voteListSignature = signature;
+      votePlayers.replaceChildren();
+      state.living.forEach(function (playerId) {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "classic-vote-player";
+        button.dataset.targetId = playerId;
+        var avatar = document.createElement("span");
+        avatar.className = "classic-vote-avatar";
+        avatar.textContent = playerId.charAt(0).toUpperCase();
+        var name = document.createElement("span");
+        name.textContent = playerId;
+        button.append(avatar, name);
+        button.addEventListener("click", function () { castVote(playerId); });
+        votePlayers.append(button);
+      });
+    }
+    var hasVoted = state.voted.includes(ownName) || pendingVoteTarget !== null;
+    Array.from(votePlayers.children).forEach(function (button) {
+      button.disabled = !state.living.includes(ownName) || hasVoted;
+    });
+    if (state.voted.includes(ownName)) pendingVoteTarget = null;
+  }
+
+  function castVote(targetId) {
+    if (!state || state.phase !== "voting" || !state.living.includes(ownName)
+      || state.voted.includes(ownName) || pendingVoteTarget !== null) return;
+    if (Game.net.send({ type: "vote", target_id: targetId })) {
+      pendingVoteTarget = targetId;
+      updateVoting();
+    }
+  }
+
+  function updateVoteResult() {
+    var result = state && state.phase === "result";
+    voteResult.hidden = !result;
+    if (!result) return;
+    if (!state.ejected_id || state.tie) {
+      voteResult.textContent = "No one was ejected.";
+    } else if (state.revealed_role === "FR") {
+      voteResult.textContent = state.ejected_id + " was a Free Rider.";
+    } else {
+      voteResult.textContent = state.ejected_id + " was not a Free Rider.";
+    }
+    if (state.winner) voteResult.textContent += " " + state.winner + " wins.";
   }
 
   function sendMessage(event) {

@@ -237,6 +237,51 @@ input {
 
 .classic-chat-form { display: flex; flex-direction: column; gap: 6px; }
 
+.classic-vote-options { display: flex; flex-direction: column; gap: 8px; }
+.classic-vote-options h2 { font-size: 20px; }
+
+.classic-vote-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.classic-vote-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  border: var(--outline);
+  border-radius: 999px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.classic-vote-player:hover:not(:disabled) { background: var(--sun); }
+
+.classic-vote-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--water);
+}
+
+.classic-vote-result {
+  padding: 10px 14px;
+  border: var(--outline);
+  border-radius: 12px;
+  background: var(--sun);
+  font-size: 18px;
+  font-weight: 800;
+  text-align: center;
+}
+
 @media (max-width: 560px) {
   .classic-meeting { padding: 8px; }
   .classic-meeting-window { padding: 10px; }

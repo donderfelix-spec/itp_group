@@ -76,6 +76,7 @@ REJECTIONS = {
     "too_fast": "That was too fast. Try again.",
     "task_failed": "Something went wrong. Try again.",
     "chat_rejected": "You cannot send that chat message right now.",
+    "vote_rejected": "You cannot cast that vote right now.",
 }
 
 
@@ -147,7 +148,7 @@ def _check_character(value):
 
 
 def _check_mode(value):
-    # Modes are enabled only when their round setup is registered.
+    # A mode not built yet is refused like an unknown mode (S-91).
     if not isinstance(value, str) or value not in MODES:
         raise ProtocolError("bad_mode", "That mode does not exist.")
     return value
@@ -199,6 +200,7 @@ CLIENT_MESSAGES = {
     "close_station": {},
     "finish_station": {},
     "chat": {"text": _check_chat_text},
+    "vote": {"target_id": _check_name},
 }
 
 

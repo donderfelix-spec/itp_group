@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 import math
-from typing import Literal
+from typing import Literal, NamedTuple
 
 from rules import check_winner
 
@@ -13,6 +13,11 @@ MAX_CHAT_LENGTH = 200
 CHAT_COOLDOWN_SECONDS = 2.0
 MeetingPhase = Literal["discussion", "voting", "result"]
 
+
+class EjectResult(NamedTuple):
+    ejected_id: str | None
+    tie: bool
+    revealed_role: str | None
 
 
 def start_discussion(
@@ -63,6 +68,64 @@ def send_chat(meeting: dict, player_id: str, text: str, now: float) -> dict:
     return updated
 
 
+def cast_vote(state: dict, voter_id: str, target_id: str) -> dict:
+    """Return a new state with one final vote from a living voter."""
+    living = state.get("living", ())
+    if state.get("phase") != "voting":
+        raise ValueError("Voting is not open.")
+    if voter_id not in living:
+        raise ValueError("Only living players may vote.")
+    if target_id not in living:
+        raise ValueError("Votes must target a living player.")
+    if voter_id in state.get("votes", {}):
+        raise ValueError("A player's vote is final.")
+    updated = deepcopy(state)
+    updated["votes"][voter_id] = target_id
+    return updated
+
+
+def tally_votes(state: dict) -> EjectResult:
+    """Count votes only after voting ends; tied leaders cause no ejection."""
+    if state.get("phase") != "result":
+        raise ValueError("Votes stay hidden until voting ends.")
+    living = set(state.get("living", ()))
+    valid_votes = [
+        target_id
+        for voter_id, target_id in state.get("votes", {}).items()
+        if voter_id in living and target_id in living
+    ]
+    if not valid_votes:
+        return EjectResult(None, False, None)
+
+    counts = {player_id: valid_votes.count(player_id) for player_id in set(valid_votes)}
+    most_votes = max(counts.values())
+    leaders = [player_id for player_id, count in counts.items() if count == most_votes]
+    if len(leaders) != 1:
+        return EjectResult(None, True, None)
+
+    ejected_id = leaders[0]
+    role = state.get("roles", {}).get(ejected_id)
+    return EjectResult(ejected_id, False, role)
+
+
+def resolve_vote_result(state: dict) -> dict:
+    """Eject the voted player, reveal their role and evaluate the win rules."""
+    result = tally_votes(state)
+    updated = deepcopy(state)
+    if result.ejected_id is not None:
+        updated["living"] = tuple(
+            player_id for player_id in state.get("living", ())
+            if player_id != result.ejected_id
+        )
+        updated["ghosts"] = tuple(state.get("ghosts", ())) + (result.ejected_id,)
+        updated["eliminated"] = set(state.get("eliminated", ())) | {result.ejected_id}
+
+    updated["vote_result"] = result
+    required = {"roles", "tasks", "completed_tasks", "eliminated"}
+    updated["winner"] = check_winner(updated) if required <= updated.keys() else None
+    return updated
+
+
 def advance_meeting(meeting: dict, now: float) -> dict:
     """Advance elapsed server-side phases, without changing the input state."""
     if not _valid_time(now):
@@ -74,13 +137,14 @@ def advance_meeting(meeting: dict, now: float) -> dict:
             updated["deadline"] += VOTING_SECONDS
         elif updated["phase"] == "voting":
             updated["phase"] = "result"
+            updated = resolve_vote_result(updated)
         else:
             raise ValueError("Meeting phase is invalid.")
     return updated
 
 
 def meeting_snapshot(meeting: dict, now: float) -> dict:
-    """Build the same phase, player lists and chat transcript for all participants."""
+    """Build the same public state for every meeting participant."""
     current = advance_meeting(meeting, now)
     return {
         "type": "meeting_state",
@@ -92,6 +156,21 @@ def meeting_snapshot(meeting: dict, now: float) -> dict:
             {"player_id": item["player_id"], "text": item["text"]}
             for item in current["messages"]
         ],
+        # Who has voted is public, but the selected target stays hidden until
+        # the result is calculated and is never sent to the clients.
+        "voted": list(current.get("votes", {})),
+        "ejected_id": (
+            current["vote_result"].ejected_id
+            if current.get("vote_result") is not None
+            else None
+        ),
+        "revealed_role": (
+            current["vote_result"].revealed_role
+            if current.get("vote_result") is not None
+            else None
+        ),
+        "tie": current["vote_result"].tie if current.get("vote_result") is not None else False,
+        "winner": current.get("winner"),
     }
 
 

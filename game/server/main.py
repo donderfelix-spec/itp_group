@@ -144,6 +144,8 @@ async def read_messages(websocket: WebSocket):
             await answer_task_message(websocket, message)
         elif message["type"] == "chat":
             await answer_chat_message(websocket, message)
+        elif message["type"] == "vote":
+            await answer_vote_message(websocket, message)
 
 
 async def answer_account_message(websocket: WebSocket, message: dict):
@@ -712,6 +714,31 @@ async def tell_meeting_state(lobby, now=None):
         lobby.meeting, seconds_now() if now is None else now
     )
     await asyncio.gather(*(send_to(name, snapshot) for name in lobby.names()))
+
+
+async def answer_vote_message(websocket: WebSocket, message: dict):
+    """Record a final vote and rebroadcast a snapshot that hides its target."""
+    name = app.state.sessions.name_of(websocket)
+    if name is None:
+        await websocket.send_json(protocol.rejection("not_signed_in"))
+        return
+    lobby = app.state.lobbies.lobby_of(name)
+    if lobby is None:
+        await websocket.send_json(protocol.rejection("not_in_lobby"))
+        return
+    if lobby.meeting is None:
+        await websocket.send_json(protocol.rejection("vote_rejected"))
+        return
+
+    now = seconds_now()
+    lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
+    try:
+        lobby.meeting = classic_meeting.cast_vote(
+            lobby.meeting, name, message["target_id"]
+        )
+    except ValueError:
+        await websocket.send_json(protocol.rejection("vote_rejected"))
+    await tell_meeting_state(lobby, now)
 
 
 # The round of each mode. The rules of Duel are in `server/modes/duel.py`
