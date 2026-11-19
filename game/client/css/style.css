@@ -337,6 +337,13 @@ input {
   background: var(--sun);
 }
 
+.use-button.fail-button {
+  background: linear-gradient(to right, #F2C84B var(--fail-fill, 100%), #D9D3C5 var(--fail-fill, 100%));
+}
+.use-button.fail-button:disabled {
+  background: linear-gradient(to right, #F2C84B var(--fail-fill, 100%), #D9D3C5 var(--fail-fill, 100%));
+}
+
 /* ---- The window of a minigame, built by js/minigames/frame.js ---- */
 
 /* Lies over the map only: the lobby panel next to it stays visible. The

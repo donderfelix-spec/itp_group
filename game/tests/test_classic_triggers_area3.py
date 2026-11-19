@@ -36,6 +36,10 @@ def failed_sheet(names, connect, clock):
     for connection in connections.values():
         assert connection.receive_json()["type"] == "classic_progress"
     assert connections[fr_id].receive_json()["type"] == "classic_fail_status"
+    for connection in connections.values():
+        assert connection.receive_json()["type"] == "classic_roster"
+    for connection in connections.values():
+        assert connection.receive_json()["type"] == "positions"
 
     ghost_id = fail_message["target_id"]
     reporter_id = next(player for player in hp_ids if player != ghost_id)
@@ -98,6 +102,11 @@ def test_report_message_starts_meeting_and_websocket_scenario_a_wins_for_hp(name
     assert final_meeting["revealed_role"] == "FR"
     assert final_meeting["winner"] == "HP"
 
+    for connection in connections.values():
+        assert connection.receive_json()["type"] == "classic_roster"
+    for connection in connections.values():
+        assert connection.receive_json()["type"] == "positions"
+
     results = {player: connection.receive_json() for player, connection in connections.items()}
     assert all(result["type"] == "classic_result" for result in results.values())
     assert all(result["winner"] == "HP" for result in results.values())
@@ -140,6 +149,11 @@ def test_emergency_is_living_only_once_per_player_and_chat_vote_reach_all(names,
     final_meeting = receive_broadcast(connections, "meeting_state")
     assert final_meeting["phase"] == "result"
     assert round_state.meeting_count == 1
+
+    for connection in connections.values():
+        assert connection.receive_json()["type"] == "classic_roster"
+    for connection in connections.values():
+        assert connection.receive_json()["type"] == "positions"
 
     # The completed meeting returns to play; one other living player can still call once.
     another_living = next(player for player in living if player != reporter_id)

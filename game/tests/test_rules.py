@@ -155,11 +155,12 @@ def failure_state():
     }
 
 
-def test_fail_is_allowed_at_exactly_two_fields_and_rejected_beyond_range():
+def test_fail_is_allowed_at_exactly_three_fields_and_rejected_beyond_range():
     state = failure_state()
+    state["positions"]["hp"] = (3.0, 0.0)
     assert can_fail(state, "fr", "hp", 100.0)
 
-    state["positions"]["hp"] = (2.01, 0.0)
+    state["positions"]["hp"] = (4.0, 0.0)
     assert not can_fail(state, "fr", "hp", 100.0)
 
 

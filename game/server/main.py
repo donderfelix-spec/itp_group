@@ -335,7 +335,7 @@ async def handle_choose_character(websocket: WebSocket, name: str, message: dict
     else:
         # The player chose the character they already have. Nothing is new
         # for the others, so only the player gets an answer.
-        await websocket.send_json(state_of(lobby))
+        await websocket.send_json(state_of(lobby, name))
     return None
 
 
@@ -403,15 +403,19 @@ async def tell_member(name: str, lobby, new_host):
         if not delivered:
             return
     if is_member(name, lobby):
-        await send_to(name, state_of(lobby))
+        await send_to(name, state_of(lobby, name))
 
 
 def is_member(name: str, lobby) -> bool:
     return app.state.lobbies.lobby_of(name) is lobby
 
 
-def state_of(lobby) -> dict:
-    return protocol.lobby_state(lobby.code, lobby.host, lobby.players(), lobby.mode, lobby.phase)
+def state_of(lobby, viewer=None) -> dict:
+    players = lobby.players()
+    classic = lobby.classic_round
+    if classic is not None and classic.phase == "round" and viewer not in classic.eliminated:
+        players = [pair for pair in players if pair[0] not in classic.eliminated]
+    return protocol.lobby_state(lobby.code, lobby.host, players, lobby.mode, lobby.phase)
 
 
 async def send_to(name: str, message: dict) -> bool:
@@ -517,7 +521,13 @@ def tick(seconds: float):
         if lobby.meeting is not None:
             update_meeting_clock(lobby)
         try:
-            if lobby.walkers.advance(seconds, app.state.campus):
+            if lobby.classic_round is None:
+                has_positions = lobby.walkers.advance(seconds, app.state.campus)
+            else:
+                has_positions = lobby.walkers.advance(
+                    seconds, app.state.campus, ghosts=lobby.classic_round.eliminated
+                )
+            if has_positions:
                 tell_positions(lobby)
                 if lobby.classic_round is not None:
                     run_in_background(tell_classic_fail_status(lobby))
@@ -538,7 +548,6 @@ def tick(seconds: float):
 
 def tell_positions(lobby):
     """Start sending the lobby's positions to every member who needs them and is free."""
-    message = protocol.positions(lobby.walkers.positions())
     for name in lobby.walkers.names_to_tell():
         connection = app.state.sessions.connection_of(name)
         if connection is None or connection in taking_positions:
@@ -547,6 +556,11 @@ def tell_positions(lobby):
             continue
         lobby.walkers.mark_told(name)
         taking_positions.add(connection)
+        positions = lobby.walkers.positions()
+        classic = lobby.classic_round
+        if classic is not None and classic.phase == "round" and name not in classic.eliminated:
+            positions = [entry for entry in positions if entry[0] not in classic.eliminated]
+        message = protocol.positions(positions)
         task = asyncio.create_task(send_positions(name, connection, lobby, message))
         background_sends.add(task)
         task.add_done_callback(background_sends.discard)
@@ -752,8 +766,12 @@ async def answer_fail_message(websocket: WebSocket):
         "position": {"x": target_position[0], "y": target_position[1]},
     }
     await asyncio.gather(*(send_to(player_id, event) for player_id in lobby.names()))
-    await tell_round_news(lobby)
+    await tell_classic_progress(lobby)
     await tell_classic_fail_status(lobby)
+    await tell_classic_roster(lobby)
+    lobby.walkers._everybody_needs_news()
+    tell_positions(lobby)
+    await tell_round_ended(lobby, end_round_if_over(lobby))
 
 
 async def answer_report_message(websocket: WebSocket, message: dict):
@@ -836,6 +854,10 @@ def sync_classic_after_meeting(lobby):
 
 async def publish_meeting_and_round_result(lobby, now):
     await tell_meeting_state(lobby, now)
+    if lobby.meeting is not None and lobby.meeting.get("phase") == "result":
+        await tell_classic_roster(lobby)
+        lobby.walkers._everybody_needs_news()
+        tell_positions(lobby)
     farewells = end_round_if_over(lobby)
     if farewells:
         await tell_round_ended(lobby, farewells)
@@ -913,6 +935,10 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
         await websocket.send_json(protocol.rejection("vote_rejected"))
     sync_classic_after_meeting(lobby)
     await tell_meeting_state(lobby, now)
+    if lobby.meeting.get("phase") == "result":
+        await tell_classic_roster(lobby)
+        lobby.walkers._everybody_needs_news()
+        tell_positions(lobby)
     farewells = end_round_if_over(lobby)
     if farewells:
         await tell_round_ended(lobby, farewells)
@@ -1048,7 +1074,24 @@ async def tell_classic_fail_status(lobby, only_player=None):
             "available": available,
             "in_range": in_range,
             "cooldown_until": cooldown_until,
+            "server_time": time.time(),
         })
+
+
+async def tell_classic_roster(lobby):
+    """Send each Classic player the roster they are allowed to see."""
+    classic = lobby.classic_round
+    if classic is None:
+        return
+    members = lobby.players()
+    for viewer in lobby.names():
+        viewer_is_ghost = viewer in classic.eliminated
+        visible = [
+            {"name": name, "character": character, "ghost": name in classic.eliminated}
+            for name, character in members
+            if viewer_is_ghost or name not in classic.eliminated
+        ]
+        await send_to(viewer, {"type": "classic_roster", "players": visible})
 
 
 async def tell_classic_progress(lobby):

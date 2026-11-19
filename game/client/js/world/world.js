@@ -58,6 +58,7 @@ Game.world = Game.world || {};
   var USE_KEY_CODE = "KeyE"; // `event.code` of the key in the E position
   var USE_BUTTON_TEXT = "E Use";
   var FAIL_KEY_CODE = "KeyQ";
+  var FAIL_RANGE_TILES = 3;
   var REPORT_KEY_CODE = "KeyR";
   var REPORT_RANGE = 2;
 
@@ -76,6 +77,8 @@ Game.world = Game.world || {};
   var failAvailable = false;
   var failInRange = false;
   var failCooldownUntil = null;
+  var failStatus = null;
+  var failStatusReceivedAt = 0;
   var players = new Map(); // name -> player record, see newPlayer()
   var pressedKeys = {}; // event.code -> true while the key is held down
   var sentDirection = { dx: 0, dy: 0 }; // what the server heard last
@@ -173,6 +176,8 @@ Game.world = Game.world || {};
       failAvailable = false;
       failInRange = false;
       failCooldownUntil = null;
+      failStatus = null;
+      if (useButton) useButton.classList.remove("fail-button");
     }
   }
 
@@ -183,6 +188,8 @@ Game.world = Game.world || {};
     failCooldownUntil = Number.isFinite(message.cooldown_until)
       ? message.cooldown_until
       : null;
+    failStatus = message;
+    failStatusReceivedAt = performance.now();
   }
 
   // The players of the lobby with their characters: [{name, character}].
@@ -192,6 +199,7 @@ Game.world = Game.world || {};
     (Array.isArray(list) ? list : []).forEach(function (entry) {
       if (entry && isName(entry.name)) {
         playerNamed(entry.name).character = entry.character;
+        playerNamed(entry.name).isGhost = entry.ghost === true;
         listed.add(entry.name);
       }
     });
@@ -428,9 +436,12 @@ Game.world = Game.world || {};
     if (!useButton) return;
     if (ownIsFreeRider) {
       var secondsLeft = failCooldownSeconds();
+      var fill = window.ClassicFailButton.fillFraction(failStatus, failStatusReceivedAt, performance.now());
+      useButton.classList.add("fail-button");
+      useButton.style.setProperty("--fail-fill", (fill * 100) + "%");
       useButton.textContent = secondsLeft > 0
-        ? "Durchfallen lassen (" + secondsLeft + " s)"
-        : "Durchfallen lassen";
+        ? "Let fail (" + secondsLeft + " s)"
+        : (failInRange ? "Let fail (" + FAIL_RANGE_TILES + " tiles)" : "Let fail");
       var shouldDisableFail = !isFailButtonActive() || inputPaused;
       if (useButton.disabled !== shouldDisableFail) {
         if (shouldDisableFail && document.activeElement === useButton) useButton.blur();
@@ -438,6 +449,7 @@ Game.world = Game.world || {};
       }
       return;
     }
+    useButton.classList.remove("fail-button");
     var emergencyNearby = isAtEmergencyButton();
     var shouldBeDisabled = (idInRange === null && !emergencyNearby) || inputPaused;
     if (!useButton) return;
@@ -453,8 +465,8 @@ Game.world = Game.world || {};
   }
 
   function failCooldownSeconds() {
-    if (failCooldownUntil === null) return 0;
-    return Math.max(0, Math.ceil(failCooldownUntil - Date.now() / 1000));
+    if (failStatus === null || failCooldownUntil === null) return 0;
+    return Math.ceil(window.ClassicFailButton.remainingSeconds(failStatus, failStatusReceivedAt, performance.now()));
   }
 
   function isFailButtonActive() {
@@ -697,6 +709,7 @@ Game.world = Game.world || {};
     }
     ctx.save();
     ctx.translate(entry.x, figureMiddleY(entry.y) - bob);
+    if (entry.player.isGhost) ctx.globalAlpha = 0.38;
     if (entry.player.facingLeft) {
       ctx.scale(-1, 1); // mirrored: the character looks to the left
     }
@@ -782,18 +795,20 @@ Game.world = Game.world || {};
 
   function drawBloodSheets() {
     bloodSheets.forEach(function (sheet) {
-      ctx.beginPath();
-      ctx.arc(sheet.x, sheet.y, 2.2, 0, Math.PI * 2);
-      ctx.fillStyle = "#F2695C";
-      ctx.fill();
-      ctx.lineWidth = 0.55;
+      ctx.save();
+      ctx.translate(sheet.x, sheet.y);
+      ctx.rotate(-0.12);
+      ctx.fillStyle = "#FFFDF5";
       ctx.strokeStyle = "#2E2A3B";
-      ctx.stroke();
-      ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 2.5px system-ui, sans-serif";
+      ctx.lineWidth = 0.65;
+      ctx.fillRect(-4.2, -5.5, 8.4, 11);
+      ctx.strokeRect(-4.2, -5.5, 8.4, 11);
+      ctx.fillStyle = "#C43E3E";
+      ctx.font = "bold 7px system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("F", sheet.x, sheet.y);
+      ctx.fillText("F", 0, 0.3);
+      ctx.restore();
     });
   }
 

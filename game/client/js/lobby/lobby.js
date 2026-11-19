@@ -281,10 +281,18 @@ window.Game = window.Game || {};
     document.getElementById('lobby-waiting').hidden = isHost || isRunning;
   }
 
+  function setPlayers(players) {
+    if (!latestState || !Array.isArray(players)) return;
+    latestState.players = players;
+    showPlayers(latestState);
+    showCharacters(players);
+  }
+
   Game.lobby = {
     setup: setup,
     setOwnName: setOwnName,
     setOwnFreeRider: setOwnFreeRider,
+    setPlayers: setPlayers,
     show: show
   };
 })();

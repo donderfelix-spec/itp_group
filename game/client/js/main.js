@@ -169,6 +169,12 @@ window.Game = window.Game || {};
     if (worldIsRunning) callWorld('setPositions', message.players);
   }
 
+  function whenClassicRoster(message) {
+    if (!message || !Array.isArray(message.players)) return;
+    Game.lobby.setPlayers(message.players);
+    callWorld('setPlayers', message.players);
+  }
+
   function whenStationOpened(message) {
     const isReadable = Number.isInteger(message.station)
       && typeof message.title === 'string'
@@ -244,6 +250,7 @@ window.Game = window.Game || {};
   Game.net.on('lobby_state', whenLobbyChanged);
   Game.net.on('left_lobby', whenLeftLobby);
   Game.net.on('positions', whenPositions);
+  Game.net.on('classic_roster', whenClassicRoster);
   Game.net.on('station_opened', whenStationOpened);
   Game.net.on('station_closed', Game.minigames.close);
   Game.net.on('station_done', whenStationDone);

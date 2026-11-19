@@ -18,6 +18,17 @@ def place_players(lobby, names, positions):
         lobby.walkers._walkers[name].position = positions[name]
 
 
+def drain_visibility(connections):
+    for connection in connections.values():
+        while True:
+            message = connection.receive_json()
+            if message["type"] == "classic_roster":
+                break
+            assert message["type"] == "classic_fail_status"
+    for connection in connections.values():
+        assert connection.receive_json()["type"] == "positions"
+
+
 def drain_fail(connections, round_state, fr_id, target_id, final=False):
     for player_id, connection in connections.items():
         if player_id == fr_id:
@@ -33,6 +44,8 @@ def drain_fail(connections, round_state, fr_id, target_id, final=False):
         assert status["available"] is False
         assert status["in_range"] is True
         assert isinstance(status["cooldown_until"], (int, float))
+        assert isinstance(status["server_time"], (int, float))
+    drain_visibility(connections)
     if final:
         for connection in connections.values():
             result = connection.receive_json()
@@ -54,10 +67,12 @@ def test_fr_fail_cooldown_and_parity_win_over_websocket(names, fail_count, conne
     # The round starts with the FR's ability loaded.
     assert round_state.last_fail_at == {}
     fr_statuses = [message for message in start_messages[fr_id] if message["type"] == "classic_fail_status"]
-    assert fr_statuses == [{
-        "type": "classic_fail_status", "available": False, "in_range": False,
-        "cooldown_until": None,
-    }]
+    assert len(fr_statuses) == 1
+    assert fr_statuses[0]["type"] == "classic_fail_status"
+    assert fr_statuses[0]["available"] is False
+    assert fr_statuses[0]["in_range"] is False
+    assert fr_statuses[0]["cooldown_until"] is None
+    assert isinstance(fr_statuses[0]["server_time"], (int, float))
     assert all(
         not any(message["type"] == "classic_fail_status" for message in messages)
         for player, messages in start_messages.items() if player != fr_id
@@ -122,7 +137,60 @@ def test_fail_button_is_private_to_fr_and_q_uses_the_same_handler():
     root = Path(__file__).resolve().parents[1]
     world = (root / "client/js/world/world.js").read_text()
     main = (root / "client/js/main.js").read_text()
-    assert "Durchfallen lassen" in world
+    assert '"Let fail"' in world
     assert "ownIsFreeRider" in world
     assert 'event.code === FAIL_KEY_CODE' in world
     assert "type: 'fail'" in main or 'type: "fail"' in main
+
+
+@pytest.mark.parametrize(("distance", "allowed"), [(3.0, True), (4.0, False)])
+def test_fail_range_is_three_tiles(distance, allowed, connect):
+    names = PLAYER_SETS[0][0]
+    connections, _code, _public, _start = start_classic(connect, names)
+    round_state = classic_for(names[0])
+    fr_id = next(player for player, role in round_state.roles.items() if role == "FR")
+    hp_id = next(player for player, role in round_state.roles.items() if role == "HP")
+    lobby = app.state.lobbies.lobby_of(fr_id)
+    positions = {player: (100.0 + 10 * index, 100.0) for index, player in enumerate(names)}
+    positions[fr_id] = (100.0, 100.0)
+    positions[hp_id] = (100.0 + distance, 100.0)
+    place_players(lobby, names, positions)
+
+    connections[fr_id].send_json({"type": "fail"})
+    response = connections[fr_id].receive_json()
+    if allowed:
+        assert response["type"] == "classic_fail"
+        assert response["target_id"] == hp_id
+        assert hp_id in round_state.eliminated
+    else:
+        assert response["type"] == "error"
+        assert response["code"] == "fail_rejected"
+        assert round_state.last_fail_at == {}
+
+
+def test_fail_button_english_label_and_server_timestamp_fill_with_fixed_times():
+    import json
+    import subprocess
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    world = (root / "client/js/world/world.js").read_text()
+    assert '"Let fail"' in world
+    assert '"Let fail ("' in world
+    assert "Durchfallen lassen" not in world
+
+    helper = root / "client/js/classic/fail-button.js"
+    script = f"""
+      const ui = require({json.dumps(str(helper))});
+      const status = {{ cooldown_until: 1125, server_time: 1100 }};
+      const startFill = ui.fillFraction(status, 5000, 5000);
+      const middleFill = ui.fillFraction(status, 5000, 17500);
+      const readyFill = ui.fillFraction(status, 5000, 30000);
+      process.stdout.write(JSON.stringify([startFill, middleFill, readyFill]));
+    """
+    result = subprocess.run(["node", "-e", script], check=True, capture_output=True, text=True)
+    assert json.loads(result.stdout) == [0, 0.5, 1]
+
+    assert "globalAlpha" in world
+    assert "#C43E3E" in world
+    assert "drawBloodSheets" in world

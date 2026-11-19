@@ -22,6 +22,15 @@ def drain_fail_result(connections, fr_id, expected_target, final=False):
         assert message["target_id"] == expected_target
     for connection in connections.values():
         assert connection.receive_json()["type"] == "classic_progress"
+    assert connections[fr_id].receive_json()["type"] == "classic_fail_status"
+    for connection in connections.values():
+        while True:
+            message = connection.receive_json()
+            if message["type"] == "classic_roster":
+                break
+            assert message["type"] == "classic_fail_status"
+    for connection in connections.values():
+        assert connection.receive_json()["type"] == "positions"
     if final:
         for connection in connections.values():
             result = connection.receive_json()
@@ -29,8 +38,6 @@ def drain_fail_result(connections, fr_id, expected_target, final=False):
             assert result["winner"] == "FR"
             assert result["reason"] == "free_riders_reached_parity"
             connection.receive_json()  # lobby_state after the result
-    else:
-        assert connections[fr_id].receive_json()["type"] == "classic_fail_status"
 
 
 @pytest.mark.parametrize("names", PLAYER_SETS)
