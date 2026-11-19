@@ -1613,10 +1613,48 @@ input {
 
 /* ---- Profile and Leaderboard (js/lobby/statistics.js) ---- */
 
-/* On the Home screen: the two buttons share the row equally. In a window
-   too narrow for both they stand under each other instead of sticking out. */
-.stats-buttons { flex-wrap: wrap; }
-.stats-buttons > .button { flex: 1 1 auto; }
+/* On the Home screen the two are round icons at the top right corner of the
+   screen, not of the card. The room above and below the card is as high as
+   the icons, so they never lie on the card, however low the window is. */
+#screen-home {
+  position: relative;
+  padding-top: 84px;
+  padding-bottom: 84px; /* the same as above, so the card stays in the middle */
+}
+
+.home-icons {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 12px;
+}
+
+/* Round and 48 px wide: large enough for a finger (at least 44 px). */
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 50%;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+/* Drawn like everything else in the game: thick dark outline, round corners. */
+.icon {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-yellow { fill: var(--sun); }
+.icon-blue { fill: var(--water); }
 
 /* The leaderboard has four columns and needs more room than a form. */
 .stats-card { width: min(100%, 520px); }
