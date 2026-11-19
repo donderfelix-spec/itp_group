@@ -67,7 +67,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 **For the team to decide**
 
-- [ ] **K13** Confirm or change the decisions marked “Proposal” from milestone 1: S-83 to S-89 in DECISIONS.md
+- [x] **K13** Confirmed 2026-11-19: all proposals of milestones 1 and 2 stand (S-100); S-87 is replaced by S-98
 - [x] **K15** Settled 2026-11-19: they stay as they are for now (S-99). Two findings of the play test of the minigames: “Brew the order” and “Build the tray” take about 5 seconds instead of the 10 to 25 of DESIGN.md, section 8; and both can be solved without reading the slip by clicking everything, because a mistake costs nothing (S-58). Leave it, or make them longer or let a mistake cost a moment?
 - [x] **K14** Settled 2026-11-19: players hide inside the hedge, so the hedge becomes walkable (S-98, replaces the solid hedge of S-87). Built with M3-1.4
 
