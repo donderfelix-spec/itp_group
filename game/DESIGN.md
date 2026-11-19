@@ -211,6 +211,7 @@ Minigame 6 is the only one with timing instead of sorting, selecting or calculat
 - **Brew the order:** “Press the buttons in the order of the recipe.” The slip is headed “Order”. A second press of the button that was just accepted is ignored, so a double click is not shown as a mistake.
 - **Sort the slides:** “Drag the slides into the right order.” Five numbered places stand above the pile. A slide dropped on its right place stays there; on a wrong or filled place it shakes and jumps back; released outside the window it returns without counting.
 - **Shelve the books:** “Click the books onto the shelf, lowest number first.” The numbers are six different numbers from 100 to 999.
+- **Self-checkout:** “Scan products until the total is exactly the target amount.” The six products are Water, Bread, Cheese, Apples, Coffee and Chocolate, with prices from €0.50 to €4.00. The display shows “Target” and “Total”, the rows are labelled “Belt” and “Bagging area”. The target is never the price of a single product, so there are always at least two clicks.
 
 About the drinks in minigame 2: Bica (Cup, Espresso), Abatanado (Cup, Espresso, Hot water), Meia de leite (Cup, Espresso, Milk), Galão (Glass, Espresso, Milk), Cappuccino (Cup, Espresso, Milk, Foam).
 
