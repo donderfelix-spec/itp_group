@@ -47,6 +47,8 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Create an account with username and password, log in, log out | M1 | Done |
 | Play as a guest, without statistics and friends | M1 | Done |
 | Clear message when a name is taken, the password is wrong or the database is not reachable | M1 | Done |
+| Show or hide the password with an eye icon | M1 | Planned |
+| Limit on log-in attempts and lobby-code guessing | M1 | Planned |
 | Statistics per account: rounds and wins per mode, best Duel time | M2 | Planned |
 | Leaderboard of all accounts | M2 | Planned |
 | Add friends by username, accept or decline a request | M4 | Planned |

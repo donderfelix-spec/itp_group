@@ -30,9 +30,43 @@ These points hold up the start. The reasoning behind them is under “Open decis
 
 ## M1: Walking
 
-Built, play-tested and on `main`, see “Done”. Still open from this milestone:
+Built, play-tested and on `main`, see “Done”. These points came up while building and testing milestone 1 and are still open.
+
+**Security and accounts (area 2)**
 
 - [ ] **M1-2.6** Limit log-in attempts and lobby-code guessing per connection (found in the code reviews, S-83)
+- [ ] **M1-2.7** Show or hide the password with an eye icon in the sign-up and log-in forms
+- [ ] **M1-2.8** Tell a player why they were signed out when the same account logs in somewhere else (needs a text in DESIGN.md, section 9)
+- [ ] **M1-2.9** Add `sslmode=require` to `DATABASE_URL` on Render, as Supabase recommends, and check that sign up still works
+- [ ] **M1-2.10** Check in the Supabase dashboard that the Data API returns no rows of `accounts` with the public key (row level security is on, S-90)
+- [ ] **M1-2.11** Before the demo: open the Supabase project and make sure it is not paused (free projects pause after a week without activity, S-39)
+
+**Server and hosting (area 2)**
+
+- [ ] **M1-2.12** Send cache headers for the scripts and the stylesheet, so that players do not keep old files after a deploy (seen in the play test: a normal reload served an old script)
+- [ ] **M1-2.13** Add a favicon (the server log shows a 404 for it on every visit)
+- [ ] **M1-2.14** Add `server/world/` and `server/net/` to the area table in `AGENTS.md` (S-79), by pull request
+- [ ] **M1-2.15** A lobby that fails on every tick writes 15 log lines per second: log it once and then only now and then
+- [ ] **M1-2.16** Use Python 3.13 in the local `.venv` like CI and Render (it runs 3.14 on the development machine)
+
+**Map and look (area 1)**
+
+- [ ] **M1-1.5** Close or widen the gap between the third tree and the hedge on the Main Deck: it is exactly one player wide, and a player squeezing through is drawn over both
+- [ ] **M1-1.6** Give each room a label position in `campus.json`: “Pingo Doce” is drawn in the middle of the room instead of at the right as in the sketch, and “Main Deck” sits on the spawn point
+- [ ] **M1-1.7** Narrow windows (under about 800 px): the walking hint overlaps a room name and the top message overlaps the lobby code
+- [ ] **M1-1.8** Keep the list of characters in one place: the lobby panel has its own fallback copy next to `world/characters.js` and `protocol.CHARACTERS`
+- [ ] **M1-1.9** Add the new texts to DESIGN.md: “Loading the campus…”, “Signed in as”, “Players”, “Character”, “Lobby code”, “Coming with the next milestone”
+
+**To check by a person (the tools could not)**
+
+- [ ] **M1-2.17** Hold a walking key and switch to another tab or window: the character must stop (only tested with simulated events)
+- [ ] **M1-2.18** Watch two players walk on two real screens and judge whether the movement looks smooth (only measured: one position every 68 ms, no jumps)
+- [ ] **M1-2.19** Hold a key, press Cmd and release the key on a Mac: the character must stop (only tested with simulated events)
+
+**For the team to decide**
+
+- [ ] **K13** Confirm or change the decisions marked “Proposal” from milestone 1: S-83 to S-89 in DECISIONS.md
+- [ ] **K14** The hedge is solid, but a hiding spot is drawn inside it: hide beside the hedge, or make the hedge walkable? (S-87, needed for M3-1.4)
 
 ## M2: Duel
 
