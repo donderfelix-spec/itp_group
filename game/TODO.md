@@ -15,7 +15,7 @@ These points hold up the start. The reasoning behind them is under “Open decis
 - [x] **K3** Laptop with keyboard first (S-14)
 - [x] **K11** Supabase project created, the team has the connection URL (2026-11-18)
 - [x] **K4** Technology confirmed: Python with FastAPI and WebSockets, client with Canvas (S-29)
-- [ ] **K12** Ask the teaching staff whether a Python server with a JavaScript client is acceptable (S-42)
+- [x] **K12** Ask the teaching staff whether a Python server with a JavaScript client is acceptable (S-42). Settled (2026-11-19)
 - [x] **K5** The third mode is “Deadline”, only if time allows (S-12, S-33)
 - [x] **K6** Name of the game: “Group Project” (S-37)
 - [ ] **K7** Who takes on which of the four areas?
@@ -73,8 +73,11 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 **Area 1**
 
 - [ ] **M2-1.1** Stations on the map, highlight when nearby, key to open
-- [ ] **M2-1.2** Character selection in the lobby, first version of the eight stereotypes
+- [x] **M2-1.2** Character selection in the lobby, first version of the eight stereotypes (came with M1-2.1)
 - [ ] **M2-1.3** Display of the current room
+- [ ] **M2-1.4** Make the map nicer and more detailed: floors, furniture and plants with more detail, still drawn from `campus.json`
+- [ ] **M2-1.5** Draw the characters larger. The server decides collisions, so check the collision size and the narrow passages of the map with it
+- [ ] **M2-1.6** More realistic walking: feet that move while walking, and the head turned in the walking direction
 
 **Area 2**
 
