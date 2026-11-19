@@ -2,7 +2,7 @@ import random
 
 import pytest
 
-from rules import assign_roles, assign_tasks, check_winner, progress
+from rules import apply_fail, assign_roles, assign_tasks, can_fail, check_winner, progress
 
 
 @pytest.mark.parametrize(
@@ -124,5 +124,78 @@ def test_no_winner_while_hp_have_more_living_players_and_tasks_remain():
     }
 
     assert check_winner(state) is None
+
+
+def failure_state():
+    return {
+        "roles": {"fr": "FR", "hp": "HP", "hp2": "HP", "other_fr": "FR"},
+        "tasks": {},
+        "completed_tasks": {},
+        "eliminated": set(),
+        "positions": {
+            "fr": (0.0, 0.0),
+            "hp": (2.0, 0.0),
+            "hp2": (1.0, 0.0),
+            "other_fr": (1.0, 1.0),
+        },
+        "last_fail_at": {},
+        "f_sheets": {},
+    }
+
+
+def test_fail_is_allowed_at_exactly_two_fields_and_rejected_beyond_range():
+    state = failure_state()
+    assert can_fail(state, "fr", "hp", 100.0)
+
+    state["positions"]["hp"] = (2.01, 0.0)
+    assert not can_fail(state, "fr", "hp", 100.0)
+
+
+def test_fail_cooldown_blocks_before_25_seconds_and_allows_at_25_seconds():
+    state = failure_state()
+    state["last_fail_at"]["fr"] = 100.0
+
+    assert not can_fail(state, "fr", "hp", 124.99)
+    assert can_fail(state, "fr", "hp", 125.0)
+
+
+def test_fail_rejects_a_free_rider_or_ghost_as_target():
+    state = failure_state()
+
+    assert not can_fail(state, "fr", "other_fr", 100.0)
+    state["eliminated"].add("hp")
+    assert not can_fail(state, "fr", "hp", 100.0)
+
+
+def test_a_high_performer_or_ghost_cannot_act_as_the_free_rider():
+    state = failure_state()
+
+    assert not can_fail(state, "hp", "hp2", 100.0)
+    state["eliminated"].add("fr")
+    assert not can_fail(state, "fr", "hp", 100.0)
+
+
+def test_apply_fail_returns_new_state_with_ghost_and_f_sheet_without_mutating_input():
+    state = failure_state()
+    original_eliminated = set(state["eliminated"])
+    sheet_position = (1.25, 0.75)
+
+    updated = apply_fail(state, "fr", "hp", 100.0, sheet_position)
+
+    assert updated is not state
+    assert "hp" in updated["eliminated"]
+    assert updated["last_fail_at"]["fr"] == 100.0
+    assert updated["f_sheets"] == {"f-sheet-1": sheet_position}
+    assert state["eliminated"] == original_eliminated
+    assert state["last_fail_at"] == {}
+    assert state["f_sheets"] == {}
+
+
+def test_a_free_rider_cannot_fail_themselves():
+    state = failure_state()
+
+    assert not can_fail(state, "fr", "fr", 100.0)
+    with pytest.raises(ValueError, match="cannot fail"):
+        apply_fail(state, "fr", "fr", 100.0, (0.0, 0.0))
 
 

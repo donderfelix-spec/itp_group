@@ -126,3 +126,86 @@ def check_winner(state: ClassicState) -> Literal["HP", "FR"] | None:
     if living_free_riders >= living_high_performers:
         return "FR"
     return None
+
+
+def can_fail(state: ClassicState, fr_id: str, target_id: str, now: float) -> bool:
+    """Return whether a living Free Rider may fail this nearby HP now."""
+    roles = state["roles"]
+    eliminated = state["eliminated"]
+    if (
+        state.get("phase") == "meeting"
+        or state.get("timers_paused", False)
+        or fr_id == target_id
+        or roles.get(fr_id) != "FR"
+        or fr_id in eliminated
+        or roles.get(target_id) != "HP"
+        or target_id in eliminated
+    ):
+        return False
+    if (
+        isinstance(now, bool)
+        or not isinstance(now, (int, float))
+        or not math.isfinite(now)
+    ):
+        return False
+
+    last_fail_at = state.get("last_fail_at", {}).get(fr_id)
+    if last_fail_at is not None:
+        if (
+            isinstance(last_fail_at, bool)
+            or not isinstance(last_fail_at, (int, float))
+            or not math.isfinite(last_fail_at)
+            or now - last_fail_at < FAIL_COOLDOWN
+        ):
+            return False
+
+    positions = state.get("positions", {})
+    fr_position = positions.get(fr_id)
+    target_position = positions.get(target_id)
+    if not _valid_position(fr_position) or not _valid_position(target_position):
+        return False
+    return math.dist(fr_position, target_position) <= FAIL_RANGE
+
+
+def apply_fail(
+    state: ClassicState,
+    fr_id: str,
+    target_id: str,
+    now: float,
+    position: Position,
+) -> ClassicState:
+    """Return a new state with the target ghosted and an F sheet placed."""
+    if not can_fail(state, fr_id, target_id, now):
+        raise ValueError("The player cannot fail this target right now.")
+    if not _valid_position(position):
+        raise ValueError("The F-sheet position must contain two finite numbers.")
+
+    updated_state = dict(state)
+    updated_state["eliminated"] = set(state["eliminated"]) | {target_id}
+    updated_state["last_fail_at"] = {
+        **state.get("last_fail_at", {}),
+        fr_id: now,
+    }
+    f_sheets = dict(state.get("f_sheets", {}))
+    next_sheet_number = len(f_sheets) + 1
+    sheet_id = f"f-sheet-{next_sheet_number}"
+    while sheet_id in f_sheets:
+        next_sheet_number += 1
+        sheet_id = f"f-sheet-{next_sheet_number}"
+    f_sheets[sheet_id] = (float(position[0]), float(position[1]))
+    updated_state["f_sheets"] = f_sheets
+    return updated_state
+
+
+def _valid_position(position: object) -> bool:
+    """Check a two-dimensional position without accepting booleans or NaNs."""
+    return (
+        isinstance(position, (tuple, list))
+        and len(position) == 2
+        and all(
+            not isinstance(coordinate, bool)
+            and isinstance(coordinate, (int, float))
+            and math.isfinite(coordinate)
+            for coordinate in position
+        )
+    )
