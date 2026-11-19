@@ -356,7 +356,8 @@ input {
   margin-bottom: 6px;
   padding-bottom: 4px;
   border-bottom: 2px dashed var(--ink);
-  font-size: 20px;
+  /* Small enough that the longest name, "Meia de leite", stays on one line. */
+  font-size: 18px;
   font-weight: 800;
 }
 
@@ -431,8 +432,6 @@ input {
 /* A wrong button, for a moment (S-58: nothing else changes). */
 .brew-button.brew-button-wrong { background: var(--coral); }
 
-.brew-button:disabled { box-shadow: 3px 3px 0 var(--ink); }
-
 /* The opening of the machine, where the cup or glass stands under the spout. */
 .brew-bay {
   display: flex;
@@ -471,8 +470,6 @@ input {
   border-radius: 0 0 16px 16px;
   background: #FFFFFF;
 }
-
-.brew-vessel[hidden] { display: none; }
 
 /* A glass is taller, narrower and see-through. */
 .brew-vessel-glass {

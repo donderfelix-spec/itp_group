@@ -17,6 +17,8 @@
   const SLIP_HEADING = 'Order';
   const TICK = '✓';
   const FLASH_MS = 400;
+  // The vessel under the machine has room for the cup or glass and five layers.
+  const MAX_STEPS = 6;
 
   // What a right button puts under the machine: Cup and Glass put the
   // vessel there, every other button pours one layer into it.
@@ -45,13 +47,23 @@
     return BUTTON_NAMES.every((name) => buttons.includes(name));
   }
 
+  function isVesselName(value) {
+    return Object.hasOwn(VESSEL_CLASS, value);
+  }
+
+  // True if the vessel can draw the recipe: the cup or glass comes first and
+  // only once (the layers are poured into it), and the layers fit into it.
+  function isDrawableRecipe(recipe) {
+    if (!Array.isArray(recipe) || recipe.length === 0 || recipe.length > MAX_STEPS) return false;
+    if (!recipe.every(isButtonName)) return false;
+    return isVesselName(recipe[0]) && !recipe.slice(1).some(isVesselName);
+  }
+
   // The content comes over the network, so nothing about it is taken for granted.
   function isUsable(content) {
     if (!content || typeof content !== 'object') return false;
     const hasDrink = typeof content.drink === 'string' && content.drink !== '';
-    const hasRecipe =
-      Array.isArray(content.recipe) && content.recipe.length > 0 && content.recipe.every(isButtonName);
-    return hasDrink && hasRecipe && isAllSixButtons(content.buttons);
+    return hasDrink && isDrawableRecipe(content.recipe) && isAllSixButtons(content.buttons);
   }
 
   // The order slip: the drink and one line for every step of the recipe.
@@ -113,6 +125,8 @@
     const recipe = content.recipe.slice();
     let stepsDone = 0;
     let isSolved = false;
+    // The button of the step that was accepted last, until another button is pressed.
+    let justAccepted = null;
     let flashTimer = null;
     let flashingButton = null;
 
@@ -124,9 +138,14 @@
 
     function press(name, button) {
       if (isSolved) return;
+      // A fast double click on a right button: the second click is not a
+      // mistake, so it is ignored. No recipe has the same button twice in a
+      // row, so no right press is lost by this.
+      if (name === justAccepted) return;
       if (name === recipe[stepsDone]) {
         acceptStep(name);
       } else {
+        justAccepted = null;
         flashWrong(button);
       }
     }
@@ -136,6 +155,7 @@
       tickStep(slipParts.stepItems[stepsDone]);
       showInVessel(machineParts.vessel, name);
       stepsDone += 1;
+      justAccepted = name;
       if (stepsDone === recipe.length) finish();
     }
 
