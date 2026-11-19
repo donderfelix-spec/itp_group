@@ -39,9 +39,14 @@ window.Game = window.Game || {};
 
   function isListOfNames(list) {
     if (!Array.isArray(list) || list.length !== SLIDE_COUNT) return false;
-    const areNames = list.every((name) => typeof name === 'string' && name !== '');
+    // A loop over the indexes and not `every`: `every` skips the holes of a
+    // list like ['Title', , 'Analysis'], and a hole is broken content too.
+    for (let i = 0; i < list.length; i += 1) {
+      const isName = typeof list[i] === 'string' && list[i] !== '';
+      if (!isName) return false;
+    }
     const areAllDifferent = new Set(list).size === list.length;
-    return areNames && areAllDifferent;
+    return areAllDifferent;
   }
 
   // True if `content` has the right order and a pile with the same slides.
@@ -167,7 +172,14 @@ window.Game = window.Game || {};
     function beginDrag(event, slide, name) {
       const isMainButton = event.button === 0;
       if (!isMainButton || !canBeDragged(slide)) return;
-      event.preventDefault(); // no text selection while dragging
+      // With the capture, this slide gets every move and the release of the
+      // pointer, also outside the window and outside the browser. It comes
+      // before `drag` is set: if the capture fails, no drag has begun.
+      slide.setPointerCapture(event.pointerId);
+      // Stops the browser's own reaction to the press. That no text gets
+      // selected while dragging is the work of `user-select: none` on the
+      // board in style.css.
+      event.preventDefault();
       const home = slide.getBoundingClientRect();
       const limits = board.getBoundingClientRect();
       drag = {
@@ -183,9 +195,6 @@ window.Game = window.Game || {};
         minY: limits.top - home.top,
         maxY: limits.bottom - home.bottom,
       };
-      // With the capture, this slide gets every move and the release of the
-      // pointer, also outside the window and outside the browser.
-      slide.setPointerCapture(event.pointerId);
       slide.classList.add('slides-dragging');
     }
 
@@ -207,10 +216,19 @@ window.Game = window.Game || {};
       return places.find((place) => contains(place.box.getBoundingClientRect(), middle)) || null;
     }
 
+    // True if the pointer itself is inside the board.
+    function isOverBoard(event) {
+      const pointer = { x: event.clientX, y: event.clientY };
+      return contains(board.getBoundingClientRect(), pointer);
+    }
+
     function endDrag(event, slide) {
       if (!isDragOf(event, slide)) return;
       const name = drag.name;
-      const place = placeUnder(slide);
+      // The slide is held inside the board, so it can lie on a place while
+      // the pointer is far away (over the map or outside the browser). A
+      // release out there is no drop: only a release inside the board counts.
+      const place = isOverBoard(event) ? placeUnder(slide) : null;
       letGo();
       if (!place) {
         backToPile(slide);

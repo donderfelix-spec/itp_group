@@ -326,6 +326,7 @@ input {
   gap: 22px;
   width: 100%;
   padding: 4px;
+  -webkit-user-select: none; /* Safari */
   user-select: none;
 }
 
