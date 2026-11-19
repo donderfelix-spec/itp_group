@@ -6,7 +6,7 @@ Every decision about the game is listed here with its reason. The rules are the 
 - Entries are not deleted. If a decision is changed, a new entry is added, and the old one gets the note “replaced by S-xx”.
 - Column “By”: **Team** means the team decided it. **Proposal** means Claude proposed it and the team has not confirmed it yet.
 
-As of 2026-11-18. On 2026-11-18 the team confirmed all entries except those with “Proposal” in the last column.
+As of 2026-11-19. On 2026-11-18 the team confirmed all entries except those with “Proposal” in the last column.
 
 ## Game idea
 
@@ -126,6 +126,8 @@ These entries follow from the team's answers and from the project description in
 | S-85 | 2026-11-18 | Messages to the members of a lobby are sent to all of them at the same time, each with a time limit of 2 seconds. A member whose connection does not take a message in that time is disconnected. | Found in the code review of M1-2.2: one browser that stops reading could otherwise hold up every message to its lobby. | Proposal |
 | S-86 | 2026-11-18 | A player is a square of 10 by 10 map units and walks 90 units per second, the same in every direction. The server tries the two axes one after the other, so a player slides along a wall. Walls are 6 units thick, circles in the sketch count as their bounding squares, the NOVA logo is one rectangle. A solid a player already overlaps does not block them, so nobody can be stuck inside one. | Simple rules that tests can check exactly. Sliding keeps walking through doors from feeling sticky. | Proposal |
 | S-87 | 2026-11-18 | The hedge on the Main Deck is solid. The hiding spot drawn inside it (S-62) cannot be stood on; whoever builds hiding (M3-1.4) decides whether one hides beside the hedge or the hedge becomes walkable. | The to-do for collision names the hedge as an obstacle. The conflict with S-62 is recorded here instead of being decided in passing. | Proposal |
+| S-88 | 2026-11-19 | A player appears at the spawn point with all others; the browser stacks name labels that would cover each other and draws the own character on top. Positions for a lobby are only sent when something changed. | Spreading the start places on the server was tried in the play test and dropped: it is a matter of looks, and the browser can solve it without a new rule. An idle lobby costs no traffic on the free server. | Proposal |
+| S-89 | 2026-11-19 | The browser code uses classic scripts on one global object `Game` (`Game.net`, `Game.forms`, `Game.lobby`, `Game.world`), no modules. A button that sends a request ignores further clicks until the server has answered. | CI checks every file with `node --check`, which rejects module syntax in plain `.js` files, and one global is easy to explain. Double clicks otherwise produce confusing errors after a success. | Proposal |
 
 ## Open decisions
 
