@@ -84,11 +84,24 @@ def lobby_of_three(connect):
 
 
 def running_round_of_three(connect):
+    """A round of Mara, Tiago and Ines. All read everything the start sends them."""
     mara, tiago, ines, code = lobby_of_three(connect)
     start(mara)
     tiago.receive_json()
     ines.receive_json()
+    # After the lobby's state every player is told about the Duel (S-94):
+    # their own first station, then everybody's progress.
+    for connection in (mara, tiago, ines):
+        assert connection.receive_json()["type"] == "duel_state"
+        assert connection.receive_json()["type"] == "duel_progress"
     return mara, tiago, ines, code
+
+
+def read_progress_without(connection, name):
+    """Read the Duel's progress that follows when a player left: it no longer lists them."""
+    progress = connection.receive_json()
+    assert progress["type"] == "duel_progress"
+    assert name not in [listed["name"] for listed in progress["players"]]
 
 
 THREE_PLAYERS = (("Mara", FIRST), ("Tiago", SECOND), ("Ines", THIRD))
@@ -237,6 +250,8 @@ def test_a_member_leaves_the_round_and_the_others_stay_in_it(connect):
     expected = state(code, "Mara", ("Mara", FIRST), ("Ines", THIRD), phase="round")
     assert mara.receive_json() == expected
     assert ines.receive_json() == expected
+    read_progress_without(mara, "Tiago")
+    read_progress_without(ines, "Tiago")
 
 
 def test_a_member_disconnects_and_the_others_stay_in_the_round(connect):
@@ -245,6 +260,8 @@ def test_a_member_disconnects_and_the_others_stay_in_the_round(connect):
     expected = state(code, "Mara", ("Mara", FIRST), ("Tiago", SECOND), phase="round")
     assert mara.receive_json() == expected
     assert tiago.receive_json() == expected
+    read_progress_without(mara, "Ines")
+    read_progress_without(tiago, "Ines")
 
 
 def test_the_host_leaves_the_round_and_the_next_player_is_host(connect):
@@ -254,6 +271,7 @@ def test_the_host_leaves_the_round_and_the_next_player_is_host(connect):
     for connection in (tiago, ines):
         assert connection.receive_json() == {"type": "notice", "message": "The host left. Tiago is the new host."}
         assert connection.receive_json() == expected
+        read_progress_without(connection, "Mara")
     # The new host cannot start the running round a second time.
     assert start(tiago) == ROUND_RUNNING
 
