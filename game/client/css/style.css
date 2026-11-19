@@ -1002,6 +1002,106 @@ input {
 
 .slides-error { color: var(--coral); font-weight: 700; }
 
+/* ---- Minigame "Shelve the books", built by js/minigames/shelve_books.js ---- */
+
+/* The shelf: six places in a row, standing on a wooden board. */
+.books-shelf {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px 0;
+  border: var(--outline);
+  border-bottom-width: 12px;
+  border-radius: 8px;
+  background: #C9935A;
+}
+
+.books-place {
+  flex: 1;
+  height: 92px;
+  border: 2px dashed var(--ink);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+}
+
+/* A place with a book shows only the book. */
+.books-place-filled { border-color: transparent; }
+
+/* A book, lying or standing: a coloured cover with its number. */
+.books-book {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--outline);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Standing on the shelf: tall and narrow, with a band across the spine. */
+.books-standing {
+  height: 100%;
+  border-radius: 5px 5px 0 0;
+  box-shadow: inset 0 8px 0 rgba(46, 42, 59, 0.25);
+  font-size: 22px;
+}
+
+/* The table the mixed books lie on, three next to each other. */
+.books-table {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border: var(--outline);
+  border-radius: 12px;
+  background: #E8C592;
+}
+
+/* Lying on the table: wide and flat, with the pages showing on the right. */
+.books-lying {
+  height: 48px;
+  padding: 0;
+  border-right-width: 9px;
+  border-radius: 6px;
+  box-shadow: 3px 3px 0 var(--ink);
+  font-size: 26px;
+  cursor: pointer;
+}
+
+.books-lying:hover:not(:disabled) { transform: translateY(-2px); }
+
+/* On the shelf now. The place on the table stays empty, so the other
+   books keep their places. */
+.books-gone { visibility: hidden; }
+
+/* The colours only tell the books apart. They say nothing about the number. */
+.books-colour-0 { background: var(--sun); }
+.books-colour-1 { background: var(--coral); }
+.books-colour-2 { background: var(--water); }
+.books-colour-3 { background: #F7A541; }
+.books-colour-4 { background: #8FCB8A; }
+.books-colour-5 { background: #F4A6C0; }
+
+/* A wrong book hops towards the shelf, falls back and wobbles. As long as
+   FALL_BACK_MS in shelve_books.js. */
+.books-falling { animation: books-fall-back 450ms ease-in; }
+
+@keyframes books-fall-back {
+  0% { transform: translateY(0) rotate(0); }
+  30% { transform: translateY(-26px) rotate(-8deg); }
+  60% { transform: translateY(0) rotate(5deg); }
+  75% { transform: translateY(-5px) rotate(-3deg); }
+  90% { transform: translateY(0) rotate(2deg); }
+  100% { transform: translateY(0) rotate(0); }
+}
+
+.books-broken {
+  margin: 0;
+  text-align: center;
+}
+
 .panel {
   display: flex;
   flex-direction: column;
