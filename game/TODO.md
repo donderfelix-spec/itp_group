@@ -30,9 +30,8 @@ These points hold up the start. The reasoning behind them is under “Open decis
 
 ## M1: Walking
 
-Built and play-tested locally, see “Done”. Still open from this milestone:
+Built, play-tested and on `main`, see “Done”. Still open from this milestone:
 
-- [ ] **M1-2.5** Run the accounts once against the real Supabase database (the Postgres store is only tested against a stand-in connection) and check sign up and log in on the deployed URL
 - [ ] **M1-2.6** Limit log-in attempts and lobby-code guessing per connection (found in the code reviews, S-83)
 
 ## M2: Duel
@@ -103,11 +102,12 @@ Built and play-tested locally, see “Done”. Still open from this milestone:
 
 ## Done
 
+- [x] **M1-2.5** Accounts run against the real Supabase database: sign up on the deployed URL stores the account with an Argon2 hash, the table has row level security (S-90). The cause of the first failure was a database password with special characters in `DATABASE_URL` (2026-11-19)
 - [x] **M1-2.4** Play test: automated test with three players (`tests/test_play_walking.py`) and a run in the browser with two tabs and a full lobby (2026-11-19)
 - [x] **M1-2.3** Positions: the server moves every player about 15 times per second and tells the lobby, the browser smooths in between (2026-11-19)
 - [x] **M1-2.2** Lobby on the server: four-letter code, player list, host, host change (2026-11-18)
 - [x] **M1-2.1** Start page, sign up and log in with the rules shown at the fields, home, lobby panel with character selection (2026-11-19)
-- [x] **M1-2.0** Accounts: sign up, log in, log out, guest, Argon2 hashes, storage behind one interface. Not yet run against Supabase, see M1-2.5 (2026-11-18)
+- [x] **M1-2.0** Accounts: sign up, log in, log out, guest, Argon2 hashes, storage behind one interface. Run against Supabase in M1-2.5 (2026-11-18)
 - [x] **M1-1.1** to **M1-1.4** Map drawn from `client/js/world/campus.json`, walking with WASD or arrow keys, camera, collision decided by the server, other players with names (2026-11-19)
 - [x] **M0-2.5** Messages for lobby, accounts and movement defined and checked in `server/protocol.py`, list confirmed by the team (S-74) (2026-11-18)
 - [x] **M0-2.6** First deploy on Render: https://itp-group.onrender.com, deploys automatically from `main`. Start page, `/health` and the WebSocket connection checked on the deployed URL (2026-11-18)
