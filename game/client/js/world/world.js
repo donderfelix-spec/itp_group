@@ -114,6 +114,9 @@ Game.world = Game.world || {};
       lastStepAt: -Infinity, // when the character last took a step
       strideAtLastStep: 0, // how big its steps were at that moment, 0 to 1
       walkingSince: 0, // when it started to walk; the walking cycle starts here
+      // Until this time the next position is a placement by the server and
+      // not a step, see startOfRound().
+      placedUntil: -Infinity,
       // Which side the character faces. It only ever faces left or right,
       // keeps the side after it stopped, and faces right until it has moved.
       facingLeft: false
@@ -155,13 +158,15 @@ Game.world = Game.world || {};
   function moveTo(player, x, y, now) {
     var start = drawnPosition(player, now) || { x: x, y: y };
     var isJump = Math.abs(x - start.x) > JUMP_DISTANCE || Math.abs(y - start.y) > JUMP_DISTANCE;
-    if (isJump) {
+    var isPlacement = now < player.placedUntil;
+    player.placedUntil = -Infinity; // it counts for one position only
+    if (isJump || isPlacement) {
       start = { x: x, y: y };
     }
     if (player.to) {
       var dx = x - player.to.x;
       var dy = y - player.to.y;
-      if (isJump || isLongerThanAStep(dx, dy)) {
+      if (isJump || isPlacement || isLongerThanAStep(dx, dy)) {
         standStill(player);
       } else {
         takeStep(player, dx, dy, now);
@@ -207,6 +212,23 @@ Game.world = Game.world || {};
     player.lastStepAt = -Infinity;
     player.strideAtLastStep = 0;
     player.facingLeft = false;
+  }
+
+  // A round starts: the server puts everybody on the spawn. From far away
+  // that shows as a jump, but a player who stood on the spawn or next to
+  // it would keep the side it faced, or be drawn taking a step there. So
+  // the lobby page says when a round starts: every character then stands
+  // and faces right, and its next position, if it comes within a moment,
+  // is a placement and not a step. Positions still come only from the
+  // server; this decides nothing about them.
+  var PLACEMENT_MILLISECONDS = 1000;
+
+  function startOfRound() {
+    var now = performance.now();
+    players.forEach(function (player) {
+      standStill(player);
+      player.placedUntil = now + PLACEMENT_MILLISECONDS;
+    });
   }
 
   // How big the steps of the player are at the time `now`, from 0 (it
@@ -903,6 +925,7 @@ Game.world = Game.world || {};
   Game.world.setOwnName = setOwnName;
   Game.world.setPlayers = setPlayers;
   Game.world.setPositions = setPositions;
+  Game.world.startOfRound = startOfRound;
   Game.world.setUsableStations = setUsableStations;
   Game.world.setUseHandler = setUseHandler;
   Game.world.stationInRange = stationInRange;
