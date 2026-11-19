@@ -89,12 +89,34 @@ def wait_for_news(connection, last_type="lobby_state"):
     For what the tick sends on its own: its sends run after the tick, so
     they may not all be there at the first look. The end of a round is told
     with the lobby's state as the last message.
+
+    Also for what another player's leaving brings: the leaver gets
+    `left_lobby` first and the others are told after it, so a test that has
+    read the leaver's answer cannot count on the others' messages yet.
     """
+    return wait_until(connection, lambda messages: last_type in types_of(messages))
+
+
+def wait_for_the_open_lobby(connection):
+    """Like `news`, but waits until the last message is the lobby's state with phase "lobby".
+
+    For a round that ends because a player left: the others get the state
+    of the leave first (phase "round"), so the first `lobby_state` is not
+    the end yet.
+    """
+    def lobby_is_open(messages):
+        return bool(messages) and messages[-1]["type"] == "lobby_state" and messages[-1]["phase"] == "lobby"
+
+    return wait_until(connection, lobby_is_open)
+
+
+def wait_until(connection, is_complete):
+    """Collect the connection's news, in the order sent, until `is_complete(messages)` is true."""
     deadline = time.monotonic() + DEADLINE_SECONDS
     messages = []
     while True:
         messages += news(connection)
-        if last_type in types_of(messages):
+        if is_complete(messages):
             return messages
         assert time.monotonic() < deadline, "the expected messages did not arrive in time"
         time.sleep(0.02)
@@ -609,10 +631,11 @@ def test_a_player_who_leaves_disappears_from_the_progress_and_the_round_goes_on(
     news(mara), news(ines)
     assert ask(tiago, {"type": "leave_lobby"}) == {"type": "left_lobby"}
     for connection in (mara, ines):
-        told = news(connection)
+        told = wait_for_news(connection, "duel_progress")
         assert types_of(told) == ["lobby_state", "duel_progress"]
         assert told[0]["phase"] == "round"
         assert told[1] == progress(179, ("Mara", 0), ("Ines", 0))
+        assert news(connection) == []  # and nothing after it
     assert news(tiago) == []  # the leaver hears nothing more of the Duel
     assert lobby_named("Mara").phase == "round"
 
@@ -648,7 +671,7 @@ def test_when_the_host_leaves_the_next_player_is_host_and_the_duel_goes_on(conne
     mara, tiago, ines = players["Mara"], players["Tiago"], players["Ines"]
     assert ask(mara, {"type": "leave_lobby"}) == {"type": "left_lobby"}
     for connection in (tiago, ines):
-        told = news(connection)
+        told = wait_for_news(connection, "duel_progress")
         assert types_of(told) == ["notice", "lobby_state", "duel_progress"]
         assert told[0]["message"] == "The host left. Tiago is the new host."
         assert told[1]["host"] == "Tiago" and told[1]["phase"] == "round"
@@ -671,18 +694,21 @@ def test_the_round_ends_when_the_only_player_still_running_leaves(connect, clock
     assert ask(tiago, {"type": "leave_lobby"}) == {"type": "left_lobby"}
     expected = result(False, (1, "Mara", 3.0, 3), (2, "Ines", 16.0, 3))
     for connection in (mara, ines):
-        told = news(connection)
+        told = wait_for_the_open_lobby(connection)
+        # In this order: the leave, the progress without the leaver, the ranking, the open lobby.
         assert types_of(told) == ["lobby_state", "duel_progress", "duel_result", "lobby_state"]
+        assert told[0]["phase"] == "round"
         assert told[1] == progress(164, ("Mara", 3), ("Ines", 3))
         assert told[2] == expected
         assert told[3]["phase"] == "lobby" and [listed["name"] for listed in told[3]["players"]] == ["Mara", "Ines"]
+        assert news(connection) == []  # the end is told once
 
 
 def test_a_duel_goes_on_for_a_single_player_and_ends_when_that_player_finishes(connect, clock, fixed_routes):
     players, code = duel_of(connect, ["Mara", "Tiago"])
     mara, tiago = players["Mara"], players["Tiago"]
     assert ask(tiago, {"type": "leave_lobby"}) == {"type": "left_lobby"}
-    assert news(mara)[-1] == progress(180, ("Mara", 0))
+    assert wait_for_news(mara, "duel_progress")[-1] == progress(180, ("Mara", 0))
     assert lobby_named("Mara").phase == "round"
     told = play_route(mara, "Mara", clock)
     assert told[-2] == result(False, (1, "Mara", 3.0, 3))
@@ -716,7 +742,7 @@ def test_a_leaver_with_a_task_open_disturbs_nobody(connect, clock, fixed_routes)
     put_at_station("Tiago", 2)
     open_station(players["Tiago"], 2)
     assert ask(players["Tiago"], {"type": "leave_lobby"}) == {"type": "left_lobby"}
-    assert types_of(news(players["Mara"])) == ["lobby_state", "duel_progress"]
+    assert types_of(wait_for_news(players["Mara"], "duel_progress")) == ["lobby_state", "duel_progress"]
     assert play(players["Mara"], "Mara", 3, clock)[0] == protocol.station_done(3)
 
 
