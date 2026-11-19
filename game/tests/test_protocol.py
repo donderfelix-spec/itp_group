@@ -367,6 +367,7 @@ REJECTION_TEXTS = {
     "task_open": "Close your current task first.",
     "no_task_open": "You have no task open.",
     "too_fast": "That was too fast. Try again.",
+    "task_failed": "Something went wrong. Try again.",
 }
 
 

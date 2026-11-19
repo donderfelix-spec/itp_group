@@ -246,6 +246,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Closing or finishing while no task is open | “You have no task open.” |
 | Reporting a task as done faster than it can be played | “That was too fast. Try again.” |
 | The server fails while opening, closing or finishing a task | “Something went wrong. Try again.” |
+| A minigame gets content from the server that it cannot show | “This task could not be loaded.” (shown inside the minigame window) |
 
 ## 10. What is deliberately not included
 
