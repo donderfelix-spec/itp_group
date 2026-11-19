@@ -1642,8 +1642,9 @@ input {
   box-shadow: 3px 3px 0 var(--ink);
 }
 
-/* Drawn like everything else in the game: thick dark outline, round corners. */
-.icon {
+/* Drawn like everything else in the game: thick dark outline, round corners.
+   Not ".icon": that is the class of the lobby's character pictures. */
+.home-icon {
   width: 30px;
   height: 30px;
   fill: none;

@@ -26,9 +26,11 @@ class Page(HTMLParser):
             self.screen = attributes.get("id")
         elif tag == "button":
             self.button = {"attributes": attributes, "screen": self.screen, "text": "", "inside": []}
+            self.button["inside_attributes"] = []
             self.buttons[attributes.get("id")] = self.button
         elif self.button is not None:
             self.button["inside"].append(tag)
+            self.button["inside_attributes"].extend(attributes)
 
     def handle_endtag(self, tag):
         if tag == "button":
@@ -98,3 +100,15 @@ def test_the_icons_are_at_least_44_pixels_wide_and_high(client):
     rule = stylesheet.split(".icon-button {")[1].split("}")[0]
     assert "width: 48px;" in rule
     assert "height: 48px;" in rule
+
+
+def test_the_drawings_load_nothing_and_run_nothing(client):
+    # A drawing is shapes only: nothing fetched from elsewhere, no code inside.
+    buttons = buttons_of(client)
+    for element_id in ICONS:
+        inside = buttons[element_id]["inside"]
+        for tag in ("script", "use", "image"):
+            assert tag not in inside
+        for attribute in buttons[element_id]["inside_attributes"]:
+            assert "href" not in attribute
+            assert not attribute.startswith("on")
