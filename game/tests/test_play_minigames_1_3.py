@@ -21,6 +21,7 @@ import pytest
 
 from server.modes import brew_order, build_tray, sort_slides
 from task_helpers import client, clock, connect  # noqa: F401  (fixtures)
+from task_helpers import round_without_duel  # noqa: F401  (fixture)
 from task_helpers import (
     NO_TASK_OPEN,
     NOT_NEEDED,

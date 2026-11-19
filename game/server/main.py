@@ -25,10 +25,11 @@ from starlette.websockets import WebSocketState
 from server import protocol
 from server.accounts import service
 from server.accounts.store import make_account_store
-from server.modes import tasks
+from server.modes import duel, minigames, tasks
 from server.net.lobbies import Lobbies
 from server.net.sessions import GUEST_NUMBERS, Sessions
 from server.protocol import PROTOCOL_VERSION, ProtocolError, error, parse_client_message, welcome
+from server.world import paths
 from server.world.campus import load_campus
 
 logger = logging.getLogger(__name__)
@@ -67,6 +68,11 @@ app.state.lobbies = Lobbies()
 # The map is read once, when the server starts. A broken map file stops the
 # start with a clear message, which is better than a game without walls.
 app.state.campus = load_campus()
+# How far a player walks from the spawn to every station in use and between
+# them (S-94). Measured once, here: it takes about a third of a second, too
+# long to repeat at every start of a round. A station nobody can walk to
+# stops the start of the server, like a broken map.
+app.state.distances = paths.station_distances(app.state.campus, sorted(minigames.MINIGAMES))
 
 # Hashing a password and asking the database both take a while, so they run in
 # worker threads and do not freeze the game for every other player. There are
@@ -332,10 +338,9 @@ async def handle_start_game(websocket: WebSocket, name: str, message: dict):
     # everybody's position on the spawn.
     lobby, rejection_code = app.state.lobbies.start(name)
     if rejection_code is None:
-        # A new round begins with no task open and nothing finished.
-        campus = app.state.campus
-        lobby.tasks = tasks.RoundTasks(campus["stations"], campus["use_range"])
+        set_up_round(lobby)
         await tell_lobby(lobby)
+        await tell_round_started(lobby)
     return rejection_code
 
 
@@ -344,6 +349,8 @@ async def handle_leave_lobby(websocket: WebSocket, name: str, message: dict):
     if rejection_code is None:
         await websocket.send_json(protocol.left_lobby())
         await tell_lobby(lobby, new_host)
+        # The round goes on without this player, or ends if nobody is left to wait for.
+        await tell_round_news(lobby)
     return rejection_code
 
 
@@ -355,6 +362,7 @@ async def take_out_of_lobby(name: str):
     lobby, new_host, rejection_code = app.state.lobbies.leave(name)
     if rejection_code is None:
         await tell_lobby(lobby, new_host)
+        await tell_round_news(lobby)
 
 
 async def tell_lobby(lobby, new_host=None):
@@ -499,6 +507,15 @@ def tick(seconds: float):
             # A fault in one lobby must not freeze the lobbies after it.
             # Only the kind of error is logged.
             logger.error("The tick failed for one lobby: %s", type(problem).__name__)
+        try:
+            # A round whose time is up ends here, with no message from a
+            # browser needed. A try of its own: a fault in the walking above
+            # must not keep a round from ending.
+            farewells = end_round_if_over(lobby)
+            if farewells:
+                run_in_background(tell_round_ended(lobby, farewells))
+        except Exception as problem:
+            logger.error("The check for the end of a round failed: %s", type(problem).__name__)
 
 
 def tell_positions(lobby):
@@ -550,6 +567,9 @@ async def answer_task_message(websocket: WebSocket, message: dict):
     if lobby is None:
         await websocket.send_json(protocol.rejection("not_in_lobby"))
         return
+    # The time of the round may have run out since the last tick. Then the
+    # round ends first, and this message is answered with "No round is running."
+    await tell_round_news(lobby)
     try:
         answers = TASK_HANDLERS[message["type"]](lobby, name, message)
     except Exception as problem:
@@ -559,6 +579,9 @@ async def answer_task_message(websocket: WebSocket, message: dict):
         answers = answers_after_fault(lobby, name)
     for answer in answers:
         await websocket.send_json(answer)
+    # After the player's own answers: the others hear about a counted task,
+    # and the round ends if that was the last one.
+    await tell_round_news(lobby)
 
 
 def answers_after_fault(lobby, name: str) -> list:
@@ -596,14 +619,42 @@ def handle_close_station(lobby, name: str, message: dict) -> list:
 
 
 def handle_finish_station(lobby, name: str, message: dict) -> list:
-    station, rejection_code = tasks.finish_station(lobby.tasks, name, seconds_now())
+    now = seconds_now()
+    station, rejection_code = tasks.finish_station(lobby.tasks, name, now)
     if rejection_code == "too_fast":
         # The task is closed without counting. The error comes first, then
         # the news that lets the browser close its window.
         return [protocol.rejection(rejection_code), protocol.station_closed(station)]
     if rejection_code is not None:
         return [protocol.rejection(rejection_code)]
-    return [protocol.station_done(station)]
+    # From here on the station is counted. Counted and told belong together
+    # (M2-4.7a): if anything fails before the answers for the player are
+    # complete, the count is taken back and the fault is passed on. The
+    # player then gets "Something went wrong. Try again." and can play the
+    # station again, instead of being left with a station that the server
+    # counts but the browser still shows as open.
+    try:
+        return [protocol.station_done(station)] + count_for_the_mode(lobby, name, station, now)
+    except Exception:
+        take_back_the_count(lobby, name, station)
+        raise
+
+
+def count_for_the_mode(lobby, name: str, station: int, now: float) -> list:
+    """Tell the round's mode about a counted task. Returns what the mode adds to the player's answers."""
+    if lobby.duel is None:
+        return []
+    if not lobby.duel.station_done(name, station, now):
+        # Cannot happen: the frame only opens the player's next station.
+        raise RuntimeError("a station counted that is not the next one of the route")
+    return [duel_state_of(lobby.duel, name)]
+
+
+def take_back_the_count(lobby, name: str, station: int):
+    """Undo the count of a task everywhere it was counted."""
+    lobby.tasks.take_back(name, station)
+    if lobby.duel is not None:
+        lobby.duel.take_back(name, station)
 
 
 TASK_HANDLERS = {
@@ -611,6 +662,151 @@ TASK_HANDLERS = {
     "close_station": handle_close_station,
     "finish_station": handle_finish_station,
 }
+
+
+# The round of each mode. The rules of Duel are in `server/modes/duel.py`
+# (S-94); the functions here ask them and send the news. A further mode gets
+# its own line in ROUND_SETUPS, its own place in the lobby (like `lobby.duel`)
+# and its own branch in the functions that ask `lobby.duel`.
+
+
+def set_up_round(lobby):
+    """Give the lobby what a round of its mode needs. A new round begins with no task open and nothing finished."""
+    ROUND_SETUPS[lobby.mode](lobby)
+
+
+def set_up_duel(lobby):
+    campus = app.state.campus
+    routes = duel.draw_routes(lobby.names(), sorted(minigames.MINIGAMES), app.state.distances, random)
+    lobby.duel = duel.Duel(routes, seconds_now())
+    # The frame of the minigames asks the Duel which stations a player may
+    # open: only the next one of their route.
+    lobby.tasks = tasks.RoundTasks(
+        campus["stations"], campus["use_range"], needed_stations=lobby.duel.stations_needed
+    )
+
+
+ROUND_SETUPS = {
+    "duel": set_up_duel,
+}
+
+
+def duel_state_of(the_duel, name: str) -> dict:
+    """The message about one player's own Duel. Only that player may get it."""
+    next_station, done, seconds = the_duel.state_of(name)
+    return protocol.duel_state(next_station, done, duel.STATIONS_PER_ROUTE, seconds)
+
+
+def duel_progress_of(the_duel) -> dict:
+    """The message about everybody's progress. It names no station, so everybody may get it."""
+    seconds_left = the_duel.seconds_left(seconds_now())
+    return protocol.duel_progress(the_duel.progress(), duel.STATIONS_PER_ROUTE, seconds_left)
+
+
+def is_in_duel(name: str, lobby, the_duel) -> bool:
+    """Whether this Duel is still running in the lobby and the player is still in it.
+
+    Asked before every send, like `is_member`: while a send waits, the
+    player can leave and the round can end.
+    """
+    return is_member(name, lobby) and lobby.duel is the_duel and name in the_duel.names()
+
+
+async def tell_round_started(lobby):
+    """After the lobby's state with phase "round": what the mode tells at the start."""
+    the_duel = lobby.duel
+    if the_duel is None:
+        return
+    the_duel.take_news()  # everybody is told right now
+    await asyncio.gather(*(tell_duel_start(name, lobby, the_duel) for name in the_duel.names()))
+
+
+async def tell_duel_start(name: str, lobby, the_duel):
+    """Send one player their own first station, then everybody's progress."""
+    if is_in_duel(name, lobby, the_duel):
+        await send_to(name, duel_state_of(the_duel, name))
+    await tell_duel_progress(name, lobby, the_duel)
+
+
+async def tell_duel_progress(name: str, lobby, the_duel):
+    if is_in_duel(name, lobby, the_duel):
+        await send_to(name, duel_progress_of(the_duel))
+
+
+async def tell_round_news(lobby):
+    """Tell the lobby what changed in its round, and end the round if it is over. Never raises.
+
+    Called after everything that can change a round: a counted task, a
+    player who left. If nothing changed, nothing is sent.
+    """
+    try:
+        the_duel = lobby.duel
+        if the_duel is not None and the_duel.take_news():
+            await asyncio.gather(*(tell_duel_progress(name, lobby, the_duel) for name in the_duel.names()))
+        await tell_round_ended(lobby, end_round_if_over(lobby))
+    except Exception as problem:
+        # The caller is a player's own handler: a fault here must not close
+        # that player's connection. Only the kind of error is logged.
+        logger.error("Telling the news of a round failed: %s", type(problem).__name__)
+
+
+def end_round_if_over(lobby) -> dict:
+    """End the lobby's round if its mode says it is over.
+
+    Returns what each player still has to be told, as `{name: [messages]}`,
+    or an empty dict if the round goes on (or none is running).
+
+    This function does not wait for anything: between the question "is it
+    over?" and the end of the round nothing else can happen. So a round ends
+    exactly once, even if the last task and the time limit fall together
+    and the tick and a player's handler both ask.
+    """
+    the_duel = lobby.duel
+    if the_duel is None or not the_duel.is_over(seconds_now()):
+        return {}
+    ranking = the_duel.ranking()
+    # Everybody finished, or the time ran out: nothing else ends a Duel.
+    time_up = not the_duel.everybody_finished()
+    open_stations = {name: lobby.tasks.open_station_of(name) for name in lobby.names()}
+    lobby.end_round()
+
+    # From here on the round is over, whatever happens. If the messages
+    # cannot be built, the players still get the lobby's new state from
+    # `tell_round_ended`, so no browser stays in a round that has ended.
+    try:
+        result = [protocol.duel_result(ranking, time_up)]
+    except Exception as problem:
+        logger.error("The result of a Duel could not be built: %s", type(problem).__name__)
+        result = []
+    farewells = {}
+    for name, station in open_stations.items():
+        # A task that was open is gone with the round. The browser hears
+        # that first, so its window closes before the ranking appears.
+        closed = [] if station is None else [protocol.station_closed(station)]
+        farewells[name] = closed + result
+    return farewells
+
+
+async def tell_round_ended(lobby, farewells: dict):
+    """Send what `end_round_if_over` returned, then the lobby's state: it is open again."""
+    if not farewells:
+        return
+    await asyncio.gather(*(tell_farewell(name, lobby, messages) for name, messages in farewells.items()))
+    await tell_lobby(lobby)
+
+
+async def tell_farewell(name: str, lobby, messages: list):
+    for message in messages:
+        if not is_member(name, lobby):
+            return
+        await send_to(name, message)
+
+
+def run_in_background(coroutine):
+    """Start a coroutine as its own task, for the tick, which never waits for a browser."""
+    task = asyncio.create_task(coroutine)
+    background_sends.add(task)
+    task.add_done_callback(background_sends.discard)
 
 
 # Mounted last, so /health and /ws win over files of the same name.

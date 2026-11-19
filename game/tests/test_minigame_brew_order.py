@@ -16,6 +16,7 @@ from server import main
 from server.main import app
 from server.modes import brew_order, minigames
 from server.modes.minigame import Minigame
+from task_helpers import round_without_duel  # noqa: F401  (fixture)
 
 # Written out again here on purpose: the tests pin the table of DESIGN.md.
 BUTTONS = ["Cup", "Glass", "Espresso", "Hot water", "Milk", "Foam"]

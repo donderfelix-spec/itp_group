@@ -44,6 +44,8 @@ The first command sets up the environment once. The second starts the game on ht
 
 ## The four areas
 
+The areas have owners (S-96): area 1 Hanna, area 2 Felix, area 3 Laurin, area 4 Lennart.
+
 | Area | Responsible for | Boundary to the others |
 |---|---|---|
 | 1 Campus and characters | Map with the five rooms, movement, collision, camera, characters, graphics and sound | Delivers positions and “player is at station X”. What happens at the station belongs to area 3 or 4. |

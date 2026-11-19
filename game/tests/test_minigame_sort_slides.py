@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from server import main
 from server.main import app
 from server.modes import minigames, sort_slides
+from task_helpers import round_without_duel  # noqa: F401  (fixture)
 
 RIGHT_ORDER = ["Title", "Agenda", "Analysis", "Results", "Q&A"]
 MANY_SEEDS = range(2000)

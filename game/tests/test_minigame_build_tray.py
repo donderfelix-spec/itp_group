@@ -14,6 +14,7 @@ from server.modes import build_tray, minigames
 from server.modes.minigame import Minigame
 import test_server_tasks as round_helpers
 from test_server_tasks import client, clock, connect  # noqa: F401  (fixtures)
+from task_helpers import round_without_duel  # noqa: F401  (fixture)
 
 DISHES = ["Soup", "Bacalhau", "Rice", "Salad", "Pastel de nata", "Fruit"]
 MANY_SEEDS = range(200)
