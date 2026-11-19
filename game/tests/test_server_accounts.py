@@ -276,11 +276,14 @@ def test_only_an_argon2_hash_is_stored(socket):
 # Messages of later to-dos
 
 
-def test_movement_messages_are_not_answered_yet(socket):
-    # The lobby messages were part of this test until the lobby was built
-    # (M1-2.2). They are now answered and tested in test_server_lobby.py.
-    socket.send_json({"type": "move", "dx": 1, "dy": 0})
-    # The next answer belongs to the hello, so nothing was sent for the message before.
+def test_a_movement_message_needs_a_signed_in_player(socket):
+    # Until walking was built (M1-2.3) this test checked that `move` got no
+    # answer at all. Walking is tested in test_server_walking.py.
+    assert ask(socket, {"type": "move", "dx": 1, "dy": 0}) == {
+        "type": "error",
+        "code": "not_signed_in",
+        "message": "Log in or play as a guest first.",
+    }
     assert ask(socket, {"type": "hello", "name": "Mara"})["type"] == "welcome"
 
 

@@ -11,6 +11,7 @@ action was accepted, otherwise a key of `protocol.REJECTIONS`. A rejected
 action changes nothing.
 """
 
+from server.net.walking import Walkers
 from server.protocol import CHARACTERS
 
 # Every player has a character of their own (S-75), so a lobby cannot hold
@@ -25,6 +26,9 @@ class Lobby:
         # name -> character. A dict keeps the order in which the names were
         # added, so this is also the order in which the players joined.
         self._characters = {}
+        # Where the players stand on the campus. Kept here so that a player
+        # who leaves the lobby in any way loses their position with it.
+        self.walkers = Walkers()
 
     def names(self) -> list:
         """The names of the players, in the order they joined."""
@@ -46,12 +50,14 @@ class Lobby:
     def add(self, name: str):
         """Put the player in with the first character nobody here has (S-75)."""
         self._characters[name] = self._first_free_character()
+        self.walkers.add(name)
         if self.host is None:
             self.host = name
 
     def remove(self, name: str):
         """Take the player out. Returns the new host's name if the host changed, else None."""
         del self._characters[name]
+        self.walkers.remove(name)
         if name != self.host:
             return None
         # The first name left is the player who has been here longest.
@@ -91,6 +97,10 @@ class Lobbies:
     def count(self) -> int:
         """How many lobbies there are."""
         return len(self._lobbies)
+
+    def all(self) -> list:
+        """Every lobby there is."""
+        return list(self._lobbies.values())
 
     def find(self, code: str):
         """The lobby with this code, or None."""
