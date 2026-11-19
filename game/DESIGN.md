@@ -192,6 +192,8 @@ Every room has its fixed minigame, it does not change. But the content is shuffl
 
 After a mistake, only the wrong piece is reset, never the whole minigame.
 
+A minigame opens with E or the button “E Use” at its station, only while a round is running. While it is open the character stands still. The close button and Esc close it without counting; it can be opened again and then has new content. When it is solved, the window shows “Done” in green for a moment and closes. A station whose minigame is not built yet shows “This task is still being built.” and a button “Finish task”.
+
 | No. | Room | Title | Task | Done when | After a mistake |
 |---|---|---|---|---|---|
 | 1 | Lecture Hall | Sort the slides | Put five shuffled slides (Title, Agenda, Analysis, Results, Q&A) into the right order by dragging | all five are in the right place | the slide in the wrong place shakes and jumps back |
@@ -236,6 +238,13 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Choosing a mode that does not exist or is not built yet (only when someone bypasses the page) | “That mode does not exist.” |
 | Starting Duel with fewer than 2 players | “Duel needs at least 2 players.” |
 | Choosing the mode, choosing a character or starting the round while a round is running | “This round has already started.” |
+| Opening, closing or finishing a task while no round is running | “No round is running.” |
+| Opening a station that does not exist or is not in use (only when someone bypasses the page) | “That station does not exist.” |
+| Opening a station from too far away | “You are too far away.” |
+| Opening a station that is not on your list or that you have already finished | “You do not need that station.” |
+| Opening a station while a task is open | “Close your current task first.” |
+| Closing or finishing while no task is open | “You have no task open.” |
+| Reporting a task as done faster than it can be played | “That was too fast. Try again.” |
 
 ## 10. What is deliberately not included
 
