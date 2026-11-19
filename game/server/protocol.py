@@ -75,6 +75,7 @@ REJECTIONS = {
     "no_task_open": "You have no task open.",
     "too_fast": "That was too fast. Try again.",
     "task_failed": "Something went wrong. Try again.",
+    "chat_rejected": "You cannot send that chat message right now.",
 }
 
 
@@ -146,8 +147,7 @@ def _check_character(value):
 
 
 def _check_mode(value):
-    # A mode that is not built yet ("classic") is refused like one that does
-    # not exist, so no round without rules can start (S-91).
+    # Modes are enabled only when their round setup is registered.
     if not isinstance(value, str) or value not in MODES:
         raise ProtocolError("bad_mode", "That mode does not exist.")
     return value
@@ -174,6 +174,13 @@ def _check_station(value):
     return value
 
 
+def _check_chat_text(value):
+    """Chat text is short, readable UTF-8 and safe to echo to every player."""
+    if not isinstance(value, str) or not 1 <= len(value) <= 200 or not _is_safe_text(value):
+        raise ProtocolError("bad_chat", "Chat messages must contain 1–200 characters.")
+    return value
+
+
 # Each client message type with its required fields and the check for each field.
 CLIENT_MESSAGES = {
     "hello": {"name": _check_name},
@@ -191,6 +198,7 @@ CLIENT_MESSAGES = {
     "open_station": {"station": _check_station},
     "close_station": {},
     "finish_station": {},
+    "chat": {"text": _check_chat_text},
 }
 
 

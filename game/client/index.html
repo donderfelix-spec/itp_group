@@ -148,6 +148,21 @@
     </section>
   </main>
 
+  <!-- The Classic meeting uses a canvas for the shared phase and transcript. -->
+  <section id="classic-meeting" class="classic-meeting" aria-label="Meeting" hidden>
+    <div class="classic-meeting-window">
+      <canvas id="classic-meeting-canvas" class="classic-meeting-canvas" aria-label="Meeting details"></canvas>
+      <form id="classic-chat-form" class="classic-chat-form">
+        <label for="classic-chat-input">Message</label>
+        <div class="button-row">
+          <input id="classic-chat-input" type="text" maxlength="200" autocomplete="off">
+          <button id="classic-chat-send" class="button button-main" type="submit">Send</button>
+        </div>
+        <p id="classic-chat-hint" class="rule" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+
   <script src="js/net.js"></script>
   <script src="js/world/characters.js"></script>
   <script src="js/world/draw.js"></script>
@@ -162,6 +177,7 @@
   <script src="js/minigames/shelve_books.js"></script>
   <script src="js/minigames/self_checkout.js"></script>
   <script src="js/minigames/duel.js"></script>
+  <script src="js/classic/meeting.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

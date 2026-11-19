@@ -56,6 +56,7 @@ window.Game = window.Game || {};
   // (leaving, logging out, a lost connection) comes through here.
   function stopWorld() {
     Game.minigames.close(); // before the world stops, so its keys are not left paused
+    Game.classicMeeting.hide();
     Game.duel.reset();
     roundIsRunning = false;
     finishedStations = new Set();
@@ -94,6 +95,7 @@ window.Game = window.Game || {};
   function whenSignedIn(message) {
     Game.lobby.setOwnName(message.name);
     Game.duel.setOwnName(message.name);
+    Game.classicMeeting.setOwnName(message.name);
     callWorld('setOwnName', message.name);
     Game.forms.showSignedIn(message.name, message.guest);
   }
@@ -202,6 +204,7 @@ window.Game = window.Game || {};
   Game.forms.setup();
   Game.lobby.setup();
   Game.duel.setup();
+  Game.classicMeeting.setup();
   callWorld('setUseHandler', openStation);
 
   Game.net.on('open', Game.screens.hideMessage);

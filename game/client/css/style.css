@@ -200,6 +200,50 @@ input {
 
 .message-error { background: var(--coral); }
 
+/* ---- Classic discussion and voting ---- */
+
+.classic-meeting {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(46, 42, 59, 0.68);
+}
+
+.classic-meeting-window {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(100%, 760px);
+  max-height: 95vh;
+  padding: 18px;
+  border: var(--outline);
+  border-radius: 18px;
+  background: var(--cream);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+.classic-meeting-canvas {
+  display: block;
+  width: 100%;
+  height: min(55vh, 480px);
+  border: var(--outline);
+  border-radius: 12px;
+  background: var(--cream);
+}
+
+.classic-chat-form { display: flex; flex-direction: column; gap: 6px; }
+
+@media (max-width: 560px) {
+  .classic-meeting { padding: 8px; }
+  .classic-meeting-window { padding: 10px; }
+  .classic-meeting-canvas { height: 55vh; }
+  .classic-chat-form .button-row { flex-direction: column; }
+}
+
 /* ---- Lobby: the map with the panel next to it ---- */
 
 .screen-lobby {

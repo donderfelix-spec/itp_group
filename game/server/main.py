@@ -25,6 +25,7 @@ from starlette.websockets import WebSocketState
 from server import protocol
 from server.accounts import service
 from server.accounts.store import make_account_store
+from server.classic import meeting as classic_meeting
 from server.modes import duel, minigames, tasks
 from server.net.lobbies import Lobbies
 from server.net.sessions import GUEST_NUMBERS, Sessions
@@ -141,6 +142,8 @@ async def read_messages(websocket: WebSocket):
             await answer_move_message(websocket, message)
         elif message["type"] in TASK_HANDLERS:
             await answer_task_message(websocket, message)
+        elif message["type"] == "chat":
+            await answer_chat_message(websocket, message)
 
 
 async def answer_account_message(websocket: WebSocket, message: dict):
@@ -500,6 +503,8 @@ def tick(seconds: float):
     So a slow player cannot delay the tick or the other players.
     """
     for lobby in app.state.lobbies.all():
+        if lobby.meeting is not None:
+            update_meeting_clock(lobby)
         try:
             if lobby.walkers.advance(seconds, app.state.campus):
                 tell_positions(lobby)
@@ -662,6 +667,51 @@ TASK_HANDLERS = {
     "close_station": handle_close_station,
     "finish_station": handle_finish_station,
 }
+
+
+def update_meeting_clock(lobby):
+    """Advance a meeting from the server clock and publish each clock second."""
+    now = seconds_now()
+    lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
+    snapshot = classic_meeting.meeting_snapshot(lobby.meeting, now)
+    clock = (snapshot["phase"], snapshot["seconds_left"])
+    if clock != lobby.meeting_clock:
+        lobby.meeting_clock = clock
+        run_in_background(tell_meeting_state(lobby, now))
+
+
+async def answer_chat_message(websocket: WebSocket, message: dict):
+    """Validate one player's chat message and broadcast the shared transcript."""
+    name = app.state.sessions.name_of(websocket)
+    if name is None:
+        await websocket.send_json(protocol.rejection("not_signed_in"))
+        return
+    lobby = app.state.lobbies.lobby_of(name)
+    if lobby is None:
+        await websocket.send_json(protocol.rejection("not_in_lobby"))
+        return
+    if lobby.meeting is None:
+        await websocket.send_json(protocol.rejection("chat_rejected"))
+        return
+
+    now = seconds_now()
+    lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
+    if not classic_meeting.can_send_chat(lobby.meeting, name, message["text"], now):
+        await websocket.send_json(protocol.rejection("chat_rejected"))
+        await tell_meeting_state(lobby, now)
+        return
+    lobby.meeting = classic_meeting.send_chat(lobby.meeting, name, message["text"], now)
+    await tell_meeting_state(lobby, now)
+
+
+async def tell_meeting_state(lobby, now=None):
+    """Send one identical meeting snapshot to every member, living or ghost."""
+    if lobby.meeting is None:
+        return
+    snapshot = classic_meeting.meeting_snapshot(
+        lobby.meeting, seconds_now() if now is None else now
+    )
+    await asyncio.gather(*(send_to(name, snapshot) for name in lobby.names()))
 
 
 # The round of each mode. The rules of Duel are in `server/modes/duel.py`

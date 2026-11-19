@@ -126,6 +126,7 @@ VALID_MESSAGES = [
     {"type": "open_station", "station": 3},
     {"type": "close_station"},
     {"type": "finish_station"},
+    {"type": "chat", "text": "Hello there."},
 ]
 MESSAGES_WITHOUT_FIELDS = [
     "guest", "log_out", "create_lobby", "leave_lobby", "start_game", "close_station", "finish_station",
@@ -239,6 +240,17 @@ def test_a_bad_dy_is_rejected(step):
 def test_a_step_written_as_one_point_zero_is_rejected():
     # json.dumps(1.0) writes "1.0"; this pins the raw text a browser could send.
     assert rejected_code('{"type": "move", "dx": 1.0, "dy": 0}') == "bad_move"
+
+
+@pytest.mark.parametrize("length", [1, 200])
+def test_chat_text_within_the_character_limit_is_accepted(length):
+    message = {"type": "chat", "text": "x" * length}
+    assert parse_client_message(json.dumps(message)) == message
+
+
+@pytest.mark.parametrize("text", ["", "x" * 201, None, ["text"], "\x00"])
+def test_invalid_chat_text_is_rejected(text):
+    assert rejected({"type": "chat", "text": text})[0] == "bad_chat"
 
 
 # The general rules apply to the new messages too
@@ -368,6 +380,7 @@ REJECTION_TEXTS = {
     "no_task_open": "You have no task open.",
     "too_fast": "That was too fast. Try again.",
     "task_failed": "Something went wrong. Try again.",
+    "chat_rejected": "You cannot send that chat message right now.",
 }
 
 
@@ -445,7 +458,7 @@ def test_already_signed_in_has_its_own_text():
 BAD_MODE = ("bad_mode", "That mode does not exist.")
 
 
-def test_duel_is_the_only_mode_that_is_built():
+def test_duel_and_classic_are_built_modes():
     assert protocol.MODES == ("duel",)
     assert protocol.DEFAULT_MODE in protocol.MODES
 
@@ -459,12 +472,11 @@ def test_start_game_is_accepted_without_fields():
     assert parse_client_message('{"type": "start_game"}') == {"type": "start_game"}
 
 
-# "classic" exists in the design but is not built yet, so it is refused like any unknown mode.
 @pytest.mark.parametrize(
     "mode",
     ["classic", "deadline", "", "Duel", "DUEL", "duel ", None, 1, True, ["duel"], {"mode": "duel"}],
 )
-def test_modes_that_are_not_built_or_malformed_are_rejected(mode):
+def test_unknown_or_malformed_modes_are_rejected(mode):
     assert rejected({"type": "choose_mode", "mode": mode}) == BAD_MODE
 
 
