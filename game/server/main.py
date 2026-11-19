@@ -23,8 +23,9 @@ from fastapi.staticfiles import StaticFiles
 from starlette.websockets import WebSocketState
 
 from server import protocol
-from server.accounts import service
-from server.accounts.store import make_account_store
+from server.accounts import service, statistics
+from server.accounts.statistics_store import make_statistics_store
+from server.accounts.store import StoreUnavailable, make_account_store
 from server.modes import duel, minigames, tasks
 from server.net.lobbies import Lobbies
 from server.net.sessions import GUEST_NUMBERS, Sessions
@@ -62,6 +63,8 @@ app = FastAPI(title="Group Project", docs_url=None, redoc_url=None, openapi_url=
 # Postgres when DATABASE_URL is set (never print it: it holds the password),
 # otherwise in memory. Creating the store does not connect to anything yet.
 app.state.account_store = make_account_store(os.environ.get("DATABASE_URL"))
+# Statistics live next to the accounts: in Postgres or in memory (S-39).
+app.state.statistics_store = make_statistics_store(os.environ.get("DATABASE_URL"))
 app.state.hasher = service.Argon2Hasher()
 app.state.sessions = Sessions()
 app.state.lobbies = Lobbies()
@@ -135,6 +138,8 @@ async def read_messages(websocket: WebSocket):
             await websocket.send_json(welcome(message["name"]))
         elif message["type"] in ACCOUNT_HANDLERS:
             await answer_account_message(websocket, message)
+        elif message["type"] in STATISTICS_HANDLERS:
+            await answer_statistics_message(websocket, message)
         elif message["type"] in LOBBY_HANDLERS:
             await answer_lobby_message(websocket, message)
         elif message["type"] == "move":
@@ -263,6 +268,120 @@ ACCOUNT_HANDLERS = {
     "log_in": handle_log_in,
     "guest": handle_guest,
     "log_out": handle_log_out,
+}
+
+
+# Statistics (S-40). The rules are in `server/accounts/statistics.py`; the
+# functions here ask the store on the account workers and send the answers.
+
+# The results of rounds that have ended and are not handed to the store yet,
+# as `{lobby: [(mode, changes)]}`. `end_round_if_over` puts a result in, and
+# `tell_round_ended` takes it out once the players know how the round ended.
+results_to_write = {}
+
+
+async def answer_statistics_message(websocket: WebSocket, message: dict):
+    """Run the handler for a statistics message and send its answer."""
+    handler = STATISTICS_HANDLERS[message["type"]]
+    await websocket.send_json(await handler(websocket))
+
+
+async def handle_get_profile(websocket: WebSocket) -> dict:
+    """The profile of the account this connection is signed in with, never of anybody else."""
+    sessions = app.state.sessions
+    name = sessions.name_of(websocket)
+    if name is None:
+        return protocol.rejection("not_signed_in")
+    if sessions.is_guest(websocket):
+        return protocol.rejection("guest_no_statistics")
+    records = await ask_statistics_store(app.state.statistics_store.records_of, name)
+    if records is None:
+        return protocol.rejection("statistics_unavailable")
+    rows = statistics.profile_rows(records, protocol.MODES)
+    return protocol.profile(name, rows, statistics.best_duel_seconds(records))
+
+
+async def handle_get_leaderboard(websocket: WebSocket) -> dict:
+    """The leaderboard, for accounts and guests alike."""
+    if not app.state.sessions.is_signed_in(websocket):
+        return protocol.rejection("not_signed_in")
+    totals = await ask_statistics_store(app.state.statistics_store.top, statistics.LEADERBOARD_SIZE)
+    if totals is None:
+        return protocol.rejection("statistics_unavailable")
+    # Cut again here: whatever a store returns, nobody gets more than 20 rows.
+    return protocol.leaderboard(statistics.leaderboard_rows(totals[: statistics.LEADERBOARD_SIZE]))
+
+
+async def ask_statistics_store(method, *values):
+    """Call a method of the statistics store on the account workers. Never raises.
+
+    Returns the method's answer, or None when the statistics cannot be used
+    right now. The database takes a while, so it must not run on the event
+    loop, where it would freeze the game for every other player.
+    """
+    loop = asyncio.get_running_loop()
+    try:
+        return await loop.run_in_executor(account_workers, method, *values)
+    except StoreUnavailable:
+        # The store has logged the reason already (S-90).
+        return None
+    except Exception as problem:
+        # Only the kind of error is logged, never its text: that could
+        # contain details of the connection to the database.
+        logger.error("The statistics store failed in %s: %s", method.__name__, type(problem).__name__)
+        return None
+
+
+def note_duel_result(lobby, ranking):
+    """Keep what a finished Duel adds to the statistics until it is written. Never raises.
+
+    Called at the one place a round ends, so each round is noted exactly
+    once. Nothing is written here: that happens later and off the event
+    loop (see `write_results_later`), so the end of the round is not delayed.
+    """
+    try:
+        changes = statistics.changes_from_duel(ranking, account_names(lobby.names()))
+        if changes:
+            results_to_write.setdefault(lobby, []).append((statistics.DUEL, changes))
+    except Exception as problem:
+        # Statistics must never keep a round from ending.
+        logger.error("The result of a round could not be noted: %s", type(problem).__name__)
+
+
+def account_names(names) -> set:
+    """Those of `names` who are signed in with an account. Guests have no statistics (S-38).
+
+    The server's own list of sessions decides who is a guest, never
+    anything the browser says.
+    """
+    sessions = app.state.sessions
+    accounts = set()
+    for name in names:
+        connection = sessions.connection_of(name)
+        if connection is not None and not sessions.is_guest(connection):
+            accounts.add(name)
+    return accounts
+
+
+def write_results_later(lobby):
+    """Start writing the lobby's noted results, each as a task of its own.
+
+    Taking a result out of `results_to_write` and starting its task happen
+    without a wait in between, so no result is written twice.
+    """
+    for mode, changes in results_to_write.pop(lobby, []):
+        run_in_background(write_result(mode, changes))
+
+
+async def write_result(mode: str, changes: list):
+    # If the database cannot be reached, the result of this round is lost.
+    # The store has logged why; the round itself ended long before.
+    await ask_statistics_store(app.state.statistics_store.record_round, mode, changes)
+
+
+STATISTICS_HANDLERS = {
+    "get_profile": handle_get_profile,
+    "get_leaderboard": handle_get_leaderboard,
 }
 
 
@@ -769,6 +888,9 @@ def end_round_if_over(lobby) -> dict:
     time_up = not the_duel.everybody_finished()
     open_stations = {name: lobby.tasks.open_station_of(name) for name in lobby.names()}
     lobby.end_round()
+    # Only the server writes the result of a round (S-40). It is noted here
+    # and written after the players were told (see `tell_round_ended`).
+    note_duel_result(lobby, ranking)
 
     # From here on the round is over, whatever happens. If the messages
     # cannot be built, the players still get the lobby's new state from
@@ -791,7 +913,12 @@ async def tell_round_ended(lobby, farewells: dict):
     """Send what `end_round_if_over` returned, then the lobby's state: it is open again."""
     if not farewells:
         return
-    await asyncio.gather(*(tell_farewell(name, lobby, messages) for name, messages in farewells.items()))
+    try:
+        await asyncio.gather(*(tell_farewell(name, lobby, messages) for name, messages in farewells.items()))
+    finally:
+        # After the players have the result, and whatever happened while
+        # telling them: the statistics are written now, in the background.
+        write_results_later(lobby)
     await tell_lobby(lobby)
 
 
