@@ -25,6 +25,7 @@ from starlette.websockets import WebSocketState
 from server import protocol
 from server.accounts import service
 from server.accounts.store import make_account_store
+from server.modes import tasks
 from server.net.lobbies import Lobbies
 from server.net.sessions import GUEST_NUMBERS, Sessions
 from server.protocol import PROTOCOL_VERSION, ProtocolError, error, parse_client_message, welcome
@@ -132,6 +133,8 @@ async def read_messages(websocket: WebSocket):
             await answer_lobby_message(websocket, message)
         elif message["type"] == "move":
             await answer_move_message(websocket, message)
+        elif message["type"] in TASK_HANDLERS:
+            await answer_task_message(websocket, message)
 
 
 async def answer_account_message(websocket: WebSocket, message: dict):
@@ -329,6 +332,9 @@ async def handle_start_game(websocket: WebSocket, name: str, message: dict):
     # everybody's position on the spawn.
     lobby, rejection_code = app.state.lobbies.start(name)
     if rejection_code is None:
+        # A new round begins with no task open and nothing finished.
+        campus = app.state.campus
+        lobby.tasks = tasks.RoundTasks(campus["stations"], campus["use_range"])
         await tell_lobby(lobby)
     return rejection_code
 
@@ -455,6 +461,10 @@ async def answer_move_message(websocket: WebSocket, message: dict):
     if lobby is None:
         await websocket.send_json(protocol.rejection("not_in_lobby"))
         return
+    # With a task open the player stands still (S-93). The message is not an
+    # error: a key may have been pressed just before the window opened.
+    if tasks.stands_still(lobby.tasks, name):
+        return
     # The next tick moves the player. The browser sees the result in `positions`.
     lobby.walkers.set_direction(name, message["dx"], message["dy"])
 
@@ -518,6 +528,89 @@ async def send_positions(name: str, connection, lobby, message: dict):
             await send_on(connection, message)
     finally:
         taking_positions.discard(connection)
+
+
+# The tasks at the stations (S-93). The rules are in `server/modes/tasks.py`;
+# the functions here measure the time, ask the rules and build the answers.
+# Only the acting player is answered: nobody else hears about a task.
+
+
+def seconds_now() -> float:
+    """The server's clock for the tasks. A function of its own, so tests can replace it."""
+    return time.monotonic()
+
+
+async def answer_task_message(websocket: WebSocket, message: dict):
+    """Run the handler for a task message and send the player its answers."""
+    name = app.state.sessions.name_of(websocket)
+    if name is None:
+        await websocket.send_json(protocol.rejection("not_signed_in"))
+        return
+    lobby = app.state.lobbies.lobby_of(name)
+    if lobby is None:
+        await websocket.send_json(protocol.rejection("not_in_lobby"))
+        return
+    try:
+        answers = TASK_HANDLERS[message["type"]](lobby, name, message)
+    except Exception as problem:
+        # A fault in a minigame must not close the player's connection.
+        # Only the kind of error is logged.
+        logger.error("The task message %s failed: %s", message["type"], type(problem).__name__)
+        answers = answers_after_fault(lobby, name)
+    for answer in answers:
+        await websocket.send_json(answer)
+
+
+def answers_after_fault(lobby, name: str) -> list:
+    """What the player is told when a task handler failed.
+
+    The browser waits for an answer to every task message, so it always gets
+    one. The fault may have happened after the task was opened: then the task
+    is forgotten and the browser is told, so page and server agree again.
+    """
+    answers = [protocol.rejection("task_failed")]
+    station, _ = tasks.close_station(lobby.tasks, name)
+    if station is not None:
+        answers.append(protocol.station_closed(station))
+    return answers
+
+
+def handle_open_station(lobby, name: str, message: dict) -> list:
+    position = lobby.walkers.position_of(name)
+    opened, rejection_code = tasks.open_station(
+        lobby.tasks, name, message["station"], position, seconds_now(), random
+    )
+    if rejection_code is not None:
+        return [protocol.rejection(rejection_code)]
+    # The player stands still while the task is open, so "in range" stays
+    # true until it ends. `answer_move_message` ignores `move` until then.
+    lobby.walkers.set_direction(name, 0, 0)
+    return [protocol.station_opened(opened["station"], opened["title"], opened["content"])]
+
+
+def handle_close_station(lobby, name: str, message: dict) -> list:
+    station, rejection_code = tasks.close_station(lobby.tasks, name)
+    if rejection_code is not None:
+        return [protocol.rejection(rejection_code)]
+    return [protocol.station_closed(station)]
+
+
+def handle_finish_station(lobby, name: str, message: dict) -> list:
+    station, rejection_code = tasks.finish_station(lobby.tasks, name, seconds_now())
+    if rejection_code == "too_fast":
+        # The task is closed without counting. The error comes first, then
+        # the news that lets the browser close its window.
+        return [protocol.rejection(rejection_code), protocol.station_closed(station)]
+    if rejection_code is not None:
+        return [protocol.rejection(rejection_code)]
+    return [protocol.station_done(station)]
+
+
+TASK_HANDLERS = {
+    "open_station": handle_open_station,
+    "close_station": handle_close_station,
+    "finish_station": handle_finish_station,
+}
 
 
 # Mounted last, so /health and /ws win over files of the same name.

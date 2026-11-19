@@ -75,6 +75,7 @@ Game.world = Game.world || {};
   var usableStations = null; // ids of the stations that count, null = all
   var useHandler = null; // called with the id of the station that is opened
   var useButton = null; // the button "E Use", while the world runs
+  var inputPaused = false; // true while a minigame is open, see setInputPaused()
 
   // ---- Players and smoothing -------------------------------------------
 
@@ -285,7 +286,7 @@ Game.world = Game.world || {};
   // there is no message either (DESIGN.md, section 4).
   function useStationInRange() {
     var id = stationInRange();
-    if (id !== null && useHandler) {
+    if (id !== null && useHandler && !inputPaused) {
       useHandler(id);
     }
   }
@@ -324,7 +325,7 @@ Game.world = Game.world || {};
   // Grey and switched off while it would do nothing, yellow otherwise. The
   // stylesheet gives the two looks.
   function updateUseButton(idInRange) {
-    var shouldBeDisabled = idInRange === null;
+    var shouldBeDisabled = idInRange === null || inputPaused;
     if (!useButton || useButton.disabled === shouldBeDisabled) {
       return;
     }
@@ -395,6 +396,14 @@ Game.world = Game.world || {};
     if (isShortcut || isTyping(event)) {
       return;
     }
+    if (inputPaused) {
+      // A minigame is open: the keys do nothing on the map, but the arrow
+      // keys must not scroll the page behind the window either.
+      if (event.code.indexOf("Arrow") === 0) {
+        event.preventDefault();
+      }
+      return;
+    }
     if (isUseKey(event)) {
       // A key that is held down reports itself again and again: only the
       // first press opens the station.
@@ -432,6 +441,17 @@ Game.world = Game.world || {};
   function releaseAllKeys() {
     pressedKeys = {};
     reportDirection();
+  }
+
+  // While a minigame is open, the keys belong to it: the walk keys and E do
+  // nothing and the button "E Use" is switched off (the next frame greys it).
+  // Keys that are held count as released, so the server hears (0, 0) once
+  // and the player does not walk on when the minigame closes.
+  function setInputPaused(paused) {
+    inputPaused = paused === true;
+    if (inputPaused) {
+      releaseAllKeys();
+    }
   }
 
   function onVisibilityChange() {
@@ -741,5 +761,6 @@ Game.world = Game.world || {};
   Game.world.setUsableStations = setUsableStations;
   Game.world.setUseHandler = setUseHandler;
   Game.world.stationInRange = stationInRange;
+  Game.world.setInputPaused = setInputPaused;
   Game.world.nearestStationInRange = nearestStationInRange;
 })();

@@ -317,3 +317,22 @@ def test_a_rejected_start_moves_nobody():
     assert lobbies.start("Tiago") == (None, "not_host")
     lobby.walkers.advance(ONE_TICK, open_field())
     assert lobby.walkers.positions() == before
+
+
+# Asking for one player's position (M2-4.1: the range check of the stations)
+
+
+def test_position_of_is_none_until_the_first_tick_placed_the_player():
+    walkers = Walkers()
+    walkers.add("Mara")
+    assert walkers.position_of("Mara") is None
+    walkers.advance(0.0, open_field())
+    assert walkers.position_of("Mara") == (open_field()["spawn"]["x"], open_field()["spawn"]["y"])
+
+
+def test_position_of_is_none_again_after_the_round_put_everybody_back():
+    walkers = Walkers()
+    walkers.add("Mara")
+    walkers.advance(0.0, open_field())
+    walkers.back_to_spawn()
+    assert walkers.position_of("Mara") is None

@@ -58,6 +58,10 @@ class Walkers:
         walker.dx = dx
         walker.dy = dy
 
+    def position_of(self, name: str):
+        """Where the player stands, as `(x, y)`, or None before the first tick placed them."""
+        return self._walkers[name].position
+
     def advance(self, seconds, campus) -> bool:
         """Move every player for `seconds`. Returns whether there is news to send.
 
