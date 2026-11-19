@@ -6,6 +6,7 @@ All features of the game with their status. Whoever finishes a feature or plans 
 
 - **Done:** built, played through by the tester, on `main`.
 - **In progress:** a branch for it is open.
+- **Built, not on `main` yet:** built, reviewed and play-tested on a branch; becomes “Done” with the merge.
 - **Planned:** listed as a to-do in [TODO.md](TODO.md).
 - **Later:** wanted, but no to-do yet.
 
@@ -16,20 +17,20 @@ All features of the game with their status. Whoever finishes a feature or plans 
 - **M3 Classic:** A complete Classic round with Free Rider, meeting and vote is playable.
 - **M4 Extensions:** Sabotage, Deadline mode, finished characters, sound, phone.
 
-As of 2026-11-18. The project skeleton is built, the game itself starts with milestone 1.
+As of 2026-11-19. Milestone 1 is built and play-tested on branches and waits for its pull requests.
 
 ## Area 1: Campus and characters
 
 | Feature | Milestone | Status |
 |---|---|---|
-| Map with Lecture Hall, Mon Café, Canteen, CTT Student Hall and Pingo Doce, connected by the Main Deck | M1 | Planned |
-| Move the character with the keyboard (WASD or arrow keys) | M1 | Planned |
-| Walls and furniture stop the character | M1 | In progress |
-| Camera follows your own character | M1 | Planned |
-| See other players with their names above the character | M1 | Planned |
+| Map with Lecture Hall, Mon Café, Canteen, CTT Student Hall and Pingo Doce, connected by the Main Deck | M1 | Built, not on `main` yet |
+| Move the character with the keyboard (WASD or arrow keys) | M1 | Built, not on `main` yet |
+| Walls and furniture stop the character | M1 | Built, not on `main` yet |
+| Camera follows your own character | M1 | Built, not on `main` yet |
+| See other players with their names above the character | M1 | Built, not on `main` yet |
 | Stations for tasks on the map | M2 | Planned |
 | Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E, R, Q) | M2 | Planned |
-| Choose a character from the list of stereotypes | M2 | Planned |
+| Choose a character from the list of stereotypes | M2 | Built, not on `main` yet |
 | Display of the current room | M2 | Planned |
 | Limited view: You only see what is nearby and not behind a wall | M3 | Planned |
 | Show failed players as ghosts | M3 | Planned |
@@ -44,26 +45,26 @@ As of 2026-11-18. The project skeleton is built, the game itself starts with mil
 | Feature | Milestone | Status |
 |---|---|---|
 | Start a server that delivers the client and the game | M0 | Done |
-| Create an account with username and password, log in, log out | M1 | In progress |
-| Play as a guest, without statistics and friends | M1 | In progress |
-| Clear message when a name is taken, the password is wrong or the database is not reachable | M1 | In progress |
+| Create an account with username and password, log in, log out | M1 | Built, not on `main` yet |
+| Play as a guest, without statistics and friends | M1 | Built, not on `main` yet |
+| Clear message when a name is taken, the password is wrong or the database is not reachable | M1 | Built, not on `main` yet |
 | Statistics per account: rounds and wins per mode, best Duel time | M2 | Planned |
 | Leaderboard of all accounts | M2 | Planned |
 | Add friends by username, accept or decline a request | M4 | Planned |
 | See friends with the status “online” and “in a round” | M4 | Planned |
 | Invite friends to your own lobby | M4 | Planned |
 | Leaderboard among friends | M4 | Planned |
-| Create a lobby, get a code with four letters | M1 | In progress |
-| Join a lobby by code | M1 | In progress |
-| Player list in the lobby, the creator is the host | M1 | In progress |
-| Continuously synchronise the positions of all players, with smoothed movement of the others | M1 | Planned |
+| Create a lobby, get a code with four letters | M1 | Built, not on `main` yet |
+| Join a lobby by code | M1 | Built, not on `main` yet |
+| Player list in the lobby, the creator is the host | M1 | Built, not on `main` yet |
+| Continuously synchronise the positions of all players, with smoothed movement of the others | M1 | Built, not on `main` yet |
 | Host chooses mode and settings and starts the round | M2 | Planned |
 | After the round back to the lobby, new round without a new code | M2 | Planned |
 | If someone leaves the game, the round continues, and the host changes if needed | M2 | Planned |
 | Players who were disconnected for a short time come back into their round | M3 | Planned |
 | Each client gets only the information that its player is allowed to know | M3 | Planned |
 | Game reachable at a public URL, deployed automatically from `main` | M0 | Done |
-| Several lobbies at the same time | M1 | In progress |
+| Several lobbies at the same time | M1 | Built, not on `main` yet |
 
 ## Area 3: Classic rules
 

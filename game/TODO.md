@@ -1,6 +1,6 @@
 # To-dos for “Group Project”
 
-As of 2026-11-18
+As of 2026-11-19
 
 The to-dos are sorted by milestone and, within each milestone, by area. The areas are described in the [README.md](README.md), the status of all features in the [FEATURES.md](FEATURES.md), decisions in the [DECISIONS.md](DECISIONS.md), and the process with the agents in the [WORKFLOW.md](WORKFLOW.md).
 
@@ -30,20 +30,10 @@ These points hold up the start. The reasoning behind them is under “Open decis
 
 ## M1: Walking
 
-**Area 1**
+Built and play-tested locally, see “Done”. Still open from this milestone:
 
-- [ ] **M1-1.1** Draw the map from the floor plan, with simple shapes
-- [ ] **M1-1.2** Move the character with the keyboard, the camera follows
-- [ ] **M1-1.3** Collision with walls and furniture. _Server part built and tested: map data in `client/js/world/campus.json`, movement and collision in `server/world/`. Still open: wiring into the server (M1-2.3) and a check in the browser._
-- [ ] **M1-1.4** Draw other players with their names
-
-**Area 2**
-
-- [ ] **M1-2.0** Accounts: tables in Supabase, sign up, log in, log out, guest access, with tests for rejected cases (name taken, wrong password, password too short). _Server side built and tested with the in-memory store. Still open: one run against the real Supabase database, and the forms in the browser (M1-2.1)._
-- [ ] **M1-2.1** Start page: log in or play as a guest, create a lobby or join with a code
-- [ ] **M1-2.2** Lobby on the server: code, player list, host. _Built and tested on the server (create, join, leave, character, host change). The lobby screen in the browser comes with M1-2.1._
-- [ ] **M1-2.3** Synchronise positions and smooth the movement of the other players
-- [ ] **M1-2.4** Play test with several browsers: three players join and see each other walk
+- [ ] **M1-2.5** Run the accounts once against the real Supabase database (the Postgres store is only tested against a stand-in connection) and check sign up and log in on the deployed URL
+- [ ] **M1-2.6** Limit log-in attempts and lobby-code guessing per connection (found in the code reviews, S-83)
 
 ## M2: Duel
 
@@ -113,6 +103,12 @@ These points hold up the start. The reasoning behind them is under “Open decis
 
 ## Done
 
+- [x] **M1-2.4** Play test: automated test with three players (`tests/test_play_walking.py`) and a run in the browser with two tabs and a full lobby (2026-11-19)
+- [x] **M1-2.3** Positions: the server moves every player about 15 times per second and tells the lobby, the browser smooths in between (2026-11-19)
+- [x] **M1-2.2** Lobby on the server: four-letter code, player list, host, host change (2026-11-18)
+- [x] **M1-2.1** Start page, sign up and log in with the rules shown at the fields, home, lobby panel with character selection (2026-11-19)
+- [x] **M1-2.0** Accounts: sign up, log in, log out, guest, Argon2 hashes, storage behind one interface. Not yet run against Supabase, see M1-2.5 (2026-11-18)
+- [x] **M1-1.1** to **M1-1.4** Map drawn from `client/js/world/campus.json`, walking with WASD or arrow keys, camera, collision decided by the server, other players with names (2026-11-19)
 - [x] **M0-2.5** Messages for lobby, accounts and movement defined and checked in `server/protocol.py`, list confirmed by the team (S-74) (2026-11-18)
 - [x] **M0-2.6** First deploy on Render: https://itp-group.onrender.com, deploys automatically from `main`. Start page, `/health` and the WebSocket connection checked on the deployed URL (2026-11-18)
 - [x] **M0-2.1** Agents created: `researcher`, `coder`, `reviewer`, `tester` under `.claude/agents/`, rules in `AGENTS.md`, `CLAUDE.md` refers to it (2026-11-18)
