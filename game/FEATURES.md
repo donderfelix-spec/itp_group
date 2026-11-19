@@ -24,7 +24,7 @@ As of 2026-11-18. The project skeleton is built, the game itself starts with mil
 |---|---|---|
 | Map with Lecture Hall, Mon Café, Canteen, CTT Student Hall and Pingo Doce, connected by the Main Deck | M1 | Planned |
 | Move the character with the keyboard (WASD or arrow keys) | M1 | Planned |
-| Walls and furniture stop the character | M1 | Planned |
+| Walls and furniture stop the character | M1 | In progress |
 | Camera follows your own character | M1 | Planned |
 | See other players with their names above the character | M1 | Planned |
 | Stations for tasks on the map | M2 | Planned |
@@ -53,9 +53,9 @@ As of 2026-11-18. The project skeleton is built, the game itself starts with mil
 | See friends with the status “online” and “in a round” | M4 | Planned |
 | Invite friends to your own lobby | M4 | Planned |
 | Leaderboard among friends | M4 | Planned |
-| Create a lobby, get a code with four letters | M1 | Planned |
-| Join a lobby by code | M1 | Planned |
-| Player list in the lobby, the creator is the host | M1 | Planned |
+| Create a lobby, get a code with four letters | M1 | In progress |
+| Join a lobby by code | M1 | In progress |
+| Player list in the lobby, the creator is the host | M1 | In progress |
 | Continuously synchronise the positions of all players, with smoothed movement of the others | M1 | Planned |
 | Host chooses mode and settings and starts the round | M2 | Planned |
 | After the round back to the lobby, new round without a new code | M2 | Planned |
@@ -63,7 +63,7 @@ As of 2026-11-18. The project skeleton is built, the game itself starts with mil
 | Players who were disconnected for a short time come back into their round | M3 | Planned |
 | Each client gets only the information that its player is allowed to know | M3 | Planned |
 | Game reachable at a public URL, deployed automatically from `main` | M0 | Done |
-| Several lobbies at the same time | M1 | Planned |
+| Several lobbies at the same time | M1 | In progress |
 
 ## Area 3: Classic rules
 
