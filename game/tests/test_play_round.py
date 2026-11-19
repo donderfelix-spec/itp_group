@@ -432,6 +432,7 @@ def test_a_lobby_with_the_code_of_an_abandoned_round_starts_fresh(connect, monke
         ({"type": "choose_mode"}, "missing_field"),
         ({"type": "choose_mode", "mode": "duel", "extra": 1}, "unknown_field"),
         ({"type": "choose_mode", "mode": "Duel"}, "bad_mode"),
+        ({"type": "choose_mode", "mode": "xyz"}, "bad_mode"),
         ({"type": "choose_mode", "mode": {"mode": "duel"}}, "bad_mode"),
         ({"type": "choose_mode", "mode": 1.5}, "bad_mode"),
         ({"type": "choose_mode", "mode": "x" * 3000}, "too_large"),
@@ -452,11 +453,16 @@ def test_a_malformed_message_of_the_host_is_refused_and_changes_nothing(connect,
 
 def test_a_malformed_message_during_the_round_does_not_disturb_it(connect):
     (mara, tiago), code = running_round_of(connect, "Mara", "Tiago")
-    assert answer_to(mara, {"type": "choose_mode", "mode": "classic"}) == ROUND_RUNNING
     assert answer_to(tiago, {"type": "start_game", "again": 1})["code"] == "unknown_field"
     assert news(mara) == [] and news(tiago) == []
     move(tiago, 0, 1)
     wait_for_positions(mara, lambda positions: positions["Tiago"]["y"] > SPAWN_Y)
+    assert app.state.lobbies.find(code).phase == "round"
+
+
+def test_classic_mode_is_rejected_during_a_running_round(connect):
+    (mara, tiago), code = running_round_of(connect, "Mara", "Tiago")
+    assert answer_to(mara, {"type": "choose_mode", "mode": "classic"}) == ROUND_RUNNING
     assert app.state.lobbies.find(code).phase == "round"
 
 
