@@ -382,6 +382,55 @@ input {
   cursor: not-allowed;
 }
 
+/* The mode the host can choose: two cards side by side, like the characters. */
+.modes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+}
+
+.mode {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The chosen mode, marked like the player's own character. */
+.mode-own {
+  background: var(--sun);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+/* Not built yet, or the round is running: greyed out and not clickable. */
+.mode:disabled { cursor: not-allowed; }
+.mode:disabled:not(.mode-own) {
+  background: #D9D3C5;
+  opacity: 0.6;
+}
+
+.mode-note {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.mode-text { font-weight: 700; }
+
+.character-area {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .waiting { font-weight: 700; }
 
 .panel-bottom .button { width: 100%; }

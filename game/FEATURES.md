@@ -31,6 +31,9 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E, R, Q) | M2 | Planned |
 | Choose a character from the list of stereotypes | M2 | Done |
 | Display of the current room | M2 | Planned |
+| Nicer, more detailed map: floors, furniture and plants | M2 | Planned |
+| Larger characters | M2 | Planned |
+| Walking animation: moving feet, head turned in the walking direction | M2 | Planned |
 | Limited view: You only see what is nearby and not behind a wall | M3 | Planned |
 | Show failed players as ghosts | M3 | Planned |
 | Four hiding spots in which you are visible only from close by | M3 | Planned |
@@ -59,7 +62,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Join a lobby by code | M1 | Done |
 | Player list in the lobby, the creator is the host | M1 | Done |
 | Continuously synchronise the positions of all players, with smoothed movement of the others | M1 | Done |
-| Host chooses mode and settings and starts the round | M2 | Planned |
+| Host chooses the mode and starts the round (settings: M4) | M2 | Done |
 | After the round back to the lobby, new round without a new code | M2 | Planned |
 | If someone leaves the game, the round continues, and the host changes if needed | M2 | Planned |
 | Players who were disconnected for a short time come back into their round | M3 | Planned |

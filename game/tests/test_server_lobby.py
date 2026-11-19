@@ -109,6 +109,8 @@ def test_create_lobby_answers_with_the_state(connect, monkeypatch):
         "code": "ABCD",
         "host": "Mara",
         "players": [{"name": "Mara", "character": FIRST}],
+        "mode": "duel",
+        "phase": "lobby",
     }
 
 
@@ -148,7 +150,7 @@ def test_a_guest_can_create_and_an_account_can_join(connect):
 def test_the_state_never_says_more_than_names_characters_code_and_host(connect):
     mara, tiago, code = mara_and_tiago_in_a_lobby(connect)
     answer = choose(tiago, "surfer")
-    assert set(answer) == {"type", "code", "host", "players"}
+    assert set(answer) == {"type", "code", "host", "players", "mode", "phase"}
     assert all(set(listed) == {"name", "character"} for listed in answer["players"])
 
 

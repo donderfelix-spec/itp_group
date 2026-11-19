@@ -274,7 +274,15 @@ async def answer_lobby_message(websocket: WebSocket, message: dict):
     handler = LOBBY_HANDLERS[message["type"]]
     rejection_code = await handler(websocket, name, message)
     if rejection_code is not None:
-        await websocket.send_json(protocol.rejection(rejection_code))
+        await websocket.send_json(rejection_for(name, rejection_code))
+
+
+def rejection_for(name: str, rejection_code: str) -> dict:
+    """The error message for a lobby action the rules refused."""
+    if rejection_code == "too_few_players":
+        # The only rejection without a fixed text: it names the lobby's mode.
+        return protocol.too_few_players(app.state.lobbies.lobby_of(name).mode)
+    return protocol.rejection(rejection_code)
 
 
 async def handle_create_lobby(websocket: WebSocket, name: str, message: dict):
@@ -306,6 +314,23 @@ async def handle_choose_character(websocket: WebSocket, name: str, message: dict
         # for the others, so only the player gets an answer.
         await websocket.send_json(state_of(lobby))
     return None
+
+
+async def handle_choose_mode(websocket: WebSocket, name: str, message: dict):
+    lobby, rejection_code = app.state.lobbies.choose_mode(name, message["mode"])
+    if rejection_code is None:
+        await tell_lobby(lobby)
+    return rejection_code
+
+
+async def handle_start_game(websocket: WebSocket, name: str, message: dict):
+    # The new state with phase "round" is the news that the round started;
+    # there is no message of its own for it (S-91). The next tick sends
+    # everybody's position on the spawn.
+    lobby, rejection_code = app.state.lobbies.start(name)
+    if rejection_code is None:
+        await tell_lobby(lobby)
+    return rejection_code
 
 
 async def handle_leave_lobby(websocket: WebSocket, name: str, message: dict):
@@ -358,7 +383,7 @@ def is_member(name: str, lobby) -> bool:
 
 
 def state_of(lobby) -> dict:
-    return protocol.lobby_state(lobby.code, lobby.host, lobby.players())
+    return protocol.lobby_state(lobby.code, lobby.host, lobby.players(), lobby.mode, lobby.phase)
 
 
 async def send_to(name: str, message: dict) -> bool:
@@ -402,6 +427,8 @@ LOBBY_HANDLERS = {
     "join_lobby": handle_join_lobby,
     "leave_lobby": handle_leave_lobby,
     "choose_character": handle_choose_character,
+    "choose_mode": handle_choose_mode,
+    "start_game": handle_start_game,
 }
 
 
