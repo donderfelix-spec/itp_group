@@ -39,7 +39,7 @@ These points hold up the start. The reasoning behind them is under “Open decis
 
 **Area 2**
 
-- [ ] **M1-2.0** Accounts: tables in Supabase, sign up, log in, log out, guest access, with tests for rejected cases (name taken, wrong password, password too short)
+- [ ] **M1-2.0** Accounts: tables in Supabase, sign up, log in, log out, guest access, with tests for rejected cases (name taken, wrong password, password too short). _Server side built and tested with the in-memory store. Still open: one run against the real Supabase database, and the forms in the browser (M1-2.1)._
 - [ ] **M1-2.1** Start page: log in or play as a guest, create a lobby or join with a code
 - [ ] **M1-2.2** Lobby on the server: code, player list, host
 - [ ] **M1-2.3** Synchronise positions and smooth the movement of the other players
