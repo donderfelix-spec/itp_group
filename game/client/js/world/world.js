@@ -38,19 +38,29 @@ Game.world = Game.world || {};
   var GLIDE_MILLISECONDS = 1000 / 15;
   // A longer way than this in one message is a respawn: jump, do not glide.
   var JUMP_DISTANCE = 60;
-  // How long after its last step a character still counts as walking. Longer
-  // than one interval, so the feet do not stop between two messages.
-  var STILL_WALKING_MILLISECONDS = 160;
+  // A real step is at most 9 map units on an axis: the server moves a player
+  // by at most 0.1 seconds x 90 units per second in one go. A larger change
+  // is the server putting the player somewhere else (the spawn at the start
+  // of a round): not a step, so the character neither walks nor turns.
+  var LONGEST_STEP = 15;
+  // The feet take full steps while the character glides. With the first
+  // step the steps grow to full size within this time; when no further step
+  // arrives they shrink to nothing within the second time, so the feet are
+  // put down softly instead of snapping to the ground.
+  var STRIDE_GROWS_MILLISECONDS = GLIDE_MILLISECONDS;
+  var STRIDE_FADES_MILLISECONDS = 150;
   // One walking cycle is two steps: left foot, right foot.
   var WALK_CYCLE_MILLISECONDS = 420;
   // A change of position smaller than this, in map units, is not a step: it
   // neither turns the character nor moves its feet. A real step is about 6
   // units (90 units per second, 15 messages per second, S-86).
   var SMALLEST_STEP = 1;
-  // A walking character rises a little on every step (characters.js). The
-  // names are placed this much higher, in map units, so a head never
-  // touches its name.
-  var BOB_HEIGHT = 1.2;
+  // Free room between the top of a standing character and its name, in map
+  // units. A walking character rises on every step (BODY_BOB in
+  // characters.js: 3 of its 112 design units, which is 0.7 map units at
+  // CHARACTER_HEIGHT). This room must be at least that rise, so a head
+  // never touches its name.
+  var HEAD_ROOM_BELOW_NAME = 1.2;
 
   // Which keys walk where. `event.code` names the place of a key on the
   // keyboard, so WASD also sits right on a keyboard with another layout.
@@ -97,6 +107,7 @@ Game.world = Game.world || {};
       to: null,
       arrivedAt: 0, // when `to` arrived, in milliseconds
       lastStepAt: -Infinity, // when the character last took a step
+      strideAtLastStep: 0, // how big its steps were at that moment, 0 to 1
       walkingSince: 0, // when it started to walk; the walking cycle starts here
       // Where the character looks. It keeps both after it stopped.
       direction: "front", // "front", "side" or "back", see drawCharacter()
@@ -142,8 +153,14 @@ Game.world = Game.world || {};
     if (isJump) {
       start = { x: x, y: y };
     }
-    if (player.to && !isJump) {
-      takeStep(player, x - player.to.x, y - player.to.y, now);
+    if (player.to) {
+      var dx = x - player.to.x;
+      var dy = y - player.to.y;
+      if (isJump || isLongerThanAStep(dx, dy)) {
+        standFacingFront(player);
+      } else {
+        takeStep(player, dx, dy, now);
+      }
     }
     player.from = start;
     player.to = { x: x, y: y };
@@ -163,6 +180,8 @@ Game.world = Game.world || {};
     if (!isWalking(player, now)) {
       player.walkingSince = now;
     }
+    // Remember how big the steps are right now: they grow on from there.
+    player.strideAtLastStep = stride(player, now);
     player.lastStepAt = now;
     // On a diagonal, up or down decides between face and back of the head,
     // and left or right decides the mirroring. Walking straight up or down
@@ -177,8 +196,39 @@ Game.world = Game.world || {};
     }
   }
 
+  function isLongerThanAStep(dx, dy) {
+    return Math.abs(dx) > LONGEST_STEP || Math.abs(dy) > LONGEST_STEP;
+  }
+
+  // The server put the player somewhere else. The character stands there
+  // and looks at the viewer, like everybody else who was put there.
+  function standFacingFront(player) {
+    player.lastStepAt = -Infinity;
+    player.strideAtLastStep = 0;
+    player.direction = "front";
+    player.facingLeft = false;
+  }
+
+  // How big the steps of the player are at the time `now`, from 0 (it
+  // stands) to 1 (full steps). After a step they grow to full size; once the
+  // glide of that step is over and no new step has come, they fade away.
+  // It only depends on the time, like drawnPosition(), so it looks the same
+  // on every screen, however often that screen is redrawn.
+  function stride(player, now) {
+    // Never below 0: the time of a frame can lie a moment before the time
+    // at which the message with the step arrived.
+    var sinceStep = Math.max(0, now - player.lastStepAt);
+    var grown = Math.min(1, player.strideAtLastStep + sinceStep / STRIDE_GROWS_MILLISECONDS);
+    var faded = (sinceStep - GLIDE_MILLISECONDS) / STRIDE_FADES_MILLISECONDS;
+    faded = Math.max(0, Math.min(1, faded));
+    // Slow at the start and at the end (the curve 3t² - 2t³). A message that
+    // is a little late then hardly shrinks the steps before it arrives.
+    var easedFade = faded * faded * (3 - 2 * faded);
+    return grown * (1 - easedFade);
+  }
+
   function isWalking(player, now) {
-    return now - player.lastStepAt < STILL_WALKING_MILLISECONDS;
+    return stride(player, now) > 0;
   }
 
   // How far the player is in its walking cycle, from 0 to 1, or null when
@@ -597,7 +647,8 @@ Game.world = Game.world || {};
     var pose = {
       direction: player.direction,
       mirrored: player.facingLeft,
-      walkPhase: walkPhase(player, now)
+      walkPhase: walkPhase(player, now),
+      stride: stride(player, now)
     };
     Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
   }
@@ -611,7 +662,7 @@ Game.world = Game.world || {};
   // The label of one player where it belongs: centred directly above the
   // head. `x` and `y` are the middle of the label.
   function labelAboveHead(entry) {
-    var headTop = figureMiddleY(entry.y) - CHARACTER_HEIGHT / 2 - BOB_HEIGHT;
+    var headTop = figureMiddleY(entry.y) - CHARACTER_HEIGHT / 2 - HEAD_ROOM_BELOW_NAME;
     return {
       name: entry.player.name,
       x: entry.x,

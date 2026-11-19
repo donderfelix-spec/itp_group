@@ -21,7 +21,9 @@ Game.world = Game.world || {};
   var OUTLINE = "#2E2A3B";
   var SKIN = "#F6E7D0";
 
-  // The drawing reaches from y = -12 (hair bun) to y = 100 (shadow).
+  // The drawing of a standing character reaches from y = -12 (hair bun) to
+  // y = 100 (shadow). A walking one rises above that on every step, by up
+  // to BODY_BOB; its middle is still counted from these two numbers.
   var DESIGN_TOP = -12;
   var DESIGN_HEIGHT = 112;
 
@@ -242,15 +244,14 @@ Game.world = Game.world || {};
   //   leftHand, rightHand where the hands are, as [x, y]
   //   behind(ctx)         drawn behind the body (backpack, hood)
   //   clothes(ctx)        drawn on the body (tie, vest, long hair)
-  //   object(ctx)         the thing in the hand
+  //   object(ctx, fromBehind)  the thing in the hand; with fromBehind it
+  //                       shows its plain back: no writing, no stickers
   //   head(ctx, turn)     hair, hat, glasses, headphones; `turn` is how far
   //                       the face is turned to the side (see drawFace)
   //
   // And for the view from behind (a character walking up, away from us):
   //   backClothes(ctx)    drawn on the back (backpack, back of the vest)
   //   backHead(ctx)       hair and headwear from behind, drawn over the head
-  //   objectInFront       true if the object is carried in front of the
-  //                       body: from behind the body hides it
 
   var PLAIN_LOOK = {
     body: "#B9B4A6", legs: "#8F8A7D", leftHand: [-22, 65], rightHand: [22, 65],
@@ -268,10 +269,12 @@ Game.world = Game.world || {};
         shape(ctx, "M-2.8 41 L2.8 41 L3.3 52 L2.1 57.5 L0 63 L-2.1 57.5 L-3.3 52 Z", "#E0483E", 1.2);
         stroke(ctx, "M-9 39 L-2.6 56 M9 39 L2.6 56", "#1C3156", 2.5);
       },
-      object: function (ctx) {
+      object: function (ctx, fromBehind) {
         box(ctx, 12, 73, 22, 16, 2.5, "#8A5A3B", 2);
         stroke(ctx, "M18 73 v-5 h10 v5", OUTLINE, 2);
-        box(ctx, 21, 79, 4, 3, 0, "#FFD23F", 0);
+        if (!fromBehind) {
+          box(ctx, 21, 79, 4, 3, 0, "#FFD23F", 0); // the lock
+        }
       },
       head: function (ctx) {
         shape(ctx, "M-18 19 A18 18 0 0 1 18 19 Q10 7 -3 9 Q-12 10 -18 19 Z", "#3B2F2F", 2);
@@ -295,9 +298,13 @@ Game.world = Game.world || {};
         shape(ctx, "M18 48 Q18 39 8 39 L4 39 L4 79 L10 79 Q18 79 18 70 Z", "#3F4A5E", 1.5);
         stroke(ctx, "M-17 52 h13 M-17 62 h13 M-17 72 h13 M4 52 h13 M4 62 h13 M4 72 h13", "#2A3345", 1.5);
       },
-      object: function (ctx) {
+      object: function (ctx, fromBehind) {
         box(ctx, 19, 42, 13, 22, 2.5, OUTLINE, 0);
-        stroke(ctx, "M21.5 58 L24.5 51 L27 54.5 L30 46", "#6BD68A", 1.8);
+        if (fromBehind) {
+          circle(ctx, 28.5, 45.5, 1.4, "#55555F", 0); // the camera on its back
+        } else {
+          stroke(ctx, "M21.5 58 L24.5 51 L27 54.5 L30 46", "#6BD68A", 1.8);
+        }
       },
       head: function (ctx) {
         shape(ctx, "M-18 19 A18 18 0 0 1 18 19 Q14 6 0 7 Q-14 6 -18 19 Z", "#8A6A3B", 2);
@@ -324,12 +331,15 @@ Game.world = Game.world || {};
         stroke(ctx, "M-6 40 L0 52 L6 40", OUTLINE, 1.5);
         box(ctx, -4, 52, 8, 10, 1.5, "#FFFFFF", 1.5);
       },
-      object: function (ctx) {
+      object: function (ctx, fromBehind) {
         stroke(ctx, "M28 62 V48 H37 V62", OUTLINE, 2);
         box(ctx, 23, 62, 19, 27, 3, "#2BB3A3", 2);
-        circle(ctx, 29, 70, 2.5, "#FFD23F", 0);
-        box(ctx, 33, 75, 6, 5, 0, "#F2695C", 0);
-        circle(ctx, 30, 82, 2, "#FFFFFF", 0);
+        if (!fromBehind) {
+          // The stickers are on the front.
+          circle(ctx, 29, 70, 2.5, "#FFD23F", 0);
+          box(ctx, 33, 75, 6, 5, 0, "#F2695C", 0);
+          circle(ctx, 30, 82, 2, "#FFFFFF", 0);
+        }
         circle(ctx, 27, 91, 2.5, OUTLINE, 0);
         circle(ctx, 38, 91, 2.5, OUTLINE, 0);
       },
@@ -377,7 +387,6 @@ Game.world = Game.world || {};
     // Black hoodie with the hood up, laptop covered in stickers.
     founder: {
       body: "#33333D", legs: "#4A5568", shoes: "#FFFFFF", leftHand: [-18, 68], rightHand: [18, 68],
-      objectInFront: true,
       behind: function (ctx) {
         circle(ctx, 0, 20, 22, "#33333D", 2.5);
       },
@@ -395,9 +404,11 @@ Game.world = Game.world || {};
       },
       backClothes: nothing,
       backHead: function (ctx) {
-        // The hood hides the whole head; a seam runs down its middle.
+        // The hood hides the whole head. A seam runs down its middle and a
+        // lighter rim shows where the hood ends and the back begins.
         circle(ctx, 0, 20, 22, "#33333D", 2.5);
-        stroke(ctx, "M0 0 V38", "#55555F", 1.8);
+        stroke(ctx, "M0 0 V38", "#6E6E7A", 1.8);
+        stroke(ctx, "M-15 35.5 Q0 43.5 15 35.5", "#6E6E7A", 2);
       }
     },
 
@@ -410,13 +421,16 @@ Game.world = Game.world || {};
         circle(ctx, 0, 62, 1.6, OUTLINE, 0);
         circle(ctx, 0, 70, 1.6, OUTLINE, 0);
       },
-      object: function (ctx) {
+      object: function (ctx, fromBehind) {
         box(ctx, 7, 54, 24, 30, 2.5, "#FFFFFF", 2);
         box(ctx, 31, 58, 5, 6, 0, "#F2695C", 1);
         box(ctx, 31, 66, 5, 6, 0, "#FFD23F", 1);
         box(ctx, 31, 74, 5, 6, 0, "#6FA8F0", 1);
-        stroke(ctx, "M11 61 h15 M11 67 h15 M11 73 h10", "#B9B4A6", 1.5);
-        label(ctx, "A+", 19, 82, 7, "#5FA86B");
+        if (!fromBehind) {
+          // The writing is on the front of the folder.
+          stroke(ctx, "M11 61 h15 M11 67 h15 M11 73 h10", "#B9B4A6", 1.5);
+          label(ctx, "A+", 19, 82, 7, "#5FA86B");
+        }
       },
       head: function (ctx, turn) {
         shape(ctx, "M-18 19 A18 18 0 0 1 18 19 Q9 9 0 9 Q-9 9 -18 19 Z", "#5A3E2B", 2);
@@ -457,7 +471,6 @@ Game.world = Game.world || {};
     // Purple hoodie, large headphones, stack of books in front of the body.
     library_local: {
       body: "#7A5CC2", legs: "#B9B4A6", leftHand: [-16, 73], rightHand: [16, 73],
-      objectInFront: true,
       behind: nothing,
       clothes: nothing,
       object: function (ctx) {
@@ -572,8 +585,17 @@ Game.world = Game.world || {};
       mirrored: given.mirrored === true,
       // -1 to 1: the swing of the walking cycle, 0 when standing. Above 0
       // the left foot is in the air, below 0 the right one.
-      swing: isWalking ? Math.sin(given.walkPhase * 2 * Math.PI) : 0
+      swing: isWalking ? Math.sin(given.walkPhase * 2 * Math.PI) * strideOf(given) : 0
     };
+  }
+
+  // How big the steps are, from 0 (none) to 1 (full). Full if nothing
+  // understandable was passed.
+  function strideOf(given) {
+    if (typeof given.stride !== "number" || isNaN(given.stride)) {
+      return 1;
+    }
+    return Math.max(0, Math.min(1, given.stride));
   }
 
   // Where one foot is. The foot that is in the air is also the one in
@@ -605,10 +627,10 @@ Game.world = Game.world || {};
     drawLeg(ctx, 1, footOf(pose, 1), look.legs, raised);
   }
 
-  function drawArmsObjectAndHands(ctx, look) {
+  function drawArmsObjectAndHands(ctx, look, fromBehind) {
     drawArm(ctx, -1, look.leftHand, look.body);
     drawArm(ctx, 1, look.rightHand, look.body);
-    look.object(ctx);
+    look.object(ctx, fromBehind);
     drawHand(ctx, look.leftHand);
     drawHand(ctx, look.rightHand);
   }
@@ -618,22 +640,19 @@ Game.world = Game.world || {};
   function drawUpperBodyFromFront(ctx, look, turn) {
     drawBody(ctx, look.body);
     look.clothes(ctx);
-    drawArmsObjectAndHands(ctx, look);
+    drawArmsObjectAndHands(ctx, look, false);
     drawFace(ctx, turn);
     look.head(ctx, turn);
   }
 
-  // Everything above the legs, seen from behind: no face, and an object
-  // that is carried in front of the body disappears behind it.
+  // Everything above the legs, seen from behind: no face. The arms and
+  // what they hold are in front of the character, so they are drawn first
+  // and the body covers them: only what sticks out at the sides is seen,
+  // and the object shows its plain back.
   function drawUpperBodyFromBehind(ctx, look) {
-    if (look.objectInFront) {
-      drawArmsObjectAndHands(ctx, look);
-    }
+    drawArmsObjectAndHands(ctx, look, true);
     drawBody(ctx, look.body);
     look.backClothes(ctx);
-    if (!look.objectInFront) {
-      drawArmsObjectAndHands(ctx, look);
-    }
     drawBareHead(ctx);
     look.backHead(ctx);
   }
@@ -681,6 +700,9 @@ Game.world = Game.world || {};
   //              (two steps); 0 and 0.5 are the moments with both feet on
   //              the ground. Leave it out or pass null for a standing
   //              character.
+  //   stride     how big the steps are, from 0 (the feet stay down) to 1
+  //              (full steps, also when it is left out). world.js lets it
+  //              grow and shrink so that starting and stopping look soft.
   // The middle of the standing character stays at (x, y) in every pose; a
   // walking one rises by at most 3 % of its height on each step.
   function drawCharacter(ctx, characterId, x, y, size, pose) {
