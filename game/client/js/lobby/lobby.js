@@ -1,0 +1,185 @@
+// The panel next to the map: lobby code, player list, character selection.
+//
+// It draws what the last `lobby_state` message of the server says and nothing
+// else. Clicking a character only asks the server; the panel changes when the
+// server answers.
+
+window.Game = window.Game || {};
+
+(function () {
+  const ICON_PIXELS = 48; // width and height of an icon canvas on the page
+  const CHARACTER_PIXELS = 44; // height of the character drawn inside it
+  const DOT_RADIUS = 15; // the plain dot drawn when there is no character drawing
+  const DOT_COLOUR = '#8A8494';
+
+  // Used only while the drawing code of the map (Game.world) is missing.
+  // Names from DESIGN.md, section 3, in the order of protocol.CHARACTERS.
+  const FALLBACK_CHARACTERS = [
+    { id: 'consultant', name: 'The Consultant' },
+    { id: 'finance_bro', name: 'The Finance Bro' },
+    { id: 'exchange_student', name: 'The Exchange Student' },
+    { id: 'surfer', name: 'The Surfer' },
+    { id: 'founder', name: 'The Founder' },
+    { id: 'overachiever', name: 'The Overachiever' },
+    { id: 'latecomer', name: 'The Latecomer' },
+    { id: 'library_local', name: 'The Library Local' },
+  ];
+
+  const codeElement = document.getElementById('lobby-code');
+  const playerList = document.getElementById('lobby-players');
+  const characterGrid = document.getElementById('lobby-characters');
+  const characterButtons = {}; // character id -> its button
+  let ownName = null;
+
+  function setup() {
+    allCharacters().forEach(addCharacterButton);
+    document.getElementById('lobby-leave').addEventListener('click', () => {
+      Game.net.ask({ type: 'leave_lobby' });
+    });
+  }
+
+  function setOwnName(name) {
+    ownName = name;
+  }
+
+  function allCharacters() {
+    const fromWorld = Game.world && Game.world.characters;
+    return Array.isArray(fromWorld) && fromWorld.length > 0 ? fromWorld : FALLBACK_CHARACTERS;
+  }
+
+  function findCharacter(characterId) {
+    return allCharacters().find((character) => character.id === characterId);
+  }
+
+  // ---- Icons ----
+
+  function makeIcon(characterId) {
+    const canvas = document.createElement('canvas');
+    canvas.className = 'icon';
+    // More pixels than the size on the page, so the icon is sharp on
+    // high-resolution screens.
+    const sharpness = window.devicePixelRatio || 1;
+    canvas.width = ICON_PIXELS * sharpness;
+    canvas.height = ICON_PIXELS * sharpness;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(sharpness, sharpness);
+    drawIcon(ctx, characterId);
+    return canvas;
+  }
+
+  function drawIcon(ctx, characterId) {
+    const middle = ICON_PIXELS / 2;
+    if (Game.world && typeof Game.world.drawCharacter === 'function') {
+      try {
+        Game.world.drawCharacter(ctx, characterId, middle, middle, CHARACTER_PIXELS);
+        return;
+      } catch (problem) {
+        // The drawing code failed. The panel must still work, so the dot
+        // below is drawn instead.
+        ctx.clearRect(0, 0, ICON_PIXELS, ICON_PIXELS);
+      }
+    }
+    drawDot(ctx, characterId, middle);
+  }
+
+  function drawDot(ctx, characterId, middle) {
+    const character = findCharacter(characterId);
+    ctx.beginPath();
+    ctx.arc(middle, middle, DOT_RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = (character && character.colour) || DOT_COLOUR;
+    ctx.fill();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#2E2A3B';
+    ctx.stroke();
+  }
+
+  // ---- Character selection ----
+
+  // The eight buttons are built once and only updated afterwards, so the
+  // keyboard focus stays where it is when the lobby changes.
+  function addCharacterButton(character) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'character';
+    button.appendChild(makeIcon(character.id));
+    button.appendChild(makeCharacterText(character));
+    button.addEventListener('click', () => {
+      Game.net.ask({ type: 'choose_character', character: character.id });
+    });
+    characterButtons[character.id] = button;
+    characterGrid.appendChild(button);
+  }
+
+  // The lobby line is shown only on the player's own card (see style.css),
+  // so the eight cards stay small. On the others it is a tooltip.
+  function makeCharacterText(character) {
+    const text = makeText('span', 'character-text', '');
+    text.appendChild(makeText('span', 'character-name', character.name));
+    if (character.line) {
+      const line = '“' + character.line + '”';
+      text.appendChild(makeText('span', 'character-line', line));
+      text.title = line;
+    }
+    return text;
+  }
+
+  function showCharacters(players) {
+    const own = players.find((player) => player.name === ownName);
+    const takenByOthers = players
+      .filter((player) => player.name !== ownName)
+      .map((player) => player.character);
+
+    Object.keys(characterButtons).forEach((characterId) => {
+      const button = characterButtons[characterId];
+      const isOwn = Boolean(own) && own.character === characterId;
+      const isTaken = takenByOthers.includes(characterId);
+      button.classList.toggle('character-own', isOwn);
+      button.setAttribute('aria-pressed', String(isOwn));
+      // The server rejects a taken character anyway (S-81); switching the
+      // button off only saves the player the error.
+      button.disabled = isTaken;
+    });
+  }
+
+  // ---- Player list ----
+
+  function showPlayers(state) {
+    playerList.replaceChildren();
+    state.players.forEach((player) => {
+      playerList.appendChild(makePlayerRow(player, state.host));
+    });
+  }
+
+  function makePlayerRow(player, hostName) {
+    const row = document.createElement('li');
+    row.className = player.name === ownName ? 'player player-own' : 'player';
+    row.appendChild(makeIcon(player.character));
+    // textContent, never innerHTML: a name is text from another player.
+    const name = makeText('span', 'player-name', player.name);
+    name.title = player.name; // A long name is cut off in the narrow list.
+    row.appendChild(name);
+    if (player.name === hostName) row.appendChild(makeText('span', 'marker marker-host', 'Host'));
+    if (player.name === ownName) row.appendChild(makeText('span', 'marker', 'You'));
+    return row;
+  }
+
+  function makeText(tag, className, text) {
+    const element = document.createElement(tag);
+    element.className = className;
+    element.textContent = text;
+    return element;
+  }
+
+  // ---- The whole panel ----
+
+  function show(state) {
+    codeElement.textContent = state.code;
+    showPlayers(state);
+    showCharacters(state.players);
+    const isHost = state.host === ownName;
+    document.getElementById('lobby-host-area').hidden = !isHost;
+    document.getElementById('lobby-waiting').hidden = isHost;
+  }
+
+  Game.lobby = { setup: setup, setOwnName: setOwnName, show: show };
+})();
