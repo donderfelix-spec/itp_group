@@ -68,8 +68,8 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 **For the team to decide**
 
 - [ ] **K13** Confirm or change the decisions marked “Proposal” from milestone 1: S-83 to S-89 in DECISIONS.md
-- [ ] **K15** Two findings of the play test of the minigames: “Brew the order” and “Build the tray” take about 5 seconds instead of the 10 to 25 of DESIGN.md, section 8; and both can be solved without reading the slip by clicking everything, because a mistake costs nothing (S-58). Leave it, or make them longer or let a mistake cost a moment?
-- [ ] **K14** The hedge is solid, but a hiding spot is drawn inside it: hide beside the hedge, or make the hedge walkable? (S-87, needed for M3-1.4)
+- [x] **K15** Settled 2026-11-19: they stay as they are for now (S-99). Two findings of the play test of the minigames: “Brew the order” and “Build the tray” take about 5 seconds instead of the 10 to 25 of DESIGN.md, section 8; and both can be solved without reading the slip by clicking everything, because a mistake costs nothing (S-58). Leave it, or make them longer or let a mistake cost a moment?
+- [x] **K14** Settled 2026-11-19: players hide inside the hedge, so the hedge becomes walkable (S-98, replaces the solid hedge of S-87). Built with M3-1.4
 
 ## M2: Duel
 
@@ -97,7 +97,6 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M2-4.7a** A fault after a task was counted takes the count back, in the frame and in the Duel, so the server never counts a station the browser was not told about (solved with M2-4.7)
 - [x] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard (S-94). In the pull request after #26
 - [ ] **M2-4.8** Play test: two players play a Duel through to the leaderboard (Lennart). A scripted run with two browsers and the real minigames exists from the building of M2-4.7 (both finish, ranking, second round, time running out). Left to do: two people on two computers on the deployed server, and write down what gets in the way
-- [ ] **K15** belongs here too: “Brew the order” and “Build the tray” are short and can be solved by clicking everything, which matters most in Duel (see “For the team to settle”)
 
 **Known and open after the Duel**
 
