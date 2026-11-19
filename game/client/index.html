@@ -7,11 +7,132 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <main class="start">
-    <h1 class="logo" aria-label="Group Project">GROUP PRO<span class="logo-odd">J</span>ECT</h1>
-    <p class="tagline">Everyone is working on the group project. One of you is only pretending.</p>
-    <p id="status" class="status status-waiting" role="status">Connecting…</p>
+  <!-- Short messages of the server, at the top centre of every screen. -->
+  <p id="message" class="message" role="status" hidden></p>
+
+  <main>
+    <!-- Screen 1: Start -->
+    <section id="screen-start" class="screen screen-centred">
+      <h1 class="logo" aria-label="Group Project">GROUP PRO<span class="logo-odd">J</span>ECT</h1>
+      <p class="tagline">Everyone is working on the group project. One of you is only pretending.</p>
+      <div class="button-column">
+        <button type="button" id="start-login" class="button button-main">Log in</button>
+        <button type="button" id="start-signup" class="button">Sign up</button>
+        <button type="button" id="start-guest" class="button">Play as guest</button>
+      </div>
+    </section>
+
+    <!-- Screen 2a: Sign up -->
+    <section id="screen-signup" class="screen screen-centred" hidden>
+      <form id="signup-form" class="card" novalidate>
+        <h2>Sign up</h2>
+        <div class="field">
+          <label for="signup-name">Username</label>
+          <input id="signup-name" name="name" type="text" autocomplete="username" maxlength="16"
+                 autocapitalize="none" spellcheck="false"
+                 aria-describedby="signup-name-rule signup-name-error">
+          <p id="signup-name-rule" class="rule">3–16 letters or numbers</p>
+          <p id="signup-name-error" class="field-error" role="alert"></p>
+        </div>
+        <div class="field">
+          <label for="signup-password">Password</label>
+          <input id="signup-password" name="password" type="password" autocomplete="new-password" maxlength="64"
+                 aria-describedby="signup-password-rule signup-password-error">
+          <p id="signup-password-rule" class="rule">8–64 characters</p>
+          <p id="signup-password-error" class="field-error" role="alert"></p>
+        </div>
+        <p id="signup-form-error" class="field-error" role="alert"></p>
+        <div class="button-row">
+          <button type="submit" id="signup-submit" class="button button-main">Sign up</button>
+          <button type="button" id="signup-back" class="button">Back</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Screen 2b: Log in -->
+    <section id="screen-login" class="screen screen-centred" hidden>
+      <form id="login-form" class="card" novalidate>
+        <h2>Log in</h2>
+        <div class="field">
+          <label for="login-name">Username</label>
+          <input id="login-name" name="name" type="text" autocomplete="username" maxlength="16"
+                 autocapitalize="none" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="login-password">Password</label>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="64">
+        </div>
+        <p id="login-form-error" class="field-error" role="alert"></p>
+        <div class="button-row">
+          <button type="submit" id="login-submit" class="button button-main">Log in</button>
+          <button type="button" id="login-back" class="button">Back</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Screen 3: Home -->
+    <section id="screen-home" class="screen screen-centred" hidden>
+      <div class="card">
+        <p class="profile">
+          Signed in as <strong id="home-name"></strong>
+          <span id="home-guest" class="marker" hidden>guest</span>
+        </p>
+        <button type="button" id="home-create" class="button button-main">Create lobby</button>
+        <form id="join-form" class="field" novalidate>
+          <label for="join-code">Join with code</label>
+          <div class="button-row">
+            <input id="join-code" name="code" type="text" class="code-input" maxlength="4"
+                   autocomplete="off" autocapitalize="characters" spellcheck="false"
+                   aria-describedby="join-code-error">
+            <button type="submit" id="join-submit" class="button">Join</button>
+          </div>
+          <p id="join-code-error" class="field-error" role="alert"></p>
+        </form>
+        <button type="button" id="home-logout" class="button">Log out</button>
+      </div>
+    </section>
+
+    <!-- Screen 4: Lobby, with the map next to it -->
+    <section id="screen-lobby" class="screen screen-lobby" hidden>
+      <div class="map-area">
+        <canvas id="map" class="map" aria-label="Campus map"></canvas>
+        <p class="hint">Walk with WASD or the arrow keys</p>
+      </div>
+      <!-- The top and the bottom of the panel always stay visible. Only the
+           middle scrolls when the window is too low for it. -->
+      <aside class="panel" aria-label="Lobby">
+        <div class="panel-top">
+          <h2 class="panel-heading">Lobby code</h2>
+          <p id="lobby-code" class="lobby-code"></p>
+        </div>
+
+        <div class="panel-middle">
+          <h2 class="panel-heading">Players</h2>
+          <ul id="lobby-players" class="players"></ul>
+
+          <h2 class="panel-heading">Character</h2>
+          <div id="lobby-characters" class="characters"></div>
+        </div>
+
+        <div class="panel-bottom">
+          <p id="lobby-waiting" class="waiting">Waiting for the host</p>
+          <div id="lobby-host-area" hidden>
+            <button type="button" class="button button-main" disabled>Start game</button>
+            <p class="rule">Coming with the next milestone</p>
+          </div>
+          <button type="button" id="lobby-leave" class="button">Leave lobby</button>
+        </div>
+      </aside>
+    </section>
   </main>
+
+  <script src="js/net.js"></script>
+  <script src="js/world/characters.js"></script>
+  <script src="js/world/draw.js"></script>
+  <script src="js/world/world.js"></script>
+  <script src="js/lobby/screens.js"></script>
+  <script src="js/lobby/forms.js"></script>
+  <script src="js/lobby/lobby.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

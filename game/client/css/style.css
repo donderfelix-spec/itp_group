@@ -7,6 +7,8 @@
   --coral: #F2695C;
   --green: #5FA86B;
   --water: #9CD3E6;
+  --outline: 2.5px solid var(--ink);
+  --shadow: 4px 4px 0 var(--ink);
 }
 
 * { box-sizing: border-box; }
@@ -21,7 +23,15 @@ body {
   line-height: 1.5;
 }
 
-.start {
+h2 { margin: 0; font-size: 28px; font-weight: 800; }
+p { margin: 0; }
+
+/* ---- Screens: exactly one is visible (js/lobby/screens.js) ---- */
+
+/* Without this rule `display: flex` below would win over the hidden attribute. */
+[hidden] { display: none !important; }
+
+.screen-centred {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -31,6 +41,8 @@ body {
   padding: 24px;
   text-align: center;
 }
+
+/* ---- Logo ---- */
 
 .logo {
   margin: 0;
@@ -47,17 +59,352 @@ body {
   transform: rotate(9deg) translateY(0.08em);
 }
 
-.tagline { margin: 0; max-width: 40ch; }
+.tagline { max-width: 40ch; }
 
-.status {
-  margin: 0;
-  padding: 6px 16px;
-  border: 2.5px solid var(--ink);
-  border-radius: 999px;
+/* ---- Buttons and cards: like stickers ---- */
+
+.button {
+  padding: 10px 22px;
+  border: var(--outline);
+  border-radius: 14px;
   background: var(--cream);
-  box-shadow: 4px 4px 0 var(--ink);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.button-main { background: var(--sun); }
+
+/* A pressed button moves onto its shadow. */
+.button:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.button:disabled {
+  background: #D9D3C5;
+  color: #6F6A7A;
+  cursor: not-allowed;
+}
+
+/* Shows where the keyboard is. */
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.button-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(100%, 280px);
+}
+
+.button-row {
+  display: flex;
+  gap: 12px;
+}
+
+.button-row > .button-main { flex: 1; }
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(100%, 400px);
+  padding: 28px;
+  border: var(--outline);
+  border-radius: 18px;
+  background: var(--cream);
+  box-shadow: 6px 6px 0 var(--ink);
+  text-align: left;
+}
+
+/* ---- Form fields ---- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+label { font-weight: 700; }
+
+input {
+  width: 100%;
+  padding: 10px 12px;
+  border: var(--outline);
+  border-radius: 10px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+}
+
+.rule { font-size: 15px; }
+
+/* An error of the server, directly at the field it belongs to. */
+.field-error {
+  padding: 4px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--coral);
+  font-size: 16px;
   font-weight: 600;
 }
 
-.status-ok { background: var(--green); }
-.status-error { background: var(--coral); }
+.field-error:empty { display: none; }
+
+.code-input {
+  flex: 1;
+  min-width: 0;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-align: center;
+  /* Shown in capitals however it is typed; the server reads any case. */
+  text-transform: uppercase;
+}
+
+/* ---- Small labels: "Host", "You", "guest" ---- */
+
+.marker {
+  padding: 0 8px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--cream);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.marker-host { background: var(--sun); }
+
+/* ---- Messages at the top centre ---- */
+
+.message {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  z-index: 10;
+  max-width: calc(100vw - 32px);
+  padding: 6px 18px;
+  border: var(--outline);
+  border-radius: 999px;
+  background: var(--cream);
+  box-shadow: var(--shadow);
+  font-weight: 600;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.message-error { background: var(--coral); }
+
+/* ---- Lobby: the map with the panel next to it ---- */
+
+.screen-lobby {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  height: 100vh;
+}
+
+.map-area {
+  position: relative;
+  min-height: 0;
+  padding: 16px;
+}
+
+.map {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: var(--outline);
+  border-radius: 18px;
+  background: var(--cream);
+  box-shadow: var(--shadow);
+}
+
+.hint {
+  position: absolute;
+  left: 50%;
+  bottom: 30px;
+  padding: 2px 14px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--cream);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: var(--outline);
+  background: var(--cream);
+}
+
+/* The code at the top and the buttons at the bottom always stay visible.
+   Only the middle scrolls when the window is too low for it. */
+.panel-top,
+.panel-bottom {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.panel-bottom { border-top: var(--outline); }
+
+.panel-middle {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 16px 12px;
+  overflow-y: auto;
+}
+
+.panel-heading {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Large, for reading aloud to the others. */
+.lobby-code {
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  line-height: 1;
+}
+
+/* Two columns, so eight players need four or five short rows. */
+.players {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  /* Fills the place next to the wide own row instead of leaving a hole. */
+  grid-auto-flow: dense;
+  gap: 2px 8px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+/* The own row can carry two markers, so it gets the full width. */
+.player-own { grid-column: 1 / -1; }
+
+.player-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon {
+  flex: none;
+  width: 48px;
+  height: 48px;
+}
+
+/* Smaller in the panel, so eight players and eight characters fit a laptop screen. */
+.player > .icon {
+  width: 30px;
+  height: 30px;
+}
+
+.character > .icon {
+  width: 36px;
+  height: 36px;
+}
+
+.characters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+}
+
+.character {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+
+.character-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.character-name { font-weight: 700; }
+
+/* The lobby line: only on the own card, a tooltip on the others. */
+.character-line {
+  display: none;
+  font-size: 12px;
+}
+
+.character-own .character-line { display: block; }
+
+/* The player's own character. */
+.character-own {
+  background: var(--sun);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+/* Taken by another player: greyed out and not clickable. */
+.character:disabled {
+  background: #D9D3C5;
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.waiting { font-weight: 700; }
+
+.panel-bottom .button { width: 100%; }
+
+#lobby-host-area {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* On a narrow window the panel moves below the map. */
+@media (max-width: 800px) {
+  .screen-lobby {
+    grid-template-columns: 1fr;
+    grid-template-rows: 55vh auto;
+    height: auto;
+  }
+
+  .panel {
+    border-left: none;
+    border-top: var(--outline);
+  }
+
+  /* The whole page scrolls here, so the middle needs no scrolling of its own. */
+  .panel-middle { overflow-y: visible; }
+}

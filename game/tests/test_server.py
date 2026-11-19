@@ -28,6 +28,62 @@ def test_script_and_stylesheet_are_served(client):
     assert client.get("/css/style.css").status_code == 200
 
 
+def test_connection_script_is_served(client):
+    assert client.get("/js/net.js").status_code == 200
+
+
+@pytest.mark.parametrize("name", ["screens.js", "forms.js", "lobby.js"])
+def test_lobby_scripts_are_served(client, name):
+    assert client.get(f"/js/lobby/{name}").status_code == 200
+
+
+def test_start_page_loads_every_script_it_needs_in_order(client):
+    page = client.get("/").text
+    scripts = ["js/net.js", "js/lobby/screens.js", "js/lobby/forms.js", "js/lobby/lobby.js", "js/main.js"]
+    places = [page.index(f'<script src="{script}">') for script in scripts]
+    assert places == sorted(places)
+
+
+def test_start_page_has_no_inline_script_or_style(client):
+    # The Content-Security-Policy would block them, and the page would break silently.
+    page = client.get("/").text
+    assert "<style" not in page
+    assert " style=" not in page
+    assert " onclick=" not in page
+    assert page.count("<script") == page.count("<script src=")
+
+
+def test_start_page_loads_the_world_scripts_between_connection_and_lobby(client):
+    # The lobby scripts and main.js call Game.world, so the world scripts come first.
+    page = client.get("/").text
+    scripts = [
+        "js/net.js",
+        "js/world/characters.js",
+        "js/world/draw.js",
+        "js/world/world.js",
+        "js/lobby/screens.js",
+        "js/lobby/forms.js",
+        "js/lobby/lobby.js",
+        "js/main.js",
+    ]
+    places = [page.index(f'<script src="{script}">') for script in scripts]
+    assert places == sorted(places)
+
+
+@pytest.mark.parametrize("name", ["characters.js", "draw.js", "world.js"])
+def test_world_scripts_are_served(client, name):
+    assert client.get(f"/js/world/{name}").status_code == 200
+
+
+def test_map_file_is_served_as_json(client):
+    # The browser draws the map from the same file the server reads for collision (S-79).
+    response = client.get("/js/world/campus.json")
+    assert response.status_code == 200
+    campus = response.json()
+    assert campus["width"] == 680 and campus["height"] == 668
+    assert len(campus["rooms"]) == 5
+
+
 def test_unknown_page_is_not_found(client):
     assert client.get("/does-not-exist").status_code == 404
 
