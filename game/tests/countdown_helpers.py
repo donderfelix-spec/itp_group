@@ -7,14 +7,28 @@ about the countdown, can skip it:
     from countdown_helpers import no_countdown  # noqa: F401
 
 `no_countdown` is used by every test of a file that imports it by name,
-asked for or not (like `clock` of task_helpers.py). The countdown itself is
-tested in test_countdown.py and test_server_countdown.py.
+asked for or not (like `clock` of task_helpers.py). Tests of the plain rules
+call `start_round_at_once` instead of `Lobbies.start`. The countdown itself
+is tested in test_countdown.py and test_server_countdown.py.
 """
 
 import pytest
 
 from server import main
 from server.main import app
+from server.net.lobbies import COUNTDOWN_SECONDS
+
+
+def start_round_at_once(lobbies, name: str):
+    """For tests of the plain rules: the host starts, and the five seconds are over at once.
+
+    Returns what `Lobbies.start` returns, `(lobby, rejection_code)`. After
+    an accepted start the lobby's round is running.
+    """
+    lobby, rejection_code = lobbies.start(name, 0.0)
+    if rejection_code is None:
+        assert lobby.start_round_if_due(COUNTDOWN_SECONDS)
+    return (lobby, rejection_code)
 
 
 async def start_without_countdown(websocket, name: str, message: dict):
