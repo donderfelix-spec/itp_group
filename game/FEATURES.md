@@ -96,11 +96,11 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Feature | Milestone | Status |
 |---|---|---|
 | Frame for minigames: open at a station, close, report “done” | M2 | Done |
-| Canteen: put four of six dishes from the order slip onto the tray | M2 | Planned |
-| Mon Café: prepare a drink by recipe at the coffee machine | M2 | Planned |
-| Lecture Hall: put slides into the right order | M2 | Planned |
-| CTT Student Hall: sort books by number onto the shelf | M2 | Planned |
-| Pingo Doce: scan products until exactly the target amount comes out | M2 | Planned |
+| Canteen: put four of six dishes from the order slip onto the tray | M2 | Done |
+| Mon Café: prepare a drink by recipe at the coffee machine | M2 | Done |
+| Lecture Hall: put slides into the right order | M2 | Done |
+| CTT Student Hall: sort books by number onto the shelf | M2 | Done |
+| Pingo Doce: scan products until exactly the target amount comes out | M2 | Done |
 | Duel: three stations per player, own random route with a walking distance of equal length | M2 | Planned |
 | Duel: progress of the opponents as 1/3 at the edge | M2 | Planned |
 | Duel: leaderboard with times at the end | M2 | Planned |

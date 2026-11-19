@@ -57,6 +57,8 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 - [ ] **M1-1.8** Keep the list of characters in one place: the lobby panel has its own fallback copy next to `world/characters.js` and `protocol.CHARACTERS`
 - [ ] **M1-1.9** Add the new texts to DESIGN.md: “Loading the campus…”, “Signed in as”, “Players”, “Character”, “Lobby code”, “Coming with the next milestone”
 
+- [ ] **M1-2.20** The test `test_a_second_log_in_signs_the_first_connection_out` sometimes hangs when the machine is busy (seen twice while four test runs ran at once; alone it passes). A hanging test would block CI: find the cause
+
 **To check by a person (the tools could not)**
 
 - [ ] **M1-2.17** Hold a walking key and switch to another tab or window: the character must stop (only tested with simulated events)
@@ -66,6 +68,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 **For the team to decide**
 
 - [ ] **K13** Confirm or change the decisions marked “Proposal” from milestone 1: S-83 to S-89 in DECISIONS.md
+- [ ] **K15** Two findings of the play test of the minigames: “Brew the order” and “Build the tray” take about 5 seconds instead of the 10 to 25 of DESIGN.md, section 8; and both can be solved without reading the slip by clicking everything, because a mistake costs nothing (S-58). Leave it, or make them longer or let a mistake cost a moment?
 - [ ] **K14** The hedge is solid, but a hiding spot is drawn inside it: hide beside the hedge, or make the hedge walkable? (S-87, needed for M3-1.4)
 
 ## M2: Duel
@@ -86,11 +89,6 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 **Area 4**
 
-- [ ] **M2-4.2** Minigame Canteen: put a tray together
-- [ ] **M2-4.3** Minigame Mon Café: Brew the order
-- [ ] **M2-4.4** Minigame Lecture Hall: sort slides
-- [ ] **M2-4.5** Minigame CTT Student Hall: sort books
-- [ ] **M2-4.6** Minigame Pingo Doce: Self-checkout with a target amount
 - [ ] **M2-4.7a** When more work is added after a task is counted (progress to the others, the win check, statistics): a fault there must not leave the station counted on the server while the browser was never told “done”. Found in the review of M2-4.1; cannot happen yet
 - [ ] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard
 - [ ] **M2-4.8** Play test: two players play a Duel through to the leaderboard
@@ -137,6 +135,11 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 ## Done
 
+- [x] **M2-4.6** Minigame Pingo Doce “Self-checkout”: scan products until the total is exactly the target, a product that goes over is refused. All five minigames were played in one round with two browsers; the runs are kept as `tests/test_play_minigames_1_3.py` and `tests/test_play_minigames_4_5.py` (2026-11-19)
+- [x] **M2-4.5** Minigame CTT Student Hall “Shelve the books”: six books with numbers from 100 to 999 are clicked onto the shelf from the lowest to the highest, a wrong book falls back. Played in the browser in a real round (2026-11-19)
+- [x] **M2-4.4** Minigame Lecture Hall “Sort the slides”: five slides are dragged onto five numbered places, a slide on a wrong place shakes and jumps back. Played in the browser in a real round (2026-11-19)
+- [x] **M2-4.3** Minigame Mon Café “Brew the order”: five drinks, six buttons in shuffled places, the cup fills step by step, a wrong button flashes. Played in the browser in a real round (2026-11-19)
+- [x] **M2-4.2** Minigame Canteen “Build the tray”: the order slip names four of six dishes, a wrong dish goes back to the counter. Played in the browser in a real round (2026-11-19)
 - [x] **M2-4.1** Frame for minigames: E at a station opens a window over the map, the server checks round, station, range and a minimum time before “done” counts (S-93). Every station shows a placeholder until its minigame is merged. Play test with two browsers, kept as `tests/test_play_tasks.py` (2026-11-19)
 - [x] **M2-1.1** Stations on the map: within 25 units the nearest station pulses yellow and the button “E Use” turns yellow, E or a click opens it (S-92). The rule also exists on the server (`server/world/stations.py`) for the check in M2-4.1. Play test in the browser at all six stations and with two players, kept as `tests/test_play_stations.py` (2026-11-19)
 - [x] **M2-2.1** The host chooses the mode and starts the round: mode choice and “Start game” in the lobby panel, the server checks host, player count and running round (S-91), play test with two and three browsers and eight connections (`tests/test_play_round.py`). A round cannot end yet: that comes with M2-4.7 and M2-2.2 (2026-11-19)
