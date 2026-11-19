@@ -16,6 +16,38 @@ PROTOCOL_VERSION = 1
 MAX_MESSAGE_BYTES = 2048
 
 NAME_PATTERN = re.compile(r"[A-Za-z0-9]{3,16}")
+LOBBY_CODE_PATTERN = re.compile(r"[A-Za-z]{4}")
+
+MIN_PASSWORD_LENGTH = 8
+MAX_PASSWORD_LENGTH = 64
+# Log-in accepts any text up to this length, so the error never reveals the sign-up rules.
+MAX_CREDENTIAL_LENGTH = 64
+
+# The ids of the characters a player can choose.
+CHARACTERS = (
+    "consultant",
+    "finance_bro",
+    "exchange_student",
+    "surfer",
+    "founder",
+    "overachiever",
+    "latecomer",
+    "library_local",
+)
+
+# Fixed texts for actions the server refuses because of the state of the game
+# (not because the message was malformed). Build the message with `rejection`.
+REJECTIONS = {
+    "name_taken": "That username is taken.",
+    "wrong_credentials": "Wrong username or password.",
+    "accounts_unavailable": "Accounts are unavailable right now. You can still play as a guest.",
+    "not_signed_in": "Log in or play as a guest first.",
+    "no_lobby": "No lobby with that code.",
+    "lobby_full": "This lobby is full.",
+    "not_in_lobby": "You are not in a lobby.",
+    "already_in_lobby": "Leave your lobby first.",
+    "character_taken": "That character is taken.",
+}
 
 
 class ProtocolError(Exception):
@@ -33,9 +65,79 @@ def _check_name(value):
     return value
 
 
+def _is_safe_text(value: str) -> bool:
+    """Say whether later code can store and hash this text.
+
+    JSON allows half of a character pair ("\\ud800"), which cannot be written
+    as UTF-8, and the NUL character, which Postgres refuses to store.
+    """
+    if "\x00" in value:
+        return False
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def _check_new_password(value):
+    """The password rules for signing up."""
+    if not isinstance(value, str) or len(value) < MIN_PASSWORD_LENGTH:
+        raise ProtocolError("bad_password", "Passwords need at least 8 characters.")
+    if len(value) > MAX_PASSWORD_LENGTH:
+        raise ProtocolError("bad_password", "Passwords can have at most 64 characters.")
+    if not _is_safe_text(value):
+        raise ProtocolError("bad_password", "Passwords cannot contain that character.")
+    return value
+
+
+def _check_credential(value):
+    """A name or password for logging in.
+
+    Logging in never explains the sign-up rules: every bad value gets the same
+    answer as a wrong password, so nobody can learn anything from the error.
+    """
+    readable = isinstance(value, str) and 1 <= len(value) <= MAX_CREDENTIAL_LENGTH
+    if not readable or not _is_safe_text(value):
+        raise ProtocolError("wrong_credentials", REJECTIONS["wrong_credentials"])
+    return value
+
+
+def _check_lobby_code(value):
+    if not isinstance(value, str) or not LOBBY_CODE_PATTERN.fullmatch(value):
+        raise ProtocolError("bad_code", "Lobby codes are 4 letters.")
+    # Players may type the code in any case; the server always works with upper case.
+    return value.upper()
+
+
+def _check_character(value):
+    # The isinstance check comes first because a list or dict cannot be looked up in a tuple safely.
+    if not isinstance(value, str) or value not in CHARACTERS:
+        raise ProtocolError("bad_character", "That character does not exist.")
+    return value
+
+
+def _check_step(value):
+    """One direction of a move: -1, 0 or 1."""
+    # `type(value) is int` and not isinstance: True and False count as ints in
+    # Python, and 1.0 == 1, so a looser check would let them through.
+    if type(value) is not int or value not in (-1, 0, 1):
+        raise ProtocolError("bad_move", "That move could not be read.")
+    return value
+
+
 # Each client message type with its required fields and the check for each field.
 CLIENT_MESSAGES = {
     "hello": {"name": _check_name},
+    "sign_up": {"name": _check_name, "password": _check_new_password},
+    "log_in": {"name": _check_credential, "password": _check_credential},
+    "guest": {},
+    "log_out": {},
+    "create_lobby": {},
+    "join_lobby": {"code": _check_lobby_code},
+    "leave_lobby": {},
+    "choose_character": {"character": _check_character},
+    "move": {"dx": _check_step, "dy": _check_step},
 }
 
 
@@ -75,3 +177,42 @@ def welcome(name: str) -> dict:
 
 def error(problem: ProtocolError) -> dict:
     return {"type": "error", "code": problem.code, "message": problem.message}
+
+
+def rejection(code: str) -> dict:
+    """The error message for a refused action. An unknown code raises KeyError."""
+    return {"type": "error", "code": code, "message": REJECTIONS[code]}
+
+
+def signed_in(name: str, guest: bool) -> dict:
+    return {"type": "signed_in", "name": name, "guest": guest}
+
+
+def signed_out() -> dict:
+    return {"type": "signed_out"}
+
+
+def lobby_state(code: str, host: str, players) -> dict:
+    """`players` is a list of (name, character) pairs, in the order they joined.
+
+    `character` is None while a player has not chosen one yet.
+    """
+    listed = [{"name": name, "character": character} for name, character in players]
+    return {"type": "lobby_state", "code": code, "host": host, "players": listed}
+
+
+def left_lobby() -> dict:
+    return {"type": "left_lobby"}
+
+
+def positions(players) -> dict:
+    """`players` is a list of (name, x, y) triples.
+
+    One decimal is enough to draw a character and keeps the message small.
+    """
+    listed = [{"name": name, "x": round(x, 1), "y": round(y, 1)} for name, x, y in players]
+    return {"type": "positions", "players": listed}
+
+
+def notice(message: str) -> dict:
+    return {"type": "notice", "message": message}
