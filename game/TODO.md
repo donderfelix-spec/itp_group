@@ -59,7 +59,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 - [ ] **M1-1.8** Keep the list of characters in one place: the lobby panel has its own fallback copy next to `world/characters.js` and `protocol.CHARACTERS`
 - [ ] **M1-1.9** Add the new texts to DESIGN.md: “Loading the campus…”, “Signed in as”, “Players”, “Character”, “Lobby code”, “Coming with the next milestone”
 
-- [ ] **M1-2.20** The test `test_a_second_log_in_signs_the_first_connection_out` sometimes hangs when the machine is busy (seen twice while four test runs ran at once; alone it passes). A hanging test would block CI: find the cause
+- [x] **M1-2.20** The test `test_a_second_log_in_signs_the_first_connection_out` sometimes hangs when the machine is busy (seen twice while four test runs ran at once; alone it passes). A hanging test would block CI: find the cause. Cause: the fixture `client` of that test file gave every connection an event loop of its own, and a message sent from one loop to a connection waiting in another could fail to wake it. The server was right. The fixture now uses one loop, like `tests/test_server_lobby.py`; the change to the test file was approved by Felix (2026-11-20)
 
 **To check by a person (the tools could not)**
 
