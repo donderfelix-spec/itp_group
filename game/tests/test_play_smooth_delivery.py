@@ -497,3 +497,32 @@ def test_a_standing_player_starts_at_once_while_another_player_walks():
     first_after = frames_between(frames, first_step_at)[0]
     assert first_after["t"] - first_step_at < FRAME
     assert first_after["camera"]["x"] > SPAWN[0] + 0.01
+
+
+@needs_node
+@pytest.mark.parametrize("bursts", [[35], [15]], ids=["at the end", "in the middle"])
+def test_a_burst_while_walking_left_keeps_the_character_facing_left_and_walking(bursts):
+    # Five messages at once make one queue entry that covers several steps:
+    # still a step, not the server putting the player somewhere else.
+    count = 40
+    places = [[place] for place in walk("Mara", count, SPAWN, (-1, 0), 6)]
+    held = {first + k: first + 4 for first in bursts for k in range(4)}
+    messages = delivered(places, TICK, lambda k: (held[k] - k) * TICK if k in held else 0)
+    last = (places[-1][0]["x"], places[-1][0]["y"])
+    frames = run_world(messages, until=messages[-1][0] + 800, players=["Mara"], own="Mara")
+
+    first_step_drawn = messages[1][0] + 2 * FRAME
+    shown = frames_between(frames, first_step_drawn)
+    assert all(drawn(frame, MARA)["mirrored"] is True for frame in shown)
+    # Whenever the character moves, also through the burst, its feet move.
+    # (During the hold-up before a burst it may really stand for a moment.)
+    moving = [frame for before, frame in zip(shown, shown[1:]) if math.dist(camera(before), camera(frame)) > EXACT]
+    merged_glide = [frame for frame in moving if frame["t"] > messages[bursts[0] + 4][0]]
+    assert moving and merged_glide
+    assert all(drawn(frame, MARA)["stride"] > 0 for frame in moving)
+    # After the stop: still facing left, and the feet fade to still.
+    reached_at = next(frame["t"] for frame in frames if math.dist(camera(frame), last) < EXACT)
+    stopped = frames_between(frames, reached_at)
+    assert all(drawn(frame, MARA)["mirrored"] is True for frame in stopped)
+    still = frames_between(frames, reached_at + STRIDE_FADES + FRAME)
+    assert still and all(drawn(frame, MARA)["stride"] == 0 for frame in still)

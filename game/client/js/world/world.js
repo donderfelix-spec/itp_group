@@ -139,7 +139,7 @@ Game.world = Game.world || {};
       // The newest position the server sent. The drawing is behind it.
       server: null,
       // Positions waiting to be drawn, oldest first:
-      // [{x, y, startAt, endAt}], see schedulePosition().
+      // [{x, y, startAt, endAt, merged}], see schedulePosition().
       queue: [],
       // When the last scheduled position is reached; null when there is none.
       queueEndsAt: null,
@@ -150,6 +150,9 @@ Game.world = Game.world || {};
       // Until this time the next position is a placement by the server and
       // not a step, see startOfRound().
       placedUntil: -Infinity,
+      // True only while moveTo() starts the glide of a merged queue entry,
+      // see startGlide().
+      glidesMergedEntry: false,
       // Which side the character faces. It only ever faces left or right,
       // keeps the side after it stopped, and faces right until it has moved.
       facingLeft: false
@@ -199,7 +202,9 @@ Game.world = Game.world || {};
     if (player.to) {
       var dx = x - player.to.x;
       var dy = y - player.to.y;
-      if (isJump || isPlacement || isLongerThanAStep(dx, dy)) {
+      // A merged queue entry covers several steps at once: still a step.
+      var isMovedByServer = isLongerThanAStep(dx, dy) && !player.glidesMergedEntry;
+      if (isJump || isPlacement || isMovedByServer) {
         standStill(player);
       } else {
         takeStep(player, dx, dy, now);
@@ -216,8 +221,12 @@ Game.world = Game.world || {};
   }
 
   // Starts the glide to (x, y) at `startAt`; it lasts `milliseconds`.
-  function startGlide(player, x, y, startAt, milliseconds) {
+  // `merged` is true for a queue entry that took newer positions (see
+  // schedulePosition()): its way can be longer than one step.
+  function startGlide(player, x, y, startAt, milliseconds, merged) {
+    player.glidesMergedEntry = merged === true;
     moveTo(player, x, y, startAt);
+    player.glidesMergedEntry = false;
     // Set only after moveTo: moveTo still needs the length of the glide
     // before, to find where the character is drawn at `startAt`.
     player.glideMilliseconds = milliseconds;
@@ -399,6 +408,7 @@ Game.world = Game.world || {};
         var last = player.queue[player.queue.length - 1];
         last.x = x;
         last.y = y;
+        last.merged = true;
         return;
       }
       startAt = Math.max(lastEnd, now);
@@ -409,7 +419,7 @@ Game.world = Game.world || {};
       // would be a jump.
       endAt = Math.max(endAt, startAt + TICK_MILLISECONDS / 2);
     }
-    player.queue.push({ x: x, y: y, startAt: startAt, endAt: endAt });
+    player.queue.push({ x: x, y: y, startAt: startAt, endAt: endAt, merged: false });
     player.queueEndsAt = endAt;
   }
 
@@ -437,7 +447,7 @@ Game.world = Game.world || {};
   function playQueue(player, now) {
     while (player.queue.length > 0 && player.queue[0].startAt <= now) {
       var entry = player.queue.shift();
-      startGlide(player, entry.x, entry.y, entry.startAt, entry.endAt - entry.startAt);
+      startGlide(player, entry.x, entry.y, entry.startAt, entry.endAt - entry.startAt, entry.merged);
     }
   }
 
