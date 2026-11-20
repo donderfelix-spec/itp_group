@@ -59,8 +59,10 @@ Game.world = Game.world || {};
   // The part of a step a foot is on the ground. The rest of the step both
   // feet are in the air: that moment in the air is what makes it a run.
   var GROUND_FRACTION = 0.5;
-  // How high the back foot is kicked up after it pushed off.
+  // How high the back foot is kicked up after it pushed off, and when: at
+  // this part of its time in the air (35 %), while it is still behind.
   var KICK = 9;
+  var KICK_HIGHEST_AT = 0.35;
   // How far the body rises in the air between two steps: as high as the
   // name above it leaves room for (BODY_BOB).
   var HOP = BODY_BOB;
@@ -832,10 +834,9 @@ Game.world = Game.world || {};
     return { place: -1 + 2 * forward, lift: kickHeight(inTheAir) };
   }
 
-  // The kick: the foot goes up quickly after it pushed off, is highest a
-  // third of the way through the air, and then comes down until it lands.
-  var KICK_HIGHEST_AT = 0.35;
-
+  // The kick: the foot goes up quickly after it pushed off, is highest at
+  // KICK_HIGHEST_AT (35 %) of its time in the air, and then comes down
+  // until it lands.
   function kickHeight(inTheAir) {
     if (inTheAir < KICK_HIGHEST_AT) {
       return Math.sin(Math.PI / 2 * inTheAir / KICK_HIGHEST_AT);
@@ -852,8 +853,9 @@ Game.world = Game.world || {};
   //   leftLift, rightLift    how high a foot is off the ground
   //   raised                 how far the body is lifted
   //   lean                   how far the body leans forward
-  //   armSwing               from -1 to 1 (times stride): above 0 the right
-  //                          hand is in front and the left one behind
+  //   armSwing               from -1 to 1 (times stride): above 0 the hand
+  //                          on the front side of the body is in front and
+  //                          the one on the back side behind
   //   handRaise, handInward  how much higher and closer to the body the free
   //                          hands are held (the bent arms of a runner)
   function runningMoment(phase, stride) {
@@ -903,6 +905,9 @@ Game.world = Game.world || {};
   // leg hangs straight down: the box from (-13, 74) or (2, 74), 11 wide and
   // 18 high.
   var LEG_WIDTH = 11;
+  // The middles of the two standing legs: 7.5 to the left and to the right,
+  // so the legs are 4 units apart.
+  var HIP_X = 7.5;
   var HIP_Y = 74;
   var LEG_BOTTOM_Y = 92; // on the shoe, which reaches from y = 89 to 97
 
@@ -915,7 +920,7 @@ Game.world = Game.world || {};
     // The shoes point a little to the side the character is turned to.
     var shoeX = (side < 0 ? -15 : 1) + SHOE_TURN + footX;
     box(ctx, shoeX, 89 - lift, 14, 8, 4, look.shoes || OUTLINE, look.shoes ? 1.5 : 0);
-    var hipX = side * (LEG_WIDTH + 4) / 2;
+    var hipX = side * HIP_X;
     var hipY = HIP_Y - raised;
     var toAnkleX = footX;
     var toAnkleY = LEG_BOTTOM_Y - lift - hipY;
@@ -990,8 +995,12 @@ Game.world = Game.world || {};
     var right = [look.turnedRightHand[0] + frontMove[0], look.turnedRightHand[1] + frontMove[1]];
     drawTurnedArm(ctx, -BACK_SHOULDER, -1, left[0], left[1], look.body);
     drawTurnedArm(ctx, FRONT_SHOULDER, 1, right[0], right[1], look.body);
+    // An object held in one hand moves with that hand. An object held with
+    // both hands (or no object) stays where it is on the body.
     ctx.save();
-    ctx.translate(frontMove[0], frontMove[1]);
+    if (look.holdsInRightHand) {
+      ctx.translate(frontMove[0], frontMove[1]);
+    }
     look.turnedObject(ctx);
     ctx.restore();
     circle(ctx, left[0], left[1], 5, SKIN, 2);

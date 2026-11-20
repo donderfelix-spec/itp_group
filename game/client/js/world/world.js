@@ -128,7 +128,8 @@ Game.world = Game.world || {};
       // How far the drawn character had walked, in map units, when the
       // current glide started (see walkedDistance()) ...
       walkedBeforeGlide: 0,
-      // ... and when it started to walk; the walking cycle starts here.
+      // ... and how far it had walked when it started to walk; the walking
+      // cycle starts there.
       walkedWhenItStarted: 0,
       // Until this time the next position is a placement by the server and
       // not a step, see startOfRound().
