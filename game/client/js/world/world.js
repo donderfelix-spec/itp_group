@@ -741,61 +741,11 @@ Game.world = Game.world || {};
     ctx.fillText(label.name, label.x, label.y + 0.3);
   }
 
-  // ---- Stations under a character -------------------------------------
-
-  // A character that stands on a station hides its number. Such a station
-  // gets its number again in a small badge at its lower edge, at the feet
-  // of the character and drawn over it, so it can still be told which
-  // station it is. Somebody who only walks past gets no badge.
-  var BADGE_RADIUS = 4.5;
-  var BADGE_TEXT_SIZE = 6.5;
-  var YELLOW = "#FFD23F"; // the colour of the stations in draw.js
-  // Feet this far outside the circle of the station still stand on it.
-  var STANDING_MARGIN = 2;
-
-  // Does this character stand on the station? Its feet are then inside the
-  // circle of the station.
-  function standsOn(entry, station) {
-    var dx = entry.x - station.x;
-    var dy = entry.y + FEET_BELOW_POSITION - station.y;
-    var reach = station.r + STANDING_MARGIN;
-    return dx * dx + dy * dy <= reach * reach;
-  }
-
-  function drawBadge(station) {
-    var y = station.y + station.r;
-    ctx.font = "bold " + BADGE_TEXT_SIZE + "px system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.beginPath();
-    ctx.arc(station.x, y, BADGE_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = YELLOW;
-    ctx.fill();
-    ctx.lineWidth = 1.2;
-    ctx.strokeStyle = OUTLINE;
-    ctx.stroke();
-    ctx.fillStyle = OUTLINE;
-    ctx.fillText(String(station.id), station.x, y + 0.3);
-  }
-
-  function drawBadgesOfHiddenStations(visible) {
-    var stations = Array.isArray(campus.stations) ? campus.stations : [];
-    for (var i = 0; i < stations.length; i++) {
-      for (var j = 0; j < visible.length; j++) {
-        if (standsOn(visible[j], stations[i])) {
-          drawBadge(stations[i]);
-          break; // one badge per station is enough
-        }
-      }
-    }
-  }
-
   function drawPlayers(now) {
     var visible = visiblePlayers(now);
     visible.forEach(function (entry) {
       drawPlayer(entry, now);
     });
-    drawBadgesOfHiddenStations(visible);
     // All names after all characters, so no name is hidden behind a head.
     useNameFont();
     placeLabels(visible).forEach(drawLabel);
