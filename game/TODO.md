@@ -86,6 +86,7 @@ Milestone 2 was built up to the Duel by Claude as lead (pull requests #19 to #26
 - [x] **M2-1.7** The hair, buns and headwear of the characters follow the head when it turns. Built with M2-1.5: the whole three-quarter view is mirrored, so hair and headwear turn with the face (2026-11-19)
 - [ ] **M2-1.8** Eight players put on the spawn stand on one point, and at the larger size only the last one drawn can be seen until they walk (S-88); name labels of players standing close cover their neighbours. Spread the players around the spawn on the server, or accept it (Hanna, with Felix for the server)
 - [x] **M2-1.9** The sketch `design/characters.svg` still shows the Latecomer with speed lines, sweat and steam, and the characters from the front only; bring it in line with the game or mark it as the first sketch (Hanna). Done on 2026-11-20: the speed lines, sweat drop and steam are gone from the Latecomer; the sketch and DESIGN.md section 3 say that it shows the lobby portraits from the front and that the map uses the three-quarter view facing left or right (S-105). No game code changed
+- [x] **M2-1.10** Remove the small badge with the station's number that is drawn under a character standing on a station (S-105); the large number in the circle, the pulsing border and the button “E Use” stay. Requested by Felix on 2026-11-20; one code review, play test with two guests in Chromium in the lobby and in a Duel round at stations 1, 2, 5 and 6, compared with main (2026-11-20)
 
 **Area 2 (Felix)**
 
