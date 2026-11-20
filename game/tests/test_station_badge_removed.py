@@ -1,8 +1,8 @@
 """A character on a station no longer gets a number badge at its feet (M2-1.10).
 
 There is no JavaScript test runner in this project, so these tests read the
-drawing code as the server hands it to the browser. How the station looks with
-a character on it is tried in a browser.
+drawing code from its files in client/js/world/ on disk. How the station looks
+with a character on it is tried in a browser.
 """
 
 from pathlib import Path
@@ -11,14 +11,14 @@ import pytest
 
 WORLD_FOLDER = Path(__file__).resolve().parent.parent / "client" / "js" / "world"
 
-# Names that only the removed badge used.
+# Names that only the removed badge used. The check looks for each name as
+# part of the text, so "drawBadge" also catches "drawBadgesOfHiddenStations".
 BADGE_NAMES = [
     "BADGE_RADIUS",
     "BADGE_TEXT_SIZE",
     "STANDING_MARGIN",
     "standsOn",
     "drawBadge",
-    "drawBadgesOfHiddenStations",
 ]
 
 
