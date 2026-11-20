@@ -127,7 +127,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 **Area 2 (Felix)**
 
 - [ ] **M3-2.1** Every client receives only what its player is allowed to know (roles, ghost chat) (Felix)
-- [ ] **M3-2.2** Reconnect after a short disconnection (Felix)
+- [x] **M3-2.2** Reconnect after a short disconnection (Felix). Built as option C (S-109, decided by Felix on 2026-11-20): after a lost connection the page joins the lost lobby by itself once the player signs in again, and puts the code into the join field; no return into a running round, no server change. One code review without findings, play test with up to four players in real browsers (lobby, countdown, Duel, server restart, several failed reconnects, full lobby); the runs are `tests/test_play_reconnect.py` and `tests/test_play_reconnect_edges.py` (2026-11-20)
 
 **Area 3 (Laurin)**
 
