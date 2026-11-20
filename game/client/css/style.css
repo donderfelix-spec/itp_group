@@ -1435,6 +1435,78 @@ input {
 /* The player's own row. */
 .duel-row-own { background: var(--sun); }
 
+/* The countdown before a round: a card over the upper part of the map, so it
+   does not hide the players, who mostly stand around the spawn in the middle.
+   It hangs from the top edge of the map, so it never sticks out above it.
+   It takes no clicks, so the map and the ranking stay usable underneath. */
+.countdown {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 32px;
+  border: var(--outline);
+  border-radius: 18px;
+  background: var(--cream);
+  box-shadow: 6px 6px 0 var(--ink);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.countdown-line {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.countdown-number {
+  margin: 0;
+  font-size: 96px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* On a narrow or low window the map is small: a smaller card, so it stays
+   off the player's own character and name in the middle of the map. */
+@media (max-width: 800px), (max-height: 620px) {
+  .countdown {
+    top: 24px;
+    padding: 6px 16px;
+    border-radius: 14px;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+
+  .countdown-line { font-size: 14px; }
+  .countdown-number { font-size: 40px; }
+}
+
+/* While the ranking of the last round is still open, the countdown is one
+   slim line ("Round starts in 3") at the very top of the map. The ranking
+   keeps 32px free around its card (see .duel-ranking), and the line stays
+   inside that strip: so it can never cover any part of the card, however
+   small the window and however long the ranking. */
+.duel-ranking:not([hidden]) ~ .countdown {
+  top: 3px;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+.duel-ranking:not([hidden]) ~ .countdown .countdown-line,
+.duel-ranking:not([hidden]) ~ .countdown .countdown-number {
+  font-size: 15px;
+  line-height: 20px;
+}
+
 .panel {
   display: flex;
   flex-direction: column;
@@ -1657,10 +1729,49 @@ input {
 
 /* ---- Profile and Leaderboard (js/lobby/statistics.js) ---- */
 
-/* On the Home screen: the two buttons share the row equally. In a window
-   too narrow for both they stand under each other instead of sticking out. */
-.stats-buttons { flex-wrap: wrap; }
-.stats-buttons > .button { flex: 1 1 auto; }
+/* On the Home screen the two are round icons at the top right corner of the
+   screen, not of the card. The room above and below the card is as high as
+   the icons, so they never lie on the card, however low the window is. */
+#screen-home {
+  position: relative;
+  padding-top: 84px;
+  padding-bottom: 84px; /* the same as above, so the card stays in the middle */
+}
+
+.home-icons {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 12px;
+}
+
+/* Round and 48 px wide: large enough for a finger (at least 44 px). */
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 50%;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+/* Drawn like everything else in the game: thick dark outline, round corners.
+   Not ".icon": that is the class of the lobby's character pictures. */
+.home-icon {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-yellow { fill: var(--sun); }
+.icon-blue { fill: var(--water); }
 
 /* The leaderboard has four columns and needs more room than a form. */
 .stats-card { width: min(100%, 520px); }

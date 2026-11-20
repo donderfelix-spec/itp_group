@@ -60,7 +60,7 @@ All characters are the same size and the same speed, they differ only in how the
 | The Surfer | Turquoise | long blond hair, shell necklace, surfboard printed on the shirt | “Waves were good, sorry.” |
 | The Founder | Black hoodie | hood up, laptop covered in stickers | “We should pivot.” |
 | The Overachiever | Green cardigan | glasses, hair bun, folder with tabs and “A+” | “I already started.” |
-| The Latecomer | Orange jacket | messy hair, coffee cup, drops of sweat | “Did I miss anything?” |
+| The Latecomer | Orange jacket | messy hair, coffee cup | “Did I miss anything?” |
 | The Library Local | Purple hoodie | large headphones, stack of books in front of the body | “Shhh.” |
 
 - Each character exists only once per lobby, so that players can be told apart. For this reason there are at most eight players in a lobby. The name is also shown above the character.
@@ -236,7 +236,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Username or password too short or with characters that are not allowed | “Usernames are 3–16 letters or numbers.” / “Passwords need at least 8 characters.” |
 | Wrong password | “Wrong username or password.” |
 | Lobby code does not exist | “No lobby with that code.” |
-| Lobby is full or round is already running | “This lobby is full.” / “This round has already started.” |
+| Lobby is full, or its countdown or round is already running | “This lobby is full.” / “This round has already started.” |
 | Too few players for the mode | “Classic needs at least 4 players.” |
 | Connection lost | “Connection lost. Reconnecting…” |
 | Database not reachable | “Accounts are unavailable right now. You can still play as a guest.” |
@@ -253,7 +253,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Choosing the mode or starting the round without being the host | “Only the host can do that.” |
 | Choosing a mode that does not exist or is not built yet (only when someone bypasses the page) | “That mode does not exist.” |
 | Starting Duel with fewer than 2 players | “Duel needs at least 2 players.” |
-| Choosing the mode, choosing a character or starting the round while a round is running | “This round has already started.” |
+| Choosing the mode, choosing a character or starting the round during the countdown or while a round is running | “This round has already started.” |
 | Opening, closing or finishing a task while no round is running | “No round is running.” |
 | Opening a station that does not exist or is not in use (only when someone bypasses the page) | “That station does not exist.” |
 | Opening a station from too far away | “You are too far away.” |
