@@ -11,10 +11,13 @@
 // - the turned view: it is still seen mostly from the front, but turned a
 //   little to the right, and it can walk. Its mirror image is turned to the
 //   left. Used on the map (world.js). Face, hair, headwear and the thing in
-//   the hand are all drawn turned by the same amount, so the character
-//   reads as one turned figure and mirroring turns all of it. What sits on
-//   the front of the upper body (tie, straps, necklace) stays in the middle
-//   of the body, so it is still in the middle in the mirror image.
+//   the hand are drawn turned too, so the character reads as one turned
+//   figure and mirroring turns all of it: the face moves towards the side
+//   it is turned to, and hair and headwear are drawn as seen from there.
+//   The head itself is not moved, so a hat on it is not either; only the
+//   top of its crown leans towards the face. What sits on the front of the
+//   upper body (tie, straps, necklace) stays in the middle of the body, so
+//   it is still in the middle in the mirror image.
 
 "use strict";
 
@@ -349,7 +352,7 @@ Game.world = Game.world || {};
         box(ctx, -27, 36, 54, 36, 12, "#3E8FD0", 2.5);
       },
       clothes: function (ctx) {
-        drawStrapsAndLanyard(ctx, BODY, 0);
+        drawStrapsAndLanyard(ctx, BODY);
       },
       object: nothing,
       head: drawBucketHat,
@@ -359,7 +362,7 @@ Game.world = Game.world || {};
         box(ctx, -31, 36, 44, 36, 12, "#3E8FD0", 2.5);
       },
       turnedClothes: function (ctx) {
-        drawStrapsAndLanyard(ctx, TURNED_BODY, TURNED_BODY_MIDDLE);
+        drawStrapsAndLanyard(ctx, TURNED_BODY);
       },
       turnedObject: nothing,
       turnedHead: function (ctx) {
@@ -523,11 +526,12 @@ Game.world = Game.world || {};
   }
 
   // The Exchange Student's backpack straps and the lanyard with its card,
-  // centred on `middle`. The straps come over the shoulders from the
+  // centred on `body`. The straps come over the shoulders from the
   // backpack and curve back to it at the sides, and the cord goes round
   // the neck. So they are drawn only inside `body` (the clip), and the
   // body's outline is drawn again on top: their ends disappear behind it.
-  function drawStrapsAndLanyard(ctx, body, middle) {
+  function drawStrapsAndLanyard(ctx, body) {
+    var middle = body.x + body.width / 2;
     ctx.save();
     drawBodyBox(ctx, body, null, 0);
     ctx.clip();
@@ -598,10 +602,11 @@ Game.world = Game.world || {};
   }
 
   // The Exchange Student's bucket hat. It sits on the head: where the brim
-  // crosses them (y = 12), the sides of the rounded crown are where the
-  // outline of the head is (x = -17 and 17), so that outline runs on into
-  // the crown as one line. The brim reaches equally far out on both sides
-  // and stays above the eyes (y = 22).
+  // crosses them (y = 12), the sides of the rounded crown (x = -17 and 17)
+  // lie on the outline of the head. The middle of that 2.5 wide line is at
+  // about x = -16.1 and 16.1 there, so x = -17 and 17 are inside it, and
+  // the outline runs on into the crown as one line. The brim reaches
+  // equally far out on both sides and stays above the eyes (y = 22).
   function drawBucketHat(ctx) {
     shape(ctx, "M-17 12 C-17 -1 -12.5 -5 0 -5 C12.5 -5 17 -1 17 12 Q0 7 -17 12 Z", "#FFD23F", 2);
     drawBucketHatBrim(ctx);
