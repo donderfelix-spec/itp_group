@@ -622,17 +622,18 @@ Game.world = Game.world || {};
 
   // The Exchange Student's bucket hat, two proposals (TEMPORARY, M2-1.11).
   // Each has a crown, a brim and a line width for the brim, for the portrait
-  // and for the turned view. In the turned view the brim reaches further
-  // out on the side the character is turned to. The brim always stays
-  // above the eyes (y = 22).
-  //   A: sits on the head. Where the brim crosses them (y = 12), the sides
+  // and for the turned view. The brim always stays above the eyes (y = 22).
+  //   A: sits on the head, and its brim reaches equally far out on both
+  //      sides, also in the turned view. Where the brim crosses them (y = 12), the sides
   //      of the crown are where the outline of the head is (x = -17 and
   //      17), so the outline runs on into the crown as one line. The head
-  //      is not moved in the turned view, so neither is the crown; only its
-  //      top leans a little towards the face. The crown is rounded and
+  //      is not moved in the turned view, so neither are the crown and the
+  //      brim; only the top of the crown leans a little towards the face. The crown is rounded and
   //      slightly narrower towards its top.
   //   B: bigger and floppier, with a drooping brim and a darker band
-  //      around the bottom of the crown (from y = `bandTop` down).
+  //      around the bottom of the crown (from y = `bandTop` down). In the
+  //      turned view its brim reaches further out on the side the
+  //      character is turned to.
   var BUCKET_HATS = {
     A: {
       brimLine: 5.5,
@@ -642,7 +643,7 @@ Game.world = Game.world || {};
       },
       turned: {
         crown: "M-17 12 C-17 -1 -11 -5 1.5 -5 C13.5 -5 17 -1 17 12 Q0 7 -17 12 Z",
-        brim: "M-24.5 14 Q2.5 6.5 31 15"
+        brim: "M-27 14.5 Q0 6.5 27 14.5"
       }
     },
     B: {
