@@ -32,9 +32,10 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Choose a character from the list of stereotypes | M2 | Done |
 | Display of the current room | M2 | Planned |
 | Nicer, more detailed map: floors, furniture and plants | M2 | In progress |
-| Larger characters | M2 | Planned |
-| Walking animation: moving feet, head turned in the walking direction | M2 | In progress |
-| Hair, buns and headwear follow the head when it turns in the walking direction | M2 | Planned |
+| Larger characters in a three-quarter view, facing only left or right; held objects stay in the same hand | M2 | Done |
+| Walking animation: moving feet, head turned in the walking direction | M2 | Done |
+| Hair, buns and headwear follow the head when it turns in the walking direction | M2 | Done |
+| Touch-ups of the characters: no suitcase, larger hat, headphones on the ear, clothes in the middle of the torso when turned | M2 | Done |
 | Limited view: You only see what is nearby and not behind a wall | M3 | Planned |
 | Show failed players as ghosts | M3 | Planned |
 | Four hiding spots in which you are visible only from close by | M3 | Planned |
@@ -51,10 +52,11 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Create an account with username and password, log in, log out | M1 | Done |
 | Play as a guest, without statistics and friends | M1 | Done |
 | Clear message when a name is taken, the password is wrong or the database is not reachable | M1 | Done |
-| Show or hide the password with an eye icon | M1 | Planned |
-| Limit on log-in attempts and lobby-code guessing | M1 | Planned |
-| Statistics per account: rounds and wins per mode, best Duel time | M2 | Planned |
-| Leaderboard of all accounts | M2 | Planned |
+| Show or hide the password with an eye icon | M1 | Done |
+| A player who is signed out because the account logged in somewhere else is told why | M1 | Done |
+| Limit on log-in attempts and lobby-code guessing | M1 | Done |
+| Statistics per account: rounds and wins per mode, best Duel time | M2 | Done |
+| Leaderboard of all accounts | M2 | Done |
 | Add friends by username, accept or decline a request | M4 | Planned |
 | See friends with the status “online” and “in a round” | M4 | Planned |
 | Invite friends to your own lobby | M4 | Planned |
@@ -64,9 +66,11 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Player list in the lobby, the creator is the host | M1 | Done |
 | Continuously synchronise the positions of all players, with smoothed movement of the others | M1 | Done |
 | Host chooses the mode and starts the round (settings: M4) | M2 | Done |
-| After the round back to the lobby, new round without a new code | M2 | In progress |
-| If someone leaves the game, the round continues, and the host changes if needed | M2 | In progress |
-| Players who were disconnected for a short time come back into their round | M3 | Planned |
+| Countdown of 5 seconds before every round, counted by the server | M2 | Done |
+| After the round back to the lobby, new round without a new code | M2 | Done |
+| If someone leaves the game, the round continues, and the host changes if needed | M2 | Done |
+| A player who lost the connection in a lobby is put back into it after signing in again, without typing the code (S-109) | M3 | Done |
+| Players who were disconnected for a short time come back into their running round | M4 | Later |
 | Each client gets only the information that its player is allowed to know | M3 | Planned |
 | Game reachable at a public URL, deployed automatically from `main` | M0 | Done |
 | Several lobbies at the same time | M1 | Done |

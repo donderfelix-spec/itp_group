@@ -21,12 +21,13 @@ These points hold up the start. The reasoning behind them is under “Open decis
 - [x] **K7** The four areas: area 1 Hanna, area 2 Felix, area 3 Laurin, area 4 Lennart (2026-11-19). The name after an open to-do below says who takes it
 - [x] **K8** “We Be(a)t” is put aside for now (S-27)
 - [x] **K9** Render account created and service set up (2026-11-18)
-- [ ] **K10** Names and student numbers of all members for the README (S-36)
+- [x] **K10** Names and student numbers of all members are in the README (S-36, given by Felix on 2026-11-20)
+- [x] **K16** Settled 2026-11-19 (S-102): players may walk while the ranking card is up; a start by the host begins with a countdown of 5 seconds (M2-2.5); a finished player waits for the others as before
 
 ## M0: Preparation
 
-- [ ] **M0-4.1** The five minigames are described in the DESIGN.md, the team should proofread them once more
-- [ ] **M0-2.7** Write the README in the main folder in English for the submission (S-36), and decide whether the planning documents will be translated
+- [ ] **M0-4.1** The five minigames are described in the DESIGN.md, the team should proofread them once more (Lennart)
+- [x] **M0-2.7** Write the README in the main folder in English for the submission (S-36), and decide whether the planning documents will be translated. The README names the game, the public URL, the commands to run and test, what works today and the four areas with their owners (S-96); the planning documents are already in English. The names and student numbers are a marked placeholder until K10 is settled (2026-11-19)
 
 ## M1: Walking
 
@@ -34,42 +35,42 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 **Security and accounts (area 2)**
 
-- [ ] **M1-2.6** Limit log-in attempts and lobby-code guessing per connection (found in the code reviews, S-83)
-- [ ] **M1-2.7** Show or hide the password with an eye icon in the sign-up and log-in forms
-- [ ] **M1-2.8** Tell a player why they were signed out when the same account logs in somewhere else (needs a text in DESIGN.md, section 9)
-- [ ] **M1-2.9** Add `sslmode=require` to `DATABASE_URL` on Render, as Supabase recommends, and check that sign up still works
-- [ ] **M1-2.10** Check in the Supabase dashboard that the Data API returns no rows of `accounts` with the public key (row level security is on, S-90)
-- [ ] **M1-2.11** Before the demo: open the Supabase project and make sure it is not paused (free projects pause after a week without activity, S-39)
+- [x] **M1-2.6** Limit log-in attempts and lobby-code guessing per connection (found in the code reviews, S-83). After 5 wrong log-ins or 10 wrong lobby codes within 60 seconds a connection reads “Too many attempts. Try again in a minute.”; the rule is `server/net/attempts.py`, the decisions are in S-107. Tried in one browser: the sixth wrong log-in and the eleventh wrong code show the text at their field (2026-11-20)
+- [x] **M1-2.7** Show or hide the password with an eye icon in the sign-up and log-in forms. Played in the browser with mouse and keyboard, at 1280 and 360 px (2026-11-19)
+- [x] **M1-2.8** Tell a player why they were signed out when the same account logs in somewhere else (needs a text in DESIGN.md, section 9). The browser shows “You were signed in somewhere else.”; the text is a proposal (S-106). Played with two browsers (2026-11-19)
+- [x] **M1-2.9** Add `sslmode=require` to `DATABASE_URL` on Render, as Supabase recommends, and check that sign up still works. Done by Felix on 2026-11-20: set on Render, and signing up works
+- [x] **M1-2.10** Check in the Supabase dashboard that the Data API returns no rows of `accounts` with the public key (row level security is on, S-90). Checked by Felix on 2026-11-20: with the role `anon` the table editor shows no rows of `accounts` and none of `account_statistics`
 
 **Server and hosting (area 2)**
 
-- [ ] **M1-2.12** Send cache headers for the scripts and the stylesheet, so that players do not keep old files after a deploy (seen in the play test: a normal reload served an old script)
-- [ ] **M1-2.13** Add a favicon (the server log shows a 404 for it on every visit)
-- [ ] **M1-2.14** Add `server/world/` and `server/net/` to the area table in `AGENTS.md` (S-79), by pull request
-- [ ] **M1-2.15** A lobby that fails on every tick writes 15 log lines per second: log it once and then only now and then
-- [ ] **M1-2.16** Use Python 3.13 in the local `.venv` like CI and Render (it runs 3.14 on the development machine)
+- [x] **M1-2.12** Send cache headers for the scripts and the stylesheet, so that players do not keep old files after a deploy (seen in the play test: a normal reload served an old script). Every file of the client is sent with `Cache-Control: no-cache`, so the browser asks before each use and gets a short 304 for an unchanged file (2026-11-19). **Still to check by a person:** after the next deploy, a normal reload shows the new version
+- [x] **M1-2.13** Add a favicon (the server log shows a 404 for it on every visit). `client/favicon.ico`, linked from the page (2026-11-19)
+- [x] **M1-2.14** Add `server/world/` and `server/net/` to the area table in `AGENTS.md` (S-79), by pull request. `server/world/` now stands with area 1; `server/net/` was already listed with area 2 (2026-11-19)
+- [x] **M1-2.15** A lobby that fails on every tick writes 15 log lines per second: log it once and then only now and then. The same fault of the tick (same place, same lobby) is logged at once and then at most once every 60 seconds, with the number of times in between; the rule is `server/net/repeated_faults.py` (2026-11-19)
+- [x] **M1-2.16** Use Python 3.13 in the local `.venv` like CI and Render (it runs 3.14 on the development machine). Done by Felix on 2026-11-20: the local `.venv` runs Python 3.13.18
 
 **Map and look (area 1)**
 
-- [ ] **M1-1.5** Close or widen the gap between the third tree and the hedge on the Main Deck: it is exactly one player wide, and a player squeezing through is drawn over both
-- [ ] **M1-1.6** Give each room a label position in `campus.json`: “Pingo Doce” is drawn in the middle of the room instead of at the right as in the sketch, and “Main Deck” sits on the spawn point
-- [ ] **M1-1.7** Narrow windows (under about 800 px): the walking hint overlaps a room name and the top message overlaps the lobby code. Between about 800 and 920 px the button “E Use” also covers the end of the walking hint (seen in the play test of M2-1.1)
-- [ ] **M1-1.8** Keep the list of characters in one place: the lobby panel has its own fallback copy next to `world/characters.js` and `protocol.CHARACTERS`
-- [ ] **M1-1.9** Add the new texts to DESIGN.md: “Loading the campus…”, “Signed in as”, “Players”, “Character”, “Lobby code”, “Coming with the next milestone”
+- [x] **M1-1.5** Close or widen the gap between the third tree and the hedge on the Main Deck: it is exactly one player wide, and a player squeezing through is drawn over both. Closed: the hedge now starts where tree 3 ends (x 556, width 68, S-111); the Duel's walking distances are unchanged. One code review, play test with two guests in Chromium (2026-11-20)
+- [x] **M1-1.6** Give each room a label position in `campus.json`: “Pingo Doce” is drawn in the middle of the room instead of at the right as in the sketch, and “Main Deck” sits on the spawn point. Each room has a `label` and the map a `deck_label`; “Pingo Doce” stands at the right as in the sketch, “Main Deck” under the pool, the other four names where they were; the server refuses a map with missing or misplaced labels (S-112). One code review, play test with two guests in Chromium at 1280x800 and 600x700, compared with main (2026-11-20)
+- [x] **M1-1.7** Narrow windows (under about 800 px): the walking hint overlaps a room name and the top message overlaps the lobby code. Between about 800 and 920 px the button “E Use” also covers the end of the walking hint (seen in the play test of M2-1.1). On a narrow map (window up to 620 px, or 801–1000 px with the panel beside it) the hint stands in two lines above “E Use”; on the lobby screen the message stops before the panel, and when the panel is below the map it appears at the bottom centre (S-113). Two code reviews, play test with two and three players in Chromium at 320, 600, 800, 920 and 1280 px, also 320x568 and 1280x800 (2026-11-20)
+- [x] **M1-1.10** Messages at the top of the page use the width of the page: the window minus 16 px on each side, centred, only as wide as the text. At 320 px the guest message takes two lines instead of four. Tried in the browser at 320, 768 and 1280 px on Start, Home and Lobby, with two players (2026-11-20)
+- [x] **M1-1.8** Keep the list of characters in one place: the lobby panel has its own fallback copy next to `world/characters.js` and `protocol.CHARACTERS`. The lobby's fallback copy is gone; the browser's list is `world/characters.js`, the server's `protocol.CHARACTERS`, and `tests/test_character_list.py` fails if their ids or their order differ (S-114). Two code reviews, play test with three guests in Chromium (2026-11-20)
+- [x] **M1-1.9** Add the new texts to DESIGN.md: “Loading the campus…”, “Signed in as”, “Players”, “Character”, “Lobby code”, “Coming with the next milestone”. Added to section 4 (Home, Lobby, Profile), with the fourth heading “Mode” of the same panel; “Coming with the next milestone” was already there since M2-2.1. Documents only (2026-11-20)
 
-- [ ] **M1-2.20** The test `test_a_second_log_in_signs_the_first_connection_out` sometimes hangs when the machine is busy (seen twice while four test runs ran at once; alone it passes). A hanging test would block CI: find the cause
+- [x] **M1-2.20** The test `test_a_second_log_in_signs_the_first_connection_out` sometimes hangs when the machine is busy (seen twice while four test runs ran at once; alone it passes). A hanging test would block CI: find the cause. Cause: the fixture `client` of that test file gave every connection an event loop of its own, and a message sent from one loop to a connection waiting in another could fail to wake it. The server was right. The fixture now uses one loop, like `tests/test_server_lobby.py`; the change to the test file was approved by Felix (2026-11-20)
 
 **To check by a person (the tools could not)**
 
-- [ ] **M1-2.17** Hold a walking key and switch to another tab or window: the character must stop (only tested with simulated events)
-- [ ] **M1-2.18** Watch two players walk on two real screens and judge whether the movement looks smooth (only measured: one position every 68 ms, no jumps)
-- [ ] **M1-2.19** Hold a key, press Cmd and release the key on a Mac: the character must stop (only tested with simulated events)
+- [x] **M1-2.17** Hold a walking key and switch to another tab or window: the character must stop (only tested with simulated events) (checked by Felix on a real device, 2026-11-20)
+- [x] **M1-2.18** Watch two players walk on two real screens and judge whether the movement looks smooth (only measured: one position every 68 ms, no jumps) (checked by Felix on a real device, 2026-11-20)
+- [x] **M1-2.19** Hold a key, press Cmd and release the key on a Mac: the character must stop (only tested with simulated events) (checked by Felix on a real device, 2026-11-20)
 
 **For the team to decide**
 
-- [ ] **K13** Confirm or change the decisions marked “Proposal” from milestone 1: S-83 to S-89 in DECISIONS.md
-- [ ] **K15** Two findings of the play test of the minigames: “Brew the order” and “Build the tray” take about 5 seconds instead of the 10 to 25 of DESIGN.md, section 8; and both can be solved without reading the slip by clicking everything, because a mistake costs nothing (S-58). Leave it, or make them longer or let a mistake cost a moment?
-- [ ] **K14** The hedge is solid, but a hiding spot is drawn inside it: hide beside the hedge, or make the hedge walkable? (S-87, needed for M3-1.4)
+- [x] **K13** Confirmed 2026-11-19: all proposals of milestones 1 and 2 stand (S-100); S-87 is replaced by S-98
+- [x] **K15** Settled 2026-11-19: they stay as they are for now (S-99). Two findings of the play test of the minigames: “Brew the order” and “Build the tray” take about 5 seconds instead of the 10 to 25 of DESIGN.md, section 8; and both can be solved without reading the slip by clicking everything, because a mistake costs nothing (S-58). Leave it, or make them longer or let a mistake cost a moment?
+- [x] **K14** Settled 2026-11-19: players hide inside the hedge, so the hedge becomes walkable (S-98, replaces the solid hedge of S-87). Built with M3-1.4
 
 ## M2: Duel
 
@@ -80,15 +81,23 @@ Milestone 2 was built up to the Duel by Claude as lead (pull requests #19 to #26
 - [x] **M2-1.2** Character selection in the lobby, first version of the eight stereotypes (came with M1-2.1)
 - [ ] **M2-1.3** Display of the current room (Hanna). Not started. The browser can find the room from the own position and the rooms in `campus.json`; `draw.js` already has `roomAt`. DESIGN.md, section 4: the name stands at the top left
 - [ ] **M2-1.4** Make the map nicer and more detailed: floors, furniture and plants with more detail, still drawn from `campus.json` (Hanna). **Started, not merged.** Branch `game/m2-1.4-map-detail`: built, full suite green, one code review without blocking findings. No geometry changed; `campus.json` gained `pattern` on rooms, `faces` and `holds` on some solids and a list `decor` that only the browser draws. Branch `game/m2-1.4-map-detail-wip` holds the unfinished and untested fixes of that review: door mats and door leaves vanish at the edge of the view, six leaves lie on the walkable deck (decor must not lie where players walk; a test for that rule was started), the round café tables look smaller than the area they block, the canteen tables read as cassettes. Missing: finish and test those fixes, second review, play test, lists, pull request. Drawing the map costs about twice as much as before, still far inside one frame
-- [ ] **M2-1.5** Draw the characters larger (Hanna). Not started. A character standing on a station already hides its number (seen in the play test of M2-1.1), so check that too. The server decides collisions, so check the collision size and the narrow passages of the map with it. If the collision size changes, the walking distances of the Duel change with it: `server/world/paths.py` measures them with the player's size, and its tests name the narrow places
-- [ ] **M2-1.6** More realistic walking: feet that move while walking, and the head turned in the walking direction (Hanna). **Started, not merged.** Branch `game/m2-1.6-walking-animation`, the version the owner chose (the branch `game/campus-and-characters` is not merged): front, side and back view of all eight characters, alternating feet, a soft stop; one code review and its three findings fixed; full suite green; the icons in the lobby are unchanged. Missing: second review of the fix, play test with two players, lists, pull request. Only `characters.js` and `world.js` are touched
-- [ ] **M2-1.7** The hair, buns and headwear of the characters follow the head when it turns in the walking direction, instead of staying in place (Hanna). Not started. Build it on top of M2-1.6: in the side view only the face is shifted so far, hair and headwear are still drawn from the front
+- [x] **M2-1.5** Larger characters in a three-quarter view that face only left or right (requested by Felix, built in his session; area 1 is Hanna's). Height 39 instead of 26 with the camera unchanged, no back view, what is held in one hand stays in that hand, a badge shows a station's number under a character standing on it; the collision on the server is unchanged. Two code reviews, play test with two and with eight players, decisions in S-105 (2026-11-19). **To check by a person:** with eight players and a high-resolution screen the play test counted about 10 late frames in 600 against 1 to 2 before, measured without a graphics card; watch for stutter on a real laptop
+- [x] **M2-1.6** More realistic walking: front, side and back view of all eight characters, alternating feet, a soft stop. Two code reviews, play test with two players, the icons in the lobby are unchanged (2026-11-19). Known and accepted: a player put back onto the spawn from fewer than 15 map units away is drawn taking one step, because the browser cannot tell that from a real step; hair and headwear do not turn yet (M2-1.7)
+- [x] **M2-1.7** The hair, buns and headwear of the characters follow the head when it turns. Built with M2-1.5: the whole three-quarter view is mirrored, so hair and headwear turn with the face (2026-11-19)
+- [ ] **M2-1.8** Eight players put on the spawn stand on one point, and at the larger size only the last one drawn can be seen until they walk (S-88); name labels of players standing close cover their neighbours. Spread the players around the spawn on the server, or accept it (Hanna, with Felix for the server)
+- [x] **M2-1.9** The sketch `design/characters.svg` still shows the Latecomer with speed lines, sweat and steam, and the characters from the front only; bring it in line with the game or mark it as the first sketch (Hanna). Done on 2026-11-20: the speed lines, sweat drop and steam are gone from the Latecomer; the sketch and DESIGN.md section 3 say that it shows the lobby portraits from the front and that the map uses the three-quarter view facing left or right (S-105). No game code changed
+- [x] **M2-1.10** Remove the small badge with the station's number that is drawn under a character standing on a station (S-105); the large number in the circle, the pulsing border and the button “E Use” stay. Requested by Felix on 2026-11-20; one code review, play test with two guests in Chromium in the lobby and in a Duel round at stations 1, 2, 5 and 6, compared with main (2026-11-20)
+- [x] **M2-1.11** Touch-ups of the characters, requested by Felix on 2026-11-20 and chosen by him from proposals in three rounds: the Exchange Student has no suitcase, no yellow bar on the lower body and a larger bucket hat that sits on the head, and the straps of the backpack run over the shoulders; the Library Local's headphones sit on the ear in the turned view; the Surfer's fringe and front strand are one piece; the Overachiever's folder has no coloured tabs; everything on the upper body of all eight stays in the middle of the torso in the turned view (S-115). Drawing code only; one code review, play test in Chromium with six players on the map and in the lobby list, the measurable part kept as `tests/test_characters_drawn.py` (2026-11-20)
 
 **Area 2 (Felix)**
 
-- [ ] **M2-2.2** Back to the lobby after the round (Felix). The Duel already ends its round on the server (`Lobby.end_round`, S-94): the lobby is in phase `lobby` again, the ranking has a button “Back to lobby” that takes the card away, and the host can start the next round without a new code. Left to do: decide what the panel shows after a round, where the players stand when the round ends (they stay where they are for now), and play it through with three players
-- [ ] **M2-2.3** A player leaves the round, the host changes (Felix). For Duel the server part is built and tested: a player who leaves, logs out, disconnects or logs in elsewhere is taken out of the progress and the ranking, the round goes on, also for one player, and ends when the rest have finished; the host changes as in the lobby. Left to do: a play test with real browsers, and what a player who lost the connection sees when coming back (they cannot rejoin a running round, M3-2.2)
-- [ ] **M2-2.4** Statistics: the server writes the result of every round, profile with wins and best Duel time, leaderboard (Felix). Not started. `Duel.ranking()` in `server/modes/duel.py` gives place, name, time and stations done at the end of a round; the place to write from is where `server/main.py` ends the round. Only the server writes results (S-40), guests have no statistics (S-38). Writing must not hold up or break the end of the round: see how the Duel takes back a count when something fails after it (M2-4.7a)
+- [x] **M2-2.2** Back to the lobby after the round (Felix). Played through with three players in real browsers, also with the time running out and three rounds in a row; the run is `tests/test_play_back_to_lobby.py`. What the panel shows and where the players stand is decided in S-101 (2026-11-19)
+- [x] **M2-2.3** A player leaves the round, the host changes (Felix). Played through with three players in real browsers: leaving with the button, closing the tab, the same account logging in elsewhere, the host leaving, two of three leaving, coming back after a lost connection or a restart of the server; the run is `tests/test_play_leave_round.py`. A player who comes back cannot rejoin the running round and reads “This round has already started.” until it is over; rejoining is M3-2.2, the missing text for being signed out elsewhere is M1-2.8 (2026-11-19)
+- [x] **M2-2.4** Statistics: the server writes the result of every Duel round, profile with rounds, wins and best Duel time, leaderboard of the accounts that have played (Felix). Two code reviews, the SQL run against a real Postgres 16 by the reviewer, play test with two accounts and a guest; decisions in S-103 (2026-11-19). **Still to check by a person:** play one Duel on the deployed server with two accounts and open both screens, because the real Supabase database could not be reached while building
+- [x] **M2-2.6** Small follow-ups from the second review of M2-2.4, none of them a defect (Felix). Done on 2026-11-19: `result` is a required argument of `tell_round_ended`; `tests/conftest.py` resets the leaderboard cache; a new test runs three calls of `leaderboard_totals` directly, without waiting. The same width for “Profile” and “Leaderboard” on Home has fallen away: M2-2.7 replaced both buttons with icons. The old test that waits 0.2 seconds (`test_players_who_ask_while_the_store_is_busy_wait_for_the_same_answer`) stays next to the new one; removing a test is for a person to decide (rule 7) (2026-11-20)
+- [x] **M2-2.5** Countdown before a round: after “Start game” everybody sees “Round starts in” and 5 to 1, then the round starts as before; a ranking that is still open stays readable (Felix). Code review, play test with three players in real browsers, decisions in S-104 (2026-11-19)
+- [x] **M2-2.7** Home screen: “Profile” and “Leaderboard” are two round icons at the top right instead of two buttons in the card (Felix). Requested by Felix on 2026-11-19; one code review, tried in the browser as an account and as a guest at 320 to 1280 px (2026-11-19)
+- [x] **M2-2.8** All character buttons in the lobby have the same height: the quote under the name of the chosen character made its button taller, so the list jumped when the choice changed. The quote stays visible for the chosen character; nothing in the list moves when the choice changes, at 1280 px and in a narrow window, with one- and two-line names (Felix). Requested by Felix on 2026-11-20; one code review, played with two to eight guests in Chromium at 1280x800, 900x700 and 390x844, no button moves (2026-11-20)
 
 A complete Duel round needs nothing more from area 2: start, play, ranking and the next round work. M2-2.2 and M2-2.3 are about what is shown and about playing it with several people; M2-2.4 is the only part of the required scope (S-40) that is not built at all.
 
@@ -97,7 +106,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M2-4.7a** A fault after a task was counted takes the count back, in the frame and in the Duel, so the server never counts a station the browser was not told about (solved with M2-4.7)
 - [x] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard (S-94). In the pull request after #26
 - [ ] **M2-4.8** Play test: two players play a Duel through to the leaderboard (Lennart). A scripted run with two browsers and the real minigames exists from the building of M2-4.7 (both finish, ranking, second round, time running out). Left to do: two people on two computers on the deployed server, and write down what gets in the way
-- [ ] **K15** belongs here too: “Brew the order” and “Build the tray” are short and can be solved by clicking everything, which matters most in Duel (see “For the team to settle”)
+- [ ] **M2-4.9** After a solved minigame the “Done” window stays for one second and the walking keys are ignored during it; a key that is already held only counts again when the window has closed. In a Duel that is three seconds of standing per route and feels like lag (found in the play test of M2-2.2, after Felix reported lag). Let a held or newly pressed walking key take effect at once, or shorten the window (Lennart)
 
 **Known and open after the Duel**
 
@@ -120,7 +129,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 **Area 2 (Felix)**
 
 - [ ] **M3-2.1** Every client receives only what its player is allowed to know (roles, ghost chat) (Felix)
-- [ ] **M3-2.2** Reconnect after a short disconnection (Felix)
+- [x] **M3-2.2** Reconnect after a short disconnection (Felix). Built as option C (S-109, decided by Felix on 2026-11-20): after a lost connection the page joins the lost lobby by itself once the player signs in again, and puts the code into the join field; no return into a running round, no server change. One code review without findings, play test with up to four players in real browsers (lobby, countdown, Duel, server restart, several failed reconnects, full lobby); the runs are `tests/test_play_reconnect.py` and `tests/test_play_reconnect_edges.py` (2026-11-20)
 
 **Area 3 (Laurin)**
 
@@ -130,6 +139,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [ ] **M3-3.4** Meeting screen with chat and time limit (Laurin)
 - [ ] **M3-3.5** Vote and result (Laurin)
 - [ ] **M3-3.6** Progress bar, role display, end screen (Laurin)
+- [ ] **M3-3.8** When so many players leave a running Classic round that the ratio of High Performers to Free Riders no longer fits (S-48: one Free Rider with 4 or 5 players, two with 6 to 8), the round is stopped: everybody returns to the lobby with a clear message (Laurin, with Felix for the leaving). Requested by Felix on 2026-11-19. To decide while building: the exact limit, and the text for DESIGN.md, section 9
 - [ ] **M3-3.7** Play test: one complete round with five players, once the students win, once the Free Rider wins (Laurin)
 
 Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with one entry per mode, and `protocol.MODES` lists the modes the host can choose. A new mode adds one entry to each.

@@ -25,9 +25,12 @@ Game.world = Game.world || {};
   // After a failed download of the map, try again after this time.
   var RETRY_MILLISECONDS = 2000;
 
-  // Height of a drawn character, in map units. Its body is then about as
-  // wide as the 10 units the server counts for a player (S-86).
-  var CHARACTER_HEIGHT = 26;
+  // Height of a drawn character, in map units: one size for all. With it a
+  // character is about as tall as a door is wide (40) and stands clearly
+  // above a table (24). Only the drawing is this big: the server still
+  // counts a player as a square of 10 by 10 units (S-86), which is about
+  // as wide as the drawn body and legs.
+  var CHARACTER_HEIGHT = 39;
   // The server's position is the middle of that 10 x 10 square. The feet are
   // drawn at its lower edge, so a character stands in front of a wall the
   // way it collides with it.
@@ -38,11 +41,29 @@ Game.world = Game.world || {};
   var GLIDE_MILLISECONDS = 1000 / 15;
   // A longer way than this in one message is a respawn: jump, do not glide.
   var JUMP_DISTANCE = 60;
-  // How long after its last step a character still counts as walking. Longer
-  // than one interval, so the bobbing does not flicker between two messages.
-  var STILL_WALKING_MILLISECONDS = 160;
-  var BOB_HEIGHT = 1.2; // map units
-  var BOB_MILLISECONDS = 280; // one step up and down
+  // A real step is at most 9 map units on an axis: the server moves a player
+  // by at most 0.1 seconds x 90 units per second in one go. A larger change
+  // is the server putting the player somewhere else (the spawn at the start
+  // of a round): not a step, so the character neither walks nor turns.
+  var LONGEST_STEP = 15;
+  // The feet take full steps while the character glides. With the first
+  // step the steps grow to full size within this time; when no further step
+  // arrives they shrink to nothing within the second time, so the feet are
+  // put down softly instead of snapping to the ground.
+  var STRIDE_GROWS_MILLISECONDS = GLIDE_MILLISECONDS;
+  var STRIDE_FADES_MILLISECONDS = 150;
+  // One walking cycle is two steps: left foot, right foot.
+  var WALK_CYCLE_MILLISECONDS = 420;
+  // A change of position smaller than this, in map units, is not a step: it
+  // neither turns the character nor moves its feet. A real step is about 6
+  // units (90 units per second, 15 messages per second, S-86).
+  var SMALLEST_STEP = 1;
+  // Free room between the top of a standing character and its name, in map
+  // units. A walking character rises on every step (BODY_BOB in
+  // characters.js: 3 of its 112 design units, which is 1.05 map units at
+  // CHARACTER_HEIGHT). This room must be at least that rise, so a head
+  // never touches its name.
+  var HEAD_ROOM_BELOW_NAME = 1.5;
 
   // Which keys walk where. `event.code` names the place of a key on the
   // keyboard, so WASD also sits right on a keyboard with another layout.
@@ -108,7 +129,14 @@ Game.world = Game.world || {};
       from: null,
       to: null,
       arrivedAt: 0, // when `to` arrived, in milliseconds
-      lastStepAt: -Infinity, // when the position last changed
+      lastStepAt: -Infinity, // when the character last took a step
+      strideAtLastStep: 0, // how big its steps were at that moment, 0 to 1
+      walkingSince: 0, // when it started to walk; the walking cycle starts here
+      // Until this time the next position is a placement by the server and
+      // not a step, see startOfRound().
+      placedUntil: -Infinity,
+      // Which side the character faces. It only ever faces left or right,
+      // keeps the side after it stopped, and faces right until it has moved.
       facingLeft: false
     };
   }
@@ -148,17 +176,18 @@ Game.world = Game.world || {};
   function moveTo(player, x, y, now) {
     var start = drawnPosition(player, now) || { x: x, y: y };
     var isJump = Math.abs(x - start.x) > JUMP_DISTANCE || Math.abs(y - start.y) > JUMP_DISTANCE;
-    if (isJump) {
+    var isPlacement = now < player.placedUntil;
+    player.placedUntil = -Infinity; // it counts for one position only
+    if (isJump || isPlacement) {
       start = { x: x, y: y };
     }
-    var hasStepped = player.to && (player.to.x !== x || player.to.y !== y);
-    if (hasStepped && !isJump) {
-      player.lastStepAt = now;
-      // Walking straight up or down keeps the side the character faced.
-      if (x < player.to.x) {
-        player.facingLeft = true;
-      } else if (x > player.to.x) {
-        player.facingLeft = false;
+    if (player.to) {
+      var dx = x - player.to.x;
+      var dy = y - player.to.y;
+      if (isJump || isPlacement || isLongerThanAStep(dx, dy)) {
+        standStill(player);
+      } else {
+        takeStep(player, dx, dy, now);
       }
     }
     player.from = start;
@@ -166,8 +195,90 @@ Game.world = Game.world || {};
     player.arrivedAt = now;
   }
 
+  // Looks at the way between the last two positions from the server, (dx, dy),
+  // and remembers that the character walks and which side it faces.
+  // The same position again, or a tiny change, is not a step and changes
+  // nothing: so a character pressing against a wall does not twitch.
+  function takeStep(player, dx, dy, now) {
+    var stepsSideways = Math.abs(dx) >= SMALLEST_STEP;
+    var stepsUpOrDown = Math.abs(dy) >= SMALLEST_STEP;
+    if (!stepsSideways && !stepsUpOrDown) {
+      return;
+    }
+    if (!isWalking(player, now)) {
+      player.walkingSince = now;
+    }
+    // Remember how big the steps are right now: they grow on from there.
+    player.strideAtLastStep = stride(player, now);
+    player.lastStepAt = now;
+    // Only the sideways part of a step turns the character, so a diagonal
+    // takes the side of its sideways part. Walking straight up or down
+    // keeps the side the character faced and still moves its feet.
+    if (stepsSideways) {
+      player.facingLeft = dx < 0;
+    }
+  }
+
+  function isLongerThanAStep(dx, dy) {
+    return Math.abs(dx) > LONGEST_STEP || Math.abs(dy) > LONGEST_STEP;
+  }
+
+  // The server put the player somewhere else. That is not a step: the
+  // character stands there and faces right, like everybody else who was
+  // put there and like a character that has not moved yet.
+  function standStill(player) {
+    player.lastStepAt = -Infinity;
+    player.strideAtLastStep = 0;
+    player.facingLeft = false;
+  }
+
+  // A round starts: the server puts everybody on the spawn. From far away
+  // that shows as a jump, but a player who stood on the spawn or next to
+  // it would keep the side it faced, or be drawn taking a step there. So
+  // the lobby page says when a round starts: every character then stands
+  // and faces right, and its next position, if it comes within a moment,
+  // is a placement and not a step. Positions still come only from the
+  // server; this decides nothing about them.
+  var PLACEMENT_MILLISECONDS = 1000;
+
+  function startOfRound() {
+    var now = performance.now();
+    players.forEach(function (player) {
+      standStill(player);
+      player.placedUntil = now + PLACEMENT_MILLISECONDS;
+    });
+  }
+
+  // How big the steps of the player are at the time `now`, from 0 (it
+  // stands) to 1 (full steps). After a step they grow to full size; once the
+  // glide of that step is over and no new step has come, they fade away.
+  // It only depends on the time, like drawnPosition(), so it looks the same
+  // on every screen, however often that screen is redrawn.
+  function stride(player, now) {
+    // Never below 0: the time of a frame can lie a moment before the time
+    // at which the message with the step arrived.
+    var sinceStep = Math.max(0, now - player.lastStepAt);
+    var grown = Math.min(1, player.strideAtLastStep + sinceStep / STRIDE_GROWS_MILLISECONDS);
+    var faded = (sinceStep - GLIDE_MILLISECONDS) / STRIDE_FADES_MILLISECONDS;
+    faded = Math.max(0, Math.min(1, faded));
+    // Slow at the start and at the end (the curve 3t² - 2t³). A message that
+    // is a little late then hardly shrinks the steps before it arrives.
+    var easedFade = faded * faded * (3 - 2 * faded);
+    return grown * (1 - easedFade);
+  }
+
   function isWalking(player, now) {
-    return now - player.lastStepAt < STILL_WALKING_MILLISECONDS;
+    return stride(player, now) > 0;
+  }
+
+  // How far the player is in its walking cycle, from 0 to 1, or null when
+  // it stands. The cycle starts with both feet on the ground.
+  function walkPhase(player, now) {
+    if (!isWalking(player, now)) {
+      return null;
+    }
+    var walkedFor = Math.max(0, now - player.walkingSince);
+    return (walkedFor / WALK_CYCLE_MILLISECONDS) % 1;
   }
 
   // ---- What the lobby page tells the world -----------------------------
@@ -757,18 +868,21 @@ Game.world = Game.world || {};
     return y + FEET_BELOW_POSITION - CHARACTER_HEIGHT / 2;
   }
 
+  // The pose passed to drawCharacter(). One object, filled in again for
+  // every character, so that drawing makes no new object per frame.
+  var pose = { mirrored: false, walkPhase: null, stride: 0 };
+
+  // Every player is drawn by the same rule, from the positions the server
+  // sent: the turned view, mirrored when the character faces left.
   function drawPlayer(entry, now) {
-    var bob = 0;
-    if (isWalking(entry.player, now)) {
-      bob = Math.abs(Math.sin(now / BOB_MILLISECONDS * Math.PI)) * BOB_HEIGHT;
-    }
+    var player = entry.player;
+    pose.mirrored = player.facingLeft;
+    pose.walkPhase = walkPhase(player, now);
+    pose.stride = stride(player, now);
+    // A ghost (Classic) is drawn half transparent; only other ghosts see it.
     ctx.save();
-    ctx.translate(entry.x, figureMiddleY(entry.y) - bob);
-    if (entry.player.isGhost) ctx.globalAlpha = 0.38;
-    if (entry.player.facingLeft) {
-      ctx.scale(-1, 1); // mirrored: the character looks to the left
-    }
-    Game.world.drawCharacter(ctx, entry.player.character, 0, 0, CHARACTER_HEIGHT);
+    if (player.isGhost) ctx.globalAlpha = 0.38;
+    Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
     ctx.restore();
   }
 
@@ -781,7 +895,7 @@ Game.world = Game.world || {};
   // The label of one player where it belongs: centred directly above the
   // head. `x` and `y` are the middle of the label.
   function labelAboveHead(entry) {
-    var headTop = figureMiddleY(entry.y) - CHARACTER_HEIGHT / 2 - BOB_HEIGHT;
+    var headTop = figureMiddleY(entry.y) - CHARACTER_HEIGHT / 2 - HEAD_ROOM_BELOW_NAME;
     return {
       name: entry.player.name,
       isFreeRider: ownIsFreeRider && isOwn(entry.player),
@@ -990,6 +1104,7 @@ Game.world = Game.world || {};
   Game.world.setFailStatus = setFailStatus;
   Game.world.setPlayers = setPlayers;
   Game.world.setPositions = setPositions;
+  Game.world.startOfRound = startOfRound;
   Game.world.setUsableStations = setUsableStations;
   Game.world.setUseHandler = setUseHandler;
   Game.world.setFailHandler = setFailHandler;

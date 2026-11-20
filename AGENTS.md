@@ -41,7 +41,7 @@ Every file belongs to exactly one area. Stay inside the area of your to-do.
 
 | Area | Folders |
 |---|---|
-| 1 Campus and characters | `game/client/js/world/`, drawing code for map and characters |
+| 1 Campus and characters | `game/client/js/world/`, `game/server/world/` (movement, collision, stations and walking distances on the server, S-79), drawing code for map and characters |
 | 2 Network, lobby, accounts, foundation | `game/server/main.py`, `game/server/protocol.py`, `game/server/net/`, `game/server/accounts/`, `game/client/js/net.js`, `game/client/js/lobby/`, CI, hosting |
 | 3 Classic rules | `game/server/classic/`, `game/client/js/classic/` |
 | 4 Minigames and other modes | `game/server/modes/`, `game/client/js/minigames/` |

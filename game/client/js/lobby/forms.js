@@ -11,27 +11,36 @@ window.Game = window.Game || {};
   // Places: 'name', 'password', 'form' (the whole form) and 'code'.
   const ERROR_ELEMENTS = {
     signup: { name: 'signup-name-error', password: 'signup-password-error', form: 'signup-form-error' },
-    login: { name: 'login-form-error', password: 'login-form-error', form: 'login-form-error' },
-    home: { code: 'join-code-error' },
+    login: { name: 'login-form-error', password: 'login-form-error', form: 'login-form-error', attempts: 'login-form-error' },
+    home: { code: 'join-code-error', attempts: 'join-code-error' },
   };
 
   const signupForm = document.getElementById('signup-form');
   const loginForm = document.getElementById('login-form');
   const joinForm = document.getElementById('join-form');
 
-  function setup() {
+  // Each password field has its own eye button that shows or hides it.
+  const PASSWORD_EYES = [
+    { field: 'signup-password', button: 'signup-password-eye' },
+    { field: 'login-password', button: 'login-password-eye' },
+  ];
+
+  // `logOut` is the function of main.js that asks the server to log out.
+  function setup(logOut) {
     onClick('start-login', () => openForm('login'));
     onClick('start-signup', () => openForm('signup'));
     onClick('start-guest', () => Game.net.ask({ type: 'guest' }));
     onClick('signup-back', backToStart);
     onClick('login-back', backToStart);
     onClick('home-create', () => Game.net.ask({ type: 'create_lobby' }));
-    onClick('home-logout', () => Game.net.ask({ type: 'log_out' }));
+    onClick('home-logout', logOut);
 
     // A form's "submit" fires for its button and for Enter in a field.
     signupForm.addEventListener('submit', (event) => submitAccountForm(event, signupForm, 'sign_up'));
     loginForm.addEventListener('submit', (event) => submitAccountForm(event, loginForm, 'log_in'));
     joinForm.addEventListener('submit', submitJoinForm);
+
+    PASSWORD_EYES.forEach(setupPasswordEye);
   }
 
   function onClick(id, action) {
@@ -40,6 +49,7 @@ window.Game = window.Game || {};
 
   function openForm(name) {
     stopWaiting();
+    hidePasswords();
     clearErrors();
     Game.screens.show(name);
   }
@@ -82,9 +92,43 @@ window.Game = window.Game || {};
 
   // The password lives only in its field while the player types it. It is
   // never stored or logged, and the field is emptied as soon as possible.
+  // A field that is emptied is hidden as well, so no form is ever found
+  // again with its password readable.
   function forgetTypedPasswords() {
     signupForm.elements.password.value = '';
     loginForm.elements.password.value = '';
+    hidePasswords();
+  }
+
+  function setupPasswordEye(eye) {
+    const field = document.getElementById(eye.field);
+    const button = document.getElementById(eye.button);
+    // A click with the mouse would take the keyboard out of the field.
+    // Stopping that keeps the caret where the player was typing. Tab still
+    // reaches the button, and Enter and Space press it.
+    button.addEventListener('mousedown', (event) => event.preventDefault());
+    button.addEventListener('click', () => {
+      setPasswordShown(eye, field.type === 'password');
+    });
+  }
+
+  // Shows the password as plain text or hides it again. The button's name
+  // says what the next press does, and its icon follows `aria-pressed`.
+  function setPasswordShown(eye, isShown) {
+    const field = document.getElementById(eye.field);
+    const button = document.getElementById(eye.button);
+    if ((field.type === 'text') === isShown) return;
+    // Some browsers move the caret to the start when the type changes.
+    const caretStart = field.selectionStart;
+    const caretEnd = field.selectionEnd;
+    field.type = isShown ? 'text' : 'password';
+    if (document.activeElement === field) field.setSelectionRange(caretStart, caretEnd);
+    button.setAttribute('aria-pressed', String(isShown));
+    button.setAttribute('aria-label', isShown ? 'Hide password' : 'Show password');
+  }
+
+  function hidePasswords() {
+    PASSWORD_EYES.forEach((eye) => setPasswordShown(eye, false));
   }
 
   function clearErrors() {
@@ -118,6 +162,12 @@ window.Game = window.Game || {};
     Game.screens.show('home');
   }
 
+  // Puts a lobby code into the join field (S-109, after a lost connection).
+  // Call it after `showHome`, whose reset empties the field.
+  function putCodeInJoinField(code) {
+    joinForm.elements.code.value = code;
+  }
+
   function showStart() {
     stopWaiting();
     forgetTypedPasswords();
@@ -132,5 +182,6 @@ window.Game = window.Game || {};
     showSignedIn: showSignedIn,
     showHome: showHome,
     showStart: showStart,
+    putCodeInJoinField: putCodeInJoinField,
   };
 })();

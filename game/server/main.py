@@ -24,12 +24,16 @@ from fastapi.staticfiles import StaticFiles
 from starlette.websockets import WebSocketState
 
 from server import protocol
-from server.accounts import service
-from server.accounts.store import make_account_store
+from server.accounts import service, statistics
+from server.accounts.leaderboard_cache import LeaderboardCache
+from server.accounts.statistics_store import make_statistics_store
+from server.accounts.store import StoreUnavailable, make_account_store
 from server.classic import meeting as classic_meeting
 from server.classic.round import ClassicRound
 from server.modes import duel, minigames, tasks
+from server.net.attempts import AttemptLimits
 from server.net.lobbies import Lobbies
+from server.net.repeated_faults import RepeatedFaults
 from server.net.sessions import GUEST_NUMBERS, Sessions
 from server.protocol import PROTOCOL_VERSION, ProtocolError, error, parse_client_message, welcome
 from rules import FAIL_COOLDOWN_SECONDS, FAIL_RANGE_TILES, can_fail, check_winner, end_reason
@@ -67,9 +71,19 @@ app = FastAPI(title="Group Project", docs_url=None, redoc_url=None, openapi_url=
 # Postgres when DATABASE_URL is set (never print it: it holds the password),
 # otherwise in memory. Creating the store does not connect to anything yet.
 app.state.account_store = make_account_store(os.environ.get("DATABASE_URL"))
+# Statistics live next to the accounts: in Postgres or in memory (S-39).
+app.state.statistics_store = make_statistics_store(os.environ.get("DATABASE_URL"))
+# The last answer for the leaderboard, kept for a few seconds, and the
+# question to the store that is running right now, as `(store, task)` or None
+# (see `leaderboard_totals`).
+app.state.leaderboard_cache = LeaderboardCache()
+app.state.leaderboard_call = None
 app.state.hasher = service.Argon2Hasher()
 app.state.sessions = Sessions()
+app.state.attempt_limits = AttemptLimits()
 app.state.lobbies = Lobbies()
+# Which faults of the tick were logged lately, so that a repeating fault does not flood the log.
+app.state.repeated_faults = RepeatedFaults()
 # The map is read once, when the server starts. A broken map file stops the
 # start with a clear message, which is better than a game without walls.
 app.state.campus = load_campus()
@@ -120,6 +134,7 @@ async def game_socket(websocket: WebSocket):
         # newer log-in (S-76) has no name any more, so nothing happens here.
         name = app.state.sessions.name_of(websocket)
         app.state.sessions.sign_out(websocket)
+        app.state.attempt_limits.forget(websocket)
         if name is not None:
             await take_out_of_lobby(name)
 
@@ -140,6 +155,8 @@ async def read_messages(websocket: WebSocket):
             await websocket.send_json(welcome(message["name"]))
         elif message["type"] in ACCOUNT_HANDLERS:
             await answer_account_message(websocket, message)
+        elif message["type"] in STATISTICS_HANDLERS:
+            await answer_statistics_message(websocket, message)
         elif message["type"] in LOBBY_HANDLERS:
             await answer_lobby_message(websocket, message)
         elif message["type"] == "move":
@@ -174,7 +191,18 @@ async def handle_sign_up(websocket: WebSocket, message: dict):
 
 
 async def handle_log_in(websocket: WebSocket, message: dict):
-    return await sign_in_with(service.log_in, websocket, message)
+    if app.state.sessions.is_signed_in(websocket):
+        return protocol.rejection("already_signed_in")
+    # Asked before the password is hashed: one hash costs 64 MiB of memory
+    # and a worker thread, so a guessing script must not get that far (M1-2.6).
+    limits = app.state.attempt_limits
+    if limits.is_blocked(websocket, "log_in", seconds_now()):
+        return protocol.rejection("too_many_attempts")
+    answer = await sign_in_with(service.log_in, websocket, message)
+    # Only a wrong name or password is a guess. A database that is down is not.
+    if answer is not None and answer["code"] == "wrong_credentials":
+        limits.failed(websocket, "log_in", seconds_now())
+    return answer
 
 
 async def sign_in_with(rule, websocket: WebSocket, message: dict):
@@ -281,6 +309,155 @@ ACCOUNT_HANDLERS = {
 }
 
 
+# Statistics (S-40). The rules are in `server/accounts/statistics.py`; the
+# functions here ask the store on the account workers and send the answers.
+
+async def answer_statistics_message(websocket: WebSocket, message: dict):
+    """Run the handler for a statistics message and send its answer."""
+    handler = STATISTICS_HANDLERS[message["type"]]
+    await websocket.send_json(await handler(websocket))
+
+
+async def handle_get_profile(websocket: WebSocket) -> dict:
+    """The profile of the account this connection is signed in with, never of anybody else."""
+    sessions = app.state.sessions
+    name = sessions.name_of(websocket)
+    if name is None:
+        return protocol.rejection("not_signed_in")
+    if sessions.is_guest(websocket):
+        return protocol.rejection("guest_no_statistics")
+    records = await ask_statistics_store(app.state.statistics_store.records_of, name)
+    if records is None:
+        return protocol.rejection("statistics_unavailable")
+    rows = statistics.profile_rows(records, protocol.MODES)
+    return protocol.profile(name, rows, statistics.best_duel_seconds(records))
+
+
+async def handle_get_leaderboard(websocket: WebSocket) -> dict:
+    """The leaderboard, for accounts and guests alike."""
+    if not app.state.sessions.is_signed_in(websocket):
+        return protocol.rejection("not_signed_in")
+    totals = await leaderboard_totals()
+    if totals is None:
+        return protocol.rejection("statistics_unavailable")
+    # Cut again here: whatever a store returns, nobody gets more than 20 rows.
+    return protocol.leaderboard(statistics.leaderboard_rows(totals[: statistics.LEADERBOARD_SIZE]))
+
+
+async def leaderboard_totals():
+    """The accounts of the leaderboard, best first, or None when the statistics cannot be used.
+
+    The store is asked at most once in 10 seconds (see `LeaderboardCache`).
+    Players who ask while a question to the store is running wait for its
+    answer instead of starting a question of their own.
+    """
+    store = app.state.statistics_store
+    cached = app.state.leaderboard_cache.get(store, seconds_now())
+    if cached is not None:
+        return cached
+    running = app.state.leaderboard_call
+    if running is None or running[0] is not store or running[1].done():
+        running = (store, asyncio.create_task(load_leaderboard(store)))
+        app.state.leaderboard_call = running
+    # `shield`: if this player leaves while waiting, the question goes on
+    # for the others who wait for the same answer.
+    return await asyncio.shield(running[1])
+
+
+async def load_leaderboard(store):
+    """Ask the store for the leaderboard and keep its answer. Never raises. A failure is not kept."""
+    cache = app.state.leaderboard_cache
+    ticket = cache.ticket()
+    totals = await ask_statistics_store(store.top, statistics.LEADERBOARD_SIZE)
+    if totals is not None:
+        # Refused by the cache if a result was written in the meantime:
+        # this answer may be older than that result.
+        cache.put(store, totals, seconds_now(), ticket)
+    return totals
+
+
+def forget_leaderboard():
+    """The numbers have changed: the next look at the leaderboard asks the store again."""
+    app.state.leaderboard_cache.drop()
+    # A question that is still running may be answered with the old
+    # numbers, so nobody new waits for it.
+    app.state.leaderboard_call = None
+
+
+async def ask_statistics_store(method, *values):
+    """Call a method of the statistics store on the account workers. Never raises.
+
+    Returns the method's answer, or None when the statistics cannot be used
+    right now. The database takes a while, so it must not run on the event
+    loop, where it would freeze the game for every other player.
+    """
+    loop = asyncio.get_running_loop()
+    try:
+        return await loop.run_in_executor(account_workers, method, *values)
+    except StoreUnavailable:
+        # The store has logged the reason already (S-90).
+        return None
+    except Exception as problem:
+        # Only the kind of error is logged, never its text: that could
+        # contain details of the connection to the database.
+        logger.error("The statistics store failed in %s: %s", method.__name__, type(problem).__name__)
+        return None
+
+
+def duel_result_to_write(lobby, ranking):
+    """What a finished Duel adds to the statistics, as `(mode, changes)`. Never raises.
+
+    Returns None when there is nothing to write (only guests played). Called
+    at the one place a round ends, so each round gives exactly one result.
+    Nothing is written here: that happens later and off the event loop (see
+    `write_result_later`), so the end of the round is not delayed.
+    """
+    try:
+        changes = statistics.changes_from_duel(ranking, account_names(lobby.names()))
+        return (statistics.DUEL, changes) if changes else None
+    except Exception as problem:
+        # Statistics must never keep a round from ending.
+        logger.error("The result of a round could not be noted: %s", type(problem).__name__)
+        return None
+
+
+def account_names(names) -> set:
+    """Those of `names` who are signed in with an account. Guests have no statistics (S-38).
+
+    The server's own list of sessions decides who is a guest, never
+    anything the browser says.
+    """
+    sessions = app.state.sessions
+    accounts = set()
+    for name in names:
+        connection = sessions.connection_of(name)
+        if connection is not None and not sessions.is_guest(connection):
+            accounts.add(name)
+    return accounts
+
+
+def write_result_later(result):
+    """Start writing one round's result, `(mode, changes)` or None, as a task of its own."""
+    if result is not None:
+        mode, changes = result
+        run_in_background(write_result(mode, changes))
+
+
+async def write_result(mode: str, changes: list):
+    # If the database cannot be reached, the result of this round is lost.
+    # The store has logged why; the round itself ended long before.
+    await ask_statistics_store(app.state.statistics_store.record_round, mode, changes)
+    # Also after a failed write: it costs one question to the store, and
+    # nobody has to work out here what a failure left behind.
+    forget_leaderboard()
+
+
+STATISTICS_HANDLERS = {
+    "get_profile": handle_get_profile,
+    "get_leaderboard": handle_get_leaderboard,
+}
+
+
 # The lobby. The rules are in `server/net/lobbies.py`; the functions here only
 # ask them and send the answers.
 
@@ -321,9 +498,16 @@ def pick_lobby_code() -> str:
 
 
 async def handle_join_lobby(websocket: WebSocket, name: str, message: dict):
+    # Lobby codes have four letters, so they could be guessed by trying (M1-2.6).
+    limits = app.state.attempt_limits
+    if limits.is_blocked(websocket, "join_lobby", seconds_now()):
+        return "too_many_attempts"
     lobby, rejection_code = app.state.lobbies.join(name, message["code"])
     if rejection_code is None:
         await tell_lobby(lobby)
+    # Only a code that does not exist is a guess. A full or running lobby is not.
+    if rejection_code == "no_lobby":
+        limits.failed(websocket, "join_lobby", seconds_now())
     return rejection_code
 
 
@@ -348,15 +532,26 @@ async def handle_choose_mode(websocket: WebSocket, name: str, message: dict):
 
 
 async def handle_start_game(websocket: WebSocket, name: str, message: dict):
-    # The new state with phase "round" is the news that the round started;
-    # there is no message of its own for it (S-91). The next tick sends
-    # everybody's position on the spawn.
-    lobby, rejection_code = app.state.lobbies.start(name)
+    # The round does not start here: the lobby counts down first (S-102),
+    # and the tick starts the round when the countdown is over (see
+    # `start_round_if_due`). Until then nothing of the round exists.
+    lobby, rejection_code = app.state.lobbies.start(name, seconds_now())
     if rejection_code is None:
-        set_up_round(lobby)
         await tell_lobby(lobby)
-        await tell_round_started(lobby)
+        await tell_countdown(lobby)
     return rejection_code
+
+
+async def tell_countdown(lobby):
+    """After the lobby's state with phase "countdown": tell every member how long it is."""
+    await asyncio.gather(*(tell_member_the_countdown(name, lobby) for name in lobby.names()))
+
+
+async def tell_member_the_countdown(name: str, lobby):
+    # Asked right before the send, like in `tell_member`: the countdown may
+    # have been cancelled in the meantime, or the player may have left.
+    if is_member(name, lobby) and lobby.countdown_is_running():
+        await send_to(name, protocol.countdown(lobby.countdown_seconds_left(seconds_now())))
 
 
 async def handle_leave_lobby(websocket: WebSocket, name: str, message: dict):
@@ -508,8 +703,26 @@ async def run_ticks():
             # `tick` already catches what goes wrong in one lobby. This is the
             # last line of defence: whatever else fails, the loop goes on and
             # the next tick tries again. Only the kind of error is logged.
-            logger.error("A tick failed: %s", type(problem).__name__)
+            log_tick_fault("A tick failed", None, problem)
         previous = now
+
+
+def log_tick_fault(what_failed: str, lobby_code, problem: Exception):
+    """Log a fault of the tick, but not every time the same fault repeats.
+
+    The tick runs many times per second, so a lobby that fails on every tick
+    would flood the log. The same fault (the same place in the same lobby) is
+    logged at once the first time and then at most once a minute, with the
+    number of times it happened in between. Only the kind of error is logged.
+    """
+    log_it, swallowed = app.state.repeated_faults.happened((what_failed, lobby_code), seconds_now())
+    if not log_it:
+        return
+    kind = type(problem).__name__
+    if swallowed:
+        logger.error("%s: %s (and %d more times since the last such line)", what_failed, kind, swallowed)
+    else:
+        logger.error("%s: %s", what_failed, kind)
 
 
 def tick(seconds: float):
@@ -535,16 +748,23 @@ def tick(seconds: float):
         except Exception as problem:
             # A fault in one lobby must not freeze the lobbies after it.
             # Only the kind of error is logged.
-            logger.error("The tick failed for one lobby: %s", type(problem).__name__)
+            log_tick_fault("The tick failed for one lobby", lobby.code, problem)
+        try:
+            # A countdown that is over starts its round here (S-102). A try
+            # of its own, like the end of a round below.
+            if start_round_if_due(lobby):
+                run_in_background(tell_round_begins(lobby))
+        except Exception as problem:
+            logger.error("The start of a round failed: %s", type(problem).__name__)
         try:
             # A round whose time is up ends here, with no message from a
             # browser needed. A try of its own: a fault in the walking above
             # must not keep a round from ending.
-            farewells = end_round_if_over(lobby)
+            farewells, result = end_round_if_over(lobby)
             if farewells:
-                run_in_background(tell_round_ended(lobby, farewells))
+                run_in_background(tell_round_ended(lobby, farewells, result))
         except Exception as problem:
-            logger.error("The check for the end of a round failed: %s", type(problem).__name__)
+            log_tick_fault("The check for the end of a round failed", lobby.code, problem)
 
 
 def tell_positions(lobby):
@@ -586,7 +806,10 @@ async def send_positions(name: str, connection, lobby, message: dict):
 
 
 def seconds_now() -> float:
-    """The server's clock for the tasks. A function of its own, so tests can replace it."""
+    """The server's clock for the tasks, the countdown, the rounds and the leaderboard's cache.
+
+    A function of its own, so tests can replace it.
+    """
     return time.monotonic()
 
 
@@ -771,7 +994,8 @@ async def answer_fail_message(websocket: WebSocket):
     await tell_classic_roster(lobby)
     lobby.walkers._everybody_needs_news()
     tell_positions(lobby)
-    await tell_round_ended(lobby, end_round_if_over(lobby))
+    farewells, result = end_round_if_over(lobby)
+    await tell_round_ended(lobby, farewells, result)
 
 
 async def answer_report_message(websocket: WebSocket, message: dict):
@@ -870,9 +1094,9 @@ async def publish_meeting_and_round_result(lobby, now):
         await tell_classic_roster(lobby)
         lobby.walkers._everybody_needs_news()
         tell_positions(lobby)
-    farewells = end_round_if_over(lobby)
+    farewells, result = end_round_if_over(lobby)
     if farewells:
-        await tell_round_ended(lobby, farewells)
+        await tell_round_ended(lobby, farewells, result)
 
 
 def update_meeting_clock(lobby):
@@ -951,15 +1175,48 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
         await tell_classic_roster(lobby)
         lobby.walkers._everybody_needs_news()
         tell_positions(lobby)
-    farewells = end_round_if_over(lobby)
+    farewells, result = end_round_if_over(lobby)
     if farewells:
-        await tell_round_ended(lobby, farewells)
+        await tell_round_ended(lobby, farewells, result)
 
 
 # The round of each mode. The rules of Duel are in `server/modes/duel.py`
 # (S-94); the functions here ask them and send the news. A further mode gets
 # its own line in ROUND_SETUPS, its own place in the lobby (like `lobby.duel`)
 # and its own branch in the functions that ask `lobby.duel`.
+
+
+def start_round_if_due(lobby) -> bool:
+    """Start the lobby's round if its countdown is over (S-102). Returns whether the countdown ended.
+
+    Called by the tick. This function does not wait for anything, and the
+    rules change the phase before anything else happens: so one countdown
+    starts exactly one round, also when a tick comes late or twice. The
+    round is set up now, for the players who are in the lobby now.
+    """
+    try:
+        if not lobby.start_round_if_due(seconds_now()):
+            return False
+        set_up_round(lobby)
+    except Exception as problem:
+        # Whatever failed, in the rules' own start or while the round was
+        # set up: a round without its tasks could never end. The lobby is
+        # open again instead, and the host can press "Start game" once
+        # more. Only the kind of error is logged.
+        logger.error("A round could not be started: %s", type(problem).__name__)
+        lobby.end_round()
+    return True
+
+
+async def tell_round_begins(lobby):
+    """The news that the round started: the lobby's state with phase "round", then what the mode tells.
+
+    There is no message of its own for the start (S-91). The next tick
+    sends everybody's position on the spawn. If the round could not be
+    started, the state says that the lobby is open again, and nothing follows it.
+    """
+    await tell_lobby(lobby)
+    await tell_round_started(lobby)
 
 
 def set_up_round(lobby):
@@ -1147,18 +1404,22 @@ async def tell_round_news(lobby):
         the_duel = lobby.duel
         if the_duel is not None and the_duel.take_news():
             await asyncio.gather(*(tell_duel_progress(name, lobby, the_duel) for name in the_duel.names()))
-        await tell_round_ended(lobby, end_round_if_over(lobby))
+        farewells, result = end_round_if_over(lobby)
+        await tell_round_ended(lobby, farewells, result)
     except Exception as problem:
         # The caller is a player's own handler: a fault here must not close
         # that player's connection. Only the kind of error is logged.
         logger.error("Telling the news of a round failed: %s", type(problem).__name__)
 
 
-def end_round_if_over(lobby) -> dict:
+def end_round_if_over(lobby) -> tuple:
     """End the lobby's round if its mode says it is over.
 
-    Returns what each player still has to be told, as `{name: [messages]}`,
-    or an empty dict if the round goes on (or none is running).
+    Returns `(farewells, result)`. `farewells` is what each player still
+    has to be told, as `{name: [messages]}`, or an empty dict if the round
+    goes on (or none is running). `result` is what the round adds to the
+    statistics (see `duel_result_to_write`), or None. Both go to
+    `tell_round_ended`, so a round's result travels with its own farewells.
 
     This function does not wait for anything: between the question "is it
     over?" and the end of the round nothing else can happen. So a round ends
@@ -1170,23 +1431,27 @@ def end_round_if_over(lobby) -> dict:
         state = classic.state()
         winner = check_winner(state)
         if winner is None:
-            return {}
+            return {}, None
         result = classic.result(winner, end_reason(state))
         open_stations = {name: lobby.tasks.open_station_of(name) for name in lobby.names()}
         lobby.end_round()
+        # Classic does not write statistics yet: no result for the store.
         return {
             name: ([] if station is None else [protocol.station_closed(station)]) + [result]
             for name, station in open_stations.items()
-        }
+        }, None
 
     the_duel = lobby.duel
     if the_duel is None or not the_duel.is_over(seconds_now()):
-        return {}
+        return {}, None
     ranking = the_duel.ranking()
     # Everybody finished, or the time ran out: nothing else ends a Duel.
     time_up = not the_duel.everybody_finished()
     open_stations = {name: lobby.tasks.open_station_of(name) for name in lobby.names()}
     lobby.end_round()
+    # Only the server writes the result of a round (S-40). It is worked out
+    # here and written after the players were told (see `tell_round_ended`).
+    result_to_write = duel_result_to_write(lobby, ranking)
 
     # From here on the round is over, whatever happens. If the messages
     # cannot be built, the players still get the lobby's new state from
@@ -1202,14 +1467,25 @@ def end_round_if_over(lobby) -> dict:
         # that first, so its window closes before the ranking appears.
         closed = [] if station is None else [protocol.station_closed(station)]
         farewells[name] = closed + result
-    return farewells
+    return farewells, result_to_write
 
 
-async def tell_round_ended(lobby, farewells: dict):
-    """Send what `end_round_if_over` returned, then the lobby's state: it is open again."""
+async def tell_round_ended(lobby, farewells: dict, result):
+    """Send what `end_round_if_over` returned, then the lobby's state: it is open again.
+
+    `result` is this round's result for the statistics, or None when there
+    is nothing to write. It is written once this round's players have been
+    told, and only by this call. It has no default, so that no caller can
+    forget it and lose a round's statistics without anybody noticing.
+    """
     if not farewells:
         return
-    await asyncio.gather(*(tell_farewell(name, lobby, messages) for name, messages in farewells.items()))
+    try:
+        await asyncio.gather(*(tell_farewell(name, lobby, messages) for name, messages in farewells.items()))
+    finally:
+        # After the players have the result, and whatever happened while
+        # telling them: the statistics are written now, in the background.
+        write_result_later(result)
     await tell_lobby(lobby)
 
 
@@ -1227,5 +1503,25 @@ def run_in_background(coroutine):
     task.add_done_callback(background_sends.discard)
 
 
+class ClientFiles(StaticFiles):
+    """The files of the client, each sent with `Cache-Control: no-cache`.
+
+    `no-cache` means: the browser may keep its copy, but it asks the server
+    before every use whether the copy is still current. An unchanged file is
+    answered with a short `304 Not Modified`, so nothing is downloaded twice.
+    Without the header a browser guesses how long a file stays fresh, and a
+    normal reload after a deploy showed an old script.
+
+    Not `no-store`: then every file would be downloaded again on every visit.
+    Not a long `max-age`: that is only safe when a changed file gets a new
+    name (a version in the file name), and without a build step ours never do.
+    """
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 # Mounted last, so /health and /ws win over files of the same name.
-app.mount("/", StaticFiles(directory=CLIENT_DIR, html=True), name="client")
+app.mount("/", ClientFiles(directory=CLIENT_DIR, html=True), name="client")

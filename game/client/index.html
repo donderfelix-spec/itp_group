@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Group Project</title>
+  <link rel="icon" href="favicon.ico">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -36,8 +37,18 @@
         </div>
         <div class="field">
           <label for="signup-password">Password</label>
-          <input id="signup-password" name="password" type="password" autocomplete="new-password" maxlength="64"
-                 aria-describedby="signup-password-rule signup-password-error">
+          <div class="password-box">
+            <input id="signup-password" name="password" type="password" autocomplete="new-password" maxlength="64"
+                   aria-describedby="signup-password-rule signup-password-error">
+            <button type="button" id="signup-password-eye" class="password-eye"
+                    aria-label="Show password" aria-pressed="false" aria-controls="signup-password">
+              <svg class="eye-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+                <circle cx="12" cy="12" r="3"/>
+                <line class="eye-stroke" x1="4" y1="20" x2="20" y2="4"/>
+              </svg>
+            </button>
+          </div>
           <p id="signup-password-rule" class="rule">8–64 characters</p>
           <p id="signup-password-error" class="field-error" role="alert"></p>
         </div>
@@ -60,7 +71,17 @@
         </div>
         <div class="field">
           <label for="login-password">Password</label>
-          <input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="64">
+          <div class="password-box">
+            <input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="64">
+            <button type="button" id="login-password-eye" class="password-eye"
+                    aria-label="Show password" aria-pressed="false" aria-controls="login-password">
+              <svg class="eye-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+                <circle cx="12" cy="12" r="3"/>
+                <line class="eye-stroke" x1="4" y1="20" x2="20" y2="4"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <p id="login-form-error" class="field-error" role="alert"></p>
         <div class="button-row">
@@ -90,17 +111,90 @@
         </form>
         <button type="button" id="home-logout" class="button">Log out</button>
       </div>
+      <!-- Profile and Leaderboard: two round icons at the top right of the screen
+           (css: .home-icons). They stand after the card in this file, so the
+           keyboard still starts on "Create lobby" and reaches them with Tab. -->
+      <div class="home-icons">
+        <button type="button" id="home-profile" class="button icon-button" aria-label="Profile" title="Profile">
+          <!-- A person: head and shoulders. -->
+          <svg class="home-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+            <path class="icon-blue" d="M5.5 27.5c0-6 4.7-9.5 10.5-9.5s10.5 3.5 10.5 9.5z"/>
+            <circle class="icon-yellow" cx="16" cy="10.5" r="5.5"/>
+          </svg>
+        </button>
+        <button type="button" id="home-leaderboard" class="button icon-button" aria-label="Leaderboard" title="Leaderboard">
+          <!-- A trophy: two handles, the cup, the stem and the foot. -->
+          <svg class="home-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+            <path d="M10 7.5H6v2a4 4 0 0 0 4 4M22 7.5h4v2a4 4 0 0 1-4 4"/>
+            <path class="icon-yellow" d="M10 4.5h12v8a6 6 0 0 1-12 0z"/>
+            <path d="M16 18.5v4"/>
+            <path class="icon-yellow" d="M10 27.5v-3a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3z"/>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- Screen 12: Profile, filled by js/lobby/statistics.js -->
+    <section id="screen-profile" class="screen screen-centred" hidden>
+      <div class="card">
+        <h2>Profile</h2>
+        <p class="profile">Signed in as <strong id="profile-name"></strong></p>
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th scope="col">Mode</th>
+              <th scope="col" class="stats-number">Rounds</th>
+              <th scope="col" class="stats-number">Wins</th>
+            </tr>
+          </thead>
+          <tbody id="profile-modes"></tbody>
+        </table>
+        <p class="stats-best">Best Duel time <strong id="profile-best"></strong></p>
+        <button type="button" id="profile-back" class="button">Back</button>
+      </div>
+    </section>
+
+    <!-- Screen 13: Leaderboard, filled by js/lobby/statistics.js -->
+    <section id="screen-leaderboard" class="screen screen-centred" hidden>
+      <div class="card stats-card">
+        <h2>Leaderboard</h2>
+        <table id="leaderboard-table" class="stats-table">
+          <thead>
+            <tr>
+              <th scope="col" class="stats-number stats-column-place">Place</th>
+              <th scope="col">Player</th>
+              <th scope="col" class="stats-number stats-column-wins">Wins</th>
+              <th scope="col" class="stats-number stats-column-time">
+                <!-- The short form is shown in a narrow window (see style.css). -->
+                <span class="stats-wide-only">Best Duel time</span><span class="stats-narrow-only">Best time</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-rows"></tbody>
+        </table>
+        <p id="leaderboard-empty" hidden>No rounds played yet.</p>
+        <button type="button" id="leaderboard-back" class="button">Back</button>
+      </div>
     </section>
 
     <!-- Screen 4: Lobby, with the map next to it -->
     <section id="screen-lobby" class="screen screen-lobby" hidden>
       <div class="map-area">
         <canvas id="map" class="map" aria-label="Campus map"></canvas>
-        <p class="hint">Walk with WASD or the arrow keys</p>
+        <!-- Two parts, so that on a narrow map the hint can be two lines
+             (style.css). On a wide map it is one line. -->
+        <p class="hint"><span class="hint-part">Walk with WASD</span> <span class="hint-part">or the arrow keys</span></p>
         <!-- The window of a minigame, built by js/minigames/frame.js. -->
         <div id="minigame" class="minigame" hidden></div>
         <!-- The ranking at the end of a Duel, built by js/minigames/duel.js. -->
         <div id="duel-ranking" class="duel-ranking" hidden></div>
+        <!-- The countdown before a round, counted by js/lobby/countdown.js.
+             After the ranking in the page: style.css moves it aside while
+             the ranking is open. -->
+        <div id="countdown" class="countdown" role="timer" aria-live="off" hidden>
+          <p class="countdown-line">Round starts in</p>
+          <p id="countdown-number" class="countdown-number"></p>
+        </div>
       </div>
       <!-- The top and the bottom of the panel always stay visible. Only the
            middle scrolls when the window is too low for it. -->
@@ -211,6 +305,7 @@
   <script src="js/lobby/screens.js"></script>
   <script src="js/lobby/forms.js"></script>
   <script src="js/lobby/lobby.js"></script>
+  <script src="js/lobby/countdown.js"></script>
   <script src="js/minigames/frame.js"></script>
   <script src="js/minigames/build_tray.js"></script>
   <script src="js/minigames/brew_order.js"></script>
@@ -220,6 +315,7 @@
   <script src="js/minigames/duel.js"></script>
   <script src="js/classic/meeting.js"></script>
   <script src="js/classic/round.js"></script>
+  <script src="js/lobby/statistics.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

@@ -166,6 +166,50 @@ input {
   text-transform: uppercase;
 }
 
+/* The password field with its eye button, which shows or hides what was
+   typed. The button lies over the right end of the field; the field keeps
+   that room free, so a long password does not run under the eye. */
+.password-box { position: relative; }
+
+.password-box > input { padding-right: 48px; }
+
+.password-eye {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.password-eye:hover { background: var(--sand); }
+
+/* Inside the field there is no room for the usual ring around a button. */
+.password-eye:focus-visible { outline-offset: -2px; }
+
+.eye-icon {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The stroke through the eye: only while the password can be read. */
+.eye-stroke { display: none; }
+.password-eye[aria-pressed="true"] .eye-stroke { display: inline; }
+
 /* ---- Small labels: "Host", "You", "guest" ---- */
 
 .marker {
@@ -182,12 +226,18 @@ input {
 
 /* ---- Messages at the top centre ---- */
 
+/* The message may use the whole width of the window minus 16px on each side.
+   With `left: 50%` it could only use the right half, so it wrapped early on a
+   narrow window. Now `left` and `right` give the room, `fit-content` makes the
+   pill only as wide as its text, and `margin: 0 auto` centres it in the room. */
 .message {
   position: fixed;
   top: 16px;
-  left: 50%;
+  left: 16px;
+  right: 16px;
   z-index: 10;
-  max-width: calc(100vw - 32px);
+  width: fit-content;
+  margin: 0 auto;
   padding: 6px 18px;
   border: var(--outline);
   border-radius: 999px;
@@ -195,7 +245,8 @@ input {
   box-shadow: var(--shadow);
   font-weight: 600;
   text-align: center;
-  transform: translateX(-50%);
+  /* A very long word is broken too, so it never sticks out of the window. */
+  overflow-wrap: anywhere;
 }
 
 .message-error { background: var(--coral); }
@@ -350,6 +401,62 @@ input {
   bottom: 86px;
   z-index: 1;
   background: var(--sun);
+}
+
+/* When the map is narrow (below about 620px: on its own in a narrow window,
+   or next to the 380px panel in a window up to 1000px), the centred hint
+   would run into "E Use" (in Chromium below 552px; the rest is room for a
+   wider system font). Then the hint stands right above the button, with
+   its right edge in line with the button's. 94px from the bottom is the
+   button's 34px, the button itself (about 52px high) and a gap of 8px.
+   The hint has two lines, one per part in index.html, and is only as wide
+   as the longer one. So it is always two lines high, whatever the font.
+   The lines stand a little closer than elsewhere, so that in a low window
+   the hint stays below the own character in the middle of the map.
+   At the spawn point the room names on a narrow map lie at the left edge
+   ("Main Deck") and in the bottom right corner ("Pingo Doce"), so the hint
+   stays off both there.
+   "800px < width" and not "min-width: 801px": the panel moves next to the
+   map above 800px (see the media query further down), and a window can be
+   800.5px wide when the page is zoomed. */
+@media (width <= 620px), (800px < width <= 1000px) {
+  .hint {
+    left: auto;
+    right: 34px;
+    bottom: 94px;
+    width: max-content;
+    max-width: calc(100% - 60px); /* never wider than the map */
+    line-height: 1.25;
+    white-space: normal;
+    text-align: center;
+    transform: none;
+  }
+
+  .hint-part { display: block; }
+}
+
+/* ---- The message on the lobby screen ---- */
+
+/* Next to the panel, the message is centred over the map and never reaches
+   the panel, so it cannot lie on the lobby code at the top of the panel.
+   380px is the width of the panel. Only while the lobby screen is shown:
+   on every other screen the message keeps the whole width of the window. */
+body:has(#screen-lobby:not([hidden])) .message {
+  right: calc(380px + 16px);
+}
+
+/* When the panel is below the map (see the media query further down), the
+   page scrolls, and a message fixed at the top would lie on the lobby code
+   as soon as the code is scrolled up. So the message stands at the bottom
+   of the window there. The code starts below the map, more than half the
+   window down, and scrolling only moves it up, so it never reaches the
+   bottom of a window at least about 420px high. */
+@media (max-width: 800px) {
+  body:has(#screen-lobby:not([hidden])) .message {
+    top: auto;
+    right: 16px;
+    bottom: 16px;
+  }
 }
 
 /* ---- The window of a minigame, built by js/minigames/frame.js ---- */
@@ -1495,6 +1602,78 @@ input {
 /* The player's own row. */
 .duel-row-own { background: var(--sun); }
 
+/* The countdown before a round: a card over the upper part of the map, so it
+   does not hide the players, who mostly stand around the spawn in the middle.
+   It hangs from the top edge of the map, so it never sticks out above it.
+   It takes no clicks, so the map and the ranking stay usable underneath. */
+.countdown {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 32px;
+  border: var(--outline);
+  border-radius: 18px;
+  background: var(--cream);
+  box-shadow: 6px 6px 0 var(--ink);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.countdown-line {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.countdown-number {
+  margin: 0;
+  font-size: 96px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* On a narrow or low window the map is small: a smaller card, so it stays
+   off the player's own character and name in the middle of the map. */
+@media (max-width: 800px), (max-height: 620px) {
+  .countdown {
+    top: 24px;
+    padding: 6px 16px;
+    border-radius: 14px;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+
+  .countdown-line { font-size: 14px; }
+  .countdown-number { font-size: 40px; }
+}
+
+/* While the ranking of the last round is still open, the countdown is one
+   slim line ("Round starts in 3") at the very top of the map. The ranking
+   keeps 32px free around its card (see .duel-ranking), and the line stays
+   inside that strip: so it can never cover any part of the card, however
+   small the window and however long the ranking. */
+.duel-ranking:not([hidden]) ~ .countdown {
+  top: 3px;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+.duel-ranking:not([hidden]) ~ .countdown .countdown-line,
+.duel-ranking:not([hidden]) ~ .countdown .countdown-number {
+  font-size: 15px;
+  line-height: 20px;
+}
+
 .panel {
   display: flex;
   flex-direction: column;
@@ -1593,7 +1772,12 @@ input {
 .characters {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 6px;
+  /* Every row as high as the highest one, so all eight cards are equally
+     high, also with a name on two lines. */
+  grid-auto-rows: 1fr;
+  /* 4px between the rows, not 6px: the cards keep the room for their line,
+     and so eight players still fit a 1280x800 window without scrolling. */
+  gap: 4px 6px;
 }
 
 .character {
@@ -1616,17 +1800,23 @@ input {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* At the top of the card, not in the middle: the hidden line below the
+     name is one or two lines high, so in the middle the names of one row
+     would not stand at the same height. */
+  align-self: flex-start;
 }
 
 .character-name { font-weight: 700; }
 
-/* The lobby line: only on the own card, a tooltip on the others. */
+/* The lobby line: only seen on the own card, a tooltip on the others.
+   It is hidden, not removed, on the others: every card keeps the room for
+   it, so no card changes its size when the choice changes (M2-2.8). */
 .character-line {
-  display: none;
+  visibility: hidden;
   font-size: 12px;
 }
 
-.character-own .character-line { display: block; }
+.character-own .character-line { visibility: visible; }
 
 /* The player's own character. */
 .character-own {
@@ -1711,6 +1901,11 @@ input {
   .panel {
     border-left: none;
     border-top: var(--outline);
+    /* Room below the buttons, so the player can scroll them out from under
+       a message, which stands at the bottom of the window here (see "The
+       message on the lobby screen"). A message is at most three lines
+       high, about 95px, and 16px from the bottom. */
+    padding-bottom: 112px;
   }
 
   /* The whole page scrolls here, so the middle needs no scrolling of its own. */
@@ -1733,3 +1928,110 @@ input {
 .classic-role-list, .classic-stat-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px 14px; margin: 0; padding: 0; list-style: none; text-align: left; }
 .classic-role-list li, .classic-stat-list li { padding: 6px 10px; border: 2px solid var(--ink); border-radius: 8px; background: white; }
 .classic-end-window .button-row { justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+/* ---- Profile and Leaderboard (js/lobby/statistics.js) ---- */
+
+/* On the Home screen the two are round icons at the top right corner of the
+   screen, not of the card. The room above and below the card is as high as
+   the icons, so they never lie on the card, however low the window is. */
+#screen-home {
+  position: relative;
+  padding-top: 84px;
+  padding-bottom: 84px; /* the same as above, so the card stays in the middle */
+}
+
+.home-icons {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 12px;
+}
+
+/* Round and 48 px wide: large enough for a finger (at least 44 px). */
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 50%;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+/* Drawn like everything else in the game: thick dark outline, round corners.
+   Not ".icon": that is the class of the lobby's character pictures. */
+.home-icon {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-yellow { fill: var(--sun); }
+.icon-blue { fill: var(--water); }
+
+/* The leaderboard has four columns and needs more room than a form. */
+.stats-card { width: min(100%, 520px); }
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  /* Fixed widths, so a long name is cut off instead of widening the card. */
+  table-layout: fixed;
+}
+
+.stats-table th,
+.stats-table td {
+  padding: 6px 10px;
+  border-bottom: 2px solid var(--ink);
+  text-align: left;
+}
+
+.stats-table th { font-size: 15px; }
+
+/* Numbers and times stand under each other, digit under digit. */
+.stats-table .stats-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The narrow columns of the leaderboard. The name gets all the rest. */
+.stats-column-place { width: 70px; }
+.stats-column-wins { width: 64px; }
+.stats-column-time { width: 100px; }
+
+.stats-name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The player's own row, like in the Duel ranking. */
+.stats-row-own { background: var(--sun); }
+
+.stats-best strong {
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The short heading of the time column, for a narrow window only. */
+.stats-narrow-only { display: none; }
+
+/* A narrow window: the name is what tells players apart, so everything
+   else gives up room for it. */
+@media (max-width: 560px) {
+  .stats-card { padding: 18px; }
+  .stats-table th,
+  .stats-table td { padding: 6px 4px; }
+  .stats-table th { font-size: 13px; }
+  .stats-column-place { width: 40px; }
+  .stats-column-wins { width: 38px; }
+  .stats-column-time { width: 64px; }
+  .stats-wide-only { display: none; }
+  .stats-narrow-only { display: inline; }
+}

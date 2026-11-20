@@ -131,9 +131,12 @@ VALID_MESSAGES = [
     {"type": "emergency"},
     {"type": "chat", "text": "Hello there."},
     {"type": "vote", "target_id": "Mara"},
+    {"type": "get_profile"},
+    {"type": "get_leaderboard"},
 ]
 MESSAGES_WITHOUT_FIELDS = [
     "guest", "log_out", "create_lobby", "leave_lobby", "start_game", "close_station", "finish_station", "fail",
+    "get_profile", "get_leaderboard",
 ]
 
 
@@ -390,6 +393,9 @@ REJECTION_TEXTS = {
     "vote_rejected": "You cannot cast that vote right now.",
     "report_rejected": "You cannot report that F-sheet right now. Stand at the sheet and try again.",
     "emergency_rejected": "You cannot call an emergency meeting right now.",
+    "guest_no_statistics": "Guests have no statistics. Sign up to keep yours.",
+    "statistics_unavailable": "Statistics are unavailable right now.",
+    "too_many_attempts": "Too many attempts. Try again in a minute.",
 }
 
 

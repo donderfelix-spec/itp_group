@@ -5,7 +5,19 @@
 // rounded box from y = 38 to 80, the shoes end at y = 97. drawCharacter()
 // scales and moves this drawing to the place and size that was asked for.
 //
-// Used on the map (world.js) and for the small icons in the lobby panel.
+// A character has two drawings, see the comment above drawCharacter():
+// - the portrait: it stands and looks at the viewer, as in the sketch. Used
+//   for the small icons in the lobby panel.
+// - the turned view: it is still seen mostly from the front, but turned a
+//   little to the right, and it can walk. Its mirror image is turned to the
+//   left. Used on the map (world.js). Face, hair, headwear and the thing in
+//   the hand are drawn turned too, so the character reads as one turned
+//   figure and mirroring turns all of it: the face moves towards the side
+//   it is turned to, and hair and headwear are drawn as seen from there.
+//   The head itself is not moved, so a hat on it is not either; only the
+//   top of its crown leans towards the face. What sits on the front of the
+//   upper body (tie, straps, necklace) stays in the middle of the body, so
+//   it is still in the middle in the mirror image.
 
 "use strict";
 
@@ -18,7 +30,9 @@ Game.world = Game.world || {};
   var OUTLINE = "#2E2A3B";
   var SKIN = "#F6E7D0";
 
-  // The drawing reaches from y = -12 (hair bun) to y = 100 (shadow).
+  // The drawing of a standing character reaches from y = -12 (hair bun) to
+  // y = 100 (shadow). A walking one rises above that on every step, by up
+  // to BODY_BOB; its middle is still counted from these two numbers.
   var DESIGN_TOP = -12;
   var DESIGN_HEIGHT = 112;
 
@@ -28,6 +42,29 @@ Game.world = Game.world || {};
   // The same limit in design units. drawCharacter() sets it before drawing,
   // because it depends on how small the character is drawn.
   var thinnestLine = 0;
+
+  // Walking, in design units: how high the rear foot is lifted, how far a
+  // foot swings forward and back, how far a free hand swings, and how far
+  // the body rises on a step.
+  var FOOT_LIFT = 5;
+  var FOOT_SWING = 4;
+  var HAND_SWING = 4;
+  var BODY_BOB = 3;
+  // A walking character leans this far into its walking direction (radians).
+  var WALKING_LEAN = 0.05;
+  // The lean turns around the point between the feet, so they stay in place.
+  var GROUND_Y = 96;
+  // In the turned view the face (eyes, mouth, cheeks, glasses) sits this
+  // far towards the side it is turned to, and the shoes point a little
+  // that way.
+  var TURN = 5;
+  var SHOE_TURN = 2;
+  // The body, a rounded box. In the turned view it is a little narrower on
+  // the side the character is turned to: it reaches from x = -18 to 17, so
+  // its middle is half a unit left of the middle of the portrait's body.
+  var BODY = { x: -19, y: 38, width: 38, height: 42, radius: 11 };
+  var TURNED_BODY = { x: -18, y: 38, width: 35, height: 42, radius: 11 };
+  var TURNED_BODY_MIDDLE = TURNED_BODY.x + TURNED_BODY.width / 2;
 
   // Ids, names and lines from DESIGN.md, section 3. `colour` is the body colour.
   var characters = [
@@ -102,22 +139,12 @@ Game.world = Game.world || {};
     return keptPaths.get(svgPath);
   }
 
-  // Is the drawing mirrored right now (a character walking to the left)?
-  // In a mirrored drawing the two axes turn the other way round, which makes
-  // this number of the transform negative.
-  function isMirrored(ctx) {
-    var transform = ctx.getTransform();
-    return transform.a * transform.d - transform.b * transform.c < 0;
-  }
-
-  // Text centred at (x, y). It always reads from left to right, also on a
-  // mirrored character: there it is mirrored a second time, around its middle.
+  // Text centred at (x, y). The only text is the "A+" on the folder. It is
+  // never drawn mirrored: a character turned to the left holds its folder
+  // in a hand that is mirrored back, see drawArmsWithObjectKeptInHand().
   function label(ctx, words, x, y, size, colour) {
     ctx.save();
     ctx.translate(x, y);
-    if (isMirrored(ctx)) {
-      ctx.scale(-1, 1);
-    }
     ctx.fillStyle = colour;
     ctx.font = "bold " + size + "px system-ui, sans-serif";
     ctx.textAlign = "center";
@@ -134,24 +161,33 @@ Game.world = Game.world || {};
 
   // ---- The parts every character has -----------------------------------
 
-  function drawShadowAndShoes(ctx, shoeColour) {
+  // The shadow lies on the ground, also while the character walks.
+  function drawShadow(ctx) {
     ctx.save();
     ctx.globalAlpha = 0.14;
     ctx.beginPath();
     ctx.ellipse(0, 98, 24, 5, 0, 0, Math.PI * 2);
     paint(ctx, OUTLINE, null, 0);
     ctx.restore();
-    box(ctx, -15, 89, 14, 8, 4, shoeColour || OUTLINE, shoeColour ? 1.5 : 0);
-    box(ctx, 1, 89, 14, 8, 4, shoeColour || OUTLINE, shoeColour ? 1.5 : 0);
   }
 
-  function drawLegs(ctx, colour) {
-    box(ctx, -13, 74, 11, 18, 4, colour, 2);
-    box(ctx, 2, 74, 11, 18, 4, colour, 2);
+  // The portrait: one shoe and one leg. `side` is -1 for the left and 1 for
+  // the right one.
+  function drawShoe(ctx, side, shoeColour) {
+    box(ctx, side < 0 ? -15 : 1, 89, 14, 8, 4, shoeColour || OUTLINE, shoeColour ? 1.5 : 0);
+  }
+
+  function drawLeg(ctx, side, colour) {
+    box(ctx, side < 0 ? -13 : 2, 74, 11, 18, 4, colour, 2);
+  }
+
+  // Pass null as `fill` and 0 as `lineWidth` to only build the path.
+  function drawBodyBox(ctx, body, fill, lineWidth) {
+    box(ctx, body.x, body.y, body.width, body.height, body.radius, fill, lineWidth);
   }
 
   function drawBody(ctx, colour) {
-    box(ctx, -19, 38, 38, 42, 11, colour, 2.5);
+    drawBodyBox(ctx, BODY, colour, 2.5);
   }
 
   // An arm is a bent line from the shoulder to the hand: first drawn thick in
@@ -178,9 +214,13 @@ Game.world = Game.world || {};
     circle(ctx, hand[0], hand[1], 5, SKIN, 2);
   }
 
+  function drawBareHead(ctx) {
+    circle(ctx, 0, 20, 18, SKIN, 2.5);
+  }
+
   // The face is the same for all characters (S-07).
   function drawFace(ctx) {
-    circle(ctx, 0, 20, 18, SKIN, 2.5);
+    drawBareHead(ctx);
     circle(ctx, -6.5, 22, 2.4, OUTLINE, 0);
     circle(ctx, 6.5, 22, 2.4, OUTLINE, 0);
     stroke(ctx, "M-4 29 Q0 32.5 4 29", OUTLINE, 2);
@@ -191,21 +231,66 @@ Game.world = Game.world || {};
     ctx.restore();
   }
 
+  // The same face in the turned view: eyes, mouth and cheeks sit further to
+  // the right. The eye and the cheek on that side are almost at the edge of
+  // the head, so they are seen narrower.
+  function drawTurnedFace(ctx) {
+    drawBareHead(ctx);
+    circle(ctx, -6.5 + TURN, 22, 2.4, OUTLINE, 0);
+    ctx.beginPath();
+    ctx.ellipse(6.2 + TURN, 22, 1.8, 2.4, 0, 0, Math.PI * 2);
+    paint(ctx, OUTLINE, null, 0);
+    stroke(ctx, "M1.5 29 Q5 32.5 8.5 29", OUTLINE, 2);
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    circle(ctx, -11 + TURN, 27, 2.6, "#F2A99B", 0);
+    ctx.beginPath();
+    ctx.ellipse(13.5, 27, 1.7, 2.6, 0, 0, Math.PI * 2);
+    paint(ctx, "#F2A99B", null, 0);
+    ctx.restore();
+  }
+
   function nothing() {}
+
+  // Draws what sits on the front of the upper body in the turned view: the
+  // same drawing as in the portrait, moved to the middle of the turned body.
+  function drawOnTurnedBody(ctx, drawFront) {
+    ctx.save();
+    ctx.translate(TURNED_BODY_MIDDLE, 0);
+    drawFront(ctx);
+    ctx.restore();
+  }
 
   // ---- What makes each character different -----------------------------
   //
-  // A look has:
-  //   body, legs, shoes   colours
+  // A look has the colours `body`, `legs` and `shoes`, and two sets of
+  // drawing functions.
+  //
+  // For the portrait:
   //   leftHand, rightHand where the hands are, as [x, y]
   //   behind(ctx)         drawn behind the body (backpack, hood)
   //   clothes(ctx)        drawn on the body (tie, vest, long hair)
   //   object(ctx)         the thing in the hand
   //   head(ctx)           hair, hat, glasses, headphones
+  //
+  // For the turned view, always drawn turned to the right. The right half
+  // of the drawing is the side the character walks to; on the left more of
+  // its back is seen (the back of the hair, a bun, a backpack).
+  //   turnedLeftHand, turnedRightHand  where the hands are, as [x, y]
+  //   handsSwing          true if the hands are free and swing while walking
+  //   holdsInRightHand    true if the object is held in the right hand alone.
+  //                       It then stays in that hand, on the right of the
+  //                       screen, when the character is turned to the left.
+  //   turnedBehind(ctx)   drawn behind the body
+  //   turnedClothes(ctx)  drawn on the body
+  //   turnedObject(ctx)   the thing in the hand
+  //   turnedHead(ctx)     hair, hat, glasses, headphones, turned like the face
 
   var PLAIN_LOOK = {
     body: "#B9B4A6", legs: "#8F8A7D", leftHand: [-22, 65], rightHand: [22, 65],
-    behind: nothing, clothes: nothing, object: nothing, head: nothing
+    behind: nothing, clothes: nothing, object: nothing, head: nothing,
+    turnedLeftHand: [-21, 65], turnedRightHand: [21, 65], handsSwing: true,
+    turnedBehind: nothing, turnedClothes: nothing, turnedObject: nothing, turnedHead: nothing
   };
 
   var LOOKS = {
@@ -213,18 +298,21 @@ Game.world = Game.world || {};
     consultant: {
       body: "#26406E", legs: "#1C3156", leftHand: [-22, 65], rightHand: [23, 68],
       behind: nothing,
-      clothes: function (ctx) {
-        shape(ctx, "M-9 39 L9 39 L0 63 Z", "#FFFFFF", 1.5);
-        shape(ctx, "M-2.8 41 L2.8 41 L3.3 52 L2.1 57.5 L0 63 L-2.1 57.5 L-3.3 52 Z", "#E0483E", 1.2);
-        stroke(ctx, "M-9 39 L-2.6 56 M9 39 L2.6 56", "#1C3156", 2.5);
-      },
-      object: function (ctx) {
-        box(ctx, 12, 73, 22, 16, 2.5, "#8A5A3B", 2);
-        stroke(ctx, "M18 73 v-5 h10 v5", OUTLINE, 2);
-        box(ctx, 21, 79, 4, 3, 0, "#FFD23F", 0);
-      },
+      clothes: drawShirtAndTie,
+      object: drawBriefcase,
       head: function (ctx) {
         shape(ctx, "M-18 19 A18 18 0 0 1 18 19 Q10 7 -3 9 Q-12 10 -18 19 Z", "#3B2F2F", 2);
+      },
+      turnedLeftHand: [-21, 65], turnedRightHand: [23, 68], holdsInRightHand: true,
+      turnedBehind: nothing,
+      turnedClothes: function (ctx) {
+        drawOnTurnedBody(ctx, drawShirtAndTie);
+      },
+      turnedObject: drawBriefcase,
+      turnedHead: function (ctx) {
+        // The parting moves with the face; behind it the hair reaches down
+        // to the ear.
+        shape(ctx, "M-17 26 A18 18 0 0 1 17 14 Q13 6 3 8 Q-6 9 -9.5 17 Q-11 24 -17 26 Z", "#3B2F2F", 2);
       }
     },
 
@@ -237,43 +325,50 @@ Game.world = Game.world || {};
         shape(ctx, "M18 48 Q18 39 8 39 L4 39 L4 79 L10 79 Q18 79 18 70 Z", "#3F4A5E", 1.5);
         stroke(ctx, "M-17 52 h13 M-17 62 h13 M-17 72 h13 M4 52 h13 M4 62 h13 M4 72 h13", "#2A3345", 1.5);
       },
-      object: function (ctx) {
-        box(ctx, 19, 42, 13, 22, 2.5, OUTLINE, 0);
-        stroke(ctx, "M21.5 58 L24.5 51 L27 54.5 L30 46", "#6BD68A", 1.8);
-      },
+      object: drawPhone,
       head: function (ctx) {
         shape(ctx, "M-18 19 A18 18 0 0 1 18 19 Q14 6 0 7 Q-14 6 -18 19 Z", "#8A6A3B", 2);
+      },
+      turnedLeftHand: [-21, 65], turnedRightHand: [25, 63], holdsInRightHand: true,
+      turnedBehind: nothing,
+      turnedClothes: function (ctx) {
+        // The turned body is narrower than the portrait's, so the vest is
+        // too: two halves of the same width with the opening (x -4.5 to 3.5)
+        // in the middle of the body.
+        shape(ctx, "M-17 48 Q-17 39 -7.5 39 L-4.5 39 L-4.5 79 L-9.5 79 Q-17 79 -17 70 Z", "#3F4A5E", 1.5);
+        shape(ctx, "M16 48 Q16 39 6.5 39 L3.5 39 L3.5 79 L8.5 79 Q16 79 16 70 Z", "#3F4A5E", 1.5);
+        stroke(ctx, "M-16 52 h11.5 M-16 62 h11.5 M-16 72 h11.5 M3.5 52 h11.5 M3.5 62 h11.5 M3.5 72 h11.5", "#2A3345", 1.5);
+      },
+      turnedObject: drawPhone,
+      turnedHead: function (ctx) {
+        shape(ctx, "M-17 26 A18 18 0 0 1 17 14 Q15 5 5 6.5 Q-7 6 -10 17 Q-11.5 24 -17 26 Z", "#8A6A3B", 2);
       }
     },
 
-    // Pink, yellow bucket hat, backpack, wheeled suitcase with stickers, lanyard.
+    // Pink, yellow bucket hat, backpack, lanyard. Both hands are free.
     exchange_student: {
-      body: "#F0569B", legs: SKIN, leftHand: [-22, 65], rightHand: [32, 50],
+      body: "#F0569B", legs: SKIN, leftHand: [-22, 65], rightHand: [22, 65],
       behind: function (ctx) {
         box(ctx, -27, 36, 54, 36, 12, "#3E8FD0", 2.5);
       },
       clothes: function (ctx) {
-        box(ctx, -18, 70, 36, 12, 5, "#FFD23F", 2);
-        stroke(ctx, "M-12 39 V68 M12 39 V68", "#2A6FA8", 5);
-        stroke(ctx, "M-6 40 L0 52 L6 40", OUTLINE, 1.5);
-        box(ctx, -4, 52, 8, 10, 1.5, "#FFFFFF", 1.5);
+        drawStrapsAndLanyard(ctx, BODY);
       },
-      object: function (ctx) {
-        stroke(ctx, "M28 62 V48 H37 V62", OUTLINE, 2);
-        box(ctx, 23, 62, 19, 27, 3, "#2BB3A3", 2);
-        circle(ctx, 29, 70, 2.5, "#FFD23F", 0);
-        box(ctx, 33, 75, 6, 5, 0, "#F2695C", 0);
-        circle(ctx, 30, 82, 2, "#FFFFFF", 0);
-        circle(ctx, 27, 91, 2.5, OUTLINE, 0);
-        circle(ctx, 38, 91, 2.5, OUTLINE, 0);
+      object: nothing,
+      head: drawBucketHat,
+      turnedLeftHand: [-21, 65], turnedRightHand: [21, 65], handsSwing: true,
+      turnedBehind: function (ctx) {
+        // The backpack on the back shows on the left, behind the shoulder.
+        box(ctx, -31, 36, 44, 36, 12, "#3E8FD0", 2.5);
       },
-      head: function (ctx) {
-        shape(ctx, "M-15 13 Q-14 -4 0 -4 Q14 -4 15 13 Z", "#FFD23F", 2);
-        // The brim of the hat: a thick dark line with a yellow one on top.
-        stroke(ctx, "M-23 14 Q0 8 23 14", OUTLINE, 5.5);
-        ctx.strokeStyle = "#FFD23F";
-        ctx.lineWidth = 2.5;
-        ctx.stroke(pathOf("M-23 14 Q0 8 23 14"));
+      turnedClothes: function (ctx) {
+        drawStrapsAndLanyard(ctx, TURNED_BODY);
+      },
+      turnedObject: nothing,
+      turnedHead: function (ctx) {
+        // Under the hat the hair shows at the back of the head.
+        shape(ctx, "M-17.6 16 Q-18.6 22 -16.6 27 Q-12 24 -11 15 Z", "#8A5A3B", 2);
+        drawTurnedBucketHat(ctx);
       }
     },
 
@@ -283,18 +378,28 @@ Game.world = Game.world || {};
       behind: nothing,
       clothes: function (ctx) {
         box(ctx, -18, 68, 36, 14, 5, "#F08A3C", 2);
-        stroke(ctx, "M-9 41 Q0 50 9 41", OUTLINE, 1.2);
-        circle(ctx, -5, 45, 1.8, "#FFFFFF", 0);
-        circle(ctx, 0, 46.5, 1.8, "#FFFFFF", 0);
-        circle(ctx, 5, 45, 1.8, "#FFFFFF", 0);
-        // The long hair falls over the shoulders, so it is drawn before the face.
-        shape(ctx, "M-21 20 Q-22 -1 0 -1 Q22 -1 21 20 L22 40 Q16 45 12 36 L12 20 L-12 20 L-12 36 Q-16 45 -22 40 Z", "#F2D36B", 2);
+        drawShellNecklace(ctx);
+        // The long hair falls over the shoulders, so it is drawn before the
+        // face and the arms. The front hair is drawn on the face, see head.
+        shape(ctx, "M-21 20 Q-22 -1 0 -1 Q22 -1 21 20 L22 40 Q16 45 12.5 37 Q14 31 15.5 25 L-15.5 25 Q-14 31 -12.5 37 Q-16 45 -22 40 Z", "#F2D36B", 2);
         drawSurfboardPrint(ctx);
       },
       object: nothing,
-      head: function (ctx) {
-        shape(ctx, "M-18 19 A18 18 0 0 1 18 19 Q7 9 -5 11 Q-13 12 -18 19 Z", "#F2D36B", 2);
-      }
+      head: drawSurferFrontHair,
+      turnedLeftHand: [-21, 65], turnedRightHand: [20, 65], handsSwing: true,
+      turnedBehind: nothing,
+      turnedClothes: function (ctx) {
+        box(ctx, -17, 68, 33, 14, 5, "#F08A3C", 2);
+        // The long hair falls down the back, which shows on the left. On
+        // the other side only a short strand is seen. Drawn before the face.
+        shape(ctx, "M-22 20 Q-23 -1 0 -1 Q20 -1 20.5 17 L20 25 Q17.8 27.5 16.3 23 L-7 20 L-7 38 Q-13 48 -25 43 Z", "#F2D36B", 2);
+        // The hair covers the left shoulder, so the necklace is drawn after
+        // it: the necklace lies on top and is seen whole.
+        drawOnTurnedBody(ctx, drawShellNecklace);
+        drawOnTurnedBody(ctx, drawSurfboardPrint);
+      },
+      turnedObject: nothing,
+      turnedHead: drawTurnedSurferFrontHair
     },
 
     // Black hoodie with the hood up, laptop covered in stickers.
@@ -303,9 +408,7 @@ Game.world = Game.world || {};
       behind: function (ctx) {
         circle(ctx, 0, 20, 22, "#33333D", 2.5);
       },
-      clothes: function (ctx) {
-        stroke(ctx, "M-5 40 V52 M5 40 V52", "#FFFFFF", 1.8);
-      },
+      clothes: drawHoodieStrings,
       object: function (ctx) {
         box(ctx, -16, 55, 32, 21, 2.5, "#C9CED6", 2);
         circle(ctx, -6, 63, 3.5, "#F2695C", 0);
@@ -314,60 +417,69 @@ Game.world = Game.world || {};
       },
       head: function (ctx) {
         shape(ctx, "M-19 22 A19 19 0 0 1 19 22 Q13 7 0 7 Q-13 7 -19 22 Z", "#33333D", 2);
+      },
+      turnedLeftHand: [-14, 68], turnedRightHand: [21, 68],
+      turnedBehind: function (ctx) {
+        // More of the hood is seen at the back of the head.
+        circle(ctx, -2, 20, 22, "#33333D", 2.5);
+      },
+      turnedClothes: function (ctx) {
+        drawOnTurnedBody(ctx, drawHoodieStrings);
+      },
+      turnedObject: function (ctx) {
+        box(ctx, -12, 55, 31, 21, 2.5, "#C9CED6", 2);
+        circle(ctx, -2, 63, 3.5, "#F2695C", 0);
+        box(ctx, 6, 60, 8, 5, 1, "#FFD23F", 0);
+        circle(ctx, 10, 70, 2.2, "#5FA86B", 0);
+      },
+      turnedHead: function (ctx) {
+        // The opening of the hood is turned with the face.
+        shape(ctx, "M-19.5 25 A19.5 19.5 0 0 1 18.5 16 Q17 7 6 6.5 Q-7 6.5 -10 19 Q-12 26 -19.5 25 Z", "#33333D", 2);
       }
     },
 
-    // Green cardigan, glasses, hair bun, folder with tabs and "A+".
+    // Green cardigan, glasses, hair bun, folder with "A+".
     overachiever: {
       body: "#4E9F5B", legs: "#5E6472", leftHand: [-22, 65], rightHand: [31, 70],
-      behind: function (ctx) {
-        circle(ctx, 0, -3, 8, "#5A3E2B", 2);
-      },
-      clothes: function (ctx) {
-        shape(ctx, "M-8 39 L8 39 L0 56 Z", "#FFFFFF", 1.5);
-        circle(ctx, 0, 62, 1.6, OUTLINE, 0);
-        circle(ctx, 0, 70, 1.6, OUTLINE, 0);
-      },
-      object: function (ctx) {
-        box(ctx, 7, 54, 24, 30, 2.5, "#FFFFFF", 2);
-        box(ctx, 31, 58, 5, 6, 0, "#F2695C", 1);
-        box(ctx, 31, 66, 5, 6, 0, "#FFD23F", 1);
-        box(ctx, 31, 74, 5, 6, 0, "#6FA8F0", 1);
-        stroke(ctx, "M11 61 h15 M11 67 h15 M11 73 h10", "#B9B4A6", 1.5);
-        label(ctx, "A+", 19, 82, 7, "#5FA86B");
-      },
+      behind: drawHairBun,
+      clothes: drawCollarAndButtons,
+      object: drawFolder,
       head: function (ctx) {
         shape(ctx, "M-18 19 A18 18 0 0 1 18 19 Q9 9 0 9 Q-9 9 -18 19 Z", "#5A3E2B", 2);
-        ctx.save();
-        ctx.globalAlpha = 0.35;
-        circle(ctx, -6.5, 22, 6, "#FFFFFF", 0);
-        circle(ctx, 6.5, 22, 6, "#FFFFFF", 0);
-        ctx.restore();
-        circle(ctx, -6.5, 22, 6, null, 2);
-        circle(ctx, 6.5, 22, 6, null, 2);
-        stroke(ctx, "M-0.5 22 h1 M-12.5 21 L-17.5 19 M12.5 21 L17.5 19", OUTLINE, 2);
+        drawGlasses(ctx);
+      },
+      turnedLeftHand: [-21, 65], turnedRightHand: [31, 70], holdsInRightHand: true,
+      turnedBehind: function (ctx) {
+        // The bun is at the back of the head, so it moves against the face.
+        circle(ctx, -8, -2, 8, "#5A3E2B", 2);
+      },
+      turnedClothes: function (ctx) {
+        drawOnTurnedBody(ctx, drawCollarAndButtons);
+      },
+      turnedObject: drawFolder,
+      turnedHead: function (ctx) {
+        shape(ctx, "M-17 26 A18 18 0 0 1 17 14 Q12 8 5 8.5 Q-6 9 -9.5 18 Q-11 24 -17 26 Z", "#5A3E2B", 2);
+        drawTurnedGlasses(ctx);
       }
     },
 
-    // Orange jacket, messy hair, coffee cup, drops of sweat.
+    // Orange jacket, messy hair, coffee cup.
     latecomer: {
       body: "#F08A3C", legs: "#3F5F8A", leftHand: [-22, 65], rightHand: [25, 67],
-      behind: function (ctx) {
-        // Speed lines: this one is always in a hurry.
-        stroke(ctx, "M-44 50 h10 M-46 60 h14 M-44 70 h10", "#B9B4A6", 2.5);
-      },
-      clothes: function (ctx) {
-        box(ctx, -6, 39, 12, 40, 0, "#FFFFFF", 1.5);
-      },
-      object: function (ctx) {
-        stroke(ctx, "M23 46 q-3 -4 0 -8 M29 47 q3 -4 0 -8", "#B9B4A6", 1.8);
-        shape(ctx, "M17 56 L34 56 L32 78 L19 78 Z", "#FFFFFF", 2);
-        box(ctx, 16, 52, 19, 5, 2, "#8A5A3B", 1.5);
-        box(ctx, 19, 63, 13, 7, 0, "#C9A27A", 0);
-      },
+      behind: nothing,
+      clothes: drawShirtStripe,
+      object: drawCoffeeCup,
       head: function (ctx) {
         shape(ctx, "M-18 19 Q-23 7 -13 4 Q-15 -5 -5 0 Q-2 -9 4 -1 Q11 -8 13 3 Q23 5 18 19 Q10 9 0 11 Q-10 9 -18 19 Z", "#7A4B2A", 2);
-        shape(ctx, "M24 14 q4 6 0 10 q-4 -4 0 -10 Z", "#6FB8E8", 1.2);
+      },
+      turnedLeftHand: [-21, 65], turnedRightHand: [25, 67], holdsInRightHand: true,
+      turnedBehind: nothing,
+      turnedClothes: function (ctx) {
+        drawOnTurnedBody(ctx, drawShirtStripe);
+      },
+      turnedObject: drawCoffeeCup,
+      turnedHead: function (ctx) {
+        shape(ctx, "M-17 26 Q-24 18 -19 10 Q-25 2 -13 3 Q-15 -6 -4 -1 Q-1 -10 6 -2 Q13 -8 14.5 3 Q23 6 17 15 Q12 8 4 10 Q-6 11 -9.5 18 Q-11 24 -17 26 Z", "#7A4B2A", 2);
       }
     },
 
@@ -383,16 +495,244 @@ Game.world = Game.world || {};
       },
       head: function (ctx) {
         shape(ctx, "M-18 24 Q-21 2 0 2 Q21 2 18 24 L15 14 Q0 8 -15 14 Z", "#2B2B33", 2);
-        // The band of the headphones: dark line, coral line on top.
-        stroke(ctx, "M-19 17 A19 19 0 0 1 19 17", OUTLINE, 7);
-        ctx.strokeStyle = "#F2695C";
-        ctx.lineWidth = 3.5;
-        ctx.stroke(pathOf("M-19 17 A19 19 0 0 1 19 17"));
-        box(ctx, -25, 13, 9, 16, 4, "#F2695C", 2);
-        box(ctx, 16, 13, 9, 16, 4, "#F2695C", 2);
+        drawHeadphones(ctx);
+      },
+      turnedLeftHand: [-12, 73], turnedRightHand: [21, 73],
+      turnedBehind: drawTurnedHeadphonesBehind,
+      turnedClothes: nothing,
+      turnedObject: function (ctx) {
+        box(ctx, -10, 67, 28, 8, 1.5, "#6FA8F0", 1.8);
+        box(ctx, -8, 59, 25, 8, 1.5, "#E0483E", 1.8);
+        box(ctx, -9, 51, 23, 8, 1.5, "#FFD23F", 1.8);
+      },
+      turnedHead: function (ctx) {
+        shape(ctx, "M-18 28 Q-22 2 0 2 Q20 2 18.5 19 L17 13 Q9 7.5 2 9.5 Q-7 11 -10 20 Q-12 27 -18 28 Z", "#2B2B33", 2);
+        drawTurnedHeadphones(ctx);
       }
     }
   };
+
+  // ---- Parts of the looks that need more than a line or two ------------
+
+  // What sits on the front of the upper body. Each is drawn for the middle
+  // of the portrait's body (x = 0); drawOnTurnedBody() moves it for the
+  // turned view.
+
+  // The Consultant's white shirt, red tie and the lapels of the jacket.
+  function drawShirtAndTie(ctx) {
+    shape(ctx, "M-9 39 L9 39 L0 63 Z", "#FFFFFF", 1.5);
+    shape(ctx, "M-2.8 41 L2.8 41 L3.3 52 L2.1 57.5 L0 63 L-2.1 57.5 L-3.3 52 Z", "#E0483E", 1.2);
+    stroke(ctx, "M-9 39 L-2.6 56 M9 39 L2.6 56", "#1C3156", 2.5);
+  }
+
+  // The Exchange Student's backpack straps and the lanyard with its card,
+  // centred on `body`. The straps come over the shoulders from the
+  // backpack and curve back to it at the sides, and the cord goes round
+  // the neck. So they are drawn only inside `body` (the clip), and the
+  // body's outline is drawn again on top: their ends disappear behind it.
+  function drawStrapsAndLanyard(ctx, body) {
+    var middle = body.x + body.width / 2;
+    ctx.save();
+    drawBodyBox(ctx, body, null, 0);
+    ctx.clip();
+    ctx.translate(middle, 0);
+    stroke(ctx, "M-12 30 V54 Q-12 64 -24 68 M12 30 V54 Q12 64 24 68", "#2A6FA8", 5);
+    stroke(ctx, "M-7 36 L0 52 L7 36", OUTLINE, 1.5);
+    box(ctx, -4, 52, 8, 10, 1.5, "#FFFFFF", 1.5);
+    ctx.restore();
+    drawBodyBox(ctx, body, null, 2.5);
+  }
+
+  // The Surfer's shell necklace.
+  function drawShellNecklace(ctx) {
+    stroke(ctx, "M-9 41 Q0 50 9 41", OUTLINE, 1.2);
+    circle(ctx, -5, 45, 1.8, "#FFFFFF", 0);
+    circle(ctx, 0, 46.5, 1.8, "#FFFFFF", 0);
+    circle(ctx, 5, 45, 1.8, "#FFFFFF", 0);
+  }
+
+  // The two strings of the Founder's hoodie.
+  function drawHoodieStrings(ctx) {
+    stroke(ctx, "M-5 40 V52 M5 40 V52", "#FFFFFF", 1.8);
+  }
+
+  // The Overachiever's white collar and two buttons of the cardigan.
+  function drawCollarAndButtons(ctx) {
+    shape(ctx, "M-8 39 L8 39 L0 56 Z", "#FFFFFF", 1.5);
+    circle(ctx, 0, 62, 1.6, OUTLINE, 0);
+    circle(ctx, 0, 70, 1.6, OUTLINE, 0);
+  }
+
+  // The white shirt that shows under the Latecomer's open jacket.
+  function drawShirtStripe(ctx) {
+    box(ctx, -6, 39, 12, 40, 0, "#FFFFFF", 1.5);
+  }
+
+  // What is held in a hand.
+
+  // The Consultant's briefcase. It is held in the same place in the portrait and
+  // in the turned view.
+  function drawBriefcase(ctx) {
+    box(ctx, 12, 73, 22, 16, 2.5, "#8A5A3B", 2);
+    stroke(ctx, "M18 73 v-5 h10 v5", OUTLINE, 2);
+    box(ctx, 21, 79, 4, 3, 0, "#FFD23F", 0); // the lock
+  }
+
+  // The Finance Bro's phone with a price chart. It is held in the same place in the portrait and
+  // in the turned view.
+  function drawPhone(ctx) {
+    box(ctx, 19, 42, 13, 22, 2.5, OUTLINE, 0);
+    stroke(ctx, "M21.5 58 L24.5 51 L27 54.5 L30 46", "#6BD68A", 1.8);
+  }
+
+  // The Overachiever's folder with "A+". It is held in the same place in the portrait and
+  // in the turned view.
+  function drawFolder(ctx) {
+    box(ctx, 7, 54, 24, 30, 2.5, "#FFFFFF", 2);
+    stroke(ctx, "M11 61 h15 M11 67 h15 M11 73 h10", "#B9B4A6", 1.5);
+    label(ctx, "A+", 19, 82, 7, "#5FA86B");
+  }
+
+  // The Latecomer's coffee cup. It is held in the same place in the portrait and
+  // in the turned view.
+  function drawCoffeeCup(ctx) {
+    shape(ctx, "M17 56 L34 56 L32 78 L19 78 Z", "#FFFFFF", 2);
+    box(ctx, 16, 52, 19, 5, 2, "#8A5A3B", 1.5);
+    box(ctx, 19, 63, 13, 7, 0, "#C9A27A", 0);
+  }
+
+  // The Exchange Student's bucket hat. It sits on the head: where the brim
+  // crosses them (y = 12), the sides of the rounded crown (x = -17 and 17)
+  // lie on the outline of the head. The middle of that 2.5 wide line is at
+  // about x = -16.1 and 16.1 there, so x = -17 and 17 are inside it, and
+  // the outline runs on into the crown as one line. The brim reaches
+  // equally far out on both sides and stays above the eyes (y = 22).
+  function drawBucketHat(ctx) {
+    shape(ctx, "M-17 12 C-17 -1 -12.5 -5 0 -5 C12.5 -5 17 -1 17 12 Q0 7 -17 12 Z", "#FFD23F", 2);
+    drawBucketHatBrim(ctx);
+  }
+
+  // The head is not moved in the turned view, so neither is the hat; only
+  // the top of its crown leans a little towards the face.
+  function drawTurnedBucketHat(ctx) {
+    shape(ctx, "M-17 12 C-17 -1 -11 -5 1.5 -5 C13.5 -5 17 -1 17 12 Q0 7 -17 12 Z", "#FFD23F", 2);
+    drawBucketHatBrim(ctx);
+  }
+
+  // The brim of the hat: a thick dark line with a yellow one on top.
+  function drawBucketHatBrim(ctx) {
+    stroke(ctx, "M-27 14.5 Q0 6.5 27 14.5", OUTLINE, 5.5);
+    ctx.strokeStyle = "#FFD23F";
+    ctx.lineWidth = 2.5;
+    ctx.stroke(pathOf("M-27 14.5 Q0 6.5 27 14.5"));
+  }
+
+  function drawHairBun(ctx) {
+    circle(ctx, 0, -3, 8, "#5A3E2B", 2);
+  }
+
+  function drawGlasses(ctx) {
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    circle(ctx, -6.5, 22, 6, "#FFFFFF", 0);
+    circle(ctx, 6.5, 22, 6, "#FFFFFF", 0);
+    ctx.restore();
+    circle(ctx, -6.5, 22, 6, null, 2);
+    circle(ctx, 6.5, 22, 6, null, 2);
+    // The bridge between the lenses, and the arms of the glasses, which run
+    // to the edge of the head.
+    stroke(ctx, "M-0.5 22 h1 M-12.5 21 L-17.5 19 M12.5 21 L17.5 19", OUTLINE, 2);
+  }
+
+  // The glasses sit on the turned eyes. The lens at the edge of the head is
+  // seen narrower, and of its arm only the start is seen.
+  function drawTurnedGlasses(ctx) {
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    circle(ctx, -6.5 + TURN, 22, 6, "#FFFFFF", 0);
+    traceNarrowLens(ctx);
+    paint(ctx, "#FFFFFF", null, 0);
+    ctx.restore();
+    circle(ctx, -6.5 + TURN, 22, 6, null, 2);
+    traceNarrowLens(ctx);
+    paint(ctx, null, OUTLINE, 2);
+    stroke(ctx, "M4.5 22 h1.7 M-7.5 21 L-17 20 M16.4 21 L17.8 20.5", OUTLINE, 2);
+  }
+
+  function traceNarrowLens(ctx) {
+    ctx.beginPath();
+    ctx.ellipse(11.3, 22, 5, 6, 0, 0, Math.PI * 2);
+  }
+
+  function drawHeadphones(ctx) {
+    // The band of the headphones: dark line, coral line on top.
+    stroke(ctx, "M-19 17 A19 19 0 0 1 19 17", OUTLINE, 7);
+    ctx.strokeStyle = "#F2695C";
+    ctx.lineWidth = 3.5;
+    ctx.stroke(pathOf("M-19 17 A19 19 0 0 1 19 17"));
+    box(ctx, -25, 13, 9, 16, 4, "#F2695C", 2);
+    box(ctx, 16, 13, 9, 16, 4, "#F2695C", 2);
+  }
+
+  // The headphones turned with the head. The ear at the back of the head
+  // is seen, so its cup sits there, on the side of the head at ear height.
+  // The far ear and its cup are hidden behind the head. The band runs from
+  // the near cup over the top of the head (NEAR_BAND) and then down behind
+  // the head to the far ear.
+  var NEAR_BAND = "M-15 13 Q-16 -2.5 0 -2.5";
+  var WHOLE_BAND = NEAR_BAND + " Q15 -2.5 13 13";
+
+  // A band: a dark line with a coral one on top.
+  function drawHeadphoneBand(ctx, svgPath) {
+    stroke(ctx, svgPath, OUTLINE, 7);
+    ctx.strokeStyle = "#F2695C";
+    ctx.lineWidth = 3.5;
+    ctx.stroke(pathOf(svgPath));
+  }
+
+  // Drawn behind the body and the head: the head hides the part of the
+  // band that goes down behind it.
+  function drawTurnedHeadphonesBehind(ctx) {
+    drawHeadphoneBand(ctx, WHOLE_BAND);
+  }
+
+  // Drawn on the head: the near part of the band lies over the band drawn
+  // behind. It runs a little past the top of the head, along the first
+  // bit of the far half (these short curves lie exactly on it: its first
+  // 7 % and 15 %), and ends flat ("butt"). Its coral line runs further
+  // than its dark line, so the coral covers the dark end and the band
+  // shows no seam where the two parts meet.
+  function drawTurnedHeadphones(ctx) {
+    ctx.save();
+    ctx.lineCap = "butt";
+    stroke(ctx, NEAR_BAND + " Q1.05 -2.5 2.02 -2.42", OUTLINE, 7);
+    stroke(ctx, NEAR_BAND + " Q2.25 -2.5 4.12 -2.15", "#F2695C", 3.5);
+    ctx.restore();
+    box(ctx, -20.5, 12.5, 11, 17, 5, "#F2695C", 2);
+  }
+
+  // The Surfer's front hair: the fringe and the strands beside the face as
+  // one piece, drawn over the edge of the face so that no outline of the
+  // head cuts them apart. Its outer edge and the inner edge of the strands
+  // lie exactly on those of the long hair (see clothes), and it ends below
+  // where the long hair is, so the two read as one head of hair.
+  function drawSurferFrontHair(ctx) {
+    var outerEdge = "M-21.85 37 L-21 20 Q-22 -1 0 -1 Q22 -1 21 20 L21.85 37";
+    var faceEdge = "M12.5 37 Q14 31 15.5 25 L15.5 21 Q7 9 -5 11 Q-13 12 -15.5 21 L-15.5 25 Q-14 31 -12.5 37";
+    // The filled piece: the outer edge, along the bottom to the strand on
+    // the right, the face edge, and back along the bottom on the left.
+    shape(ctx, outerEdge + " L" + faceEdge.slice(1) + " Z", "#F2D36B", 0);
+    stroke(ctx, outerEdge + " " + faceEdge, OUTLINE, 2);
+  }
+
+  // The same in the turned view. On the side the character is turned to a
+  // short strand comes out of the fringe; on the back the hair reaches down
+  // to the ear (-17, 26), and below it the long hair goes on. The path is
+  // left open: the fill closes it along y = 26 over the long hair, the
+  // outline leaves that edge out.
+  function drawTurnedSurferFrontHair(ctx) {
+    shape(ctx, "M-22.8 26 L-22 20 Q-23 -1 0 -1 Q20 -1 20.5 17 L20 25 Q17.8 27.5 16.3 23 L15.8 17 Q11 7 1 10 Q-7 12 -9.5 19 Q-11.5 25 -17 26", "#F2D36B", 2);
+  }
 
   // A small yellow surfboard, tilted, with waves below it.
   function drawSurfboardPrint(ctx) {
@@ -414,11 +754,15 @@ Game.world = Game.world || {};
     return PLAIN_LOOK;
   }
 
-  // The order matters: what is drawn later lies on top.
-  function drawFigure(ctx, look) {
-    drawShadowAndShoes(ctx, look.shoes);
+  // The portrait: the character stands and looks at the viewer, as in the
+  // sketch. The order matters: what is drawn later lies on top.
+  function drawPortrait(ctx, look) {
+    drawShadow(ctx);
     look.behind(ctx);
-    drawLegs(ctx, look.legs);
+    drawShoe(ctx, -1, look.shoes);
+    drawShoe(ctx, 1, look.shoes);
+    drawLeg(ctx, -1, look.legs);
+    drawLeg(ctx, 1, look.legs);
     drawBody(ctx, look.body);
     look.clothes(ctx);
     drawArm(ctx, -1, look.leftHand, look.body);
@@ -430,6 +774,133 @@ Game.world = Game.world || {};
     look.head(ctx);
   }
 
+  // ---- The turned view and its walking cycle ---------------------------
+
+  // The swing of the walking cycle, from -1 to 1, and 0 when standing.
+  // Above 0 the left foot is in front and the right one behind, below 0
+  // it is the other way round.
+  function swingOf(pose) {
+    var stride = strideOf(pose);
+    return stride === 0 ? 0 : Math.sin(pose.walkPhase * 2 * Math.PI) * stride;
+  }
+
+  // How big the steps are, from 0 (none, also when standing) to 1 (full).
+  // Full if the character walks and nothing understandable was passed.
+  function strideOf(pose) {
+    var isWalking = typeof pose.walkPhase === "number" && isFinite(pose.walkPhase);
+    if (!isWalking) {
+      return 0;
+    }
+    if (typeof pose.stride !== "number" || isNaN(pose.stride)) {
+      return 1;
+    }
+    return Math.max(0, Math.min(1, pose.stride));
+  }
+
+  // One leg with its shoe. `side` is -1 for the left and 1 for the right
+  // one. `ownSwing` is the swing of this foot: above 0 it stands in front,
+  // below 0 it is behind and lifted off the ground. `raised` is how far the
+  // body is lifted right now: the leg reaches that much further up, so it
+  // never comes off the body.
+  function drawTurnedLeg(ctx, look, side, ownSwing, raised) {
+    var footX = ownSwing * FOOT_SWING;
+    var lift = Math.max(0, -ownSwing) * FOOT_LIFT;
+    // The shoes point a little to the side the character is turned to.
+    var shoeX = (side < 0 ? -15 : 1) + SHOE_TURN + footX;
+    box(ctx, shoeX, 89 - lift, 14, 8, 4, look.shoes || OUTLINE, look.shoes ? 1.5 : 0);
+    // The hip moves less than the foot.
+    var legX = (side < 0 ? -13 : 2) + footX * 0.6;
+    box(ctx, legX, 74 - raised, 11, 18 + raised - lift, 4, look.legs, 2);
+  }
+
+  // Where the arms start in the turned view. The body is a little narrower
+  // on the side the character is turned to, so the shoulder there is closer
+  // to the middle than the one at the back.
+  var FRONT_SHOULDER = 15;
+  var BACK_SHOULDER = 16;
+
+  // One arm from the shoulder at `shoulderX` to (handX, handY - 3), like
+  // drawArm() of the portrait. `side` is -1 if the arm is on the left of
+  // the body and 1 if it is on the right: the elbow points that way.
+  function drawTurnedArm(ctx, shoulderX, side, handX, handY, colour) {
+    var shoulderY = 45;
+    var endY = handY - 3;
+    ctx.beginPath();
+    ctx.moveTo(shoulderX, shoulderY);
+    ctx.quadraticCurveTo((shoulderX + handX) / 2 + side * 6, (shoulderY + endY) / 2 + 1, handX, endY);
+    paint(ctx, null, OUTLINE, 10.5);
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 6.5;
+    ctx.stroke();
+  }
+
+  // Arms, object and hands of the character as it is drawn turned to the
+  // right. Free hands swing against the legs, as in real walking; a hand
+  // that holds something stays where the object is.
+  function drawTurnedArmsObjectAndHands(ctx, look, swing) {
+    var handSwing = look.handsSwing ? swing * HAND_SWING : 0;
+    var left = look.turnedLeftHand;
+    var right = look.turnedRightHand;
+    drawTurnedArm(ctx, -BACK_SHOULDER, -1, left[0] - handSwing, left[1], look.body);
+    drawTurnedArm(ctx, FRONT_SHOULDER, 1, right[0] + handSwing, right[1], look.body);
+    look.turnedObject(ctx);
+    circle(ctx, left[0] - handSwing, left[1], 5, SKIN, 2);
+    circle(ctx, right[0] + handSwing, right[1], 5, SKIN, 2);
+  }
+
+  // The same for a character that is turned to the left and holds its
+  // object in the right hand. The whole drawing is mirrored at this point.
+  // A plain mirror image would put the object into the other hand, so the
+  // hand with the object is mirrored back: it is drawn exactly as in the
+  // view to the right, on the right of the screen. Only its shoulder moves,
+  // because that side of the body is now the back. The free hand goes to
+  // the other side, which is the side the character is turned to.
+  function drawArmsWithObjectKeptInHand(ctx, look) {
+    var free = look.turnedLeftHand;
+    var holding = look.turnedRightHand;
+    drawTurnedArm(ctx, FRONT_SHOULDER, 1, -free[0], free[1], look.body);
+    circle(ctx, -free[0], free[1], 5, SKIN, 2);
+    ctx.save();
+    ctx.scale(-1, 1); // mirrored back: from here x grows to the right of the screen
+    drawTurnedArm(ctx, BACK_SHOULDER, 1, holding[0], holding[1], look.body);
+    look.turnedObject(ctx);
+    circle(ctx, holding[0], holding[1], 5, SKIN, 2);
+    ctx.restore();
+  }
+
+  // The turned character. `swing` is where it is in its step and `stride`
+  // how big its steps are (0 when it stands). `isMirrored` says that the
+  // drawing is mirrored right now, so the character is turned to the left.
+  function drawTurnedView(ctx, look, swing, stride, isMirrored) {
+    var raised = Math.abs(swing) * BODY_BOB;
+    // The shadow stays flat on the ground while the body rises above it,
+    // so a step reads as a small hop.
+    drawShadow(ctx);
+    // A walking character leans into its walking direction.
+    ctx.translate(0, GROUND_Y);
+    ctx.rotate(stride * WALKING_LEAN);
+    ctx.translate(0, -GROUND_Y);
+    // The legs stand on the ground while the body above them rises. They
+    // are drawn between the things behind the body and the body itself, so
+    // each part needs its own shift upwards.
+    ctx.save();
+    ctx.translate(0, -raised);
+    look.turnedBehind(ctx);
+    ctx.restore();
+    drawTurnedLeg(ctx, look, -1, swing, raised);
+    drawTurnedLeg(ctx, look, 1, -swing, raised);
+    ctx.translate(0, -raised);
+    drawBodyBox(ctx, TURNED_BODY, look.body, 2.5);
+    look.turnedClothes(ctx);
+    if (isMirrored && look.holdsInRightHand) {
+      drawArmsWithObjectKeptInHand(ctx, look);
+    } else {
+      drawTurnedArmsObjectAndHands(ctx, look, swing);
+    }
+    drawTurnedFace(ctx);
+    look.turnedHead(ctx);
+  }
+
   // How many screen pixels one unit of the context is right now.
   function pixelsPerUnit(ctx) {
     var transform = ctx.getTransform();
@@ -438,21 +909,45 @@ Game.world = Game.world || {};
 
   // Draws one character centred at (x, y); `size` is its height.
   // An unknown id draws a plain grey figure.
-  function drawCharacter(ctx, characterId, x, y, size) {
+  //
+  // Without `pose` it is the portrait: the character stands and looks at
+  // the viewer, as in the sketch (the icons of the lobby).
+  //
+  // With `pose` it is the turned view (the map). `pose` is an object with
+  // these fields, each of which may be left out:
+  //   mirrored   false or left out: the character is turned to the right.
+  //              true: the drawing is mirrored and turned to the left. Only
+  //              what is held in one hand stays in that hand.
+  //   walkPhase  a number that runs from 0 to 1 during one walking cycle
+  //              (two steps); 0 and 0.5 are the moments with both feet on
+  //              the ground. Leave it out or pass null for a standing
+  //              character.
+  //   stride     how big the steps are, from 0 (the feet stay down) to 1
+  //              (full steps, also when it is left out). world.js lets it
+  //              grow and shrink so that starting and stopping look soft.
+  // The middle of the standing character stays at (x, y) in both drawings; a
+  // walking one rises by at most 3 % of its height on each step and leans a
+  // little into its walking direction.
+  function drawCharacter(ctx, characterId, x, y, size, pose) {
     var canDraw = ctx && isFinite(x) && isFinite(y) && isFinite(size) && size > 0;
     if (!canDraw) {
       return;
     }
     var scale = size / DESIGN_HEIGHT;
+    var isMirrored = Boolean(pose) && pose.mirrored === true;
     ctx.save();
     ctx.translate(x, y);
-    ctx.scale(scale, scale);
+    ctx.scale(isMirrored ? -scale : scale, scale);
     // Move the middle of the drawing to (x, y).
     ctx.translate(0, -(DESIGN_TOP + DESIGN_HEIGHT / 2));
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     thinnestLine = THINNEST_LINE_IN_PIXELS / (pixelsPerUnit(ctx) || 1);
-    drawFigure(ctx, lookOf(characterId));
+    if (pose) {
+      drawTurnedView(ctx, lookOf(characterId), swingOf(pose), strideOf(pose), isMirrored);
+    } else {
+      drawPortrait(ctx, lookOf(characterId));
+    }
     ctx.restore();
   }
 
