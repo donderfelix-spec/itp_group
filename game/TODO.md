@@ -21,12 +21,12 @@ These points hold up the start. The reasoning behind them is under “Open decis
 - [x] **K7** The four areas: area 1 Hanna, area 2 Felix, area 3 Laurin, area 4 Lennart (2026-11-19). The name after an open to-do below says who takes it
 - [x] **K8** “We Be(a)t” is put aside for now (S-27)
 - [x] **K9** Render account created and service set up (2026-11-18)
-- [ ] **K10** Names and student numbers of all members for the README (S-36)
+- [x] **K10** Names and student numbers of all members are in the README (S-36, given by Felix on 2026-11-20)
 - [x] **K16** Settled 2026-11-19 (S-102): players may walk while the ranking card is up; a start by the host begins with a countdown of 5 seconds (M2-2.5); a finished player waits for the others as before
 
 ## M0: Preparation
 
-- [ ] **M0-4.1** The five minigames are described in the DESIGN.md, the team should proofread them once more
+- [ ] **M0-4.1** The five minigames are described in the DESIGN.md, the team should proofread them once more (Lennart)
 - [x] **M0-2.7** Write the README in the main folder in English for the submission (S-36), and decide whether the planning documents will be translated. The README names the game, the public URL, the commands to run and test, what works today and the four areas with their owners (S-96); the planning documents are already in English. The names and student numbers are a marked placeholder until K10 is settled (2026-11-19)
 
 ## M1: Walking
@@ -40,7 +40,6 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 - [x] **M1-2.8** Tell a player why they were signed out when the same account logs in somewhere else (needs a text in DESIGN.md, section 9). The browser shows “You were signed in somewhere else.”; the text is a proposal (S-106). Played with two browsers (2026-11-19)
 - [ ] **M1-2.9** Add `sslmode=require` to `DATABASE_URL` on Render, as Supabase recommends, and check that sign up still works
 - [ ] **M1-2.10** Check in the Supabase dashboard that the Data API returns no rows of `accounts` with the public key (row level security is on, S-90)
-- [ ] **M1-2.11** Before the demo: open the Supabase project and make sure it is not paused (free projects pause after a week without activity, S-39)
 
 **Server and hosting (area 2)**
 

@@ -14,16 +14,12 @@ The game runs on a free Render instance that goes to sleep when nobody visits. T
 
 ## Team
 
-<!-- PLACEHOLDER (K10): the names and student numbers of all four members go here before the submission. -->
-
-**To be filled in before the submission:** names and student numbers of all members.
-
 | Name | Student number | Area |
 |---|---|---|
-| _name to be added_ | _number to be added_ | 1 Campus and characters |
-| _name to be added_ | _number to be added_ | 2 Network, lobby, accounts, foundation |
-| _name to be added_ | _number to be added_ | 3 Classic rules |
-| _name to be added_ | _number to be added_ | 4 Minigames and other modes |
+| Hanna Schlesiger | 78153 | 1 Campus and characters |
+| Felix Donder | 75246 | 2 Network, lobby, accounts, foundation |
+| Laurin Dusel | 81263 | 3 Classic rules |
+| Lennart Schmülling | 79898 | 4 Minigames and other modes |
 
 ## Run it locally
 
