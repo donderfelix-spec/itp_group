@@ -58,28 +58,25 @@ Game.world = Game.world || {};
   // put down softly instead of snapping to the ground.
   var STRIDE_GROWS_MILLISECONDS = GLIDE_MILLISECONDS;
   var STRIDE_FADES_MILLISECONDS = 150;
-  // Some ways of walking start and stop at once instead (see
-  // walkStartsInstantly()). Their steps end this long after the glide of
-  // the last step, so a message that comes a little late does not make the
-  // legs stand still for a moment.
-  var STEP_GRACE_MILLISECONDS = 40;
-  // One walking cycle is two steps: left foot, right foot. It runs on the
-  // way the drawn character covers, not on the time, so a foot on the
-  // ground moves with the ground on every screen, also when a message is
-  // late or the character stops against a wall. How many map units one
-  // cycle takes comes from the drawing (walkCycleLength() in
-  // characters.js); this one is used if the drawing gives none, as when
-  // characters.js did not load (the players are circles then anyway).
-  var WALK_CYCLE_LENGTH_WITHOUT_DRAWING = 38;
+  // One cycle of the run is two steps: left foot, right foot. It runs on
+  // the way the drawn character covers, not on the time. So the feet keep
+  // pace with the ground on every screen, however often messages arrive and
+  // however long a glide takes, and they stop when the character stops,
+  // also against a wall. One cycle takes this many map units: 18 per step,
+  // 5 steps per second at 90 units per second. It belongs to how far the
+  // feet move in characters.js (FOOT_TRAVEL, GROUND_FRACTION): together
+  // they decide how much a foot slides on the ground.
+  var WALK_CYCLE_LENGTH = 36;
   // A change of position smaller than this, in map units, is not a step: it
   // neither turns the character nor moves its feet. A real step is about 6
   // units (90 units per second, 15 messages per second, S-86).
   var SMALLEST_STEP = 1;
   // Free room between the top of a standing character and its name, in map
-  // units. A walking character rises on every step (BODY_BOB in
+  // units. A running character rises on every step, by at most BODY_BOB in
   // characters.js: 3 of its 112 design units, which is 1.05 map units at
-  // CHARACTER_HEIGHT). This room must be at least that rise, so a head
-  // never touches its name.
+  // CHARACTER_HEIGHT. This room must be at least that rise, so a head never
+  // touches its name. The name is placed from the position, not from the
+  // drawing, so it stays still while the body bobs.
   var HEAD_ROOM_BELOW_NAME = 1.5;
 
   // Which keys walk where. `event.code` names the place of a key on the
@@ -272,17 +269,12 @@ Game.world = Game.world || {};
   // How big the steps of the player are at the time `now`, from 0 (it
   // stands) to 1 (full steps). After a step they grow to full size; once the
   // glide of that step is over and no new step has come, they fade away.
-  // For a way of walking that starts and stops at once they are 1 from the
-  // step until STEP_GRACE_MILLISECONDS after its glide, and 0 after that.
   // It only depends on the time, like drawnPosition(), so it looks the same
   // on every screen, however often that screen is redrawn.
   function stride(player, now) {
     // Never below 0: the time of a frame can lie a moment before the time
     // at which the message with the step arrived.
     var sinceStep = Math.max(0, now - player.lastStepAt);
-    if (walkStartsInstantly()) {
-      return sinceStep <= GLIDE_MILLISECONDS + STEP_GRACE_MILLISECONDS ? 1 : 0;
-    }
     var grown = Math.min(1, player.strideAtLastStep + sinceStep / STRIDE_GROWS_MILLISECONDS);
     var faded = (sinceStep - GLIDE_MILLISECONDS) / STRIDE_FADES_MILLISECONDS;
     faded = Math.max(0, Math.min(1, faded));
@@ -296,33 +288,16 @@ Game.world = Game.world || {};
     return stride(player, now) > 0;
   }
 
-  // How far the player is in its walking cycle, from 0 to 1, or null when
-  // it stands. The cycle starts with the feet side by side and moves on only
-  // while the drawn character moves.
+  // How far the player is in its running cycle, from 0 to 1, or null when
+  // it stands. It starts at 0, the moment the left foot lands (see
+  // runningMoment() in characters.js), and moves on only while the drawn
+  // character moves.
   function walkPhase(player, now) {
     if (!isWalking(player, now)) {
       return null;
     }
     var walked = Math.max(0, walkedDistance(player, now) - player.walkedWhenItStarted);
-    return (walked / walkCycleLength()) % 1;
-  }
-
-  // TEMPORARY (M2-1.13 proposals): true if the drawing asks for steps that
-  // are full at once and gone at once (the variants O1 and O2), false for
-  // the steps that grow and shrink (also when characters.js did not load).
-  // Called outside the protection of drawPlayer(), so it never fails.
-  function walkStartsInstantly() {
-    var fromDrawing = Game.world.walkStartsInstantly;
-    return typeof fromDrawing === "function" && fromDrawing() === true;
-  }
-
-  // Map units per walking cycle, from the drawing if it gives a usable
-  // number. Called outside the protection of drawPlayer(), so it checks
-  // everything and never fails.
-  function walkCycleLength() {
-    var fromDrawing = Game.world.walkCycleLength;
-    var length = typeof fromDrawing === "function" ? Number(fromDrawing()) : NaN;
-    return isFinite(length) && length > 0 ? length : WALK_CYCLE_LENGTH_WITHOUT_DRAWING;
+    return (walked / WALK_CYCLE_LENGTH) % 1;
   }
 
   // ---- What the lobby page tells the world -----------------------------
@@ -980,12 +955,4 @@ Game.world = Game.world || {};
   Game.world.stationInRange = stationInRange;
   Game.world.setInputPaused = setInputPaused;
   Game.world.nearestStationInRange = nearestStationInRange;
-  // TEMPORARY (M2-1.13 proposals): the numbers the comparison page needs to
-  // walk a character the way this file does, without a server.
-  // Removed with the variant Felix does not choose, before the pull request.
-  Game.world.walkingProposal = {
-    glideMs: GLIDE_MILLISECONDS,
-    strideFadesMs: STRIDE_FADES_MILLISECONDS,
-    stepGraceMs: STEP_GRACE_MILLISECONDS
-  };
 })();
