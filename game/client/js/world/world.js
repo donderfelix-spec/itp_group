@@ -162,6 +162,7 @@ Game.world = Game.world || {};
       queue: [],
       // When the last scheduled position is reached; null when there is none.
       queueEndsAt: null,
+      snappedAt: -Infinity, // when snapTo() last put it on the newest position
       lastStepAt: -Infinity, // when the character last took a step
       stepMilliseconds: GLIDE_MILLISECONDS, // how long the glide of that step lasts
       strideAtLastStep: 0, // how big its steps were at that moment, 0 to 1
@@ -461,7 +462,9 @@ Game.world = Game.world || {};
       startAt = Math.max(lastEnd, now);
       endAt = Math.max(lastEnd + nextSpacing(lastEnd, now, delay), startAt + FASTEST_GLIDE_MILLISECONDS);
     }
-    if (endAt - now > delay + LONGEST_CATCH_UP_MILLISECONDS) {
+    // Within half a tick of a snap is the same burst: snap too, so its rest does not queue up again.
+    var isSameBurst = now - player.snappedAt < TICK_MILLISECONDS / 2;
+    if (isSameBurst || endAt - now > delay + LONGEST_CATCH_UP_MILLISECONDS) {
       snapTo(player, x, y, now);
       return;
     }
@@ -476,6 +479,7 @@ Game.world = Game.world || {};
     emptyQueue(player);
     startGlide(player, x, y, now, GLIDE_MILLISECONDS);
     player.from = player.to;
+    player.snappedAt = now;
   }
 
   // How long the next glide in the queue lasts: one tick, a little longer

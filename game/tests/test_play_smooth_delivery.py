@@ -437,19 +437,24 @@ def test_five_messages_at_once_catch_up_at_most_one_and_a_half_times_as_fast(bur
 
 
 @needs_node
-def test_a_hold_up_of_two_seconds_and_thirty_messages_at_once_snap_at_once():
-    count = 50
+@pytest.mark.parametrize("held", [30, 76, 82, 88])
+def test_a_hold_up_and_all_held_messages_at_once_snap_at_once(held):
+    # 20 messages on time, then nothing for `held` ticks (30 ticks are 2 s),
+    # then all `held` messages at once: the walk ends with the burst.
+    count = 20 + held
     places = [[place] for place in walk("Mara", count, SPAWN, (1, 0), 6)]
-    # From message 20 on nothing arrives for 2 s; then all 30 at once.
-    burst_at = 20 * TICK + 2000
+    burst_at = count * TICK
     messages = delivered(places, TICK, lambda k: burst_at - k * TICK if k >= 20 else 0)
     assert all(abs(t - burst_at) < EXACT for t, _ in messages[20:])
     frames = run_world(messages, until=burst_at + 1200, players=["Mara"], own="Mara")
 
-    # Catching up 30 steps at 1.5 times the pace would take far too long: one
-    # snap, in the first frame after the burst, and otherwise never too fast.
+    # Catching up so many steps at 1.5 times the pace would take far too long:
+    # one snap, in the first frame after the burst, and otherwise never too fast.
     first_after = frames_between(frames, burst_at)[0]
     assert too_fast_frames(frames, 6, start=messages[1][0]) == [first_after]
+    # The whole burst snaps, not only its first part: soon at most one step behind.
+    soon = frames_between(frames, burst_at + LONGEST_DELAY + TICK)[0]
+    assert places[-1][0]["x"] - soon["camera"]["x"] <= 6 + EXACT
     assert_ends_on(frames, messages, (places[-1][0]["x"], places[-1][0]["y"]),
                    within=LONGEST_DELAY + LONGEST_CATCH_UP)
 
