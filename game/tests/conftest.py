@@ -12,6 +12,7 @@ import pytest
 # a Postgres store while the tests run.
 os.environ.pop("DATABASE_URL", None)
 
+from server.accounts.leaderboard_cache import LeaderboardCache  # noqa: E402
 from server.accounts.statistics_store import MemoryStatisticsStore  # noqa: E402
 from server.accounts.store import MemoryAccountStore  # noqa: E402
 from server import main  # noqa: E402
@@ -37,6 +38,8 @@ from countdown_helpers import no_countdown  # noqa: E402, F401
 def fresh_accounts_and_sessions():
     app.state.account_store = MemoryAccountStore()
     app.state.statistics_store = MemoryStatisticsStore()
+    app.state.leaderboard_cache = LeaderboardCache()
+    app.state.leaderboard_call = None
     app.state.sessions = Sessions()
     app.state.lobbies = Lobbies()
     # Otherwise a fault logged in one test would be swallowed in the next (M1-2.15).
