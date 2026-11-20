@@ -166,6 +166,8 @@ const STEPS = {
   receive(message) {
     newestSocket().fire('message', { data: JSON.stringify(message) });
   },
+  // `lose` and `fail` do the same: net.js tells the two apart itself, by
+  // whether the socket had opened. Two names keep the tests readable.
   lose() {
     close(newestSocket());
   },

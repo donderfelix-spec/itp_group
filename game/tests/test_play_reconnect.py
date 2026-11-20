@@ -241,7 +241,12 @@ def test_leaving_with_the_button_forgets_the_lobby():
 
 
 @needs_node
-def test_logging_out_forgets_the_lobby():
+def test_leaving_and_then_logging_out_joins_nothing_after_the_next_sign_in():
+    """The way a player logs out from a lobby: "Log out" is only on Home, so they leave first.
+
+    `left_lobby` already forgets the code here; the `signed_out` after it
+    must not bring anything back.
+    """
     steps = [*in_the_lobby(), ["receive", LEFT], ["click", "home-logout"], ["receive", protocol.signed_out()]]
     page = run_page(*steps, ["lose"], *logs_in())
     assert {"type": "log_out"} in page["sent"]
@@ -259,7 +264,13 @@ def test_being_signed_in_somewhere_else_forgets_the_lobby():
 
 @needs_node
 def test_a_reloaded_page_joins_nothing():
-    # A reload starts the page's code anew: nothing of the old page is left.
+    """Documents the behaviour; this test cannot fail.
+
+    Each `run_page` is a new Node process, and the harness has no
+    localStorage, sessionStorage or cookies, so nothing can carry over. That
+    the page keeps the code in memory only is seen in main.js and was tried
+    in a real browser.
+    """
     run_page(*in_the_lobby(), ["lose"])
     page = run_page(*guest_signs_in("Guest 5678"))
     assert joins(page) == [] and page["joinCode"] == ""

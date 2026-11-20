@@ -119,8 +119,8 @@ window.Game = window.Game || {};
   // only: the code is forgotten at once. It also goes into the join field,
   // so after a refusal ("This round has already started.") the player can
   // press Join later. The server's answer does the rest, as for a click.
-  // `ask` sends nothing if the player clicked something first; the code
-  // then stays in the field all the same.
+  // `ask` always sends here: net.js stops waiting for an answer before it
+  // hands `signed_in` to this handler, and nothing runs in between.
   function rejoinTheLostLobby() {
     if (codeToRejoin === null) return;
     const code = codeToRejoin;
