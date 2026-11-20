@@ -63,9 +63,9 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 **To check by a person (the tools could not)**
 
-- [ ] **M1-2.17** Hold a walking key and switch to another tab or window: the character must stop (only tested with simulated events)
-- [ ] **M1-2.18** Watch two players walk on two real screens and judge whether the movement looks smooth (only measured: one position every 68 ms, no jumps)
-- [ ] **M1-2.19** Hold a key, press Cmd and release the key on a Mac: the character must stop (only tested with simulated events)
+- [x] **M1-2.17** Hold a walking key and switch to another tab or window: the character must stop (only tested with simulated events) (checked by Felix on a real device, 2026-11-20)
+- [x] **M1-2.18** Watch two players walk on two real screens and judge whether the movement looks smooth (only measured: one position every 68 ms, no jumps) (checked by Felix on a real device, 2026-11-20)
+- [x] **M1-2.19** Hold a key, press Cmd and release the key on a Mac: the character must stop (only tested with simulated events) (checked by Felix on a real device, 2026-11-20)
 
 **For the team to decide**
 
