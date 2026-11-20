@@ -26,7 +26,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Move the character with the keyboard (WASD or arrow keys) | M1 | Done |
 | Walls and furniture stop the character | M1 | Done |
 | Camera follows your own character | M1 | Done |
-| See other players with their names above the character | M1 | Done |
+| See other players with their names above the character; where name labels would cover each other only one is shown, the own name first (S-117) | M1 | Done |
 | Stations for tasks on the map | M2 | Done |
 | Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E done; R and Q come with Classic) | M2 | In progress |
 | Choose a character from the list of stereotypes | M2 | Done |
@@ -101,6 +101,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Feature | Milestone | Status |
 |---|---|---|
 | Frame for minigames: open at a station, close, report “done” | M2 | Done |
+| All minigames playable in narrow and low windows, from 320 px wide | M2 | Done |
 | Canteen: put four of six dishes from the order slip onto the tray | M2 | Done |
 | Mon Café: prepare a drink by recipe at the coffee machine | M2 | Done |
 | Lecture Hall: put slides into the right order | M2 | Done |

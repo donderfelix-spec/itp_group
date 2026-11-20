@@ -165,6 +165,11 @@
 
     function showTooMuch() {
       message.textContent = TOO_MUCH_TEXT;
+      // In a narrow window the belt is taller than the visible part of the
+      // minigame window, so the message below it can be out of view. Scroll
+      // just far enough to show it; when it is already in view, 'nearest'
+      // scrolls nothing.
+      message.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       clearTimeout(messageTimer);
       messageTimer = setTimeout(hideMessage, MESSAGE_VISIBLE_MS);
     }

@@ -65,7 +65,7 @@ All characters are the same size and the same speed, they differ only in how the
 | The Latecomer | Orange jacket | messy hair, coffee cup | “Did I miss anything?” |
 | The Library Local | Purple hoodie | large headphones, stack of books in front of the body | “Shhh.” |
 
-- Each character exists only once per lobby, so that players can be told apart. For this reason there are at most eight players in a lobby. The name is also shown above the character.
+- Each character exists only once per lobby, so that players can be told apart. For this reason there are at most eight players in a lobby. The name is also shown above the character. Name labels never cover each other: where two would overlap, only one is drawn, and the player's own name always wins. Of two other players the name of the character drawn on top is shown; a name that was hidden needs 4 map units of free space to the names that win against it before it comes back, so names do not flicker at the edge. All players start on the one spawn point, so there a player sees only the own name until the others walk away (S-117).
 - When walking, the character bobs slightly and looks left or right in the walking direction (mirrored); walking up or down keeps the side it last faced (S-105).
 - Failed players are half transparent and only visible to other ghosts.
 - Where someone was failed, a crumpled sheet of paper with a red “F” stays on the ground until someone reports it.
@@ -270,6 +270,11 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | A guest asks for a profile | “Guests have no statistics. Sign up to keep yours.” |
 | Profile or leaderboard while the database is not reachable | “Statistics are unavailable right now.” |
 | A minigame gets content from the server that it cannot show | “This task could not be loaded.” (shown inside the minigame window) |
+| A message that is not text, is not a JSON object or is longer than 2048 bytes (only when someone bypasses the page) | “Messages must be text.” / “That message could not be read.” / “That message is too long.” |
+| A message with a type the server does not know (only when someone bypasses the page) | “The server does not know that action.” |
+| A message with a field the server does not expect, or without a field it needs (only when someone bypasses the page) | “That message has a field the server does not expect.” / “That message is incomplete.” |
+| Choosing a character that does not exist (only when someone bypasses the page) | “That character does not exist.” |
+| A walking direction that is not -1, 0 or 1 (only when someone bypasses the page) | “That move could not be read.” |
 
 ## 10. What is deliberately not included
 

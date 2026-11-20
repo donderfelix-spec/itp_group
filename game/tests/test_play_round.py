@@ -94,6 +94,18 @@ def news(connection):
     return without_round_traffic(waiting_messages(connection))
 
 
+def next_news(connection):
+    """Wait for the next message that is not in ROUND_TRAFFIC and return it.
+
+    The tick sends `positions` whenever it likes, also after `news` has
+    returned and just before the message a test waits for.
+    """
+    while True:
+        message = connection.receive_json()
+        if message["type"] not in ROUND_TRAFFIC:
+            return message
+
+
 def answer_to(connection, message):
     """Send one message and return the first message after it that is not `positions`."""
     connection.send_json(message)
@@ -209,7 +221,7 @@ def test_the_start_is_refused_when_the_only_other_player_has_just_left(connect):
 def test_the_start_is_refused_when_the_only_other_player_has_just_closed_the_connection(connect):
     (mara, tiago), code = lobby_of(connect, "Mara", "Tiago")
     tiago.close()
-    assert lobby_states([mara.receive_json()])[0]["phase"] == "lobby"
+    assert lobby_states([next_news(mara)])[0]["phase"] == "lobby"
     assert answer_to(mara, START) == TOO_FEW_FOR_DUEL
     assert app.state.lobbies.find(code).phase == "lobby"
 
@@ -363,7 +375,7 @@ def test_a_player_who_became_host_before_the_start_can_choose_the_mode_and_start
 def test_a_player_who_became_host_during_the_round_can_neither_start_nor_choose(connect):
     (mara, tiago, ines), code = running_round_of(connect, "Mara", "Tiago", "Ines")
     mara.close()
-    assert tiago.receive_json() == {"type": "notice", "message": "The host left. Tiago is the new host."}
+    assert next_news(tiago) == {"type": "notice", "message": "The host left. Tiago is the new host."}
     news(tiago)
     news(ines)  # Ines reads the same notice and the new state.
     assert answer_to(tiago, START) == ROUND_RUNNING

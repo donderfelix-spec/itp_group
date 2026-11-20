@@ -438,6 +438,64 @@ Game.world = Game.world || {};
     ctx.restore();
   }
 
+  // ---- Which name labels are drawn (S-117) -------------------------------
+
+  // A label that was hidden in the previous frame comes back only when it is
+  // this many map units clear of every chosen label, on every side. Without
+  // this margin a label at the very edge would appear and vanish from one
+  // frame to the next.
+  var LABEL_COME_BACK_MARGIN = 4;
+
+  // True when the two labels cover each other. Labels that only touch at an
+  // edge do not. `margin` makes `a` that much larger on every side.
+  function labelsOverlap(a, b, margin) {
+    var apartSideways = Math.abs(a.x - b.x) >= (a.width + b.width) / 2 + margin;
+    var apartUpAndDown = Math.abs(a.y - b.y) >= (a.height + b.height) / 2 + margin;
+    return !apartSideways && !apartUpAndDown;
+  }
+
+  // The order in which the labels are decided: the own label first, then the
+  // others, the character drawn later (on top) first.
+  function decidingOrder(labels) {
+    var onTopFirst = labels.slice().reverse();
+    var own = onTopFirst.filter(function (label) { return label.own; });
+    var others = onTopFirst.filter(function (label) { return !label.own; });
+    return own.concat(others);
+  }
+
+  // Decides which name labels are drawn, so that no two drawn labels cover
+  // each other. A label never moves: it is drawn above its own head or not at
+  // all.
+  //
+  // `labels` is in drawing order (first drawn first). Each label is
+  // {name, x, y, width, height, own}: x and y are its middle, and width and
+  // height the whole space it covers on the map, outline included.
+  // `hiddenBefore` is a Set of the names hidden in the previous frame; a name
+  // not in it, also a player not seen before, needs no margin.
+  //
+  // Returns {shown: the labels to draw, hidden: a Set of the names hidden now}.
+  // The own label is always shown. Every other label is shown when it is clear
+  // of the labels chosen before it; one that was hidden needs the margin. The
+  // margin only delays a name coming back: it never lets the label of a
+  // lower character beat one drawn on top, because the lower one is decided
+  // later.
+  function chooseLabels(labels, hiddenBefore) {
+    var wasHidden = hiddenBefore || new Set();
+    var shown = [];
+    var hidden = new Set();
+    decidingOrder(labels || []).forEach(function (label) {
+      var margin = wasHidden.has(label.name) ? LABEL_COME_BACK_MARGIN : 0;
+      var covers = function (chosen) { return labelsOverlap(label, chosen, margin); };
+      if (label.own || !shown.some(covers)) {
+        shown.push(label);
+      } else {
+        hidden.add(label.name);
+      }
+    });
+    return { shown: shown, hidden: hidden };
+  }
+
   Game.world.drawMap = drawMap;
   Game.world.drawStationGlow = drawStationGlow;
+  Game.world.chooseLabels = chooseLabels;
 })();
