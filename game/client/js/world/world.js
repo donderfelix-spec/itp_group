@@ -36,15 +36,32 @@ Game.world = Game.world || {};
   // way it collides with it.
   var FEET_BELOW_POSITION = 5;
 
-  // How long a character glides to each new position. The server sends
-  // positions about every 67 ms (15 times per second, S-72), but over the
-  // internet a message often arrives later. The glide lasts longer than one
-  // interval, so a message up to about 40 ms late does not leave the
-  // character and the camera standing still. Every glide starts where the
-  // character is drawn, so the speed stays the same: the character is only
-  // drawn about 40 ms further behind the server than with a glide of one
-  // interval.
+  // The server sends positions once per tick, 15 times per second (S-72).
+  var TICK_MILLISECONDS = 1000 / 15;
+  // Over the internet the messages often arrive bunched: one is held back
+  // and comes together with the next. A character can only be drawn
+  // smoothly up to the last position that has arrived, so the positions
+  // are not drawn when they arrive. They wait in a short queue per player
+  // and are played back at the server's pace, one tick each, a little later
+  // (M2-1.14). How much later is the playback delay: the largest gap
+  // between two messages lately, plus a margin, see playbackDelay().
+  //
+  // The smallest playback delay. With messages on time the characters are
+  // drawn this far behind their arrival, so a message up to about 40 ms
+  // late still changes nothing. It is also how long the glide of a
+  // position lasts that is not played from the queue.
   var GLIDE_MILLISECONDS = 110;
+  // The largest playback delay: a character is never drawn further behind.
+  var LONGEST_DELAY_MILLISECONDS = 250;
+  // Added to the largest gap, so the next message is there a moment before
+  // the character has reached the position before it.
+  var DELAY_MARGIN_MILLISECONDS = 15;
+  // Only the gaps of this last stretch of time count: when the connection
+  // gets better, the delay shrinks again.
+  var GAP_MEMORY_MILLISECONDS = 3000;
+  // A longer gap is no hold-up: the server sends nothing while everybody
+  // stands, so it does not count.
+  var PAUSE_MILLISECONDS = 400;
   // A longer way than this in one message is a respawn: jump, do not glide.
   var JUMP_DISTANCE = 60;
   // A real step is at most 9 map units on an axis: the server moves a player
@@ -103,6 +120,9 @@ Game.world = Game.world || {};
   var useHandler = null; // called with the id of the station that is opened
   var useButton = null; // the button "E Use", while the world runs
   var inputPaused = false; // true while a minigame is open, see setInputPaused()
+  // When the positions messages of the last GAP_MEMORY_MILLISECONDS arrived,
+  // oldest first. One list for the world: every message lists all players.
+  var arrivalTimes = [];
 
   // ---- Players and smoothing -------------------------------------------
 
@@ -114,8 +134,17 @@ Game.world = Game.world || {};
       // first position has arrived; until then the player is not drawn.
       from: null,
       to: null,
-      arrivedAt: 0, // when `to` arrived, in milliseconds
+      arrivedAt: 0, // when the glide to `to` started, in milliseconds
+      glideMilliseconds: GLIDE_MILLISECONDS, // how long that glide lasts
+      // The newest position the server sent. The drawing is behind it.
+      server: null,
+      // Positions waiting to be drawn, oldest first:
+      // [{x, y, startAt, endAt}], see schedulePosition().
+      queue: [],
+      // When the last scheduled position is reached; null when there is none.
+      queueEndsAt: null,
       lastStepAt: -Infinity, // when the character last took a step
+      stepMilliseconds: GLIDE_MILLISECONDS, // how long the glide of that step lasts
       strideAtLastStep: 0, // how big its steps were at that moment, 0 to 1
       walkingSince: 0, // when it started to walk; the walking cycle starts here
       // Until this time the next position is a placement by the server and
@@ -148,7 +177,7 @@ Game.world = Game.world || {};
     if (!player.to) {
       return null;
     }
-    var progress = (now - player.arrivedAt) / GLIDE_MILLISECONDS;
+    var progress = (now - player.arrivedAt) / player.glideMilliseconds;
     progress = Math.max(0, Math.min(1, progress));
     return {
       x: player.from.x + (player.to.x - player.from.x) * progress,
@@ -156,9 +185,9 @@ Game.world = Game.world || {};
     };
   }
 
-  // Takes one new position from the server. The glide starts where the
-  // character is drawn right now, so it never jumps, also when messages
-  // arrive early or late.
+  // Starts the glide to one position from the server at the time `now`. The
+  // glide starts where the character is drawn at that time, so it never
+  // jumps, also when messages arrive early or late.
   function moveTo(player, x, y, now) {
     var start = drawnPosition(player, now) || { x: x, y: y };
     var isJump = Math.abs(x - start.x) > JUMP_DISTANCE || Math.abs(y - start.y) > JUMP_DISTANCE;
@@ -179,6 +208,18 @@ Game.world = Game.world || {};
     player.from = start;
     player.to = { x: x, y: y };
     player.arrivedAt = now;
+  }
+
+  // Starts the glide to (x, y) at `startAt`; it lasts `milliseconds`.
+  function startGlide(player, x, y, startAt, milliseconds) {
+    moveTo(player, x, y, startAt);
+    // Set only after moveTo: moveTo still needs the length of the glide
+    // before, to find where the character is drawn at `startAt`.
+    player.glideMilliseconds = milliseconds;
+    if (player.lastStepAt === startAt) {
+      // moveTo took a step: the feet move until this glide is over, see stride().
+      player.stepMilliseconds = milliseconds;
+    }
   }
 
   // Looks at the way between the last two positions from the server, (dx, dy),
@@ -232,6 +273,10 @@ Game.world = Game.world || {};
     players.forEach(function (player) {
       standStill(player);
       player.placedUntil = now + PLACEMENT_MILLISECONDS;
+      // The positions still waiting in the queue are from before the round.
+      // Played now, the first of them would count as the placement, and
+      // the real placement would then be drawn as a step.
+      emptyQueue(player);
     });
   }
 
@@ -242,10 +287,13 @@ Game.world = Game.world || {};
   // on every screen, however often that screen is redrawn.
   function stride(player, now) {
     // Never below 0: the time of a frame can lie a moment before the time
-    // at which the message with the step arrived.
+    // at which the step started.
     var sinceStep = Math.max(0, now - player.lastStepAt);
     var grown = Math.min(1, player.strideAtLastStep + sinceStep / STRIDE_GROWS_MILLISECONDS);
-    var faded = (sinceStep - GLIDE_MILLISECONDS) / STRIDE_FADES_MILLISECONDS;
+    // The glides of the queue last from 33 to over 300 ms. The fade waits
+    // for the end of the glide of this step: the feet neither stop while
+    // the character still moves nor walk on after it stopped.
+    var faded = (sinceStep - player.stepMilliseconds) / STRIDE_FADES_MILLISECONDS;
     faded = Math.max(0, Math.min(1, faded));
     // Slow at the start and at the end (the curve 3t² - 2t³). A message that
     // is a little late then hardly shrinks the steps before it arrives.
@@ -265,6 +313,113 @@ Game.world = Game.world || {};
     }
     var walkedFor = Math.max(0, now - player.walkingSince);
     return (walkedFor / WALK_CYCLE_MILLISECONDS) % 1;
+  }
+
+  // ---- Playing the positions back at the server's pace (M2-1.14) -------
+
+  function clamp(value, lowest, highest) {
+    return Math.max(lowest, Math.min(highest, value));
+  }
+
+  // Writes down that a positions message arrived at `now`, and forgets the
+  // arrivals that are too old to count.
+  function rememberArrival(now) {
+    arrivalTimes.push(now);
+    while (arrivalTimes[0] < now - GAP_MEMORY_MILLISECONDS) {
+      arrivalTimes.shift();
+    }
+  }
+
+  // How long a new position waits before it is drawn: one largest gap
+  // between two messages lately, plus a margin. Then the next message has
+  // usually arrived before the character has reached the position before.
+  function playbackDelay() {
+    var largestGap = 0;
+    for (var i = 1; i < arrivalTimes.length; i++) {
+      var gap = arrivalTimes[i] - arrivalTimes[i - 1];
+      if (gap <= PAUSE_MILLISECONDS && gap > largestGap) {
+        largestGap = gap;
+      }
+    }
+    return clamp(largestGap + DELAY_MARGIN_MILLISECONDS, GLIDE_MILLISECONDS, LONGEST_DELAY_MILLISECONDS);
+  }
+
+  function emptyQueue(player) {
+    player.queue = [];
+    player.queueEndsAt = null;
+  }
+
+  // Takes one new position of `player`, arrived at `now`.
+  function receivePosition(player, x, y, now, delay) {
+    // Positions whose time has come are drawn first, so the queue stays
+    // short also while no frames are drawn (a hidden tab).
+    playQueue(player, now);
+    var previous = player.server;
+    player.server = { x: x, y: y };
+    var isPlacement = now < player.placedUntil;
+    if (!previous || isFarApart(previous, x, y) || isPlacement) {
+      // The first position, a respawn or the start of a round: shown at
+      // once, without waiting behind the queue. moveTo() puts it there.
+      emptyQueue(player);
+      startGlide(player, x, y, now, GLIDE_MILLISECONDS);
+      return;
+    }
+    schedulePosition(player, x, y, now, delay);
+  }
+
+  // Further apart than a walk can go in one message: a jump.
+  function isFarApart(place, x, y) {
+    return Math.abs(x - place.x) > JUMP_DISTANCE || Math.abs(y - place.y) > JUMP_DISTANCE;
+  }
+
+  // Puts the position into the player's queue with the time its glide
+  // starts and ends. The glides follow each other, one tick each, so the
+  // character walks at the server's pace however the messages arrive.
+  function schedulePosition(player, x, y, now, delay) {
+    var lastEnd = player.queueEndsAt;
+    // When the player stood, or the queue ran dry: start afresh, one delay
+    // behind this arrival.
+    var startAt = now;
+    var endAt = now + delay;
+    // Otherwise: follow on from the end of the queue.
+    if (lastEnd !== null && lastEnd + TICK_MILLISECONDS >= now) {
+      startAt = Math.max(lastEnd, now);
+      endAt = clamp(lastEnd + nextSpacing(lastEnd, now, delay),
+        now + TICK_MILLISECONDS / 2, now + delay + TICK_MILLISECONDS);
+      // Only after the delay has just shrunk can the queue be ahead of
+      // the latest end allowed above. A glide never takes less than half
+      // a tick, so the character never jumps; the short spacing then
+      // shortens the queue step by step.
+      endAt = Math.max(endAt, startAt + TICK_MILLISECONDS / 2);
+    }
+    player.queue.push({ x: x, y: y, startAt: startAt, endAt: endAt });
+    player.queueEndsAt = endAt;
+  }
+
+  // How long the next glide in the queue lasts: one tick, a little longer
+  // while the queue is shorter than the delay (so it fills up again) and a
+  // little shorter while it is longer (so the drawing catches up). `lead` is
+  // how far ahead of this arrival the queue reaches with one more tick.
+  function nextSpacing(lastEnd, now, delay) {
+    var lead = lastEnd + TICK_MILLISECONDS - now;
+    var factor = clamp(1 + 0.3 * (delay - lead) / delay, 0.8, 1.25);
+    return TICK_MILLISECONDS * factor;
+  }
+
+  // Starts the glides of the queued positions whose time has come. Each one
+  // starts at its own startAt, not at `now`: a late frame then draws the
+  // character exactly where it would have been.
+  function playQueue(player, now) {
+    while (player.queue.length > 0 && player.queue[0].startAt <= now) {
+      var entry = player.queue.shift();
+      startGlide(player, entry.x, entry.y, entry.startAt, entry.endAt - entry.startAt);
+    }
+  }
+
+  function playAllQueues(now) {
+    players.forEach(function (player) {
+      playQueue(player, now);
+    });
   }
 
   // ---- What the lobby page tells the world -----------------------------
@@ -290,7 +445,9 @@ Game.world = Game.world || {};
     });
   }
 
-  // Positions from the server, in map units: [{name, x, y}].
+  // Positions from the server, in map units: [{name, x, y}]. They are not
+  // drawn at once but queued and played back a little later, see
+  // receivePosition().
   // Ignored while the world is stopped: a message that arrives late, after
   // the player left a lobby, must not bring the players of that lobby back.
   function setPositions(list) {
@@ -298,9 +455,11 @@ Game.world = Game.world || {};
       return;
     }
     var now = performance.now();
+    rememberArrival(now);
+    var delay = playbackDelay();
     (Array.isArray(list) ? list : []).forEach(function (entry) {
       if (entry && isName(entry.name) && isNumber(entry.x) && isNumber(entry.y)) {
-        moveTo(playerNamed(entry.name), entry.x, entry.y, now);
+        receivePosition(playerNamed(entry.name), entry.x, entry.y, now, delay);
       }
     });
   }
@@ -358,9 +517,10 @@ Game.world = Game.world || {};
 
   // The id of the station the own player can use right now, or null. It
   // counts from the position the server sent last, not from where the
-  // gliding character is drawn, so what glows is what the server will accept.
+  // character is drawn (a little behind), so what glows is what the server
+  // will accept.
   function stationInRange() {
-    var own = ownName !== null && players.has(ownName) ? players.get(ownName).to : null;
+    var own = ownName !== null && players.has(ownName) ? players.get(ownName).server : null;
     if (!running || !campus || !own || !Array.isArray(campus.stations)) {
       return null;
     }
@@ -799,6 +959,9 @@ Game.world = Game.world || {};
   // ---- The loop --------------------------------------------------------
 
   function drawFrame(now) {
+    // Before anything is drawn: the camera, the names and the characters
+    // must all use the same positions.
+    playAllQueues(now);
     fitCanvasToItsBox();
     if (canvas.width === 0 || canvas.height === 0) {
       return; // the canvas is hidden
@@ -892,8 +1055,9 @@ Game.world = Game.world || {};
   }
 
   // Stops the loop and the keyboard, takes the button "E Use" away and
-  // forgets players, hidden name labels, pressed keys and which stations
-  // were usable.
+  // forgets players (with their queued positions), the arrival times of
+  // the messages, hidden name labels, pressed keys and which stations were
+  // usable.
   // Nothing is sent: whoever stops the world has left the lobby already.
   function stop() {
     if (running) {
@@ -905,6 +1069,7 @@ Game.world = Game.world || {};
     running = false;
     usableStations = null; // the next lobby starts with all stations again
     players.clear();
+    arrivalTimes = [];
     hiddenNames = new Set(); // in the next lobby nobody counts as hidden before
     pressedKeys = {};
     sentDirection = { dx: 0, dy: 0 };
