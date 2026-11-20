@@ -51,8 +51,19 @@ Game.world = Game.world || {};
   // late still changes nothing. It is also how long the glide of a
   // position lasts that is not played from the queue.
   var GLIDE_MILLISECONDS = 110;
-  // The largest playback delay: a character is never drawn further behind.
+  // The largest playback delay. A gap longer than this (Felix measured
+  // 300 to 500 ms about every 3 s) still makes the character stop for a
+  // moment; a larger delay would cover it, but the own character would then
+  // always be drawn 330 to 450 ms behind the keys.
   var LONGEST_DELAY_MILLISECONDS = 250;
+  // After a gap the queue catches up at most this many times faster than
+  // the server's pace, so a character never rushes or jumps.
+  var FASTEST_PACE = 1.5;
+  var FASTEST_GLIDE_MILLISECONDS = TICK_MILLISECONDS / FASTEST_PACE;
+  // A queue reaching further than the delay plus this would take too long
+  // to catch up at FASTEST_PACE (after a hold-up of about a second or
+  // more): the character then snaps to the newest position instead.
+  var LONGEST_CATCH_UP_MILLISECONDS = 600;
   // Added to the largest gap, so the next message is there a moment before
   // the character has reached the position before it.
   var DELAY_MARGIN_MILLISECONDS = 15;
@@ -147,7 +158,7 @@ Game.world = Game.world || {};
       // The newest position the server sent. The drawing is behind it.
       server: null,
       // Positions waiting to be drawn, oldest first:
-      // [{x, y, startAt, endAt, merged}], see schedulePosition().
+      // [{x, y, startAt, endAt}], see schedulePosition().
       queue: [],
       // When the last scheduled position is reached; null when there is none.
       queueEndsAt: null,
@@ -163,9 +174,6 @@ Game.world = Game.world || {};
       // Until this time the next position is a placement by the server and
       // not a step, see startOfRound().
       placedUntil: -Infinity,
-      // True only while moveTo() starts the glide of a merged queue entry,
-      // see startGlide().
-      glidesMergedEntry: false,
       // Which side the character faces. It only ever faces left or right,
       // keeps the side after it stopped, and faces right until it has moved.
       facingLeft: false
@@ -201,14 +209,14 @@ Game.world = Game.world || {};
     };
   }
 
-  // Starts the glide to one position from the server at the time `now`. The
-  // glide starts where the character is drawn at that time, so it never
-  // jumps, also when messages arrive early or late.
+  // Takes one new position from the server. The glide starts where the
+  // character is drawn right now, so it never jumps, also when messages
+  // arrive early or late.
   function moveTo(player, x, y, now) {
     // Counted before the glide changes: the way up to this moment.
     var walked = walkedDistance(player, now);
     var start = drawnPosition(player, now) || { x: x, y: y };
-    var isJump = isFarApart(start, x, y);
+    var isJump = Math.abs(x - start.x) > JUMP_DISTANCE || Math.abs(y - start.y) > JUMP_DISTANCE;
     var isPlacement = now < player.placedUntil;
     player.placedUntil = -Infinity; // it counts for one position only
     if (isJump || isPlacement) {
@@ -217,9 +225,7 @@ Game.world = Game.world || {};
     if (player.to) {
       var dx = x - player.to.x;
       var dy = y - player.to.y;
-      // A merged queue entry covers several steps at once: still a step.
-      var isMovedByServer = isLongerThanAStep(dx, dy) && !player.glidesMergedEntry;
-      if (isJump || isPlacement || isMovedByServer) {
+      if (isJump || isPlacement || isLongerThanAStep(dx, dy)) {
         standStill(player);
       } else {
         takeStep(player, dx, dy, now);
@@ -253,12 +259,8 @@ Game.world = Game.world || {};
   }
 
   // Starts the glide to (x, y) at `startAt`; it lasts `milliseconds`.
-  // `merged` is true for a queue entry that took newer positions (see
-  // schedulePosition()): its way can be longer than one step.
-  function startGlide(player, x, y, startAt, milliseconds, merged) {
-    player.glidesMergedEntry = merged === true;
+  function startGlide(player, x, y, startAt, milliseconds) {
     moveTo(player, x, y, startAt);
-    player.glidesMergedEntry = false;
     // Set only after moveTo: moveTo still needs the length of the glide
     // before, to find where the character is drawn at `startAt`.
     player.glideMilliseconds = milliseconds;
@@ -336,7 +338,7 @@ Game.world = Game.world || {};
     // at which the step started.
     var sinceStep = Math.max(0, now - player.lastStepAt);
     var grown = Math.min(1, player.strideAtLastStep + sinceStep / STRIDE_GROWS_MILLISECONDS);
-    // The glides of the queue last from 33 to over 300 ms. The fade waits
+    // The glides of the queue last from 44 to 250 ms. The fade waits
     // for the end of the glide of this step: the feet neither stop while
     // the character still moves nor walk on after it stopped.
     var faded = (sinceStep - player.stepMilliseconds) / STRIDE_FADES_MILLISECONDS;
@@ -441,41 +443,39 @@ Game.world = Game.world || {};
   // character walks at the server's pace however the messages arrive.
   function schedulePosition(player, x, y, now, delay) {
     var lastEnd = player.queueEndsAt;
-    // When the player stood, or the queue ran dry: start afresh, one delay
-    // behind this arrival.
     var startAt = now;
-    var endAt = now + delay;
-    // Otherwise: follow on from the end of the queue.
-    if (lastEnd !== null && lastEnd + TICK_MILLISECONDS >= now) {
-      if (isQueueFull(player, now, delay)) {
-        // Several messages arrived at once (after a hold-up). A longer
-        // queue would draw the character ever further behind, so the
-        // newest position takes the place of the last waiting one, at its
-        // times. The server's taking_positions keeps the newest move too.
-        var last = player.queue[player.queue.length - 1];
-        last.x = x;
-        last.y = y;
-        last.merged = true;
-        return;
-      }
+    var endAt;
+    if (lastEnd === null || now - lastEnd >= PAUSE_MILLISECONDS) {
+      // A start after standing: one delay behind this arrival, so the
+      // next messages are there before the character needs them.
+      endAt = now + delay;
+    } else if (lastEnd + TICK_MILLISECONDS < now) {
+      // The queue ran dry while walking (a gap longer than the delay): the
+      // character has stood already, so it goes on at once at the normal
+      // pace instead of taking one slow step over the whole delay.
+      endAt = now + TICK_MILLISECONDS;
+    } else {
+      // Follow on from the end of the queue. Every glide takes at least
+      // FASTEST_GLIDE_MILLISECONDS, so catching up is at most 1.5 times
+      // the normal speed, never a jump.
       startAt = Math.max(lastEnd, now);
-      endAt = clamp(lastEnd + nextSpacing(lastEnd, now, delay),
-        now + TICK_MILLISECONDS / 2, now + delay + TICK_MILLISECONDS);
-      // Only a safety net: with a queue that is not full, the clamp above
-      // already gives every glide at least half a tick. A glide of no time
-      // would be a jump.
-      endAt = Math.max(endAt, startAt + TICK_MILLISECONDS / 2);
+      endAt = Math.max(lastEnd + nextSpacing(lastEnd, now, delay), startAt + FASTEST_GLIDE_MILLISECONDS);
     }
-    player.queue.push({ x: x, y: y, startAt: startAt, endAt: endAt, merged: false });
+    if (endAt - now > delay + LONGEST_CATCH_UP_MILLISECONDS) {
+      snapTo(player, x, y, now);
+      return;
+    }
+    player.queue.push({ x: x, y: y, startAt: startAt, endAt: endAt });
     player.queueEndsAt = endAt;
   }
 
-  // Does the queue already reach far enough, past this arrival plus the
-  // delay and half a tick? Only an entry that is still waiting can take a
-  // newer position; without one the queue counts as not full.
-  function isQueueFull(player, now, delay) {
-    var reachesPast = player.queueEndsAt > now + delay + TICK_MILLISECONDS / 2;
-    return reachesPast && player.queue.length > 0;
+  // After a long hold-up: forget the queue and show the newest position at
+  // once. moveTo() still decides the step and the facing; its glide then
+  // starts where it ends, so the character stands there in the next frame.
+  function snapTo(player, x, y, now) {
+    emptyQueue(player);
+    startGlide(player, x, y, now, GLIDE_MILLISECONDS);
+    player.from = player.to;
   }
 
   // How long the next glide in the queue lasts: one tick, a little longer
@@ -484,7 +484,7 @@ Game.world = Game.world || {};
   // how far ahead of this arrival the queue reaches with one more tick.
   function nextSpacing(lastEnd, now, delay) {
     var lead = lastEnd + TICK_MILLISECONDS - now;
-    var factor = clamp(1 + 0.3 * (delay - lead) / delay, 0.8, 1.25);
+    var factor = clamp(1 + 0.3 * (delay - lead) / delay, 1 / FASTEST_PACE, 1.25);
     return TICK_MILLISECONDS * factor;
   }
 
@@ -494,7 +494,7 @@ Game.world = Game.world || {};
   function playQueue(player, now) {
     while (player.queue.length > 0 && player.queue[0].startAt <= now) {
       var entry = player.queue.shift();
-      startGlide(player, entry.x, entry.y, entry.startAt, entry.endAt - entry.startAt, entry.merged);
+      startGlide(player, entry.x, entry.y, entry.startAt, entry.endAt - entry.startAt);
     }
   }
 

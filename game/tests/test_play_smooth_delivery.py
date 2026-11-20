@@ -393,31 +393,123 @@ def assert_stops_on_time(frames, messages, last):
     assert on_time_frames and all(math.dist(camera(frame), last) < EXACT for frame in on_time_frames)
 
 
+# After a gap the queue catches up at most this many times faster than the
+# server's pace (FASTEST_PACE in world.js), and a queue reaching further than
+# the delay plus LONGEST_CATCH_UP after an arrival snaps to the newest position.
+FASTEST_PACE = 1.5
+LONGEST_CATCH_UP = 600
+
+
+def too_fast_frames(frames, step, start=0):
+    """The frames (from `start` on) in which the camera moved faster than
+    FASTEST_PACE times one `step` per server tick."""
+    fastest = FASTEST_PACE * step / TICK * FRAME * (1 + 1e-9)
+    return [frame for before, frame in zip(frames, frames[1:])
+            if frame["t"] >= start and math.dist(camera(before), camera(frame)) > fastest]
+
+
+def assert_ends_on(frames, messages, last, within):
+    """The camera never goes backwards nor past `last`, and is on `last` at
+    most `within` ms after the last message, and stays there."""
+    xs = [frame["camera"]["x"] for frame in frames_between(frames, messages[0][0])]
+    assert all(a <= b + EXACT for a, b in zip(xs, xs[1:]))
+    assert all(x <= last[0] + EXACT for x in xs)
+    ended = frames_between(frames, messages[-1][0] + within)
+    assert ended and all(math.dist(camera(frame), last) < EXACT for frame in ended)
+
+
 @needs_node
 @pytest.mark.parametrize("bursts", [[35], [15, 35]], ids=["at the end", "in the middle and at the end"])
-def test_five_messages_at_once_still_stop_on_the_last_position_in_time(bursts):
+def test_five_messages_at_once_catch_up_at_most_one_and_a_half_times_as_fast(bursts):
     count = 40
     places = [[place] for place in walk("Mara", count, SPAWN, (1, 0), 6)]
-    # From each message in `bursts` on, five messages arrive together with the fifth.
+    # From each message in `bursts` on, four are held back and arrive together
+    # with the fifth: the queue runs dry, then five positions come at once.
     held = {first + k: first + 4 for first in bursts for k in range(4)}
     messages = delivered(places, TICK, lambda k: (held[k] - k) * TICK if k in held else 0)
     assert abs(messages[35][0] - messages[39][0]) < EXACT
-    frames = run_world(messages, until=messages[-1][0] + 600, players=["Mara"], own="Mara")
+    frames = run_world(messages, until=messages[-1][0] + 1200, players=["Mara"], own="Mara")
 
-    assert_stops_on_time(frames, messages, (places[-1][0]["x"], places[-1][0]["y"]))
+    # No jump and no rush: five steps after a hold are no reason to snap.
+    assert too_fast_frames(frames, 6, start=messages[1][0]) == []
+    assert_ends_on(frames, messages, (places[-1][0]["x"], places[-1][0]["y"]),
+                   within=LONGEST_DELAY + LONGEST_CATCH_UP)
 
 
 @needs_node
-def test_a_hold_up_of_two_seconds_and_thirty_messages_at_once_still_stop_in_time():
+def test_a_hold_up_of_two_seconds_and_thirty_messages_at_once_snap_at_once():
     count = 50
     places = [[place] for place in walk("Mara", count, SPAWN, (1, 0), 6)]
     # From message 20 on nothing arrives for 2 s; then all 30 at once.
     burst_at = 20 * TICK + 2000
     messages = delivered(places, TICK, lambda k: burst_at - k * TICK if k >= 20 else 0)
     assert all(abs(t - burst_at) < EXACT for t, _ in messages[20:])
-    frames = run_world(messages, until=burst_at + 800, players=["Mara"], own="Mara")
+    frames = run_world(messages, until=burst_at + 1200, players=["Mara"], own="Mara")
 
-    assert_stops_on_time(frames, messages, (places[-1][0]["x"], places[-1][0]["y"]))
+    # Catching up 30 steps at 1.5 times the pace would take far too long: one
+    # snap, in the first frame after the burst, and otherwise never too fast.
+    first_after = frames_between(frames, burst_at)[0]
+    assert too_fast_frames(frames, 6, start=messages[1][0]) == [first_after]
+    assert_ends_on(frames, messages, (places[-1][0]["x"], places[-1][0]["y"]),
+                   within=LONGEST_DELAY + LONGEST_CATCH_UP)
+
+
+def playback_delay(arrivals, now):
+    """The playback delay world.js uses at `now` (playbackDelay()): the largest
+    gap of at most 400 ms between the arrivals of the last 3 s, plus 15 ms,
+    between 110 and 250 ms."""
+    recent = [t for t in arrivals if now - 3000 <= t <= now]
+    gaps = [b - a for a, b in zip(recent, recent[1:]) if b - a <= 400]
+    return min(LONGEST_DELAY, max(110, max(gaps, default=0) + 15))
+
+
+@needs_node
+def test_with_felix_messages_and_a_long_gap_every_three_seconds_the_drawing_stops_briefly_and_catches_up_smoothly():
+    # Felix's bunched messages, and every 44th message (about every 3 s) is held
+    # back 400 ms more: longer than the largest delay, so the queue runs dry.
+    count = 200  # 200 x 68.2 ms: more than 13 s of walking
+    places = [[place] for place in walk("Mara", count, SPAWN, (1, 0), FELIX_STEP)]
+    extra = lambda k: FELIX_DELAYS[k % len(FELIX_DELAYS)] + (400 if k % 44 == 43 else 0)
+    messages = delivered(places, FELIX_TICK, extra)
+    arrivals = [t for t, _ in messages]
+    frames = run_world(messages, until=arrivals[-1] + 1200, players=["Mara"], own="Mara")
+
+    # Never faster than 1.5 times the server's pace (one step per tick), never backwards.
+    assert too_fast_frames(frames, FELIX_STEP, start=arrivals[1]) == []
+    assert_ends_on(frames, messages, (places[-1][0]["x"], places[-1][0]["y"]),
+                   within=LONGEST_DELAY + LONGEST_CATCH_UP)
+
+    long_gaps = [(a, b) for a, b in zip(arrivals, arrivals[1:]) if b - a > 300]
+    assert len(long_gaps) == 4
+    for gap_start, gap_end in long_gaps:
+        delay = playback_delay(arrivals, gap_start)
+        # The stop: at most the part of the gap the delay could not cover, plus one frame.
+        around = frames_between(frames, gap_start, gap_end + FRAME)
+        still = sum(1 for before, frame in zip(around, around[1:])
+                    if math.dist(camera(before), camera(frame)) < EXACT)
+        assert still * FRAME <= gap_end - gap_start - delay + FRAME, (gap_start, still)
+        # Then it goes on at once at least at half the normal speed: no slow
+        # first step over the whole delay. (The frame in which it starts again
+        # moves only part of a frame.)
+        normal = FELIX_STEP / FELIX_TICK * FRAME
+        after = frames_between(frames, gap_end, min(gap_end + 1000, arrivals[-1]))
+        moves = [math.dist(camera(before), camera(frame)) for before, frame in zip(after, after[1:])]
+        started = next(i for i, move in enumerate(moves) if move > EXACT)
+        assert all(move >= normal / 2 for move in moves[started + 1:]), (gap_end, min(moves[started + 1:]))
+        # 1 s after the gap the drawing is back to at most one delay plus one
+        # tick behind the newest position. (Right after that, a bunched message
+        # can still put it a few ms further behind once while the last of the
+        # catch-up runs out.) From 1.5 s on it stays within that, until the next gap.
+        def behind(frame):
+            newest = [p for t, p in messages if t <= frame["t"]][-1][0]
+            return newest["x"] - frame["camera"]["x"]
+
+        allowed = FELIX_STEP * (delay + TICK) / FELIX_TICK + EXACT
+        one_second_after = frames_between(frames, gap_end + 1000)[0]
+        assert behind(one_second_after) <= allowed, (gap_end, behind(one_second_after))
+        next_gap = min([a for a, _ in long_gaps if a > gap_end], default=arrivals[-1])
+        later = frames_between(frames, gap_end + 1500, next_gap)
+        assert all(behind(frame) <= allowed for frame in later), gap_end
 
 
 @needs_node
