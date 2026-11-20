@@ -1,5 +1,5 @@
 {
-  "note": "The campus map, once, as data (S-79). All numbers are in the units of game/design/map.svg (680 x 668). The browser draws from this file, the server reads it for collision. A rectangle is x, y (top left corner), w, h. use_range is how far the centre of a player may be from the centre of a station to use it. Walls are 6 units thick and centred on the line drawn in the sketch. Circles of the sketch are stored as their bounding squares.",
+  "note": "The campus map, once, as data (S-79). All numbers are in the units of game/design/map.svg (680 x 668). The browser draws from this file, the server reads it for collision. A rectangle is x, y (top left corner), w, h. use_range is how far the centre of a player may be from the centre of a station to use it. Walls are 6 units thick and centred on the line drawn in the sketch. Circles of the sketch are stored as their bounding squares. The label of a room, and deck_label, is the point where the middle of the name is drawn; labels are only drawn, never solid.",
 
   "width": 680,
   "height": 668,
@@ -8,12 +8,14 @@
   "colours": {"lawn": "#DCE6C8", "deck": "#F3F0E9", "outline": "#2E2A3B"},
 
   "rooms": [
-    {"id": "lecture-hall", "name": "Lecture Hall",     "x": 20,  "y": 20,  "w": 210, "h": 150, "floor": "#EAD3AE"},
-    {"id": "mon-cafe",     "name": "Mon Café",         "x": 250, "y": 20,  "w": 200, "h": 150, "floor": "#F6ECE0"},
-    {"id": "canteen",      "name": "Canteen",          "x": 470, "y": 20,  "w": 190, "h": 150, "floor": "#D7EDDF"},
-    {"id": "ctt",          "name": "CTT Student Hall", "x": 20,  "y": 230, "w": 140, "h": 330, "floor": "#D6E4F4"},
-    {"id": "pingo-doce",   "name": "Pingo Doce",       "x": 440, "y": 400, "w": 220, "h": 160, "floor": "#DCEFC8"}
+    {"id": "lecture-hall", "name": "Lecture Hall",     "x": 20,  "y": 20,  "w": 210, "h": 150, "floor": "#EAD3AE", "label": {"x": 125, "y": 152}},
+    {"id": "mon-cafe",     "name": "Mon Café",         "x": 250, "y": 20,  "w": 200, "h": 150, "floor": "#F6ECE0", "label": {"x": 350, "y": 152}},
+    {"id": "canteen",      "name": "Canteen",          "x": 470, "y": 20,  "w": 190, "h": 150, "floor": "#D7EDDF", "label": {"x": 565, "y": 152}},
+    {"id": "ctt",          "name": "CTT Student Hall", "x": 20,  "y": 230, "w": 140, "h": 330, "floor": "#D6E4F4", "label": {"x": 90,  "y": 248}},
+    {"id": "pingo-doce",   "name": "Pingo Doce",       "x": 440, "y": 400, "w": 220, "h": 160, "floor": "#DCEFC8", "label": {"x": 614, "y": 421}}
   ],
+
+  "deck_label": {"name": "Main Deck", "x": 365, "y": 350},
 
   "deck": [
     {"x": 20,  "y": 170}, {"x": 660, "y": 170}, {"x": 660, "y": 400}, {"x": 440, "y": 400},
@@ -106,7 +108,7 @@
     {"id": "deck-tree-4",             "kind": "tree",  "x": 528, "y": 330, "w": 28, "h": 28},
     {"id": "deck-tree-5",             "kind": "tree",  "x": 186, "y": 426, "w": 28, "h": 28},
     {"id": "deck-tree-6",             "kind": "tree",  "x": 386, "y": 426, "w": 28, "h": 28},
-    {"id": "deck-hedge",              "kind": "hedge", "x": 566, "y": 236, "w": 58, "h": 26},
+    {"id": "deck-hedge",              "kind": "hedge", "x": 556, "y": 236, "w": 68, "h": 26},
     {"id": "deck-logo",               "kind": "logo",  "x": 229, "y": 463, "w": 142, "h": 40}
   ],
 

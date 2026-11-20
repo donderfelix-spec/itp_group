@@ -181,7 +181,9 @@
     <section id="screen-lobby" class="screen screen-lobby" hidden>
       <div class="map-area">
         <canvas id="map" class="map" aria-label="Campus map"></canvas>
-        <p class="hint">Walk with WASD or the arrow keys</p>
+        <!-- Two parts, so that on a narrow map the hint can be two lines
+             (style.css). On a wide map it is one line. -->
+        <p class="hint"><span class="hint-part">Walk with WASD</span> <span class="hint-part">or the arrow keys</span></p>
         <!-- The window of a minigame, built by js/minigames/frame.js. -->
         <div id="minigame" class="minigame" hidden></div>
         <!-- The ranking at the end of a Duel, built by js/minigames/duel.js. -->
