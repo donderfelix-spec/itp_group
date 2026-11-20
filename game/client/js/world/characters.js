@@ -43,13 +43,32 @@ Game.world = Game.world || {};
   // because it depends on how small the character is drawn.
   var thinnestLine = 0;
 
-  // Walking, in design units: how high the rear foot is lifted, how far a
-  // foot swings forward and back, how far a free hand swings, and how far
-  // the body rises on a step.
+  // Walking, in design units: how high the swinging foot is lifted, how
+  // far a free hand swings, and how far the body rises on a step. How far a
+  // foot goes forward and back, and how long a walking cycle is, belong to
+  // the walking variant, see WALK_PROPOSALS.
   var FOOT_LIFT = 5;
-  var FOOT_SWING = 4;
   var HAND_SWING = 4;
   var BODY_BOB = 3;
+
+  // TEMPORARY (M2-1.13 proposals): chooses the walking variant Felix compares.
+  // Removed with the variant he does not choose, before the pull request.
+  //   cycleLength  map units the character covers in one walking cycle
+  //                (two steps); world.js asks for it, see walkCycleLength()
+  //   footTravel   how far a foot goes in front of and behind its place
+  //                when standing, in design units
+  // A foot on the ground moves back by 2 x footTravel during one step. The
+  // more of the step length that is, the less the foot slides on the ground.
+  var WALK_PROPOSALS = {
+    C: { cycleLength: 27, footTravel: 6 },
+    D: { cycleLength: 18, footTravel: 7 }
+  };
+
+  // TEMPORARY (M2-1.13 proposals): read at draw time, so the comparison
+  // page can switch between the variants. Missing or unknown: "C".
+  function walkProposal() {
+    return window.WALK_PROPOSAL === "D" ? WALK_PROPOSALS.D : WALK_PROPOSALS.C;
+  }
   // A walking character leans this far into its walking direction (radians).
   var WALKING_LEAN = 0.05;
   // The lean turns around the point between the feet, so they stay in place.
@@ -784,6 +803,39 @@ Game.world = Game.world || {};
     return stride === 0 ? 0 : Math.sin(pose.walkPhase * 2 * Math.PI) * stride;
   }
 
+  // Where the character is in its walking cycle, from 0 to 1. Any number
+  // is taken: 1.25 is the same moment as 0.25.
+  function phaseOf(pose) {
+    if (strideOf(pose) === 0) {
+      return 0;
+    }
+    var phase = pose.walkPhase % 1;
+    return phase < 0 ? phase + 1 : phase;
+  }
+
+  // Where the left foot is at `phase`, from 1 (furthest in front) to -1
+  // (furthest behind). It is put down in front at phase 0.25 and then moves
+  // backwards at a steady speed, as the ground moves under a walker, until
+  // it is furthest behind at 0.75. Then it is lifted and swings forward
+  // again. The right foot does the same half a cycle later, so it is always
+  // at the opposite place. The swing of swingOf() has the same highest and
+  // lowest points, so arms and body keep moving with the feet as before.
+  function leftFootPlace(phase) {
+    var sincePutDown = (phase + 0.75) % 1; // 0 at phase 0.25
+    if (sincePutDown < 0.5) {
+      return 1 - 4 * sincePutDown; // on the ground: from 1 back to -1
+    }
+    return -3 + 4 * sincePutDown; // in the air: from -1 forward to 1
+  }
+
+  // How high the left foot is lifted, from 0 (on the ground) to 1. It is in
+  // the air from phase 0.75 to 0.25 and highest at 0, where it passes the
+  // other foot. For the right foot pass phase + 0.5.
+  function leftFootLift(phase) {
+    var sinceLifted = (phase + 0.25) % 1; // 0 at phase 0.75
+    return sinceLifted < 0.5 ? Math.sin(2 * Math.PI * sinceLifted) : 0;
+  }
+
   // How big the steps are, from 0 (none, also when standing) to 1 (full).
   // Full if the character walks and nothing understandable was passed.
   function strideOf(pose) {
@@ -798,13 +850,11 @@ Game.world = Game.world || {};
   }
 
   // One leg with its shoe. `side` is -1 for the left and 1 for the right
-  // one. `ownSwing` is the swing of this foot: above 0 it stands in front,
-  // below 0 it is behind and lifted off the ground. `raised` is how far the
-  // body is lifted right now: the leg reaches that much further up, so it
-  // never comes off the body.
-  function drawTurnedLeg(ctx, look, side, ownSwing, raised) {
-    var footX = ownSwing * FOOT_SWING;
-    var lift = Math.max(0, -ownSwing) * FOOT_LIFT;
+  // one. `footX` is how far the foot is in front of its standing place
+  // (behind if below 0) and `lift` how high it is off the ground, both in
+  // design units. `raised` is how far the body is lifted right now: the leg
+  // reaches that much further up, so it never comes off the body.
+  function drawTurnedLeg(ctx, look, side, footX, lift, raised) {
     // The shoes point a little to the side the character is turned to.
     var shoeX = (side < 0 ? -15 : 1) + SHOE_TURN + footX;
     box(ctx, shoeX, 89 - lift, 14, 8, 4, look.shoes || OUTLINE, look.shoes ? 1.5 : 0);
@@ -868,11 +918,16 @@ Game.world = Game.world || {};
     ctx.restore();
   }
 
-  // The turned character. `swing` is where it is in its step and `stride`
-  // how big its steps are (0 when it stands). `isMirrored` says that the
+  // The turned character. `phase` is where it is in its walking cycle,
+  // `swing` the swing of the arms and the body at that moment (swingOf())
+  // and `stride` how big its steps are (0 when it stands). `isMirrored` says that the
   // drawing is mirrored right now, so the character is turned to the left.
-  function drawTurnedView(ctx, look, swing, stride, isMirrored) {
+  function drawTurnedView(ctx, look, phase, swing, stride, isMirrored) {
     var raised = Math.abs(swing) * BODY_BOB;
+    var travel = walkProposal().footTravel * stride;
+    var leftPlace = leftFootPlace(phase);
+    var leftLift = leftFootLift(phase) * FOOT_LIFT * stride;
+    var rightLift = leftFootLift((phase + 0.5) % 1) * FOOT_LIFT * stride;
     // The shadow stays flat on the ground while the body rises above it,
     // so a step reads as a small hop.
     drawShadow(ctx);
@@ -887,8 +942,8 @@ Game.world = Game.world || {};
     ctx.translate(0, -raised);
     look.turnedBehind(ctx);
     ctx.restore();
-    drawTurnedLeg(ctx, look, -1, swing, raised);
-    drawTurnedLeg(ctx, look, 1, -swing, raised);
+    drawTurnedLeg(ctx, look, -1, leftPlace * travel, leftLift, raised);
+    drawTurnedLeg(ctx, look, 1, -leftPlace * travel, rightLift, raised);
     ctx.translate(0, -raised);
     drawBodyBox(ctx, TURNED_BODY, look.body, 2.5);
     look.turnedClothes(ctx);
@@ -919,9 +974,11 @@ Game.world = Game.world || {};
   //              true: the drawing is mirrored and turned to the left. Only
   //              what is held in one hand stays in that hand.
   //   walkPhase  a number that runs from 0 to 1 during one walking cycle
-  //              (two steps); 0 and 0.5 are the moments with both feet on
-  //              the ground. Leave it out or pass null for a standing
-  //              character.
+  //              (two steps). At 0 and 0.5 the feet pass each other, at
+  //              0.25 the left foot is put down in front and at 0.75 the
+  //              right one. world.js lets it run on the way walked, one
+  //              cycle per walkCycleLength(). Leave it out or pass null for
+  //              a standing character.
   //   stride     how big the steps are, from 0 (the feet stay down) to 1
   //              (full steps, also when it is left out). world.js lets it
   //              grow and shrink so that starting and stopping look soft.
@@ -944,13 +1001,40 @@ Game.world = Game.world || {};
     ctx.lineCap = "round";
     thinnestLine = THINNEST_LINE_IN_PIXELS / (pixelsPerUnit(ctx) || 1);
     if (pose) {
-      drawTurnedView(ctx, lookOf(characterId), swingOf(pose), strideOf(pose), isMirrored);
+      drawTurnedView(ctx, lookOf(characterId), phaseOf(pose), swingOf(pose), strideOf(pose), isMirrored);
     } else {
       drawPortrait(ctx, lookOf(characterId));
     }
     ctx.restore();
   }
 
+  // How many map units a character covers in one walking cycle. world.js
+  // turns the way walked into the walkPhase with it, so the feet move with
+  // the ground; it belongs here because it depends on how far the feet go.
+  function walkCycleLength() {
+    return walkProposal().cycleLength;
+  }
+
+  // TEMPORARY (M2-1.13 proposals): the numbers of the chosen variant, for
+  // the comparison page. All in map units except footTravel (design units).
+  // A character is drawn 39 map units high on the map (CHARACTER_HEIGHT in
+  // world.js), so one map unit is 112 / 39 design units. The foot on the
+  // ground moves back by 2 x footTravel during a step; the rest of the step
+  // it slides.
+  function walkProposalNumbers() {
+    var proposal = walkProposal();
+    var stepLength = proposal.cycleLength / 2;
+    var groundCovered = 2 * proposal.footTravel / (DESIGN_HEIGHT / 39);
+    return {
+      cycleLength: proposal.cycleLength,
+      stepLength: stepLength,
+      footTravel: proposal.footTravel,
+      slidePerStep: stepLength - groundCovered
+    };
+  }
+
   Game.world.characters = characters;
   Game.world.drawCharacter = drawCharacter;
+  Game.world.walkCycleLength = walkCycleLength;
+  Game.world.walkProposalNumbers = walkProposalNumbers;
 })();

@@ -52,8 +52,14 @@ Game.world = Game.world || {};
   // put down softly instead of snapping to the ground.
   var STRIDE_GROWS_MILLISECONDS = GLIDE_MILLISECONDS;
   var STRIDE_FADES_MILLISECONDS = 150;
-  // One walking cycle is two steps: left foot, right foot.
-  var WALK_CYCLE_MILLISECONDS = 420;
+  // One walking cycle is two steps: left foot, right foot. It runs on the
+  // way the drawn character covers, not on the time, so a foot on the
+  // ground moves with the ground on every screen, also when a message is
+  // late or the character stops against a wall. How many map units one
+  // cycle takes comes from the drawing (walkCycleLength() in
+  // characters.js); this one is used if the drawing gives none, as when
+  // characters.js did not load (the players are circles then anyway).
+  var WALK_CYCLE_LENGTH_WITHOUT_DRAWING = 38;
   // A change of position smaller than this, in map units, is not a step: it
   // neither turns the character nor moves its feet. A real step is about 6
   // units (90 units per second, 15 messages per second, S-86).
@@ -111,7 +117,11 @@ Game.world = Game.world || {};
       arrivedAt: 0, // when `to` arrived, in milliseconds
       lastStepAt: -Infinity, // when the character last took a step
       strideAtLastStep: 0, // how big its steps were at that moment, 0 to 1
-      walkingSince: 0, // when it started to walk; the walking cycle starts here
+      // How far the drawn character had walked, in map units, when the
+      // current glide started (see walkedDistance()) ...
+      walkedBeforeGlide: 0,
+      // ... and when it started to walk; the walking cycle starts here.
+      walkedWhenItStarted: 0,
       // Until this time the next position is a placement by the server and
       // not a step, see startOfRound().
       placedUntil: -Infinity,
@@ -154,6 +164,8 @@ Game.world = Game.world || {};
   // character is drawn right now, so it never jumps, also when messages
   // arrive early or late.
   function moveTo(player, x, y, now) {
+    // Counted before the glide changes: the way up to this moment.
+    var walked = walkedDistance(player, now);
     var start = drawnPosition(player, now) || { x: x, y: y };
     var isJump = Math.abs(x - start.x) > JUMP_DISTANCE || Math.abs(y - start.y) > JUMP_DISTANCE;
     var isPlacement = now < player.placedUntil;
@@ -173,6 +185,23 @@ Game.world = Game.world || {};
     player.from = start;
     player.to = { x: x, y: y };
     player.arrivedAt = now;
+    player.walkedBeforeGlide = walked;
+  }
+
+  // How far the drawn character has walked up to the time `now`, in map
+  // units: the way of all earlier glides and the part of the current glide
+  // covered so far. A jump or a placement starts its glide where it ends,
+  // so it adds nothing. Like drawnPosition() it only depends on the time,
+  // so it is the same however often the screen is redrawn, and it does not
+  // depend on how long a glide takes.
+  function walkedDistance(player, now) {
+    var position = drawnPosition(player, now);
+    if (!position) {
+      return 0;
+    }
+    var dx = position.x - player.from.x;
+    var dy = position.y - player.from.y;
+    return player.walkedBeforeGlide + Math.sqrt(dx * dx + dy * dy);
   }
 
   // Looks at the way between the last two positions from the server, (dx, dy),
@@ -186,7 +215,7 @@ Game.world = Game.world || {};
       return;
     }
     if (!isWalking(player, now)) {
-      player.walkingSince = now;
+      player.walkedWhenItStarted = walkedDistance(player, now);
     }
     // Remember how big the steps are right now: they grow on from there.
     player.strideAtLastStep = stride(player, now);
@@ -252,13 +281,23 @@ Game.world = Game.world || {};
   }
 
   // How far the player is in its walking cycle, from 0 to 1, or null when
-  // it stands. The cycle starts with both feet on the ground.
+  // it stands. The cycle starts with the feet side by side and moves on only
+  // while the drawn character moves.
   function walkPhase(player, now) {
     if (!isWalking(player, now)) {
       return null;
     }
-    var walkedFor = Math.max(0, now - player.walkingSince);
-    return (walkedFor / WALK_CYCLE_MILLISECONDS) % 1;
+    var walked = Math.max(0, walkedDistance(player, now) - player.walkedWhenItStarted);
+    return (walked / walkCycleLength()) % 1;
+  }
+
+  // Map units per walking cycle, from the drawing if it gives a usable
+  // number. Called outside the protection of drawPlayer(), so it checks
+  // everything and never fails.
+  function walkCycleLength() {
+    var fromDrawing = Game.world.walkCycleLength;
+    var length = typeof fromDrawing === "function" ? Number(fromDrawing()) : NaN;
+    return isFinite(length) && length > 0 ? length : WALK_CYCLE_LENGTH_WITHOUT_DRAWING;
   }
 
   // ---- What the lobby page tells the world -----------------------------
@@ -916,4 +955,11 @@ Game.world = Game.world || {};
   Game.world.stationInRange = stationInRange;
   Game.world.setInputPaused = setInputPaused;
   Game.world.nearestStationInRange = nearestStationInRange;
+  // TEMPORARY (M2-1.13 proposals): the numbers the comparison page needs to
+  // walk a character the way this file does, without a server.
+  // Removed with the variant Felix does not choose, before the pull request.
+  Game.world.walkingProposal = {
+    glideMs: GLIDE_MILLISECONDS,
+    strideFadesMs: STRIDE_FADES_MILLISECONDS
+  };
 })();
