@@ -27,7 +27,7 @@ These points hold up the start. The reasoning behind them is under “Open decis
 ## M0: Preparation
 
 - [ ] **M0-4.1** The five minigames are described in the DESIGN.md, the team should proofread them once more
-- [ ] **M0-2.7** Write the README in the main folder in English for the submission (S-36), and decide whether the planning documents will be translated
+- [x] **M0-2.7** Write the README in the main folder in English for the submission (S-36), and decide whether the planning documents will be translated. The README names the game, the public URL, the commands to run and test, what works today and the four areas with their owners (S-96); the planning documents are already in English. The names and student numbers are a marked placeholder until K10 is settled (2026-11-19)
 
 ## M1: Walking
 
