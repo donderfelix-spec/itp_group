@@ -46,7 +46,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 - [ ] **M1-2.12** Send cache headers for the scripts and the stylesheet, so that players do not keep old files after a deploy (seen in the play test: a normal reload served an old script)
 - [ ] **M1-2.13** Add a favicon (the server log shows a 404 for it on every visit)
-- [ ] **M1-2.14** Add `server/world/` and `server/net/` to the area table in `AGENTS.md` (S-79), by pull request
+- [x] **M1-2.14** Add `server/world/` and `server/net/` to the area table in `AGENTS.md` (S-79), by pull request. `server/world/` now stands with area 1; `server/net/` was already listed with area 2 (2026-11-19)
 - [ ] **M1-2.15** A lobby that fails on every tick writes 15 log lines per second: log it once and then only now and then
 - [ ] **M1-2.16** Use Python 3.13 in the local `.venv` like CI and Render (it runs 3.14 on the development machine)
 
