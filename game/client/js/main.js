@@ -33,6 +33,9 @@ window.Game = window.Game || {};
   // The stations this player has finished in the running round. The server
   // keeps the real list; this one only decides which stations glow.
   let finishedStations = new Set();
+  // True from the moment this browser asked to log out until the server
+  // answers. It tells a wanted `signed_out` from one that came unasked.
+  let logOutWasAsked = false;
 
   // The map is built by another part of the team and may be missing or
   // unfinished. The page must work without it, so every call goes through here.
@@ -103,9 +106,22 @@ window.Game = window.Game || {};
     Game.forms.showSignedIn(message.name, message.guest);
   }
 
+  // The "Log out" button. `ask` sends nothing while another answer is
+  // awaited or the connection is down, and then no `signed_out` will come.
+  function askToLogOut() {
+    if (Game.net.ask({ type: 'log_out' })) logOutWasAsked = true;
+  }
+
+  // The server sends `signed_out` without being asked in one case only: the
+  // same account logged in on another connection, and this older one was
+  // signed out (S-76). So a `signed_out` this browser did not ask for can
+  // be explained to the player without the server saying why.
   function whenSignedOut() {
+    const wasAsked = logOutWasAsked;
+    logOutWasAsked = false;
     stopWorld();
     Game.forms.showStart();
+    if (!wasAsked) Game.screens.showMessage('You were signed in somewhere else.', false);
   }
 
   const PHASES = ['lobby', 'countdown', 'round'];
@@ -186,6 +202,7 @@ window.Game = window.Game || {};
 
   function whenError(message) {
     Game.forms.stopWaiting(); // Every error is an answer, also one that belongs to no field.
+    logOutWasAsked = false; // The log-out was refused: no `signed_out` follows it.
     if (ERRORS_THAT_CLOSE_THE_TASK.includes(message.code)) Game.minigames.close();
     // "Close your current task first." with no window to close: see above.
     if (message.code === 'task_open' && !Game.minigames.isOpen()) closeTaskWithoutWindow();
@@ -200,12 +217,13 @@ window.Game = window.Game || {};
   // the player types while waiting stays. The message stays visible until the
   // connection is back; it is the feedback for every click in that time.
   function whenConnectionLost() {
+    logOutWasAsked = false; // The answer to a log-out can no longer arrive.
     stopWorld();
     Game.forms.showStart();
     Game.screens.showLastingMessage('Connection lost. Reconnecting…', true);
   }
 
-  Game.forms.setup();
+  Game.forms.setup(askToLogOut);
   Game.lobby.setup();
   Game.duel.setup();
   Game.countdown.setup();

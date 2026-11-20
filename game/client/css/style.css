@@ -166,6 +166,50 @@ input {
   text-transform: uppercase;
 }
 
+/* The password field with its eye button, which shows or hides what was
+   typed. The button lies over the right end of the field; the field keeps
+   that room free, so a long password does not run under the eye. */
+.password-box { position: relative; }
+
+.password-box > input { padding-right: 48px; }
+
+.password-eye {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.password-eye:hover { background: var(--sand); }
+
+/* Inside the field there is no room for the usual ring around a button. */
+.password-eye:focus-visible { outline-offset: -2px; }
+
+.eye-icon {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The stroke through the eye: only while the password can be read. */
+.eye-stroke { display: none; }
+.password-eye[aria-pressed="true"] .eye-stroke { display: inline; }
+
 /* ---- Small labels: "Host", "You", "guest" ---- */
 
 .marker {
