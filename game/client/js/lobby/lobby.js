@@ -13,19 +13,6 @@ window.Game = window.Game || {};
   const DOT_RADIUS = 15; // the plain dot drawn when there is no character drawing
   const DOT_COLOUR = '#8A8494';
 
-  // Used only while the drawing code of the map (Game.world) is missing.
-  // Names from DESIGN.md, section 3, in the order of protocol.CHARACTERS.
-  const FALLBACK_CHARACTERS = [
-    { id: 'consultant', name: 'The Consultant' },
-    { id: 'finance_bro', name: 'The Finance Bro' },
-    { id: 'exchange_student', name: 'The Exchange Student' },
-    { id: 'surfer', name: 'The Surfer' },
-    { id: 'founder', name: 'The Founder' },
-    { id: 'overachiever', name: 'The Overachiever' },
-    { id: 'latecomer', name: 'The Latecomer' },
-    { id: 'library_local', name: 'The Library Local' },
-  ];
-
   // The modes the host sees, from DESIGN.md, section 4. `minPlayers` is only
   // for the hint under the start button: the server checks it again (S-53).
   const MODES = [
@@ -58,9 +45,13 @@ window.Game = window.Game || {};
     ownName = name;
   }
 
+  // The one list of characters in the browser is in world/characters.js,
+  // which the page loads before this file. It must match protocol.CHARACTERS
+  // on the server; tests/test_character_list.py checks that. If the list is
+  // missing, the lobby shows no characters instead of crashing.
   function allCharacters() {
     const fromWorld = Game.world && Game.world.characters;
-    return Array.isArray(fromWorld) && fromWorld.length > 0 ? fromWorld : FALLBACK_CHARACTERS;
+    return Array.isArray(fromWorld) ? fromWorld : [];
   }
 
   function findCharacter(characterId) {
