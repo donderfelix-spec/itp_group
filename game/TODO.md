@@ -55,7 +55,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 - [ ] **M1-1.5** Close or widen the gap between the third tree and the hedge on the Main Deck: it is exactly one player wide, and a player squeezing through is drawn over both
 - [ ] **M1-1.6** Give each room a label position in `campus.json`: “Pingo Doce” is drawn in the middle of the room instead of at the right as in the sketch, and “Main Deck” sits on the spawn point
 - [ ] **M1-1.7** Narrow windows (under about 800 px): the walking hint overlaps a room name and the top message overlaps the lobby code. Between about 800 and 920 px the button “E Use” also covers the end of the walking hint (seen in the play test of M2-1.1)
-- [ ] **M1-1.10** Messages at the top of the page use only half the width of a narrow window: at 320 px the guest message wraps into four lines and covers the profile icon on Home while it shows. Let a message use the width of the page (found while building M2-2.7)
+- [x] **M1-1.10** Messages at the top of the page use the width of the page: the window minus 16 px on each side, centred, only as wide as the text. At 320 px the guest message takes two lines instead of four. Tried in the browser at 320, 768 and 1280 px on Start, Home and Lobby, with two players (2026-11-20)
 - [ ] **M1-1.8** Keep the list of characters in one place: the lobby panel has its own fallback copy next to `world/characters.js` and `protocol.CHARACTERS`
 - [ ] **M1-1.9** Add the new texts to DESIGN.md: “Loading the campus…”, “Signed in as”, “Players”, “Character”, “Lobby code”, “Coming with the next milestone”
 
