@@ -53,7 +53,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Clear message when a name is taken, the password is wrong or the database is not reachable | M1 | Done |
 | Show or hide the password with an eye icon | M1 | Done |
 | A player who is signed out because the account logged in somewhere else is told why | M1 | Done |
-| Limit on log-in attempts and lobby-code guessing | M1 | Planned |
+| Limit on log-in attempts and lobby-code guessing | M1 | Done |
 | Statistics per account: rounds and wins per mode, best Duel time | M2 | Done |
 | Leaderboard of all accounts | M2 | Done |
 | Add friends by username, accept or decline a request | M4 | Planned |
@@ -68,7 +68,8 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Countdown of 5 seconds before every round, counted by the server | M2 | Done |
 | After the round back to the lobby, new round without a new code | M2 | Done |
 | If someone leaves the game, the round continues, and the host changes if needed | M2 | Done |
-| Players who were disconnected for a short time come back into their round | M3 | Planned |
+| A player who lost the connection in a lobby is put back into it after signing in again, without typing the code (S-109) | M3 | Done |
+| Players who were disconnected for a short time come back into their running round | M4 | Later |
 | Each client gets only the information that its player is allowed to know | M3 | Planned |
 | Game reachable at a public URL, deployed automatically from `main` | M0 | Done |
 | Several lobbies at the same time | M1 | Done |

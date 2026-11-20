@@ -236,9 +236,10 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Username or password too short or with characters that are not allowed | “Usernames are 3–16 letters or numbers.” / “Passwords need at least 8 characters.” |
 | Wrong password | “Wrong username or password.” |
 | Lobby code does not exist | “No lobby with that code.” |
+| After 5 wrong log-ins or 10 wrong lobby codes within a minute on one connection | “Too many attempts. Try again in a minute.” |
 | Lobby is full, or its countdown or round is already running | “This lobby is full.” / “This round has already started.” |
 | Too few players for the mode | “Classic needs at least 4 players.” |
-| Connection lost | “Connection lost. Reconnecting…” |
+| Connection lost | “Connection lost. Reconnecting…” After the player signs in again, the page joins the lobby it was in by itself and puts the code into the join field. If that lobby is gone, full or in its countdown or round, the usual text appears at the code field (S-109). |
 | Database not reachable | “Accounts are unavailable right now. You can still play as a guest.” |
 | Host has left the lobby | “The host left. Mara is the new host.” |
 | The same account logged in somewhere else, so this browser was signed out | “You were signed in somewhere else.” (shown by the browser on the Start screen) |
@@ -273,3 +274,4 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 - No sound, unless time allows.
 - No phone controls, unless time allows (S-14).
 - No email addresses and no “forgot password” (S-38).
+- No return into a running round after a lost connection: the player signs in again and waits on Home until the round is over (S-109).
