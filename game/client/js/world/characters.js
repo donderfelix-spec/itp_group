@@ -56,9 +56,12 @@ Game.world = Game.world || {};
   // point a little that way.
   var TURN = 5;
   var SHOE_TURN = 2;
-  // The body of the turned view reaches from x = -18 to 17, so its middle
-  // is half a unit left of the middle of the portrait's body.
-  var TURNED_BODY_MIDDLE = -0.5;
+  // The body, a rounded box. In the turned view it is a little narrower on
+  // the side the character is turned to: it reaches from x = -18 to 17, so
+  // its middle is half a unit left of the middle of the portrait's body.
+  var BODY = { x: -19, y: 38, width: 38, height: 42, radius: 11 };
+  var TURNED_BODY = { x: -18, y: 38, width: 35, height: 42, radius: 11 };
+  var TURNED_BODY_MIDDLE = TURNED_BODY.x + TURNED_BODY.width / 2;
 
   // Ids, names and lines from DESIGN.md, section 3. `colour` is the body colour.
   var characters = [
@@ -175,8 +178,13 @@ Game.world = Game.world || {};
     box(ctx, side < 0 ? -13 : 2, 74, 11, 18, 4, colour, 2);
   }
 
+  // Pass null as `fill` and 0 as `lineWidth` to only build the path.
+  function drawBodyBox(ctx, body, fill, lineWidth) {
+    box(ctx, body.x, body.y, body.width, body.height, body.radius, fill, lineWidth);
+  }
+
   function drawBody(ctx, colour) {
-    box(ctx, -19, 38, 38, 42, 11, colour, 2.5);
+    drawBodyBox(ctx, BODY, colour, 2.5);
   }
 
   // An arm is a bent line from the shoulder to the hand: first drawn thick in
@@ -353,7 +361,9 @@ Game.world = Game.world || {};
       behind: function (ctx) {
         box(ctx, -27, 36, 54, 36, 12, "#3E8FD0", 2.5);
       },
-      clothes: drawStrapsAndLanyard,
+      clothes: function (ctx) {
+        drawStrapsAndLanyard(ctx, BODY, 0);
+      },
       object: nothing,
       head: function (ctx) {
         drawBucketHat(ctx, false);
@@ -364,7 +374,7 @@ Game.world = Game.world || {};
         box(ctx, -31, 36, 44, 36, 12, "#3E8FD0", 2.5);
       },
       turnedClothes: function (ctx) {
-        drawOnTurnedBody(ctx, drawStrapsAndLanyard);
+        drawStrapsAndLanyard(ctx, TURNED_BODY, TURNED_BODY_MIDDLE);
       },
       turnedObject: nothing,
       turnedHead: function (ctx) {
@@ -381,30 +391,27 @@ Game.world = Game.world || {};
       clothes: function (ctx) {
         box(ctx, -18, 68, 36, 14, 5, "#F08A3C", 2);
         drawShellNecklace(ctx);
-        // The long hair falls over the shoulders, so it is drawn before the face.
-        shape(ctx, "M-21 20 Q-22 -1 0 -1 Q22 -1 21 20 L22 40 Q16 45 12 36 L12 20 L-12 20 L-12 36 Q-16 45 -22 40 Z", "#F2D36B", 2);
+        // The long hair falls over the shoulders, so it is drawn before the
+        // face and the arms. The front hair is drawn on the face, see head.
+        shape(ctx, "M-21 20 Q-22 -1 0 -1 Q22 -1 21 20 L22 40 Q16 45 12.5 37 Q14 31 15.5 25 L-15.5 25 Q-14 31 -12.5 37 Q-16 45 -22 40 Z", "#F2D36B", 2);
         drawSurfboardPrint(ctx);
       },
       object: nothing,
-      head: function (ctx) {
-        shape(ctx, "M-18 19 A18 18 0 0 1 18 19 Q7 9 -5 11 Q-13 12 -18 19 Z", "#F2D36B", 2);
-      },
+      head: drawSurferFrontHair,
       turnedLeftHand: [-21, 65], turnedRightHand: [20, 65], handsSwing: true,
       turnedBehind: nothing,
       turnedClothes: function (ctx) {
         box(ctx, -17, 68, 33, 14, 5, "#F08A3C", 2);
         // The long hair falls down the back, which shows on the left. On
         // the other side only a short strand is seen. Drawn before the face.
-        shape(ctx, "M-22 20 Q-23 -1 0 -1 Q20 -1 20.5 17 L20 25 Q17 27 14 22 L-7 20 L-7 38 Q-13 48 -25 43 Z", "#F2D36B", 2);
+        shape(ctx, "M-22 20 Q-23 -1 0 -1 Q20 -1 20.5 17 L20 25 Q17.8 27.5 16.3 23 L-7 20 L-7 38 Q-13 48 -25 43 Z", "#F2D36B", 2);
         // The hair covers the left shoulder, so the necklace is drawn after
         // it: the necklace lies on top and is seen whole.
         drawOnTurnedBody(ctx, drawShellNecklace);
         drawOnTurnedBody(ctx, drawSurfboardPrint);
       },
       turnedObject: nothing,
-      turnedHead: function (ctx) {
-        shape(ctx, "M-17 26 A18 18 0 0 1 17 14 Q11 7 1 10 Q-7 12 -9.5 19 Q-11.5 25 -17 26 Z", "#F2D36B", 2);
-      }
+      turnedHead: drawTurnedSurferFrontHair
     },
 
     // Black hoodie with the hood up, laptop covered in stickers.
@@ -507,7 +514,7 @@ Game.world = Game.world || {};
       turnedLeftHand: [-12, 73], turnedRightHand: [21, 73],
       turnedBehind: function (ctx) {
         if (chosenProposal().headset === "fixed") {
-          drawFarEarCup(ctx);
+          drawTurnedHeadphonesBehind(ctx);
         }
       },
       turnedClothes: nothing,
@@ -538,11 +545,21 @@ Game.world = Game.world || {};
     stroke(ctx, "M-9 39 L-2.6 56 M9 39 L2.6 56", "#1C3156", 2.5);
   }
 
-  // The Exchange Student's backpack straps and the lanyard with its card.
-  function drawStrapsAndLanyard(ctx) {
-    stroke(ctx, "M-12 39 V68 M12 39 V68", "#2A6FA8", 5);
-    stroke(ctx, "M-6 40 L0 52 L6 40", OUTLINE, 1.5);
+  // The Exchange Student's backpack straps and the lanyard with its card,
+  // centred on `middle`. The straps come over the shoulders from the
+  // backpack and curve back to it at the sides, and the cord goes round
+  // the neck. So they are drawn only inside `body` (the clip), and the
+  // body's outline is drawn again on top: their ends disappear behind it.
+  function drawStrapsAndLanyard(ctx, body, middle) {
+    ctx.save();
+    drawBodyBox(ctx, body, null, 0);
+    ctx.clip();
+    ctx.translate(middle, 0);
+    stroke(ctx, "M-12 30 V54 Q-12 64 -24 68 M12 30 V54 Q12 64 24 68", "#2A6FA8", 5);
+    stroke(ctx, "M-7 36 L0 52 L7 36", OUTLINE, 1.5);
     box(ctx, -4, 52, 8, 10, 1.5, "#FFFFFF", 1.5);
+    ctx.restore();
+    drawBodyBox(ctx, body, null, 2.5);
   }
 
   // The Surfer's shell necklace.
@@ -605,22 +622,26 @@ Game.world = Game.world || {};
 
   // The Exchange Student's bucket hat, two proposals (TEMPORARY, M2-1.11).
   // Each has a crown, a brim and a line width for the brim, for the portrait
-  // and for the turned view. In the turned view the crown is turned with
-  // the face and the brim reaches further out on the side the character is
-  // turned to. The brim always stays above the eyes (y = 22).
-  //   A: fits the head, with a rounded crown that is slightly narrower
-  //      towards its top.
+  // and for the turned view. In the turned view the brim reaches further
+  // out on the side the character is turned to. The brim always stays
+  // above the eyes (y = 22).
+  //   A: sits on the head. Where the brim crosses them (y = 12), the sides
+  //      of the crown are where the outline of the head is (x = -17 and
+  //      17), so the outline runs on into the crown as one line. The head
+  //      is not moved in the turned view, so neither is the crown; only its
+  //      top leans a little towards the face. The crown is rounded and
+  //      slightly narrower towards its top.
   //   B: bigger and floppier, with a drooping brim and a darker band
   //      around the bottom of the crown (from y = `bandTop` down).
   var BUCKET_HATS = {
     A: {
       brimLine: 5.5,
       portrait: {
-        crown: "M-19 12.5 C-18 -0.5 -13 -5 0 -5 C13 -5 18 -0.5 19 12.5 Q0 6 -19 12.5 Z",
+        crown: "M-17 12 C-17 -1 -12.5 -5 0 -5 C12.5 -5 17 -1 17 12 Q0 7 -17 12 Z",
         brim: "M-27 14.5 Q0 6.5 27 14.5"
       },
       turned: {
-        crown: "M-16.5 12.5 C-15.5 -0.5 -10.5 -5 2.5 -5 C14.5 -5 19 -0.5 20 12.5 Q2.5 6 -16.5 12.5 Z",
+        crown: "M-17 12 C-17 -1 -11 -5 1.5 -5 C13.5 -5 17 -1 17 12 Q0 7 -17 12 Z",
         brim: "M-24.5 14 Q2.5 6.5 31 15"
       }
     },
@@ -711,22 +732,58 @@ Game.world = Game.world || {};
   }
 
   // The headphones turned with the head. The ear at the back of the head
-  // is seen, so its cup sits on the side of the head at ear height. The
-  // band runs from it over the top of the head to the far ear, whose cup
-  // is behind the head: see drawFarEarCup().
-  function drawTurnedHeadphones(ctx) {
-    var band = "M-13 13 Q-14 -2.5 1 -2.5 Q18 -2.5 19.5 14";
-    stroke(ctx, band, OUTLINE, 7);
+  // is seen, so its cup sits there, on the side of the head at ear height.
+  // The far ear and its cup are hidden behind the head. The band runs from
+  // the near cup over the top of the head (NEAR_BAND) and then down behind
+  // the head to the far ear.
+  var NEAR_BAND = "M-15 13 Q-16 -2.5 0 -2.5";
+  var WHOLE_BAND = NEAR_BAND + " Q15 -2.5 13 13";
+
+  // A band: a dark line with a coral one on top.
+  function drawHeadphoneBand(ctx, svgPath) {
+    stroke(ctx, svgPath, OUTLINE, 7);
     ctx.strokeStyle = "#F2695C";
     ctx.lineWidth = 3.5;
-    ctx.stroke(pathOf(band));
-    box(ctx, -19, 12.5, 12, 17, 5, "#F2695C", 2);
+    ctx.stroke(pathOf(svgPath));
   }
 
-  // The cup on the far ear, at the same height as the other one. It is
-  // drawn behind the head, so only a narrow part peeks out at its edge.
-  function drawFarEarCup(ctx) {
-    box(ctx, 13, 12.5, 9, 17, 4, "#F2695C", 2);
+  // Drawn behind the body and the head: the head hides the part of the
+  // band that goes down behind it.
+  function drawTurnedHeadphonesBehind(ctx) {
+    drawHeadphoneBand(ctx, WHOLE_BAND);
+  }
+
+  // Drawn on the head: the near part of the band lies over the band drawn
+  // behind. It ends flat ("butt"), so the two meet without a seam.
+  function drawTurnedHeadphones(ctx) {
+    ctx.save();
+    ctx.lineCap = "butt";
+    drawHeadphoneBand(ctx, NEAR_BAND);
+    ctx.restore();
+    box(ctx, -20.5, 12.5, 11, 17, 5, "#F2695C", 2);
+  }
+
+  // The Surfer's front hair: the fringe and the strands beside the face as
+  // one piece, drawn over the edge of the face so that no outline of the
+  // head cuts them apart. Its outer edge and the inner edge of the strands
+  // lie exactly on those of the long hair (see clothes), and it ends below
+  // where the long hair is, so the two read as one head of hair.
+  function drawSurferFrontHair(ctx) {
+    var outerEdge = "M-21.85 37 L-21 20 Q-22 -1 0 -1 Q22 -1 21 20 L21.85 37";
+    var faceEdge = "M12.5 37 Q14 31 15.5 25 L15.5 21 Q7 9 -5 11 Q-13 12 -15.5 21 L-15.5 25 Q-14 31 -12.5 37";
+    // The filled piece: the outer edge, along the bottom to the strand on
+    // the right, the face edge, and back along the bottom on the left.
+    shape(ctx, outerEdge + " L" + faceEdge.slice(1) + " Z", "#F2D36B", 0);
+    stroke(ctx, outerEdge + " " + faceEdge, OUTLINE, 2);
+  }
+
+  // The same in the turned view. On the side the character is turned to a
+  // short strand comes out of the fringe; on the back the hair reaches down
+  // to the ear (-17, 26), and below it the long hair goes on. The path is
+  // left open: the fill closes it along y = 26 over the long hair, the
+  // outline leaves that edge out.
+  function drawTurnedSurferFrontHair(ctx) {
+    shape(ctx, "M-22.8 26 L-22 20 Q-23 -1 0 -1 Q20 -1 20.5 17 L20 25 Q17.8 27.5 16.3 23 L15.8 17 Q11 7 1 10 Q-7 12 -9.5 19 Q-11.5 25 -17 26", "#F2D36B", 2);
   }
 
   // A small yellow surfboard, tilted, with waves below it.
@@ -885,8 +942,7 @@ Game.world = Game.world || {};
     drawTurnedLeg(ctx, look, -1, swing, raised);
     drawTurnedLeg(ctx, look, 1, -swing, raised);
     ctx.translate(0, -raised);
-    // The body is a little narrower on the side the character is turned to.
-    box(ctx, -18, 38, 35, 42, 11, look.body, 2.5);
+    drawBodyBox(ctx, TURNED_BODY, look.body, 2.5);
     look.turnedClothes(ctx);
     if (isMirrored && look.holdsInRightHand) {
       drawArmsWithObjectKeptInHand(ctx, look);
