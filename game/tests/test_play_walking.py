@@ -16,6 +16,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
+from server import main
 from server.main import app
 from server.world.movement import PLAYER_HALF_SIZE, is_free
 
@@ -40,6 +41,19 @@ def client():
     # As a context manager the test client starts the server properly, so the tick loop runs.
     with TestClient(app) as shared_client:
         yield shared_client
+
+
+@pytest.fixture
+def steady_tick(monkeypatch):
+    """The real tick runs, but every tick moves the players by exactly one tick's time.
+
+    The server moves a player by the time measured since the last tick. On
+    a busy machine the ticks come late and the steps get longer, and a walk
+    that passes close to a corner can then take another way. With this
+    fixture the way is the same however late the ticks come.
+    """
+    real_tick = main.tick
+    monkeypatch.setattr(main, "tick", lambda seconds: real_tick(1 / main.TICKS_PER_SECOND))
 
 
 @pytest.fixture
@@ -274,7 +288,10 @@ def test_walkers_stop_outside_the_pool_the_top_wall_and_the_right_wall(connect):
         assert waiting_messages(connection) == []
 
 
-def test_a_diagonal_walk_slides_along_a_tree_through_a_door_into_the_corner_of_the_canteen(connect):
+def test_a_diagonal_walk_slides_along_a_tree_through_a_door_into_the_corner_of_the_canteen(connect, steady_tick):
+    # Her way passes the right side of the door with only 2 units to spare:
+    # with steps of 0.1 s she touches the door frame and slides along the
+    # deck wall instead (steady_tick).
     mara = account(connect, "Mara")
     watcher, watcher_name = guest(connect)
     code = create(mara)

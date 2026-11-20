@@ -1,56 +1,110 @@
-// Runs the page's own js/world/world.js in Node, without a browser, for
-// test_play_walking_glide.py (M2-1.12).
+// Runs the page's own js/world/draw.js and js/world/world.js in Node, without
+// a browser, for test_draw_without_characters.py (M1-1.11): what does the map
+// draw when the character drawing is missing or fails?
 //
-// The clock, the frames, the canvas and the drawing functions of the other
-// files are stand-ins, so a test decides exactly when a `positions` message
-// arrives and when a frame is drawn. world.js itself is the real code: its
-// glide, its camera, its steps and its station glow.
+// The canvas, the document, the window and the map download are small
+// stand-ins. draw.js and world.js are the real code. Game.world.drawCharacter
+// is a stand-in too, chosen by the argument:
+//   "with-characters"     it works and writes down every character it draws
+//   "without-characters"  it is missing, as when characters.js did not load
+//   "failing-character"   it fails for the character "broken" halfway through
+//                         its drawing (after save and translate), and works
+//                         for every other character
+//   "failing-nested"      the same, but it fails inside a second save of its
+//                         own, after making the drawing see-through, as the
+//                         helpers of characters.js do (drawShadow, drawFace)
+//   "not-a-function"      characters.js left something that is not a function
+//                         in Game.world.drawCharacter
+//   "failing-plain-value" it fails for "broken" halfway, throwing a plain
+//                         value instead of an Error
 //
-// Input (stdin): JSON
-//   {
-//     "own": "Mara",                                   the own player's name
-//     "players": [{"name": "Mara", "character": "c1"}, ...],
-//     "usable": [2] or null,                           stations that may glow
-//     "steps": [
-//       ["positions", t, [{"name", "x", "y"}, ...]]    a message arrives at time t (ms)
-//       ["frames", from, to]                           frames every 1000/60 ms from `from` up to `to`
-//       ["start_of_round", t]                          the lobby page says a round starts
-//     ]
-//   }
-// Output (stdout): JSON list with one entry per frame:
-//   {t, camera: {x, y}, glow: id or null, useButtonOn: bool,
-//    characters: [{character, x, middleY, mirrored, stride, walkPhase}]}
+// Input (stdin): JSON {"players": [{name, character, x, y}], "frames": N}.
+//   The first player is the own player. Optional "changedPlayers": a list of
+//   {name, character} that replaces the characters after the first frame, as
+//   a new lobby state does.
+// Output also has "brokenAttempts": how often the drawing was asked to draw
+//   the character "broken".
+// Output (stdout): JSON with
+//   warnings    every console.warn, as text
+//   errors      every console.error and every error thrown by a frame
+//   characters  every drawn character: {character, x, y} on the screen
+//   standIns    every filled circle: {x, y, colour, alpha} on the screen
+//   names       every player name drawn: {text, x, y, alpha} on the screen
 
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
 const WORLD = path.join(__dirname, '..', 'client', 'js', 'world');
-const FRAME_MILLISECONDS = 1000 / 60;
-const CANVAS_WIDTH = 1280;
-const CANVAS_HEIGHT = 800;
+const CANVAS_WIDTH = 800;
+const CANVAS_HEIGHT = 600;
+const FRAME_MILLISECONDS = 16;
 
+const mode = process.argv[2];
 const input = JSON.parse(fs.readFileSync(0, 'utf8'));
 const campus = JSON.parse(fs.readFileSync(path.join(WORLD, 'campus.json'), 'utf8'));
+const playerNames = new Set(input.players.map((player) => player.name));
 
-let clock = 0;
-let frameCallback = null;
-let current = null; // what the frame being drawn records
-const frames = [];
+const warnings = [];
+const errors = [];
+const characters = [];
+const standIns = [];
+const names = [];
+let brokenAttempts = 0;
 
-// The canvas context: only setTransform is read back (it carries the camera).
-const context = new Proxy({}, {
-  get(target, key) {
-    if (key === 'setTransform') {
-      return (scale, b, c, d, e, f) => {
-        if (current && scale !== 1) {
-          current.camera = { x: (CANVAS_WIDTH / 2 - e) / scale, y: (CANVAS_HEIGHT / 2 - f) / d };
-        }
-      };
+// ---- A canvas that follows only scale, move and opacity ---------------
+// Enough for world.js: the camera is a scale and a move, and so is the
+// stand-in drawCharacter below. Every point drawn is written down where it
+// lands on the screen. save() and restore() keep the transform and the
+// opacity (globalAlpha), as a real canvas does.
+
+let transform = { scale: 1, x: 0, y: 0 };
+const state = { globalAlpha: 1 }; // fillStyle, font, globalAlpha, ...
+const savedStates = [];
+let lastArc = null;
+
+function onScreen(x, y) {
+  return { x: transform.x + x * transform.scale, y: transform.y + y * transform.scale };
+}
+
+const doesNothing = new Proxy(function () {}, {
+  get: () => doesNothing,
+  set: () => true,
+  apply: () => doesNothing,
+});
+
+const contextMethods = {
+  // Takes six numbers, or a transform from getTransform().
+  setTransform(scale, b, c, d, x, y) {
+    transform = typeof scale === 'object' ? { ...scale } : { scale, x, y };
+  },
+  getTransform() { return { ...transform }; },
+  translate(x, y) { transform = { scale: transform.scale, ...onScreen(x, y) }; },
+  scale(factor) { transform = { ...transform, scale: transform.scale * factor }; },
+  save() { savedStates.push({ transform, alpha: state.globalAlpha }); },
+  restore() {
+    if (savedStates.length) {
+      const saved = savedStates.pop();
+      transform = saved.transform;
+      state.globalAlpha = saved.alpha;
     }
-    if (key === 'measureText') return (text) => ({ width: String(text).length * 3 });
-    if (key in target) return target[key];
-    return () => {};
+  },
+  beginPath() { lastArc = null; },
+  arc(x, y) { lastArc = onScreen(x, y); },
+  fill() {
+    if (lastArc) standIns.push({ ...lastArc, colour: state.fillStyle, alpha: state.globalAlpha });
+  },
+  measureText(text) { return { width: String(text).length * 7 }; },
+  fillText(text, x, y) {
+    if (playerNames.has(text)) names.push({ text, ...onScreen(x, y), alpha: state.globalAlpha });
+  },
+};
+
+const context = new Proxy(state, {
+  get(target, key) {
+    if (key in contextMethods) return contextMethods[key];
+    if (key in target) return target[key]; // fillStyle, font, lineWidth, ...
+    return doesNothing; // fillRect, stroke, moveTo, createLinearGradient, ...
   },
   set(target, key, value) {
     target[key] = value;
@@ -58,7 +112,8 @@ const context = new Proxy({}, {
   },
 });
 
-const button = { disabled: true, addEventListener() {}, remove() {}, blur() {} };
+// ---- The page around the canvas ---------------------------------------
+
 const canvas = {
   clientWidth: CANVAS_WIDTH,
   clientHeight: CANVAS_HEIGHT,
@@ -68,85 +123,116 @@ const canvas = {
   parentNode: { appendChild() {} },
 };
 
+let nextFrame = null;
 const page = {
-  console: console,
-  devicePixelRatio: 1,
-  performance: { now: () => clock },
-  requestAnimationFrame: (callback) => { frameCallback = callback; return 1; },
-  cancelAnimationFrame: () => { frameCallback = null; },
-  setTimeout: () => 0,
-  clearTimeout: () => {},
-  addEventListener: () => {},
-  removeEventListener: () => {},
-  fetch: () => Promise.resolve({ ok: true, json: () => Promise.resolve(campus) }),
+  console: {
+    warn: (...parts) => warnings.push(parts.map(String).join(' ')),
+    error: (...parts) => errors.push(parts.map(String).join(' ')),
+    log() {},
+  },
   document: {
     hidden: false,
     activeElement: null,
-    createElement: () => button,
-    addEventListener: () => {},
-    removeEventListener: () => {},
+    createElement: () => ({ addEventListener() {}, remove() {}, blur() {} }),
+    addEventListener() {},
+    removeEventListener() {},
   },
+  devicePixelRatio: 1,
+  performance: { now: () => 0 },
+  fetch: () => Promise.resolve({ ok: true, json: () => Promise.resolve(campus) }),
+  requestAnimationFrame: (callback) => { nextFrame = callback; return 1; },
+  cancelAnimationFrame() {},
+  setTimeout: () => 0,
+  clearTimeout() {},
+  addEventListener() {},
+  removeEventListener() {},
 };
 page.window = page;
-// The drawing functions of draw.js and characters.js: they only write down
-// what world.js asks them to draw.
-page.Game = {
-  world: {
-    drawMap: () => {},
-    drawStationGlow: (ctx, station) => { if (current) current.glow = station.id; },
-    drawCharacter: (ctx, character, x, middleY, size, pose) => {
-      if (current) {
-        current.characters.push({
-          character: character,
-          x: x,
-          middleY: middleY,
-          mirrored: pose.mirrored,
-          stride: pose.stride,
-          walkPhase: pose.walkPhase,
-        });
-      }
-    },
-  },
-};
 vm.createContext(page);
-const file = path.join(WORLD, 'world.js');
-vm.runInContext(fs.readFileSync(file, 'utf8'), page, { filename: file });
-const world = page.Game.world;
+['draw.js', 'world.js'].forEach((file) => {
+  const code = fs.readFileSync(path.join(WORLD, file), 'utf8');
+  vm.runInContext(code, page, { filename: file });
+});
 
-function drawFrame(t) {
-  clock = t;
-  const callback = frameCallback;
-  frameCallback = null;
-  current = { t: t, camera: null, glow: null, characters: [] };
-  callback(t);
-  current.useButtonOn = !button.disabled;
-  frames.push(current);
-  current = null;
+// ---- The stand-in for characters.js -----------------------------------
+
+function recordCharacter(ctx, characterId, x, y) {
+  characters.push({ character: characterId, ...onScreen(x, y) });
 }
 
-const STEPS = {
-  positions(t, players) {
-    clock = t;
-    world.setPositions(players);
-  },
-  frames(from, to) {
-    for (let t = from; t <= to + 1e-9; t += FRAME_MILLISECONDS) drawFrame(t);
-  },
-  start_of_round(t) {
-    clock = t;
-    world.startOfRound();
-  },
-};
+if (mode === 'with-characters') {
+  page.Game.world.drawCharacter = recordCharacter;
+} else if (mode === 'failing-character') {
+  page.Game.world.drawCharacter = (ctx, characterId, x, y) => {
+    if (characterId !== 'broken') {
+      recordCharacter(ctx, characterId, x, y);
+      return;
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(0.5);
+    throw new Error('This drawing fails halfway.');
+  };
+} else if (mode === 'failing-nested') {
+  page.Game.world.drawCharacter = (ctx, characterId, x, y) => {
+    if (characterId !== 'broken') {
+      recordCharacter(ctx, characterId, x, y);
+      return;
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(0.5);
+    ctx.save(); // a helper inside the drawing, like drawShadow
+    ctx.globalAlpha = 0.14;
+    throw new Error('This drawing fails inside a second save.');
+  };
+} else if (mode === 'not-a-function') {
+  page.Game.world.drawCharacter = 42;
+} else if (mode === 'failing-plain-value') {
+  page.Game.world.drawCharacter = (ctx, characterId, x, y) => {
+    if (characterId !== 'broken') {
+      recordCharacter(ctx, characterId, x, y);
+      return;
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    throw undefined; // eslint-disable-line no-throw-literal
+  };
+} else if (mode !== 'without-characters') {
+  throw new Error('Unknown mode: ' + mode);
+}
 
-async function main() {
-  world.setOwnName(input.own);
+// ---- Play ---------------------------------------------------------------
+
+// Counts how often the drawing is asked for the character "broken".
+if (typeof page.Game.world.drawCharacter === 'function') {
+  const drawing = page.Game.world.drawCharacter;
+  page.Game.world.drawCharacter = function (ctx, characterId) {
+    if (characterId === 'broken') brokenAttempts += 1;
+    return drawing.apply(this, arguments);
+  };
+}
+
+async function play() {
+  const world = page.Game.world;
   world.start(canvas, () => {});
-  world.setPlayers(input.players);
-  world.setUsableStations(input.usable === undefined ? null : input.usable);
-  // Let the map "download": fetch() and json() above are promises.
-  await new Promise((resolve) => setImmediate(resolve));
-  input.steps.forEach(([name, ...values]) => STEPS[name](...values));
-  process.stdout.write(JSON.stringify(frames));
+  await new Promise((resolve) => setImmediate(resolve)); // the map arrives
+  world.setOwnName(input.players[0].name);
+  world.setPlayers(input.players.map((player) => ({ name: player.name, character: player.character })));
+  world.setPositions(input.players.map((player) => ({ name: player.name, x: player.x, y: player.y })));
+  for (let frame = 1; frame <= input.frames; frame += 1) {
+    // Only the last frame is written down; the others count warnings and errors.
+    characters.length = 0;
+    standIns.length = 0;
+    names.length = 0;
+    if (frame === 2 && input.changedPlayers) world.setPlayers(input.changedPlayers);
+    try {
+      nextFrame(1000 + frame * FRAME_MILLISECONDS);
+    } catch (problem) {
+      errors.push(String(problem));
+    }
+  }
+  process.stdout.write(JSON.stringify({ warnings, errors, characters, standIns, names, brokenAttempts }));
 }
 
-main();
+play();

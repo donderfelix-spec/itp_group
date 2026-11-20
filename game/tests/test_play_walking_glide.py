@@ -6,7 +6,7 @@ own drawn character. The tester played this in several browsers behind a proxy
 that delays the messages like the internet does. What was checked there is
 checked here without a browser and without a proxy:
 
-- The page's own world.js runs in Node (tests/world_in_node.js). The clock,
+- The page's own world.js runs in Node (tests/world_glide_in_node.js). The clock,
   the frames and the canvas are stand-ins, so a test decides exactly when a
   `positions` message arrives and when a frame is drawn, and reads where the
   camera looks and where every character is drawn.
@@ -37,7 +37,7 @@ from fastapi.testclient import TestClient
 from server.main import TICKS_PER_SECOND, app
 
 TESTS = Path(__file__).resolve().parent
-WORLD_IN_NODE = TESTS / "world_in_node.js"
+WORLD_IN_NODE = TESTS / "world_glide_in_node.js"
 WORLD_JS = TESTS.parent / "client" / "js" / "world" / "world.js"
 NODE = shutil.which("node")
 needs_node = pytest.mark.skipif(NODE is None, reason="Node is needed to run the page's JavaScript")

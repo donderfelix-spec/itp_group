@@ -633,7 +633,11 @@ Game.world = Game.world || {};
   var NAME_TEXT_SIZE = 5.5;
   var LABEL_HEIGHT = 8;
   var LABEL_OUTLINE = 0.7;
-  var LABEL_GAP = 1; // free space between two labels above each other
+
+  // The names whose labels were hidden in the previous frame, because they
+  // would have covered another label. Game.world.chooseLabels() needs them
+  // so that a hidden name does not flicker back at the edge.
+  var hiddenNames = new Set();
 
   // In the drawing order the own character counts as standing this many map
   // units further down. Everyone starts on the same spawn point; this way a
@@ -679,7 +683,60 @@ Game.world = Game.world || {};
     pose.mirrored = player.facingLeft;
     pose.walkPhase = walkPhase(player, now);
     pose.stride = stride(player, now);
-    Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
+    if (!canDrawCharacter(player.character)) {
+      drawStandIn(entry.x, entry.y);
+      return;
+    }
+    var camera = ctx.getTransform();
+    ctx.save();
+    try {
+      Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
+      ctx.restore();
+    } catch (problem) {
+      // The drawing may have stopped inside one of its own save() calls.
+      // restore() then undoes only that last one, so the camera and full
+      // opacity are set again by hand: the stand-in, the names and every
+      // later player must land in their place.
+      ctx.restore();
+      ctx.setTransform(camera);
+      ctx.globalAlpha = 1;
+      // Not tried again: it would fail on every frame (M1-1.11).
+      brokenCharacters.add(player.character);
+      warnOnce("The character \"" + player.character + "\" could not be drawn; it is shown as a circle.", problem);
+      drawStandIn(entry.x, entry.y);
+    }
+  }
+
+  // ---- Stand-in when a character cannot be drawn (M1-1.11) -------------
+
+  // If characters.js did not load, or its drawing fails for a character,
+  // that player is drawn as a plain circle instead. The map keeps working
+  // and every player stays visible.
+  var STAND_IN_RADIUS = 7;
+  var brokenCharacters = new Set(); // characters whose drawing failed once
+  var hasWarned = false; // one warning in total, not one per frame
+
+  function canDrawCharacter(characterId) {
+    if (typeof Game.world.drawCharacter !== "function") {
+      warnOnce("characters.js is missing; players are shown as circles.");
+      return false;
+    }
+    return !brokenCharacters.has(characterId);
+  }
+
+  function warnOnce(text, problem) {
+    if (!hasWarned) {
+      hasWarned = true;
+      console.warn(text, problem || "");
+    }
+  }
+
+  // A circle in the outline colour where the body of the character would be.
+  function drawStandIn(x, y) {
+    ctx.beginPath();
+    ctx.arc(x, figureMiddleY(y), STAND_IN_RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = OUTLINE;
+    ctx.fill();
   }
 
   function useNameFont() {
@@ -689,53 +746,31 @@ Game.world = Game.world || {};
   }
 
   // The label of one player where it belongs: centred directly above the
-  // head. `x` and `y` are the middle of the label.
+  // head. `x` and `y` are the middle of the label; `width` and `height` are
+  // the whole space it covers, the dark outline included.
   function labelAboveHead(entry) {
     var headTop = figureMiddleY(entry.y) - CHARACTER_HEIGHT / 2 - HEAD_ROOM_BELOW_NAME;
+    var height = LABEL_HEIGHT + 2 * LABEL_OUTLINE;
     return {
       name: entry.player.name,
       x: entry.x,
-      y: headTop - LABEL_OUTLINE - LABEL_HEIGHT / 2,
-      width: ctx.measureText(entry.player.name).width + 6
+      y: headTop - height / 2,
+      width: ctx.measureText(entry.player.name).width + 6 + 2 * LABEL_OUTLINE,
+      height: height,
+      own: isOwn(entry.player)
     };
-  }
-
-  function labelsOverlap(a, b) {
-    var besideEachOther = Math.abs(a.x - b.x) >= (a.width + b.width) / 2 + 2 * LABEL_OUTLINE;
-    var aboveEachOther = Math.abs(a.y - b.y) >= LABEL_HEIGHT + 2 * LABEL_OUTLINE;
-    return !besideEachOther && !aboveEachOther;
-  }
-
-  // Decides where every label goes, so that no label covers another one.
-  // The labels are placed one after the other, the own one first: it always
-  // stays directly above the own head. A label that would cover one already
-  // placed moves up, one label height at a time, until its place is free.
-  // Nothing is remembered between frames, so a label is back above its
-  // figure as soon as the figures stand apart.
-  function placeLabels(visible) {
-    var ownFirst = visible.filter(function (entry) { return isOwn(entry.player); })
-      .concat(visible.filter(function (entry) { return !isOwn(entry.player); }));
-    var placed = [];
-    ownFirst.forEach(function (entry) {
-      var label = labelAboveHead(entry);
-      var isCovered = function (other) { return labelsOverlap(label, other); };
-      while (placed.some(isCovered)) {
-        label.y -= LABEL_HEIGHT + 2 * LABEL_OUTLINE + LABEL_GAP;
-      }
-      placed.push(label);
-    });
-    return placed;
   }
 
   // One name: dark letters on a light pill.
   function drawLabel(label) {
     // A line with round ends, as thick as the pill is high, is a pill. Drawn
     // twice: a slightly thicker dark one below gives the cream one its
-    // outline, so the pill shows on every floor.
+    // outline, so the pill shows on every floor. The round ends stick out
+    // half the thickness beyond the two points of the line.
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(label.x - label.width / 2 + LABEL_HEIGHT / 2, label.y);
-    ctx.lineTo(label.x + label.width / 2 - LABEL_HEIGHT / 2, label.y);
+    ctx.moveTo(label.x - label.width / 2 + label.height / 2, label.y);
+    ctx.lineTo(label.x + label.width / 2 - label.height / 2, label.y);
     ctx.lineWidth = LABEL_HEIGHT + 2 * LABEL_OUTLINE;
     ctx.strokeStyle = OUTLINE;
     ctx.stroke();
@@ -753,8 +788,12 @@ Game.world = Game.world || {};
       drawPlayer(entry, now);
     });
     // All names after all characters, so no name is hidden behind a head.
+    // Where labels would cover each other, only one of them is drawn; a
+    // label never moves away from its own head (S-117).
     useNameFont();
-    placeLabels(visible).forEach(drawLabel);
+    var choice = Game.world.chooseLabels(visible.map(labelAboveHead), hiddenNames);
+    hiddenNames = choice.hidden;
+    choice.shown.forEach(drawLabel);
   }
 
   // ---- The loop --------------------------------------------------------
@@ -853,7 +892,8 @@ Game.world = Game.world || {};
   }
 
   // Stops the loop and the keyboard, takes the button "E Use" away and
-  // forgets players, pressed keys and which stations were usable.
+  // forgets players, hidden name labels, pressed keys and which stations
+  // were usable.
   // Nothing is sent: whoever stops the world has left the lobby already.
   function stop() {
     if (running) {
@@ -865,6 +905,7 @@ Game.world = Game.world || {};
     running = false;
     usableStations = null; // the next lobby starts with all stations again
     players.clear();
+    hiddenNames = new Set(); // in the next lobby nobody counts as hidden before
     pressedKeys = {};
     sentDirection = { dx: 0, dy: 0 };
     sendMove = null;
