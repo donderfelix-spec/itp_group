@@ -89,11 +89,28 @@
           </div>
           <p id="join-code-error" class="field-error" role="alert"></p>
         </form>
-        <div class="button-row stats-buttons">
-          <button type="button" id="home-profile" class="button">Profile</button>
-          <button type="button" id="home-leaderboard" class="button">Leaderboard</button>
-        </div>
         <button type="button" id="home-logout" class="button">Log out</button>
+      </div>
+      <!-- Profile and Leaderboard: two round icons at the top right of the screen
+           (css: .home-icons). They stand after the card in this file, so the
+           keyboard still starts on "Create lobby" and reaches them with Tab. -->
+      <div class="home-icons">
+        <button type="button" id="home-profile" class="button icon-button" aria-label="Profile" title="Profile">
+          <!-- A person: head and shoulders. -->
+          <svg class="home-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+            <path class="icon-blue" d="M5.5 27.5c0-6 4.7-9.5 10.5-9.5s10.5 3.5 10.5 9.5z"/>
+            <circle class="icon-yellow" cx="16" cy="10.5" r="5.5"/>
+          </svg>
+        </button>
+        <button type="button" id="home-leaderboard" class="button icon-button" aria-label="Leaderboard" title="Leaderboard">
+          <!-- A trophy: two handles, the cup, the stem and the foot. -->
+          <svg class="home-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+            <path d="M10 7.5H6v2a4 4 0 0 0 4 4M22 7.5h4v2a4 4 0 0 1-4 4"/>
+            <path class="icon-yellow" d="M10 4.5h12v8a6 6 0 0 1-12 0z"/>
+            <path d="M16 18.5v4"/>
+            <path class="icon-yellow" d="M10 27.5v-3a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3z"/>
+          </svg>
+        </button>
       </div>
     </section>
 
@@ -149,6 +166,13 @@
         <div id="minigame" class="minigame" hidden></div>
         <!-- The ranking at the end of a Duel, built by js/minigames/duel.js. -->
         <div id="duel-ranking" class="duel-ranking" hidden></div>
+        <!-- The countdown before a round, counted by js/lobby/countdown.js.
+             After the ranking in the page: style.css moves it aside while
+             the ranking is open. -->
+        <div id="countdown" class="countdown" role="timer" aria-live="off" hidden>
+          <p class="countdown-line">Round starts in</p>
+          <p id="countdown-number" class="countdown-number"></p>
+        </div>
       </div>
       <!-- The top and the bottom of the panel always stay visible. Only the
            middle scrolls when the window is too low for it. -->
@@ -203,6 +227,7 @@
   <script src="js/lobby/screens.js"></script>
   <script src="js/lobby/forms.js"></script>
   <script src="js/lobby/lobby.js"></script>
+  <script src="js/lobby/countdown.js"></script>
   <script src="js/minigames/frame.js"></script>
   <script src="js/minigames/build_tray.js"></script>
   <script src="js/minigames/brew_order.js"></script>

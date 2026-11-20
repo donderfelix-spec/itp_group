@@ -27,7 +27,7 @@ These points hold up the start. The reasoning behind them is under “Open decis
 ## M0: Preparation
 
 - [ ] **M0-4.1** The five minigames are described in the DESIGN.md, the team should proofread them once more
-- [ ] **M0-2.7** Write the README in the main folder in English for the submission (S-36), and decide whether the planning documents will be translated
+- [x] **M0-2.7** Write the README in the main folder in English for the submission (S-36), and decide whether the planning documents will be translated. The README names the game, the public URL, the commands to run and test, what works today and the four areas with their owners (S-96); the planning documents are already in English. The names and student numbers are a marked placeholder until K10 is settled (2026-11-19)
 
 ## M1: Walking
 
@@ -46,7 +46,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 - [x] **M1-2.12** Send cache headers for the scripts and the stylesheet, so that players do not keep old files after a deploy (seen in the play test: a normal reload served an old script). Every file of the client is sent with `Cache-Control: no-cache`, so the browser asks before each use and gets a short 304 for an unchanged file (2026-11-19). **Still to check by a person:** after the next deploy, a normal reload shows the new version
 - [x] **M1-2.13** Add a favicon (the server log shows a 404 for it on every visit). `client/favicon.ico`, linked from the page (2026-11-19)
-- [ ] **M1-2.14** Add `server/world/` and `server/net/` to the area table in `AGENTS.md` (S-79), by pull request
+- [x] **M1-2.14** Add `server/world/` and `server/net/` to the area table in `AGENTS.md` (S-79), by pull request. `server/world/` now stands with area 1; `server/net/` was already listed with area 2 (2026-11-19)
 - [ ] **M1-2.15** A lobby that fails on every tick writes 15 log lines per second: log it once and then only now and then
 - [ ] **M1-2.16** Use Python 3.13 in the local `.venv` like CI and Render (it runs 3.14 on the development machine)
 
@@ -55,6 +55,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 - [ ] **M1-1.5** Close or widen the gap between the third tree and the hedge on the Main Deck: it is exactly one player wide, and a player squeezing through is drawn over both
 - [ ] **M1-1.6** Give each room a label position in `campus.json`: “Pingo Doce” is drawn in the middle of the room instead of at the right as in the sketch, and “Main Deck” sits on the spawn point
 - [ ] **M1-1.7** Narrow windows (under about 800 px): the walking hint overlaps a room name and the top message overlaps the lobby code. Between about 800 and 920 px the button “E Use” also covers the end of the walking hint (seen in the play test of M2-1.1)
+- [ ] **M1-1.10** Messages at the top of the page use only half the width of a narrow window: at 320 px the guest message wraps into four lines and covers the profile icon on Home while it shows. Let a message use the width of the page (found while building M2-2.7)
 - [ ] **M1-1.8** Keep the list of characters in one place: the lobby panel has its own fallback copy next to `world/characters.js` and `protocol.CHARACTERS`
 - [ ] **M1-1.9** Add the new texts to DESIGN.md: “Loading the campus…”, “Signed in as”, “Players”, “Character”, “Lobby code”, “Coming with the next milestone”
 
@@ -91,7 +92,8 @@ Milestone 2 was built up to the Duel by Claude as lead (pull requests #19 to #26
 - [x] **M2-2.3** A player leaves the round, the host changes (Felix). Played through with three players in real browsers: leaving with the button, closing the tab, the same account logging in elsewhere, the host leaving, two of three leaving, coming back after a lost connection or a restart of the server; the run is `tests/test_play_leave_round.py`. A player who comes back cannot rejoin the running round and reads “This round has already started.” until it is over; rejoining is M3-2.2, the missing text for being signed out elsewhere is M1-2.8 (2026-11-19)
 - [x] **M2-2.4** Statistics: the server writes the result of every Duel round, profile with rounds, wins and best Duel time, leaderboard of the accounts that have played (Felix). Two code reviews, the SQL run against a real Postgres 16 by the reviewer, play test with two accounts and a guest; decisions in S-103 (2026-11-19). **Still to check by a person:** play one Duel on the deployed server with two accounts and open both screens, because the real Supabase database could not be reached while building
 - [ ] **M2-2.6** Small follow-ups from the second review of M2-2.4, none of them a defect: make `result` a required argument of `tell_round_ended`; replace the test that waits 0.2 seconds for two requests with one that runs three calls of `leaderboard_totals` directly; give “Profile” and “Leaderboard” on Home the same width or correct the comment in the stylesheet; reset the leaderboard cache in `tests/conftest.py` (Felix)
-- [ ] **M2-2.5** Countdown before a round: when the host presses “Start game”, everybody sees a countdown of 5 seconds, and only then the round starts. A ranking card that is still open stays readable during the countdown and closes when the round starts. The server counts (rule 1); decide while building what the players may do during the countdown, and add the text to DESIGN.md (Felix)
+- [x] **M2-2.5** Countdown before a round: after “Start game” everybody sees “Round starts in” and 5 to 1, then the round starts as before; a ranking that is still open stays readable (Felix). Code review, play test with three players in real browsers, decisions in S-104 (2026-11-19)
+- [x] **M2-2.7** Home screen: “Profile” and “Leaderboard” are two round icons at the top right instead of two buttons in the card (Felix). Requested by Felix on 2026-11-19; one code review, tried in the browser as an account and as a guest at 320 to 1280 px (2026-11-19)
 
 A complete Duel round needs nothing more from area 2: start, play, ranking and the next round work. M2-2.2 and M2-2.3 are about what is shown and about playing it with several people; M2-2.4 is the only part of the required scope (S-40) that is not built at all.
 

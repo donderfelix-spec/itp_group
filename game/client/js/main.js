@@ -57,6 +57,7 @@ window.Game = window.Game || {};
   function stopWorld() {
     Game.minigames.close(); // before the world stops, so its keys are not left paused
     Game.duel.reset();
+    Game.countdown.reset();
     roundIsRunning = false;
     finishedStations = new Set();
     if (!worldIsRunning) return;
@@ -104,7 +105,7 @@ window.Game = window.Game || {};
     Game.forms.showStart();
   }
 
-  const PHASES = ['lobby', 'round'];
+  const PHASES = ['lobby', 'countdown', 'round'];
 
   // Says whether a `lobby_state` has the parts the page reads from it.
   function isLobbyState(message) {
@@ -128,6 +129,7 @@ window.Game = window.Game || {};
     noteThePhase(message.phase);
     mode = message.mode;
     Game.duel.noteLobby(message);
+    Game.countdown.noteLobby(message);
     showUsableStations();
   }
 
@@ -203,6 +205,7 @@ window.Game = window.Game || {};
   Game.forms.setup();
   Game.lobby.setup();
   Game.duel.setup();
+  Game.countdown.setup();
   Game.statistics.setup();
   callWorld('setUseHandler', openStation);
 
@@ -211,6 +214,7 @@ window.Game = window.Game || {};
   Game.net.on('signed_in', whenSignedIn);
   Game.net.on('signed_out', whenSignedOut);
   Game.net.on('lobby_state', whenLobbyChanged);
+  Game.net.on('countdown', Game.countdown.show);
   Game.net.on('left_lobby', whenLeftLobby);
   Game.net.on('positions', whenPositions);
   Game.net.on('station_opened', whenStationOpened);
