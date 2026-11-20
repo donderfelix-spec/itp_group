@@ -190,9 +190,11 @@ Game.world = Game.world || {};
       line(ctx, 0, y, campus.width, y, PAVING_LINE, 1.5);
     }
     ctx.restore();
-    // "Main Deck" is written where the sketch has it: at the spawn point.
-    if (campus.spawn) {
-      text(ctx, "Main Deck", campus.spawn.x, campus.spawn.y, 13);
+    // The deck's name has its own place in the map file, away from the spawn
+    // point, so players who appear there do not stand on it.
+    var label = campus.deck_label;
+    if (label) {
+      text(ctx, label.name, label.x, label.y, 13);
     }
   }
 
@@ -213,30 +215,18 @@ Game.world = Game.world || {};
     }
   }
 
-  function doorOf(campus, room) {
-    var doors = list(campus.doors);
-    for (var i = 0; i < doors.length; i++) {
-      if (doors[i].room === room.id) {
-        return doors[i];
-      }
-    }
-    return null;
-  }
-
-  // The name stands in the middle of the room's width, a little inside the
-  // wall that has the door: there it is the first thing seen when walking in,
-  // and in every room of the sketch that strip is free of furniture.
+  // Each room's name stands at its `label` from the map file: the middle of
+  // the text, placed by hand where the sketch has it.
   function drawRoomNames(ctx, campus) {
-    var distanceFromWall = 18;
     var rooms = list(campus.rooms);
     for (var i = 0; i < rooms.length; i++) {
       var room = rooms[i];
-      var door = doorOf(campus, room);
-      var doorIsAtTheTop = door && door.y + door.h / 2 < room.y + room.h / 2;
-      var y = doorIsAtTheTop ? room.y + distanceFromWall : room.y + room.h - distanceFromWall;
+      if (!room.label) {
+        continue;
+      }
       // A long name gets smaller letters in a narrow room.
       var size = room.name.length * 8 > room.w ? 12 : 13;
-      text(ctx, room.name, room.x + room.w / 2, y, size);
+      text(ctx, room.name, room.label.x, room.label.y, size);
     }
   }
 

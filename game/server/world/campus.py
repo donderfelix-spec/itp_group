@@ -57,6 +57,8 @@ def check_campus(campus) -> dict:
         _check_rectangle(room, f"rooms[{index}]", width, height)
         for key in ("id", "name", "floor"):
             _text(room, key, f"rooms[{index}]")
+        _check_room_label(room, f"rooms[{index}]")
+    _check_deck_label(_entry(campus, "deck_label", "the map"), rooms, width, height)
 
     deck = _list(campus, "deck")
     if len(deck) < 3:
@@ -147,6 +149,39 @@ def _check_point(point, where, map_width, map_height):
     y = _number(point, "y", where)
     if not (0 <= x <= map_width and 0 <= y <= map_height):
         raise CampusError(f"{where} lies outside the map.")
+
+
+def _check_room_label(room, where):
+    """A room's name is drawn at its `label`, a point inside the room.
+
+    Labels are only drawn: nothing on the server walks or collides with them.
+    A point exactly on the room's edge still counts as inside, as in
+    `roomAt()` of draw.js (`_is_in_room`).
+    """
+    label = _entry(room, "label", where)
+    label_where = f"the label of {where}"
+    if not isinstance(label, dict):
+        raise CampusError(f"{label_where} must be an object with x and y.")
+    x = _number(label, "x", label_where)
+    y = _number(label, "y", label_where)
+    if not _is_in_room(x, y, room):
+        raise CampusError(f"{label_where} lies outside its room.")
+
+
+def _check_deck_label(label, rooms, map_width, map_height):
+    """The deck's name: a text, drawn at a point on the map but in no room."""
+    if not isinstance(label, dict):
+        raise CampusError("deck_label must be an object with name, x and y.")
+    _text(label, "name", "deck_label")
+    _check_point(label, "deck_label", map_width, map_height)
+    for room in rooms:
+        if _is_in_room(label["x"], label["y"], room):
+            raise CampusError(f"deck_label lies inside the room \"{room['id']}\", not on the deck.")
+
+
+def _is_in_room(x, y, room):
+    """True if the point lies in the room's rectangle or on its edge."""
+    return room["x"] <= x <= room["x"] + room["w"] and room["y"] <= y <= room["y"] + room["h"]
 
 
 def _entry(container, key, where):
