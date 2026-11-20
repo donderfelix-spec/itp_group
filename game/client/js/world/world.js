@@ -25,9 +25,12 @@ Game.world = Game.world || {};
   // After a failed download of the map, try again after this time.
   var RETRY_MILLISECONDS = 2000;
 
-  // Height of a drawn character, in map units. Its body is then about as
-  // wide as the 10 units the server counts for a player (S-86).
-  var CHARACTER_HEIGHT = 26;
+  // Height of a drawn character, in map units: one size for all. With it a
+  // character is about as tall as a door is wide (40) and stands clearly
+  // above a table (24). Only the drawing is this big: the server still
+  // counts a player as a square of 10 by 10 units (S-86), which is about
+  // as wide as the drawn body and legs.
+  var CHARACTER_HEIGHT = 39;
   // The server's position is the middle of that 10 x 10 square. The feet are
   // drawn at its lower edge, so a character stands in front of a wall the
   // way it collides with it.
@@ -57,10 +60,10 @@ Game.world = Game.world || {};
   var SMALLEST_STEP = 1;
   // Free room between the top of a standing character and its name, in map
   // units. A walking character rises on every step (BODY_BOB in
-  // characters.js: 3 of its 112 design units, which is 0.7 map units at
+  // characters.js: 3 of its 112 design units, which is 1.05 map units at
   // CHARACTER_HEIGHT). This room must be at least that rise, so a head
   // never touches its name.
-  var HEAD_ROOM_BELOW_NAME = 1.2;
+  var HEAD_ROOM_BELOW_NAME = 1.5;
 
   // Which keys walk where. `event.code` names the place of a key on the
   // keyboard, so WASD also sits right on a keyboard with another layout.
@@ -109,8 +112,11 @@ Game.world = Game.world || {};
       lastStepAt: -Infinity, // when the character last took a step
       strideAtLastStep: 0, // how big its steps were at that moment, 0 to 1
       walkingSince: 0, // when it started to walk; the walking cycle starts here
-      // Where the character looks. It keeps both after it stopped.
-      direction: "front", // "front", "side" or "back", see drawCharacter()
+      // Until this time the next position is a placement by the server and
+      // not a step, see startOfRound().
+      placedUntil: -Infinity,
+      // Which side the character faces. It only ever faces left or right,
+      // keeps the side after it stopped, and faces right until it has moved.
       facingLeft: false
     };
   }
@@ -150,14 +156,16 @@ Game.world = Game.world || {};
   function moveTo(player, x, y, now) {
     var start = drawnPosition(player, now) || { x: x, y: y };
     var isJump = Math.abs(x - start.x) > JUMP_DISTANCE || Math.abs(y - start.y) > JUMP_DISTANCE;
-    if (isJump) {
+    var isPlacement = now < player.placedUntil;
+    player.placedUntil = -Infinity; // it counts for one position only
+    if (isJump || isPlacement) {
       start = { x: x, y: y };
     }
     if (player.to) {
       var dx = x - player.to.x;
       var dy = y - player.to.y;
-      if (isJump || isLongerThanAStep(dx, dy)) {
-        standFacingFront(player);
+      if (isJump || isPlacement || isLongerThanAStep(dx, dy)) {
+        standStill(player);
       } else {
         takeStep(player, dx, dy, now);
       }
@@ -168,7 +176,7 @@ Game.world = Game.world || {};
   }
 
   // Looks at the way between the last two positions from the server, (dx, dy),
-  // and remembers that the character walks and which way it looks.
+  // and remembers that the character walks and which side it faces.
   // The same position again, or a tiny change, is not a step and changes
   // nothing: so a character pressing against a wall does not twitch.
   function takeStep(player, dx, dy, now) {
@@ -183,16 +191,11 @@ Game.world = Game.world || {};
     // Remember how big the steps are right now: they grow on from there.
     player.strideAtLastStep = stride(player, now);
     player.lastStepAt = now;
-    // On a diagonal, up or down decides between face and back of the head,
-    // and left or right decides the mirroring. Walking straight up or down
-    // keeps the side the character faced.
+    // Only the sideways part of a step turns the character, so a diagonal
+    // takes the side of its sideways part. Walking straight up or down
+    // keeps the side the character faced and still moves its feet.
     if (stepsSideways) {
       player.facingLeft = dx < 0;
-    }
-    if (stepsUpOrDown) {
-      player.direction = dy > 0 ? "front" : "back";
-    } else {
-      player.direction = "side";
     }
   }
 
@@ -200,13 +203,30 @@ Game.world = Game.world || {};
     return Math.abs(dx) > LONGEST_STEP || Math.abs(dy) > LONGEST_STEP;
   }
 
-  // The server put the player somewhere else. The character stands there
-  // and looks at the viewer, like everybody else who was put there.
-  function standFacingFront(player) {
+  // The server put the player somewhere else. That is not a step: the
+  // character stands there and faces right, like everybody else who was
+  // put there and like a character that has not moved yet.
+  function standStill(player) {
     player.lastStepAt = -Infinity;
     player.strideAtLastStep = 0;
-    player.direction = "front";
     player.facingLeft = false;
+  }
+
+  // A round starts: the server puts everybody on the spawn. From far away
+  // that shows as a jump, but a player who stood on the spawn or next to
+  // it would keep the side it faced, or be drawn taking a step there. So
+  // the lobby page says when a round starts: every character then stands
+  // and faces right, and its next position, if it comes within a moment,
+  // is a placement and not a step. Positions still come only from the
+  // server; this decides nothing about them.
+  var PLACEMENT_MILLISECONDS = 1000;
+
+  function startOfRound() {
+    var now = performance.now();
+    players.forEach(function (player) {
+      standStill(player);
+      player.placedUntil = now + PLACEMENT_MILLISECONDS;
+    });
   }
 
   // How big the steps of the player are at the time `now`, from 0 (it
@@ -642,14 +662,17 @@ Game.world = Game.world || {};
     return y + FEET_BELOW_POSITION - CHARACTER_HEIGHT / 2;
   }
 
+  // The pose passed to drawCharacter(). One object, filled in again for
+  // every character, so that drawing makes no new object per frame.
+  var pose = { mirrored: false, walkPhase: null, stride: 0 };
+
+  // Every player is drawn by the same rule, from the positions the server
+  // sent: the turned view, mirrored when the character faces left.
   function drawPlayer(entry, now) {
     var player = entry.player;
-    var pose = {
-      direction: player.direction,
-      mirrored: player.facingLeft,
-      walkPhase: walkPhase(player, now),
-      stride: stride(player, now)
-    };
+    pose.mirrored = player.facingLeft;
+    pose.walkPhase = walkPhase(player, now);
+    pose.stride = stride(player, now);
     Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
   }
 
@@ -718,11 +741,61 @@ Game.world = Game.world || {};
     ctx.fillText(label.name, label.x, label.y + 0.3);
   }
 
+  // ---- Stations under a character -------------------------------------
+
+  // A character that stands on a station hides its number. Such a station
+  // gets its number again in a small badge at its lower edge, at the feet
+  // of the character and drawn over it, so it can still be told which
+  // station it is. Somebody who only walks past gets no badge.
+  var BADGE_RADIUS = 4.5;
+  var BADGE_TEXT_SIZE = 6.5;
+  var YELLOW = "#FFD23F"; // the colour of the stations in draw.js
+  // Feet this far outside the circle of the station still stand on it.
+  var STANDING_MARGIN = 2;
+
+  // Does this character stand on the station? Its feet are then inside the
+  // circle of the station.
+  function standsOn(entry, station) {
+    var dx = entry.x - station.x;
+    var dy = entry.y + FEET_BELOW_POSITION - station.y;
+    var reach = station.r + STANDING_MARGIN;
+    return dx * dx + dy * dy <= reach * reach;
+  }
+
+  function drawBadge(station) {
+    var y = station.y + station.r;
+    ctx.font = "bold " + BADGE_TEXT_SIZE + "px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.beginPath();
+    ctx.arc(station.x, y, BADGE_RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = YELLOW;
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = OUTLINE;
+    ctx.stroke();
+    ctx.fillStyle = OUTLINE;
+    ctx.fillText(String(station.id), station.x, y + 0.3);
+  }
+
+  function drawBadgesOfHiddenStations(visible) {
+    var stations = Array.isArray(campus.stations) ? campus.stations : [];
+    for (var i = 0; i < stations.length; i++) {
+      for (var j = 0; j < visible.length; j++) {
+        if (standsOn(visible[j], stations[i])) {
+          drawBadge(stations[i]);
+          break; // one badge per station is enough
+        }
+      }
+    }
+  }
+
   function drawPlayers(now) {
     var visible = visiblePlayers(now);
     visible.forEach(function (entry) {
       drawPlayer(entry, now);
     });
+    drawBadgesOfHiddenStations(visible);
     // All names after all characters, so no name is hidden behind a head.
     useNameFont();
     placeLabels(visible).forEach(drawLabel);
@@ -846,6 +919,7 @@ Game.world = Game.world || {};
   Game.world.setOwnName = setOwnName;
   Game.world.setPlayers = setPlayers;
   Game.world.setPositions = setPositions;
+  Game.world.startOfRound = startOfRound;
   Game.world.setUsableStations = setUsableStations;
   Game.world.setUseHandler = setUseHandler;
   Game.world.stationInRange = stationInRange;

@@ -9,6 +9,7 @@ import random
 
 import pytest
 
+from countdown_helpers import start_round_at_once
 from server import protocol
 from server.modes import duel
 from server.modes.duel import Duel, all_routes, draw_routes, route_length, routes_about_as_long
@@ -591,7 +592,7 @@ def test_ending_the_round_opens_the_lobby_again_and_forgets_the_round():
     lobbies = Lobbies()
     lobby, _ = lobbies.create("Mara", lambda: "ABCD")
     lobbies.join("Tiago", "ABCD")
-    lobbies.start("Mara")
+    start_round_at_once(lobbies, "Mara")
     lobby.tasks = RoundTasks(CAMPUS["stations"], CAMPUS["use_range"])
     lobby.duel = duel_of(("Mara", (3, 1, 5)), ("Tiago", (2, 4, 1)))
     lobby.end_round()
@@ -599,7 +600,7 @@ def test_ending_the_round_opens_the_lobby_again_and_forgets_the_round():
     assert lobby.names() == ["Mara", "Tiago"] and lobby.host == "Mara"
     # The host can start again, and a third player can join now.
     assert lobbies.join("Ines", "ABCD")[1] is None
-    assert lobbies.start("Mara")[1] is None
+    assert start_round_at_once(lobbies, "Mara")[1] is None
 
 
 def test_a_player_removed_from_the_lobby_is_removed_from_its_duel():
@@ -608,7 +609,7 @@ def test_a_player_removed_from_the_lobby_is_removed_from_its_duel():
     lobbies = Lobbies()
     lobby, _ = lobbies.create("Mara", lambda: "ABCD")
     lobbies.join("Tiago", "ABCD")
-    lobbies.start("Mara")
+    start_round_at_once(lobbies, "Mara")
     lobby.duel = duel_of(("Mara", (3, 1, 5)), ("Tiago", (2, 4, 1)))
     lobbies.leave("Tiago")
     assert lobby.duel.names() == ["Mara"]

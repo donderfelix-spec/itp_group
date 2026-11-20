@@ -2,6 +2,7 @@
 
 import pytest
 
+from countdown_helpers import start_round_at_once
 from server import protocol
 from server.net.lobbies import MAX_PLAYERS, Lobbies
 from server.net.sessions import Sessions
@@ -291,7 +292,7 @@ def test_sessions_finds_the_connection_of_a_name():
 def started_lobby(*names):
     """Lobbies with one lobby whose round is running. The first name is the host."""
     lobbies = lobby_with(*names)
-    assert lobbies.start(names[0])[1] is None
+    assert start_round_at_once(lobbies, names[0])[1] is None
     return lobbies
 
 
@@ -339,7 +340,7 @@ def test_choose_mode_during_a_round_is_rejected():
 def test_the_host_starts_duel_with_two_to_eight_players(number_of_players):
     names = [f"Player{number}" for number in range(number_of_players)]
     lobbies = lobby_with(*names)
-    lobby, rejection_code = lobbies.start("Player0")
+    lobby, rejection_code = start_round_at_once(lobbies, "Player0")
     assert rejection_code is None
     assert lobby.phase == "round"
     assert lobby.round_is_running()
@@ -348,45 +349,45 @@ def test_the_host_starts_duel_with_two_to_eight_players(number_of_players):
 
 def test_start_outside_a_lobby_is_rejected():
     lobbies = lobby_with("Mara", "Tiago")
-    assert lobbies.start("Ines") == (None, "not_in_lobby")
+    assert start_round_at_once(lobbies, "Ines") == (None, "not_in_lobby")
     assert lobbies.find("ABCD").phase == "lobby"
 
 
 def test_start_by_a_member_who_is_not_host_is_rejected():
     lobbies = lobby_with("Mara", "Tiago")
-    assert lobbies.start("Tiago") == (None, "not_host")
+    assert start_round_at_once(lobbies, "Tiago") == (None, "not_host")
     assert lobbies.find("ABCD").phase == "lobby"
 
 
 def test_start_with_one_player_is_rejected():
     lobbies = lobby_with("Mara")
-    assert lobbies.start("Mara") == (None, "too_few_players")
+    assert start_round_at_once(lobbies, "Mara") == (None, "too_few_players")
     assert lobbies.find("ABCD").phase == "lobby"
 
 
 def test_the_minimum_depends_on_the_mode():
     lobbies = lobby_with("Mara", "Tiago", "Ines")
     lobbies.choose_mode("Mara", "classic")  # Needs 4 (S-53).
-    assert lobbies.start("Mara") == (None, "too_few_players")
+    assert start_round_at_once(lobbies, "Mara") == (None, "too_few_players")
     lobbies.join("Rui", "ABCD")
-    assert lobbies.start("Mara")[1] is None
+    assert start_round_at_once(lobbies, "Mara")[1] is None
 
 
 def test_a_second_start_is_rejected():
     lobbies = started_lobby("Mara", "Tiago")
-    assert lobbies.start("Mara") == (None, "round_running")
+    assert start_round_at_once(lobbies, "Mara") == (None, "round_running")
     assert lobbies.find("ABCD").phase == "round"
 
 
 def test_not_host_is_checked_before_round_running_and_too_few_players():
-    assert started_lobby("Mara", "Tiago").start("Tiago") == (None, "not_host")
+    assert start_round_at_once(started_lobby("Mara", "Tiago"), "Tiago") == (None, "not_host")
     assert started_lobby("Mara", "Tiago").choose_mode("Tiago", "duel") == (None, "not_host")
 
 
 def test_round_running_is_checked_before_too_few_players():
     lobbies = started_lobby("Mara", "Tiago")
     lobbies.leave("Tiago")  # One player is left in the running round.
-    assert lobbies.start("Mara") == (None, "round_running")
+    assert start_round_at_once(lobbies, "Mara") == (None, "round_running")
 
 
 def test_joining_a_running_round_is_rejected():
@@ -398,7 +399,7 @@ def test_joining_a_running_round_is_rejected():
 
 def test_a_full_running_round_says_round_running_not_lobby_full():
     lobbies = full_lobby()
-    lobbies.start("Player0")
+    start_round_at_once(lobbies, "Player0")
     assert lobbies.join("Mara", "ABCD") == (None, "round_running")
 
 
@@ -434,7 +435,7 @@ def test_the_host_leaves_a_running_round_and_the_next_player_is_host():
     assert lobby.host == "Tiago"
     assert lobby.phase == "round"
     # The new host cannot start the running round again either.
-    assert lobbies.start("Tiago") == (None, "round_running")
+    assert start_round_at_once(lobbies, "Tiago") == (None, "round_running")
 
 
 def test_a_running_round_that_everybody_left_is_deleted():
@@ -470,7 +471,7 @@ def test_a_lobby_has_no_tasks_before_and_right_after_the_start():
     lobby, _ = lobbies.create("Mara", lambda: "ABCD")
     assert lobby.tasks is None
     lobbies.join("Tiago", "ABCD")
-    lobbies.start("Mara")
+    start_round_at_once(lobbies, "Mara")
     # The server puts the round's tasks in; the lobby rules know nothing about them.
     assert lobby.tasks is None
 
