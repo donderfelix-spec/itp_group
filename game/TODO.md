@@ -59,8 +59,6 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 - [x] **M1-1.9** Add the new texts to DESIGN.md: “Loading the campus…”, “Signed in as”, “Players”, “Character”, “Lobby code”, “Coming with the next milestone”. Added to section 4 (Home, Lobby, Profile), with the fourth heading “Mode” of the same panel; “Coming with the next milestone” was already there since M2-2.1. Documents only (2026-11-20)
 
 - [x] **M1-2.20** The test `test_a_second_log_in_signs_the_first_connection_out` sometimes hangs when the machine is busy (seen twice while four test runs ran at once; alone it passes). A hanging test would block CI: find the cause. Cause: the fixture `client` of that test file gave every connection an event loop of its own, and a message sent from one loop to a connection waiting in another could fail to wake it. The server was right. The fixture now uses one loop, like `tests/test_server_lobby.py`; the change to the test file was approved by Felix (2026-11-20)
-- [ ] **M1-2.21** Tests that depend on timing fail now and then under load and pass alone: one in `test_play_round` (a start that is refused) and one in `test_play_walking` (sliding along a wall diagonally) failed once each on 2026-11-20, and a third, not named, failed once in the session of M2-1.11. Find them, make them independent of the load (as M1-2.20 did for the second log-in), without weakening what they check (Felix)
-- [ ] **M1-2.22** DESIGN.md, section 9, lacks rejection texts the server already sends: “That character does not exist.”, “That message is incomplete.” and the texts for a refused move. Add them; documents only (Felix)
 
 **To check by a person (the tools could not)**
 
