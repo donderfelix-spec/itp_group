@@ -11,8 +11,8 @@ window.Game = window.Game || {};
   // Places: 'name', 'password', 'form' (the whole form) and 'code'.
   const ERROR_ELEMENTS = {
     signup: { name: 'signup-name-error', password: 'signup-password-error', form: 'signup-form-error' },
-    login: { name: 'login-form-error', password: 'login-form-error', form: 'login-form-error' },
-    home: { code: 'join-code-error' },
+    login: { name: 'login-form-error', password: 'login-form-error', form: 'login-form-error', attempts: 'login-form-error' },
+    home: { code: 'join-code-error', attempts: 'join-code-error' },
   };
 
   const signupForm = document.getElementById('signup-form');
@@ -162,6 +162,12 @@ window.Game = window.Game || {};
     Game.screens.show('home');
   }
 
+  // Puts a lobby code into the join field (S-109, after a lost connection).
+  // Call it after `showHome`, whose reset empties the field.
+  function putCodeInJoinField(code) {
+    joinForm.elements.code.value = code;
+  }
+
   function showStart() {
     stopWaiting();
     forgetTypedPasswords();
@@ -176,5 +182,6 @@ window.Game = window.Game || {};
     showSignedIn: showSignedIn,
     showHome: showHome,
     showStart: showStart,
+    putCodeInJoinField: putCodeInJoinField,
   };
 })();

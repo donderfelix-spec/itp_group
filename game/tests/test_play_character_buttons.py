@@ -1,4 +1,4 @@
-"""Play test of the character list in the lobby (M2-2.8, S-109).
+"""Play test of the character list in the lobby (M2-2.8, S-110).
 
 What the tester played with two to eight guests in Chromium, at 1280x800,
 900x700 and 390x844: the host chooses every free character in turn, the
@@ -12,7 +12,7 @@ has no browser in its tests. What is checked here is the part the server
 takes in it: every one of these clicks gets the answer the page draws from,
 and a click on a taken character gets the text of DESIGN.md, section 9.
 The stylesheet rules that keep the sizes are guarded in
-test_client_character_buttons.py; the row gap of S-109 is guarded here.
+test_client_character_buttons.py; the row gap of S-110 is guarded here.
 """
 
 import re
@@ -142,7 +142,7 @@ def test_eight_guests_get_eight_different_characters_and_a_leaver_frees_one(conn
     assert characters_in(choose(host, freed))[names[0]] == freed
 
 
-# The row gap of S-109
+# The row gap of S-110
 
 
 def test_the_rows_of_the_character_list_are_4px_apart():

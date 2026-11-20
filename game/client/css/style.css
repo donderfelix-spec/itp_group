@@ -226,12 +226,18 @@ input {
 
 /* ---- Messages at the top centre ---- */
 
+/* The message may use the whole width of the window minus 16px on each side.
+   With `left: 50%` it could only use the right half, so it wrapped early on a
+   narrow window. Now `left` and `right` give the room, `fit-content` makes the
+   pill only as wide as its text, and `margin: 0 auto` centres it in the room. */
 .message {
   position: fixed;
   top: 16px;
-  left: 50%;
+  left: 16px;
+  right: 16px;
   z-index: 10;
-  max-width: calc(100vw - 32px);
+  width: fit-content;
+  margin: 0 auto;
   padding: 6px 18px;
   border: var(--outline);
   border-radius: 999px;
@@ -239,7 +245,8 @@ input {
   box-shadow: var(--shadow);
   font-weight: 600;
   text-align: center;
-  transform: translateX(-50%);
+  /* A very long word is broken too, so it never sticks out of the window. */
+  overflow-wrap: anywhere;
 }
 
 .message-error { background: var(--coral); }
