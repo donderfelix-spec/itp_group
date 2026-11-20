@@ -299,6 +299,62 @@ input {
   background: var(--sun);
 }
 
+/* When the map is narrow (below about 620px: on its own in a narrow window,
+   or next to the 380px panel in a window up to 1000px), the centred hint
+   would run into "E Use" (in Chromium below 552px; the rest is room for a
+   wider system font). Then the hint stands right above the button, with
+   its right edge in line with the button's. 94px from the bottom is the
+   button's 34px, the button itself (about 52px high) and a gap of 8px.
+   The hint has two lines, one per part in index.html, and is only as wide
+   as the longer one. So it is always two lines high, whatever the font.
+   The lines stand a little closer than elsewhere, so that in a low window
+   the hint stays below the own character in the middle of the map.
+   At the spawn point the room names on a narrow map lie at the left edge
+   ("Main Deck") and in the bottom right corner ("Pingo Doce"), so the hint
+   stays off both there.
+   "800px < width" and not "min-width: 801px": the panel moves next to the
+   map above 800px (see the media query further down), and a window can be
+   800.5px wide when the page is zoomed. */
+@media (width <= 620px), (800px < width <= 1000px) {
+  .hint {
+    left: auto;
+    right: 34px;
+    bottom: 94px;
+    width: max-content;
+    max-width: calc(100% - 60px); /* never wider than the map */
+    line-height: 1.25;
+    white-space: normal;
+    text-align: center;
+    transform: none;
+  }
+
+  .hint-part { display: block; }
+}
+
+/* ---- The message on the lobby screen ---- */
+
+/* Next to the panel, the message is centred over the map and never reaches
+   the panel, so it cannot lie on the lobby code at the top of the panel.
+   380px is the width of the panel. Only while the lobby screen is shown:
+   on every other screen the message keeps the whole width of the window. */
+body:has(#screen-lobby:not([hidden])) .message {
+  right: calc(380px + 16px);
+}
+
+/* When the panel is below the map (see the media query further down), the
+   page scrolls, and a message fixed at the top would lie on the lobby code
+   as soon as the code is scrolled up. So the message stands at the bottom
+   of the window there. The code starts below the map, more than half the
+   window down, and scrolling only moves it up, so it never reaches the
+   bottom of a window at least about 420px high. */
+@media (max-width: 800px) {
+  body:has(#screen-lobby:not([hidden])) .message {
+    top: auto;
+    right: 16px;
+    bottom: 16px;
+  }
+}
+
 /* ---- The window of a minigame, built by js/minigames/frame.js ---- */
 
 /* Lies over the map only: the lobby panel next to it stays visible. The
@@ -1739,6 +1795,11 @@ input {
   .panel {
     border-left: none;
     border-top: var(--outline);
+    /* Room below the buttons, so the player can scroll them out from under
+       a message, which stands at the bottom of the window here (see "The
+       message on the lobby screen"). A message is at most three lines
+       high, about 95px, and 16px from the bottom. */
+    padding-bottom: 112px;
   }
 
   /* The whole page scrolls here, so the middle needs no scrolling of its own. */

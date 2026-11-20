@@ -94,7 +94,7 @@ All characters are the same size and the same speed, they differ only in how the
 - Top centre: progress bar of the group work.
 - Right: your own task list with the room, finished tasks crossed out.
 - Bottom right: large buttons “Use”, “Report” and, for the Free Rider, “Fail”. A button is grey as long as it would do nothing.
-- Messages appear briefly at the top centre, errors in coral.
+- Messages appear briefly at the top centre, errors in coral. On the lobby screen they stand over the map, not over the panel; in a narrow window, where the panel is below the map and the page scrolls, they appear at the bottom centre instead, so they never cover the lobby code (S-113).
 
 **How you notice that a key does something**
 
