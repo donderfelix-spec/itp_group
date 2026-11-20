@@ -53,8 +53,14 @@ Game.classicMeeting = Game.classicMeeting || {};
   function show(message) {
     if (!isMeetingState(message)) return;
     state = message;
-    if (Game.world && typeof Game.world.clearBloodSheets === "function") {
-      Game.world.clearBloodSheets();
+    // The server removed this sheet when the meeting started. The other
+    // sheets stay on the map until the round ends (Game.world.stop).
+    if (
+      message.reason === "report" &&
+      typeof message.reported_sheet_id === "string" &&
+      Game.world && typeof Game.world.removeBloodSheet === "function"
+    ) {
+      Game.world.removeBloodSheet(message.reported_sheet_id);
     }
     screen.hidden = false;
     updateInput();

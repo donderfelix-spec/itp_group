@@ -357,6 +357,10 @@ Game.world = Game.world || {};
     bloodSheets.clear();
   }
 
+  function removeBloodSheet(sheetId) {
+    bloodSheets.delete(sheetId);
+  }
+
   function ownServerPosition() {
     if (ownName === null || !players.has(ownName)) return null;
     return players.get(ownName).to;
@@ -994,6 +998,8 @@ Game.world = Game.world || {};
   Game.world.setEmergencyStatus = setEmergencyStatus;
   Game.world.addBloodSheet = addBloodSheet;
   Game.world.clearBloodSheets = clearBloodSheets;
+  Game.world.removeBloodSheet = removeBloodSheet;
+  Game.world.bloodSheetIds = function () { return Array.from(bloodSheets.keys()); };
   Game.world.stationInRange = stationInRange;
   Game.world.setInputPaused = setInputPaused;
   Game.world.nearestStationInRange = nearestStationInRange;

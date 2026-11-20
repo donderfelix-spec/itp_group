@@ -156,6 +156,7 @@ def meeting_snapshot(meeting: dict, now: float) -> dict:
         "ghosts": list(current["ghosts"]),
         "reason": current.get("reason"),
         "trigger_player_id": current.get("trigger_player_id"),
+        "reported_sheet_id": current.get("reported_sheet_id"),
         "messages": [
             {"player_id": item["player_id"], "text": item["text"]}
             for item in current["messages"]

@@ -10,6 +10,7 @@ from rules import (
     progress,
     report_sheet,
     role_reveal_for,
+    sheet_id_for,
 )
 from server.classic import meeting as meeting_rules
 
@@ -25,6 +26,7 @@ class ClassicRound:
         self.positions = {}
         self.last_fail_at = {}
         self.f_sheets = {}
+        self.sheets_issued = 0
         self.emergency_used = set()
         self.meeting_triggers = set()
         self.meeting = None
@@ -50,6 +52,7 @@ class ClassicRound:
             "positions": self.positions,
             "last_fail_at": self.last_fail_at,
             "f_sheets": self.f_sheets,
+            "sheets_issued": self.sheets_issued,
             "emergency_used": self.emergency_used,
             "meeting_triggers": self.meeting_triggers,
             "phase": self.phase,
@@ -71,12 +74,12 @@ class ClassicRound:
         self._has_news = True
 
     def fail(self, fr_id, target_id, now, position):
-        """Apply a validated fail action and count its F sheet."""
+        """Apply a validated fail action, count its F sheet and return the sheet id."""
         updated = apply_fail(self.rule_state(), fr_id, target_id, now, position)
         self._sync_rule_state(updated)
         self.failure_count += 1
         self._has_news = True
-        return updated
+        return sheet_id_for(self.sheets_issued)
 
     def report(self, player_id, sheet_id, position, now):
         """Report a sheet and open a timed discussion for the living players."""
@@ -165,6 +168,7 @@ class ClassicRound:
         self.eliminated = set(state["eliminated"])
         self.last_fail_at = dict(state.get("last_fail_at", self.last_fail_at))
         self.f_sheets = dict(state.get("f_sheets", self.f_sheets))
+        self.sheets_issued = int(state.get("sheets_issued", self.sheets_issued))
         self.emergency_used = set(state.get("emergency_used", self.emergency_used))
         self.meeting_triggers = set(state.get("meeting_triggers", self.meeting_triggers))
         self.phase = state.get("phase", self.phase)

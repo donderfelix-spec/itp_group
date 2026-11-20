@@ -758,8 +758,7 @@ async def answer_fail_message(websocket: WebSocket):
         key=lambda player_id: math.dist(source_position, classic.positions[player_id]),
     )
     target_position = classic.positions[target_id]
-    classic.fail(name, target_id, now, target_position)
-    sheet_id = f"f-sheet-{len(classic.f_sheets)}"
+    sheet_id = classic.fail(name, target_id, now, target_position)
     event = {
         "type": "classic_fail",
         "target_id": target_id,
@@ -810,6 +809,7 @@ async def answer_report_message(websocket: WebSocket, message: dict):
 
     meeting["reason"] = "report"
     meeting["trigger_player_id"] = name
+    meeting["reported_sheet_id"] = message["sheet_id"]
     lobby.meeting = meeting
     lobby.meeting_clock = None
     await tell_meeting_state(lobby, now)

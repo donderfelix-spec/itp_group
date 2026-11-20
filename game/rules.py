@@ -36,6 +36,7 @@ class ClassicState(TypedDict):
     positions: NotRequired[Mapping[str, Position]]
     last_fail_at: NotRequired[Mapping[str, float]]
     f_sheets: NotRequired[Mapping[str, Position]]
+    sheets_issued: NotRequired[int]
     task_timers: NotRequired[Mapping[str, float]]
     emergency_used: NotRequired[Collection[str]]
     meeting_triggers: NotRequired[Collection[str]]
@@ -190,14 +191,18 @@ def apply_fail(
         fr_id: now,
     }
     f_sheets = dict(state.get("f_sheets", {}))
-    next_sheet_number = len(f_sheets) + 1
-    sheet_id = f"f-sheet-{next_sheet_number}"
-    while sheet_id in f_sheets:
-        next_sheet_number += 1
-        sheet_id = f"f-sheet-{next_sheet_number}"
-    f_sheets[sheet_id] = (float(position[0]), float(position[1]))
+    # The counter only grows, so an id is never handed out twice in a round,
+    # even after its sheet was reported and removed from f_sheets.
+    sheet_number = int(state.get("sheets_issued", 0)) + 1
+    f_sheets[sheet_id_for(sheet_number)] = (float(position[0]), float(position[1]))
     updated_state["f_sheets"] = f_sheets
+    updated_state["sheets_issued"] = sheet_number
     return updated_state
+
+
+def sheet_id_for(sheet_number: int) -> str:
+    """Return the F-sheet id for the given number issued in this round."""
+    return f"f-sheet-{sheet_number}"
 
 
 def _valid_position(position: object) -> bool:
