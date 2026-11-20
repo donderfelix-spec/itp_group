@@ -608,18 +608,19 @@ Game.world = Game.world || {};
   // and for the turned view. In the turned view the crown is turned with
   // the face and the brim reaches further out on the side the character is
   // turned to. The brim always stays above the eyes (y = 22).
-  //   A: fits the head, the crown slightly narrower at its flat top.
+  //   A: fits the head, with a rounded crown that is slightly narrower
+  //      towards its top.
   //   B: bigger and floppier, with a drooping brim and a darker band
   //      around the bottom of the crown (from y = `bandTop` down).
   var BUCKET_HATS = {
     A: {
       brimLine: 5.5,
       portrait: {
-        crown: "M-19 12.5 L-15.5 -2 Q-15 -5 -12 -5 L12 -5 Q15 -5 15.5 -2 L19 12.5 Q0 6 -19 12.5 Z",
+        crown: "M-19 12.5 C-18 -0.5 -13 -5 0 -5 C13 -5 18 -0.5 19 12.5 Q0 6 -19 12.5 Z",
         brim: "M-27 14.5 Q0 6.5 27 14.5"
       },
       turned: {
-        crown: "M-16.5 12.5 L-13 -2 Q-12.5 -5 -9.5 -5 L14 -5 Q16.5 -5 17 -2 L20 12.5 Q2.5 6 -16.5 12.5 Z",
+        crown: "M-16.5 12.5 C-15.5 -0.5 -10.5 -5 2.5 -5 C14.5 -5 19 -0.5 20 12.5 Q2.5 6 -16.5 12.5 Z",
         brim: "M-24.5 14 Q2.5 6.5 31 15"
       }
     },
