@@ -11,8 +11,8 @@ window.Game = window.Game || {};
   // Places: 'name', 'password', 'form' (the whole form) and 'code'.
   const ERROR_ELEMENTS = {
     signup: { name: 'signup-name-error', password: 'signup-password-error', form: 'signup-form-error' },
-    login: { name: 'login-form-error', password: 'login-form-error', form: 'login-form-error' },
-    home: { code: 'join-code-error' },
+    login: { name: 'login-form-error', password: 'login-form-error', form: 'login-form-error', attempts: 'login-form-error' },
+    home: { code: 'join-code-error', attempts: 'join-code-error' },
   };
 
   const signupForm = document.getElementById('signup-form');

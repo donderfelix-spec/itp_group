@@ -17,6 +17,7 @@ from server.accounts.statistics_store import MemoryStatisticsStore  # noqa: E402
 from server.accounts.store import MemoryAccountStore  # noqa: E402
 from server import main  # noqa: E402
 from server.main import app  # noqa: E402
+from server.net.attempts import AttemptLimits  # noqa: E402
 from server.net.lobbies import Lobbies  # noqa: E402
 from server.net.repeated_faults import RepeatedFaults  # noqa: E402
 from server.net.sessions import Sessions  # noqa: E402
@@ -41,6 +42,7 @@ def fresh_accounts_and_sessions():
     app.state.leaderboard_cache = LeaderboardCache()
     app.state.leaderboard_call = None
     app.state.sessions = Sessions()
+    app.state.attempt_limits = AttemptLimits()
     app.state.lobbies = Lobbies()
     # Otherwise a fault logged in one test would be swallowed in the next (M1-2.15).
     app.state.repeated_faults = RepeatedFaults()

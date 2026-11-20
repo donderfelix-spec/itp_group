@@ -373,6 +373,7 @@ REJECTION_TEXTS = {
     "task_failed": "Something went wrong. Try again.",
     "guest_no_statistics": "Guests have no statistics. Sign up to keep yours.",
     "statistics_unavailable": "Statistics are unavailable right now.",
+    "too_many_attempts": "Too many attempts. Try again in a minute.",
 }
 
 
