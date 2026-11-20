@@ -75,17 +75,25 @@ Game.world = Game.world || {};
   // put down softly instead of snapping to the ground.
   var STRIDE_GROWS_MILLISECONDS = GLIDE_MILLISECONDS;
   var STRIDE_FADES_MILLISECONDS = 150;
-  // One walking cycle is two steps: left foot, right foot.
-  var WALK_CYCLE_MILLISECONDS = 420;
+  // One cycle of the run is two steps: left foot, right foot. It runs on
+  // the way the drawn character covers, not on the time. So the feet keep
+  // pace with the ground on every screen, however often messages arrive and
+  // however long a glide takes, and they stop when the character stops,
+  // also against a wall. One cycle takes this many map units: 18 per step,
+  // 5 steps per second at 90 units per second. It belongs to how far the
+  // feet move in characters.js (FOOT_TRAVEL, GROUND_FRACTION): together
+  // they decide how much a foot slides on the ground.
+  var WALK_CYCLE_LENGTH = 36;
   // A change of position smaller than this, in map units, is not a step: it
   // neither turns the character nor moves its feet. A real step is about 6
   // units (90 units per second, 15 messages per second, S-86).
   var SMALLEST_STEP = 1;
   // Free room between the top of a standing character and its name, in map
-  // units. A walking character rises on every step (BODY_BOB in
+  // units. A running character rises on every step, by at most BODY_BOB in
   // characters.js: 3 of its 112 design units, which is 1.05 map units at
-  // CHARACTER_HEIGHT). This room must be at least that rise, so a head
-  // never touches its name.
+  // CHARACTER_HEIGHT. This room must be at least that rise, so a head never
+  // touches its name. The name is placed from the position, not from the
+  // drawing, so it stays still while the body bobs.
   var HEAD_ROOM_BELOW_NAME = 1.5;
 
   // Which keys walk where. `event.code` names the place of a key on the
@@ -146,7 +154,12 @@ Game.world = Game.world || {};
       lastStepAt: -Infinity, // when the character last took a step
       stepMilliseconds: GLIDE_MILLISECONDS, // how long the glide of that step lasts
       strideAtLastStep: 0, // how big its steps were at that moment, 0 to 1
-      walkingSince: 0, // when it started to walk; the walking cycle starts here
+      // How far the drawn character had walked, in map units, when the
+      // current glide started (see walkedDistance()) ...
+      walkedBeforeGlide: 0,
+      // ... and how far it had walked when it started to walk; the walking
+      // cycle starts there.
+      walkedWhenItStarted: 0,
       // Until this time the next position is a placement by the server and
       // not a step, see startOfRound().
       placedUntil: -Infinity,
@@ -192,6 +205,8 @@ Game.world = Game.world || {};
   // glide starts where the character is drawn at that time, so it never
   // jumps, also when messages arrive early or late.
   function moveTo(player, x, y, now) {
+    // Counted before the glide changes: the way up to this moment.
+    var walked = walkedDistance(player, now);
     var start = drawnPosition(player, now) || { x: x, y: y };
     var isJump = isFarApart(start, x, y);
     var isPlacement = now < player.placedUntil;
@@ -213,6 +228,23 @@ Game.world = Game.world || {};
     player.from = start;
     player.to = { x: x, y: y };
     player.arrivedAt = now;
+    player.walkedBeforeGlide = walked;
+  }
+
+  // How far the drawn character has walked up to the time `now`, in map
+  // units: the way of all earlier glides and the part of the current glide
+  // covered so far. A jump or a placement starts its glide where it ends,
+  // so it adds nothing. Like drawnPosition() it only depends on the time,
+  // so it is the same however often the screen is redrawn, and it does not
+  // depend on how long a glide takes.
+  function walkedDistance(player, now) {
+    var position = drawnPosition(player, now);
+    if (!position) {
+      return 0;
+    }
+    var dx = position.x - player.from.x;
+    var dy = position.y - player.from.y;
+    return player.walkedBeforeGlide + Math.sqrt(dx * dx + dy * dy);
   }
 
   // Further apart than a walk can go in one message: a jump.
@@ -247,7 +279,7 @@ Game.world = Game.world || {};
       return;
     }
     if (!isWalking(player, now)) {
-      player.walkingSince = now;
+      player.walkedWhenItStarted = walkedDistance(player, now);
     }
     // Remember how big the steps are right now: they grow on from there.
     player.strideAtLastStep = stride(player, now);
@@ -319,14 +351,16 @@ Game.world = Game.world || {};
     return stride(player, now) > 0;
   }
 
-  // How far the player is in its walking cycle, from 0 to 1, or null when
-  // it stands. The cycle starts with both feet on the ground.
+  // How far the player is in its running cycle, from 0 to 1, or null when
+  // it stands. It starts at 0, the moment the left foot lands (see
+  // runningMoment() in characters.js), and moves on only while the drawn
+  // character moves.
   function walkPhase(player, now) {
     if (!isWalking(player, now)) {
       return null;
     }
-    var walkedFor = Math.max(0, now - player.walkingSince);
-    return (walkedFor / WALK_CYCLE_MILLISECONDS) % 1;
+    var walked = Math.max(0, walkedDistance(player, now) - player.walkedWhenItStarted);
+    return (walked / WALK_CYCLE_LENGTH) % 1;
   }
 
   // ---- Playing the positions back at the server's pace (M2-1.14) -------

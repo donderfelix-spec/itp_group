@@ -66,7 +66,7 @@ All characters are the same size and the same speed, they differ only in how the
 | The Library Local | Purple hoodie | large headphones, stack of books in front of the body | “Shhh.” |
 
 - Each character exists only once per lobby, so that players can be told apart. For this reason there are at most eight players in a lobby. The name is also shown above the character. Name labels never cover each other: where two would overlap, only one is drawn, and the player's own name always wins. Of two other players the name of the character drawn on top is shown; a name that was hidden needs 4 map units of free space to the names that win against it before it comes back, so names do not flicker at the edge. All players start on the one spawn point, so there a player sees only the own name until the others walk away (S-117).
-- When walking, the character bobs slightly and looks left or right in the walking direction (mirrored); walking up or down keeps the side it last faced (S-105).
+- A moving character runs: between its steps both feet are briefly off the ground and the back foot kicks up, the body hops a little and leans slightly forward, and free hands are held higher and pump against the legs (a hand holding something pumps less). The legs turn around fixed hip points under the body. The steps follow the distance covered, about 5 steps per second. The character looks left or right in the running direction (mirrored); running up or down keeps the side it last faced (S-105, S-118).
 - Failed players are half transparent and only visible to other ghosts.
 - Where someone was failed, a crumpled sheet of paper with a red “F” stays on the ground until someone reports it.
 
