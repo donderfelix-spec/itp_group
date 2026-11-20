@@ -1610,7 +1610,12 @@ input {
 .characters {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 6px;
+  /* Every row as high as the highest one, so all eight cards are equally
+     high, also with a name on two lines. */
+  grid-auto-rows: 1fr;
+  /* 4px between the rows, not 6px: the cards keep the room for their line,
+     and so eight players still fit a 1280x800 window without scrolling. */
+  gap: 4px 6px;
 }
 
 .character {
@@ -1633,17 +1638,23 @@ input {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* At the top of the card, not in the middle: the hidden line below the
+     name is one or two lines high, so in the middle the names of one row
+     would not stand at the same height. */
+  align-self: flex-start;
 }
 
 .character-name { font-weight: 700; }
 
-/* The lobby line: only on the own card, a tooltip on the others. */
+/* The lobby line: only seen on the own card, a tooltip on the others.
+   It is hidden, not removed, on the others: every card keeps the room for
+   it, so no card changes its size when the choice changes (M2-2.8). */
 .character-line {
-  display: none;
+  visibility: hidden;
   font-size: 12px;
 }
 
-.character-own .character-line { display: block; }
+.character-own .character-line { visibility: visible; }
 
 /* The player's own character. */
 .character-own {

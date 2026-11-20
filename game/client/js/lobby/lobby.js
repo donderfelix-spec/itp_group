@@ -126,8 +126,9 @@ window.Game = window.Game || {};
     characterGrid.appendChild(button);
   }
 
-  // The lobby line is shown only on the player's own card (see style.css),
-  // so the eight cards stay small. On the others it is a tooltip.
+  // The lobby line is seen only on the player's own card. On the others it is
+  // hidden but keeps its room, so no card changes its size when the choice
+  // changes (see style.css); there it is a tooltip.
   function makeCharacterText(character) {
     const text = makeText('span', 'character-text', '');
     text.appendChild(makeText('span', 'character-name', character.name));
