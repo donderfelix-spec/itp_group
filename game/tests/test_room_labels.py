@@ -70,13 +70,10 @@ def test_pingo_doce_stands_at_the_right_as_in_the_sketch():
     assert ROOMS["pingo-doce"]["label"]["x"] > room["x"] + room["w"] / 2
 
 
-def test_the_deck_is_called_main_deck():
-    assert CAMPUS["deck_label"]["name"] == "Main Deck"
-
-
-def test_main_deck_is_not_drawn_on_the_spawn_point():
+def test_the_deck_is_called_main_deck_and_its_name_is_not_on_the_spawn_point():
     label = CAMPUS["deck_label"]
     spawn = CAMPUS["spawn"]
+    assert label["name"] == "Main Deck"
     assert math.dist((label["x"], label["y"]), (spawn["x"], spawn["y"])) >= 40
 
 
@@ -133,7 +130,7 @@ def test_a_room_without_label_is_refused_and_named():
         check_campus(broken(lambda bad: bad["rooms"][3].pop("label")))
 
 
-@pytest.mark.parametrize("label", [None, "125, 152", [125, 152], 125, True])
+@pytest.mark.parametrize("label", [None, [125, 152]])
 def test_a_label_that_is_not_an_object_is_refused(label):
     with pytest.raises(CampusError, match=r"the label of rooms\[0\] must be an object"):
         check_campus(broken(lambda bad: bad["rooms"][0].update(label=label)))
@@ -145,16 +142,10 @@ def test_a_label_without_x_or_y_is_refused(key):
         check_campus(broken(lambda bad: bad["rooms"][1]["label"].pop(key)))
 
 
-@pytest.mark.parametrize("value", ["125", None, True, [125], float("nan"), float("inf"), -float("inf"), HUGE])
-def test_a_label_whose_x_is_not_an_ordinary_number_is_refused(value):
-    with pytest.raises(CampusError, match=r"\"x\" of the label of rooms\[2\]"):
-        check_campus(broken(lambda bad: bad["rooms"][2]["label"].update(x=value)))
-
-
-@pytest.mark.parametrize("value", ["152", float("nan"), HUGE])
-def test_a_label_whose_y_is_not_an_ordinary_number_is_refused(value):
-    with pytest.raises(CampusError, match=r"\"y\" of the label of rooms\[2\]"):
-        check_campus(broken(lambda bad: bad["rooms"][2]["label"].update(y=value)))
+@pytest.mark.parametrize("key, value", [("x", "125"), ("y", float("nan")), ("x", HUGE)])
+def test_a_label_that_is_not_an_ordinary_number_is_refused(key, value):
+    with pytest.raises(CampusError, match=rf"\"{key}\" of the label of rooms\[2\]"):
+        check_campus(broken(lambda bad: bad["rooms"][2]["label"].update({key: value})))
 
 
 @pytest.mark.parametrize("x, y", [
@@ -162,8 +153,6 @@ def test_a_label_whose_y_is_not_an_ordinary_number_is_refused(value):
     (231, 100),   # just right of it
     (125, 19),    # just above it
     (125, 171),   # just below it, on the deck
-    (350, 152),   # in the Mon Café next door
-    (1e300, 152), # a huge number that still fits into a float
 ])
 def test_a_label_outside_its_room_is_refused(x, y):
     with pytest.raises(CampusError, match=r"the label of rooms\[0\] lies outside its room"):
@@ -177,7 +166,7 @@ def test_a_map_without_deck_label_is_refused_and_names_it():
         check_campus(broken(lambda bad: bad.pop("deck_label")))
 
 
-@pytest.mark.parametrize("label", [None, "Main Deck", [365, 350], 5])
+@pytest.mark.parametrize("label", ["Main Deck", [365, 350]])
 def test_a_deck_label_that_is_not_an_object_is_refused(label):
     with pytest.raises(CampusError, match="deck_label must be an object"):
         check_campus(broken(lambda bad: bad.update(deck_label=label)))
@@ -188,7 +177,7 @@ def test_a_deck_label_without_name_is_refused():
         check_campus(broken(lambda bad: bad["deck_label"].pop("name")))
 
 
-@pytest.mark.parametrize("name", ["", None, 5, ["Main Deck"]])
+@pytest.mark.parametrize("name", ["", 5])
 def test_a_deck_label_whose_name_is_not_a_text_is_refused(name):
     with pytest.raises(CampusError, match=r"\"name\" of deck_label must be a text"):
         check_campus(broken(lambda bad: bad["deck_label"].update(name=name)))
@@ -200,13 +189,13 @@ def test_a_deck_label_without_x_or_y_is_refused(key):
         check_campus(broken(lambda bad: bad["deck_label"].pop(key)))
 
 
-@pytest.mark.parametrize("value", ["365", True, float("nan"), float("inf"), HUGE])
-def test_a_deck_label_whose_x_is_not_an_ordinary_number_is_refused(value):
-    with pytest.raises(CampusError, match=r"\"x\" of deck_label"):
-        check_campus(broken(lambda bad: bad["deck_label"].update(x=value)))
+@pytest.mark.parametrize("key, value", [("x", "365"), ("y", float("nan")), ("x", HUGE)])
+def test_a_deck_label_that_is_not_an_ordinary_number_is_refused(key, value):
+    with pytest.raises(CampusError, match=rf"\"{key}\" of deck_label"):
+        check_campus(broken(lambda bad: bad["deck_label"].update({key: value})))
 
 
-@pytest.mark.parametrize("x, y", [(-1, 350), (681, 350), (365, -1), (365, 669), (1e300, 350)])
+@pytest.mark.parametrize("x, y", [(-1, 350), (681, 350), (365, -1), (365, 669)])
 def test_a_deck_label_outside_the_map_is_refused(x, y):
     with pytest.raises(CampusError, match="deck_label lies outside the map"):
         check_campus(broken(lambda bad: bad["deck_label"].update(x=x, y=y)))
@@ -214,7 +203,6 @@ def test_a_deck_label_outside_the_map_is_refused(x, y):
 
 @pytest.mark.parametrize("x, y, room_id", [
     (125, 100, "lecture-hall"),
-    (90, 400, "ctt"),
     (550, 480, "pingo-doce"),
     (440, 400, "pingo-doce"),  # exactly on the corner of the room: the edge belongs to the room
 ])

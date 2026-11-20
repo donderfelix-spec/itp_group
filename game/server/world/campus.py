@@ -155,8 +155,8 @@ def _check_room_label(room, where):
     """A room's name is drawn at its `label`, a point inside the room.
 
     Labels are only drawn: nothing on the server walks or collides with them.
-    A point exactly on the room's edge still counts as inside, as in
-    `roomAt()` of draw.js (`_is_in_room`).
+    A point exactly on the room's edge still counts as inside:
+    `_is_in_room` counts the edge as inside, like `roomAt()` in draw.js.
     """
     label = _entry(room, "label", where)
     label_where = f"the label of {where}"

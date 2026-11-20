@@ -193,7 +193,7 @@ Game.world = Game.world || {};
     // The deck's name has its own place in the map file, away from the spawn
     // point, so players who appear there do not stand on it.
     var label = campus.deck_label;
-    if (label) {
+    if (label && label.name) {
       text(ctx, label.name, label.x, label.y, 13);
     }
   }
