@@ -128,6 +128,8 @@ Pressing a key that would do nothing at that moment has no effect and also shows
 
 Every action also works with a mouse click on the button.
 
+**Walking diagnostic.** Opened with `?debug` at the end of the address, the page shows a small panel in the top left corner with numbers about the connection and the drawing while walking (S-120), and the buttons “Copy”, “Reset” and “Hide”. It is a tool for the team, not part of the game: without `?debug` it does not exist.
+
 ## 5. Classic mode
 
 4 to 8 players. With fewer than 4, the round cannot be started.
