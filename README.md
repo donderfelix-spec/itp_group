@@ -14,12 +14,16 @@ The game runs on a free Render instance that goes to sleep when nobody visits. T
 
 ## Team
 
-| Name | Student number |
-|---|---|
-| _to be added_ | _to be added_ |
-| _to be added_ | _to be added_ |
-| _to be added_ | _to be added_ |
-| _to be added_ | _to be added_ |
+<!-- PLACEHOLDER (K10): the names and student numbers of all four members go here before the submission. -->
+
+**To be filled in before the submission:** names and student numbers of all members.
+
+| Name | Student number | Area |
+|---|---|---|
+| _name to be added_ | _number to be added_ | 1 Campus and characters |
+| _name to be added_ | _number to be added_ | 2 Network, lobby, accounts, foundation |
+| _name to be added_ | _number to be added_ | 3 Classic rules |
+| _name to be added_ | _number to be added_ | 4 Minigames and other modes |
 
 ## Run it locally
 
@@ -58,6 +62,21 @@ To see several players at once, open the page in two or more browser windows.
 | Classic | 4 to 8 | Complete tasks, find the Free Rider, discuss and vote in meetings. With 6 to 8 players there are two Free Riders. |
 | Duel | 2 to 8 | Everyone gets their own random route across three task stations. The first to finish all three wins. |
 | Deadline | 2 to 8 | Everyone plays together against the clock while disruptions get in the way. Built only if time allows. |
+
+## What works today
+
+As of 2026-11-19: accounts and guests, lobbies with a four-letter code, walking across the campus together, five minigames, a complete Duel round with ranking, and a profile and leaderboard for accounts. The Classic mode with the Free Rider, meetings and votes is being built. The status of every feature is in [game/FEATURES.md](game/FEATURES.md).
+
+## The four areas
+
+The work is split into four areas. Every file belongs to exactly one of them, and each area has one owner.
+
+| Area | Owner | Responsible for | Code |
+|---|---|---|---|
+| 1 Campus and characters | Hanna | The map with its rooms, walking, collision, camera, characters, graphics | `game/client/js/world/`, `game/server/world/` |
+| 2 Network, lobby, accounts, foundation | Felix | Server, WebSocket connection, message checks, lobby, accounts and statistics, tests, CI, hosting | `game/server/main.py`, `game/server/protocol.py`, `game/server/net/`, `game/server/accounts/`, `game/client/js/net.js`, `game/client/js/lobby/` |
+| 3 Classic rules | Laurin | Roles, failing someone, reporting, meetings, chat, votes, win conditions | `game/server/classic/`, `game/client/js/classic/` |
+| 4 Minigames and other modes | Lennart | The frame for minigames, all minigames, the Duel and Deadline modes | `game/server/modes/`, `game/client/js/minigames/` |
 
 ## How it is built
 

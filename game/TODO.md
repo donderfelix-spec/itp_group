@@ -27,7 +27,7 @@ These points hold up the start. The reasoning behind them is under “Open decis
 ## M0: Preparation
 
 - [ ] **M0-4.1** The five minigames are described in the DESIGN.md, the team should proofread them once more
-- [ ] **M0-2.7** Write the README in the main folder in English for the submission (S-36), and decide whether the planning documents will be translated
+- [x] **M0-2.7** Write the README in the main folder in English for the submission (S-36), and decide whether the planning documents will be translated. The README names the game, the public URL, the commands to run and test, what works today and the four areas with their owners (S-96); the planning documents are already in English. The names and student numbers are a marked placeholder until K10 is settled (2026-11-19)
 
 ## M1: Walking
 
@@ -44,9 +44,9 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 **Server and hosting (area 2)**
 
-- [ ] **M1-2.12** Send cache headers for the scripts and the stylesheet, so that players do not keep old files after a deploy (seen in the play test: a normal reload served an old script)
-- [ ] **M1-2.13** Add a favicon (the server log shows a 404 for it on every visit)
-- [ ] **M1-2.14** Add `server/world/` and `server/net/` to the area table in `AGENTS.md` (S-79), by pull request
+- [x] **M1-2.12** Send cache headers for the scripts and the stylesheet, so that players do not keep old files after a deploy (seen in the play test: a normal reload served an old script). Every file of the client is sent with `Cache-Control: no-cache`, so the browser asks before each use and gets a short 304 for an unchanged file (2026-11-19). **Still to check by a person:** after the next deploy, a normal reload shows the new version
+- [x] **M1-2.13** Add a favicon (the server log shows a 404 for it on every visit). `client/favicon.ico`, linked from the page (2026-11-19)
+- [x] **M1-2.14** Add `server/world/` and `server/net/` to the area table in `AGENTS.md` (S-79), by pull request. `server/world/` now stands with area 1; `server/net/` was already listed with area 2 (2026-11-19)
 - [ ] **M1-2.15** A lobby that fails on every tick writes 15 log lines per second: log it once and then only now and then
 - [ ] **M1-2.16** Use Python 3.13 in the local `.venv` like CI and Render (it runs 3.14 on the development machine)
 
