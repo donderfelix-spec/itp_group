@@ -13,9 +13,17 @@
 //   "failing-nested"      the same, but it fails inside a second save of its
 //                         own, after making the drawing see-through, as the
 //                         helpers of characters.js do (drawShadow, drawFace)
+//   "not-a-function"      characters.js left something that is not a function
+//                         in Game.world.drawCharacter
+//   "failing-plain-value" it fails for "broken" halfway, throwing a plain
+//                         value instead of an Error
 //
 // Input (stdin): JSON {"players": [{name, character, x, y}], "frames": N}.
-//   The first player is the own player.
+//   The first player is the own player. Optional "changedPlayers": a list of
+//   {name, character} that replaces the characters after the first frame, as
+//   a new lobby state does.
+// Output also has "brokenAttempts": how often the drawing was asked to draw
+//   the character "broken".
 // Output (stdout): JSON with
 //   warnings    every console.warn, as text
 //   errors      every console.error and every error thrown by a frame
@@ -42,6 +50,7 @@ const errors = [];
 const characters = [];
 const standIns = [];
 const names = [];
+let brokenAttempts = 0;
 
 // ---- A canvas that follows only scale, move and opacity ---------------
 // Enough for world.js: the camera is a scale and a move, and so is the
@@ -177,11 +186,32 @@ if (mode === 'with-characters') {
     ctx.globalAlpha = 0.14;
     throw new Error('This drawing fails inside a second save.');
   };
+} else if (mode === 'not-a-function') {
+  page.Game.world.drawCharacter = 42;
+} else if (mode === 'failing-plain-value') {
+  page.Game.world.drawCharacter = (ctx, characterId, x, y) => {
+    if (characterId !== 'broken') {
+      recordCharacter(ctx, characterId, x, y);
+      return;
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    throw undefined; // eslint-disable-line no-throw-literal
+  };
 } else if (mode !== 'without-characters') {
   throw new Error('Unknown mode: ' + mode);
 }
 
 // ---- Play ---------------------------------------------------------------
+
+// Counts how often the drawing is asked for the character "broken".
+if (typeof page.Game.world.drawCharacter === 'function') {
+  const drawing = page.Game.world.drawCharacter;
+  page.Game.world.drawCharacter = function (ctx, characterId) {
+    if (characterId === 'broken') brokenAttempts += 1;
+    return drawing.apply(this, arguments);
+  };
+}
 
 async function play() {
   const world = page.Game.world;
@@ -195,13 +225,14 @@ async function play() {
     characters.length = 0;
     standIns.length = 0;
     names.length = 0;
+    if (frame === 2 && input.changedPlayers) world.setPlayers(input.changedPlayers);
     try {
       nextFrame(1000 + frame * FRAME_MILLISECONDS);
     } catch (problem) {
       errors.push(String(problem));
     }
   }
-  process.stdout.write(JSON.stringify({ warnings, errors, characters, standIns, names }));
+  process.stdout.write(JSON.stringify({ warnings, errors, characters, standIns, names, brokenAttempts }));
 }
 
 play();
