@@ -43,61 +43,77 @@ Game.world = Game.world || {};
   // because it depends on how small the character is drawn.
   var thinnestLine = 0;
 
-  // Walking, in design units: how high the swinging foot is lifted, how
-  // far a free hand swings, and how far the body rises on a step. How far a
-  // foot goes forward and back, and how long a walking cycle is, belong to
-  // the walking variant, see WALK_PROPOSALS.
-  var FOOT_LIFT = 5;
-  var HAND_SWING = 4;
+  // The highest the body may rise on a step, in design units. The name above
+  // a character on the map keeps room for this rise (HEAD_ROOM_BELOW_NAME
+  // in world.js), so no way of walking may rise higher.
   var BODY_BOB = 3;
 
   // TEMPORARY (M2-1.13 proposals): chooses the walking variant Felix compares.
   // Removed with the variants he does not choose, before the pull request.
-  // C is a walk, R1 and R2 are runs. All lengths in design units except
-  // cycleLength:
-  //   cycleLength     map units the character covers in one cycle (two
-  //                   steps); world.js asks for it, see walkCycleLength()
-  //   footTravel      how far a foot goes in front of and behind its place
-  //                   when standing
-  //   groundFraction  the part of a step a foot is on the ground. 1 in the
-  //                   walk; below 1 in a run, which leaves a moment in the
-  //                   air between two steps
-  // Only for the runs:
-  //   kick            how high the back foot is lifted after it pushed off
-  //   hop             how far the body rises in the air (at most BODY_BOB)
-  //   lean            how far the runner leans forward (radians)
-  //   handRaise       how much higher the bent arms hold the hands
-  //   handInward      how much closer to the body the hands come
-  //   handPump        how far a free hand pumps forward and back ...
-  //   handPumpRise    ... and how much higher it is in front than behind
-  //   heldShare       the part of the pumping a hand makes that holds
-  //                   something alone
+  // R2 is a run; O1 and O2 are a quick, short walk after the mechanics of
+  // the genre's best-known game, O1 in held poses and O2 smooth. All
+  // lengths in design units except cycleLength:
+  //   cycleLength      map units the character covers in one cycle (two
+  //                    steps); world.js asks for it, see walkCycleLength()
+  //   footTravel       how far a foot goes in front of and behind its place
+  //                    when standing
+  //   groundFraction   the part of a step a foot is on the ground. 1 in a
+  //                    walk; below 1 in a run, which leaves a moment in the
+  //                    air between two steps
+  //   posesPerCycle    the number of held poses per cycle; null: smooth
+  //   startsInstantly  true: the steps are full at once when the character
+  //                    starts and gone at once when it stops (world.js
+  //                    asks, see walkStartsInstantly()); false: they grow
+  //                    and shrink
+  // Only for the walks:
+  //   footLift         how high the swinging foot is lifted
+  //   bounce           how far the body rises between two steps (at most
+  //                    BODY_BOB)
+  // Only for the run:
+  //   kick             how high the back foot is lifted after it pushed off
+  //   hop              how far the body rises in the air (at most BODY_BOB)
+  //   lean             how far the runner leans forward (radians)
+  //   handRaise        how much higher the bent arms hold the hands
+  //   handInward       how much closer to the body the hands come
+  //   handPump         how far a free hand pumps forward and back ...
+  //   handPumpRise     ... and how much higher it is in front than behind
+  //   heldShare        the part of the pumping a hand makes that holds
+  //                    something alone
   // A foot on the ground moves back by 2 x footTravel. The more of the way
   // walked while it is down that covers, the less it slides.
   var WALK_PROPOSALS = {
-    C: { cycleLength: 27, footTravel: 6, groundFraction: 1 },
-    R1: {
-      cycleLength: 32, footTravel: 8, groundFraction: 0.62, isRun: true,
-      kick: 7, hop: 2, lean: 0.08,
-      handRaise: 7, handInward: 2, handPump: 5, handPumpRise: 2, heldShare: 1 / 3
-    },
     R2: {
       cycleLength: 36, footTravel: 9, groundFraction: 0.5, isRun: true,
+      posesPerCycle: null, startsInstantly: false,
       kick: 9, hop: 3, lean: 0.11,
       handRaise: 9, handInward: 3, handPump: 6, handPumpRise: 3, heldShare: 1 / 3
+    },
+    O1: {
+      cycleLength: 24, footTravel: 4.5, groundFraction: 1,
+      posesPerCycle: 6, startsInstantly: true,
+      footLift: 4, bounce: 3
+    },
+    O2: {
+      cycleLength: 24, footTravel: 4.5, groundFraction: 1,
+      posesPerCycle: null, startsInstantly: true,
+      footLift: 4, bounce: 3
     }
   };
+  // The brief asks for "O1" here. But O1 and O2 keep the hands still, and
+  // decision S-115 and its test (test_both_free_hands_of_the_exchange_student
+  // _swing_while_walking) want the Exchange Student's free hands to swing,
+  // so the game uses R2 until the team decides; the comparison page sets
+  // WALK_PROPOSAL itself.
+  var DEFAULT_WALK_PROPOSAL = "R2";
 
   // TEMPORARY (M2-1.13 proposals): read at draw time, so the comparison
-  // page can switch between the variants. Missing or unknown: "C".
+  // page can switch between the variants. Missing or unknown: the default.
   function walkProposal() {
     var chosen = window.WALK_PROPOSAL;
     var isKnown = typeof chosen === "string" && Object.prototype.hasOwnProperty.call(WALK_PROPOSALS, chosen);
-    return isKnown ? WALK_PROPOSALS[chosen] : WALK_PROPOSALS.C;
+    return isKnown ? WALK_PROPOSALS[chosen] : WALK_PROPOSALS[DEFAULT_WALK_PROPOSAL];
   }
-  // A walking character leans this far into its walking direction (radians).
-  var WALKING_LEAN = 0.05;
-  // The lean turns around the point between the feet, so they stay in place.
+  // A running character leans into its direction (see `lean`). The lean turns around the point between the feet, so they stay in place.
   var GROUND_Y = 96;
   // In the turned view the face (eyes, mouth, cheeks, glasses) sits this
   // far towards the side it is turned to, and the shoes point a little
@@ -821,14 +837,6 @@ Game.world = Game.world || {};
 
   // ---- The turned view and its walking cycle ---------------------------
 
-  // The swing of the walking cycle, from -1 to 1, and 0 when standing.
-  // Above 0 the left foot is in front and the right one behind, below 0
-  // it is the other way round.
-  function swingOf(pose) {
-    var stride = strideOf(pose);
-    return stride === 0 ? 0 : Math.sin(pose.walkPhase * 2 * Math.PI) * stride;
-  }
-
   // Where the character is in its walking cycle, from 0 to 1. Any number
   // is taken: 1.25 is the same moment as 0.25.
   function phaseOf(pose) {
@@ -839,15 +847,14 @@ Game.world = Game.world || {};
     return phase < 0 ? phase + 1 : phase;
   }
 
-  // ---- The walk (variant C) ----
+  // ---- The quick walk (variants O1 and O2) ----
 
   // Where the left foot is at `phase`, from 1 (furthest in front) to -1
   // (furthest behind). It is put down in front at phase 0.25 and then moves
   // backwards at a steady speed, as the ground moves under a walker, until
   // it is furthest behind at 0.75. Then it is lifted and swings forward
   // again. The right foot does the same half a cycle later, so it is always
-  // at the opposite place. The swing of swingOf() has the same highest and
-  // lowest points, so arms and body keep moving with the feet as before.
+  // at the opposite place.
   function leftFootPlace(phase) {
     var sincePutDown = (phase + 0.75) % 1; // 0 at phase 0.25
     if (sincePutDown < 0.5) {
@@ -865,25 +872,37 @@ Game.world = Game.world || {};
   }
 
   // Everything that moves at one moment of the walk, see walkingMoment().
-  function walkMoment(phase, swing, stride, proposal) {
+  // The body bounces: it is lowest when a foot is put down (phase 0.25 and
+  // 0.75) and highest in between, when the feet pass each other. Nothing
+  // else moves: no lean, and the hands only go up and down with the body.
+  function walkMoment(phase, stride, proposal) {
     var travel = proposal.footTravel * stride;
     var leftPlace = leftFootPlace(phase);
+    var bounce = Math.min(proposal.bounce, BODY_BOB) * stride;
     return {
       leftFootX: leftPlace * travel,
-      leftLift: leftFootLift(phase) * FOOT_LIFT * stride,
+      leftLift: leftFootLift(phase) * proposal.footLift * stride,
       rightFootX: -leftPlace * travel,
-      rightLift: leftFootLift((phase + 0.5) % 1) * FOOT_LIFT * stride,
-      raised: Math.abs(swing) * BODY_BOB,
-      lean: stride * WALKING_LEAN,
-      // Free hands swing straight forward and back; a hand that holds
-      // something does not move, and neither does the free one beside it.
-      armSwing: swing,
-      handPump: HAND_SWING, handPumpRise: 0, handRaise: 0, handInward: 0,
+      rightLift: leftFootLift((phase + 0.5) % 1) * proposal.footLift * stride,
+      raised: bounce * (1 - Math.cos(4 * Math.PI * (phase - 0.25))) / 2,
+      lean: 0,
+      armSwing: 0, handPump: 0, handPumpRise: 0, handRaise: 0, handInward: 0,
       heldShare: 0, holdersSwingTheFreeHand: false
     };
   }
 
-  // ---- The run (variants R1 and R2) ----
+  // The phase of the held pose shown at `phase`, for `poses` poses per
+  // cycle: the phase only jumps from one pose to the next. The poses are
+  // counted from the moment the left foot is put down (0.25), so that
+  // moment is one of them, and with an even number of poses both steps
+  // show the same poses.
+  function heldPhase(phase, poses) {
+    var sinceFootDown = (phase + 0.75) % 1;
+    var held = Math.floor(sinceFootDown * poses) / poses;
+    return (held + 0.25) % 1;
+  }
+
+  // ---- The run (variant R2) ----
 
   // Where one foot of a runner is in its own cycle. `legPhase` runs from 0
   // to 1; at 0 the foot lands in front. It stays on the ground for
@@ -962,12 +981,15 @@ Game.world = Game.world || {};
   //                          something alone
   //   holdersSwingTheFreeHand  true if a character that holds something in
   //                          one hand swings its other hand
-  function walkingMoment(phase, swing, stride) {
+  function walkingMoment(phase, stride) {
     var proposal = walkProposal();
+    if (proposal.posesPerCycle) {
+      phase = heldPhase(phase, proposal.posesPerCycle);
+    }
     if (proposal.isRun) {
       return runMoment(phase, stride, proposal);
     }
-    return walkMoment(phase, swing, stride, proposal);
+    return walkMoment(phase, stride, proposal);
   }
 
   // How big the steps are, from 0 (none, also when standing) to 1 (full).
@@ -983,18 +1005,38 @@ Game.world = Game.world || {};
     return Math.max(0, Math.min(1, pose.stride));
   }
 
+  // A leg is a rounded box that hangs from a hip point. The hip point
+  // belongs to the body: it is in the middle of the top of the standing
+  // leg (x = -7.5 or 7.5, y = 74), under the body, and rises with it. The
+  // leg turns around it towards the ankle, which is where the shoe is, and
+  // becomes as long as the way from hip to ankle. So its top stays under
+  // the body in every frame and never slides sideways. A standing leg hangs
+  // straight down: the box from (-13, 74) or (2, 74), 11 wide and 18 high.
+  var LEG_WIDTH = 11;
+  var HIP_Y = 74;
+  var LEG_BOTTOM_Y = 92; // on the shoe, which reaches from y = 89 to 97
+
   // One leg with its shoe. `side` is -1 for the left and 1 for the right
   // one. `footX` is how far the foot is in front of its standing place
   // (behind if below 0) and `lift` how high it is off the ground, both in
-  // design units. `raised` is how far the body is lifted right now: the leg
-  // reaches that much further up, so it never comes off the body.
+  // design units. `raised` is how far the body is lifted right now: the hip
+  // goes up with it.
   function drawTurnedLeg(ctx, look, side, footX, lift, raised) {
     // The shoes point a little to the side the character is turned to.
     var shoeX = (side < 0 ? -15 : 1) + SHOE_TURN + footX;
     box(ctx, shoeX, 89 - lift, 14, 8, 4, look.shoes || OUTLINE, look.shoes ? 1.5 : 0);
-    // The hip moves less than the foot.
-    var legX = (side < 0 ? -13 : 2) + footX * 0.6;
-    box(ctx, legX, 74 - raised, 11, 18 + raised - lift, 4, look.legs, 2);
+    var hipX = side * (LEG_WIDTH + 4) / 2;
+    var hipY = HIP_Y - raised;
+    var toAnkleX = footX;
+    var toAnkleY = LEG_BOTTOM_Y - lift - hipY;
+    var length = Math.sqrt(toAnkleX * toAnkleX + toAnkleY * toAnkleY);
+    ctx.save();
+    ctx.translate(hipX, hipY);
+    // Turn the box, which points straight down, so that it points to the
+    // ankle: rotate(angle) turns "down" (0, 1) into (-sin, cos).
+    ctx.rotate(Math.atan2(-toAnkleX, toAnkleY));
+    box(ctx, -LEG_WIDTH / 2, 0, LEG_WIDTH, length, 4, look.legs, 2);
+    ctx.restore();
   }
 
   // Where the arms start in the turned view. The body is a little narrower
@@ -1172,7 +1214,7 @@ Game.world = Game.world || {};
     ctx.lineCap = "round";
     thinnestLine = THINNEST_LINE_IN_PIXELS / (pixelsPerUnit(ctx) || 1);
     if (pose) {
-      var moment = walkingMoment(phaseOf(pose), swingOf(pose), strideOf(pose));
+      var moment = walkingMoment(phaseOf(pose), strideOf(pose));
       drawTurnedView(ctx, lookOf(characterId), moment, isMirrored);
     } else {
       drawPortrait(ctx, lookOf(characterId));
@@ -1205,12 +1247,21 @@ Game.world = Game.world || {};
       stepsPerSecond: PLAYER_SPEED / stepLength,
       footTravel: proposal.footTravel,
       groundFraction: proposal.groundFraction,
-      slidePerStep: Math.max(0, proposal.groundFraction * stepLength - groundCovered)
+      slidePerStep: Math.max(0, proposal.groundFraction * stepLength - groundCovered),
+      posesPerCycle: proposal.posesPerCycle
     };
+  }
+
+  // TEMPORARY (M2-1.13 proposals): true if the steps of the chosen variant
+  // are full at once when a character starts walking and gone at once when
+  // it stops. world.js asks for it, see stride() there.
+  function walkStartsInstantly() {
+    return walkProposal().startsInstantly;
   }
 
   Game.world.characters = characters;
   Game.world.drawCharacter = drawCharacter;
   Game.world.walkCycleLength = walkCycleLength;
   Game.world.walkProposalNumbers = walkProposalNumbers;
+  Game.world.walkStartsInstantly = walkStartsInstantly;
 })();

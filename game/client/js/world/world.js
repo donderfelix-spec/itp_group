@@ -52,6 +52,11 @@ Game.world = Game.world || {};
   // put down softly instead of snapping to the ground.
   var STRIDE_GROWS_MILLISECONDS = GLIDE_MILLISECONDS;
   var STRIDE_FADES_MILLISECONDS = 150;
+  // Some ways of walking start and stop at once instead (see
+  // walkStartsInstantly()). Their steps end this long after the glide of
+  // the last step, so a message that comes a little late does not make the
+  // legs stand still for a moment.
+  var STEP_GRACE_MILLISECONDS = 40;
   // One walking cycle is two steps: left foot, right foot. It runs on the
   // way the drawn character covers, not on the time, so a foot on the
   // ground moves with the ground on every screen, also when a message is
@@ -261,12 +266,17 @@ Game.world = Game.world || {};
   // How big the steps of the player are at the time `now`, from 0 (it
   // stands) to 1 (full steps). After a step they grow to full size; once the
   // glide of that step is over and no new step has come, they fade away.
+  // For a way of walking that starts and stops at once they are 1 from the
+  // step until STEP_GRACE_MILLISECONDS after its glide, and 0 after that.
   // It only depends on the time, like drawnPosition(), so it looks the same
   // on every screen, however often that screen is redrawn.
   function stride(player, now) {
     // Never below 0: the time of a frame can lie a moment before the time
     // at which the message with the step arrived.
     var sinceStep = Math.max(0, now - player.lastStepAt);
+    if (walkStartsInstantly()) {
+      return sinceStep <= GLIDE_MILLISECONDS + STEP_GRACE_MILLISECONDS ? 1 : 0;
+    }
     var grown = Math.min(1, player.strideAtLastStep + sinceStep / STRIDE_GROWS_MILLISECONDS);
     var faded = (sinceStep - GLIDE_MILLISECONDS) / STRIDE_FADES_MILLISECONDS;
     faded = Math.max(0, Math.min(1, faded));
@@ -289,6 +299,15 @@ Game.world = Game.world || {};
     }
     var walked = Math.max(0, walkedDistance(player, now) - player.walkedWhenItStarted);
     return (walked / walkCycleLength()) % 1;
+  }
+
+  // TEMPORARY (M2-1.13 proposals): true if the drawing asks for steps that
+  // are full at once and gone at once (the variants O1 and O2), false for
+  // the steps that grow and shrink (also when characters.js did not load).
+  // Called outside the protection of drawPlayer(), so it never fails.
+  function walkStartsInstantly() {
+    var fromDrawing = Game.world.walkStartsInstantly;
+    return typeof fromDrawing === "function" && fromDrawing() === true;
   }
 
   // Map units per walking cycle, from the drawing if it gives a usable
@@ -960,6 +979,7 @@ Game.world = Game.world || {};
   // Removed with the variant Felix does not choose, before the pull request.
   Game.world.walkingProposal = {
     glideMs: GLIDE_MILLISECONDS,
-    strideFadesMs: STRIDE_FADES_MILLISECONDS
+    strideFadesMs: STRIDE_FADES_MILLISECONDS,
+    stepGraceMs: STEP_GRACE_MILLISECONDS
   };
 })();
