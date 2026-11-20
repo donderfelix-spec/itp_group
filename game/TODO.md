@@ -86,7 +86,7 @@ Milestone 2 was built up to the Duel by Claude as lead (pull requests #19 to #26
 - [x] **M2-1.6** More realistic walking: front, side and back view of all eight characters, alternating feet, a soft stop. Two code reviews, play test with two players, the icons in the lobby are unchanged (2026-11-19). Known and accepted: a player put back onto the spawn from fewer than 15 map units away is drawn taking one step, because the browser cannot tell that from a real step; hair and headwear do not turn yet (M2-1.7)
 - [x] **M2-1.7** The hair, buns and headwear of the characters follow the head when it turns. Built with M2-1.5: the whole three-quarter view is mirrored, so hair and headwear turn with the face (2026-11-19)
 - [ ] **M2-1.8** Eight players put on the spawn stand on one point, and at the larger size only the last one drawn can be seen until they walk (S-88); name labels of players standing close cover their neighbours. Spread the players around the spawn on the server, or accept it (Hanna, with Felix for the server)
-- [ ] **M2-1.9** The sketch `design/characters.svg` still shows the Latecomer with speed lines, sweat and steam, and the characters from the front only; bring it in line with the game or mark it as the first sketch (Hanna)
+- [x] **M2-1.9** The sketch `design/characters.svg` still shows the Latecomer with speed lines, sweat and steam, and the characters from the front only; bring it in line with the game or mark it as the first sketch (Hanna). Done on 2026-11-20: the speed lines, sweat drop and steam are gone from the Latecomer; the sketch and DESIGN.md section 3 say that it shows the lobby portraits from the front and that the map uses the three-quarter view facing left or right (S-105). No game code changed
 
 **Area 2 (Felix)**
 

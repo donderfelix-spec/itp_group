@@ -50,6 +50,8 @@ The map is based on the real campus in Carcavelos: light buildings, a large pave
 
 ![Characters](design/characters.svg)
 
+The sketch shows the portraits from the front, as used in the lobby list; on the map the characters are drawn in a three-quarter view facing only left or right (S-105).
+
 All characters are the same size and the same speed, they differ only in how they look (S-06). Each one has a body colour, a hairstyle or headwear and an object in the hand, by which you can recognise the character even when it is small. The faces are the same for all of them (S-07).
 
 | Character | Colour | How to recognise the character | Line in the lobby |
@@ -64,7 +66,7 @@ All characters are the same size and the same speed, they differ only in how the
 | The Library Local | Purple hoodie | large headphones, stack of books in front of the body | “Shhh.” |
 
 - Each character exists only once per lobby, so that players can be told apart. For this reason there are at most eight players in a lobby. The name is also shown above the character.
-- When walking, the character bobs slightly and looks in the walking direction (mirrored).
+- When walking, the character bobs slightly and looks left or right in the walking direction (mirrored); walking up or down keeps the side it last faced (S-105).
 - Failed players are half transparent and only visible to other ghosts.
 - Where someone was failed, a crumpled sheet of paper with a red “F” stays on the ground until someone reports it.
 
