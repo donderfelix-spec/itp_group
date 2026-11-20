@@ -28,6 +28,7 @@ from server.accounts.leaderboard_cache import LeaderboardCache
 from server.accounts.statistics_store import make_statistics_store
 from server.accounts.store import StoreUnavailable, make_account_store
 from server.modes import duel, minigames, tasks
+from server.net.attempts import AttemptLimits
 from server.net.lobbies import Lobbies
 from server.net.repeated_faults import RepeatedFaults
 from server.net.sessions import GUEST_NUMBERS, Sessions
@@ -74,6 +75,7 @@ app.state.leaderboard_cache = LeaderboardCache()
 app.state.leaderboard_call = None
 app.state.hasher = service.Argon2Hasher()
 app.state.sessions = Sessions()
+app.state.attempt_limits = AttemptLimits()
 app.state.lobbies = Lobbies()
 # Which faults of the tick were logged lately, so that a repeating fault does not flood the log.
 app.state.repeated_faults = RepeatedFaults()
@@ -127,6 +129,7 @@ async def game_socket(websocket: WebSocket):
         # newer log-in (S-76) has no name any more, so nothing happens here.
         name = app.state.sessions.name_of(websocket)
         app.state.sessions.sign_out(websocket)
+        app.state.attempt_limits.forget(websocket)
         if name is not None:
             await take_out_of_lobby(name)
 
@@ -173,7 +176,18 @@ async def handle_sign_up(websocket: WebSocket, message: dict):
 
 
 async def handle_log_in(websocket: WebSocket, message: dict):
-    return await sign_in_with(service.log_in, websocket, message)
+    if app.state.sessions.is_signed_in(websocket):
+        return protocol.rejection("already_signed_in")
+    # Asked before the password is hashed: one hash costs 64 MiB of memory
+    # and a worker thread, so a guessing script must not get that far (M1-2.6).
+    limits = app.state.attempt_limits
+    if limits.is_blocked(websocket, "log_in", seconds_now()):
+        return protocol.rejection("too_many_attempts")
+    answer = await sign_in_with(service.log_in, websocket, message)
+    # Only a wrong name or password is a guess. A database that is down is not.
+    if answer is not None and answer["code"] == "wrong_credentials":
+        limits.failed(websocket, "log_in", seconds_now())
+    return answer
 
 
 async def sign_in_with(rule, websocket: WebSocket, message: dict):
@@ -469,9 +483,16 @@ def pick_lobby_code() -> str:
 
 
 async def handle_join_lobby(websocket: WebSocket, name: str, message: dict):
+    # Lobby codes have four letters, so they could be guessed by trying (M1-2.6).
+    limits = app.state.attempt_limits
+    if limits.is_blocked(websocket, "join_lobby", seconds_now()):
+        return "too_many_attempts"
     lobby, rejection_code = app.state.lobbies.join(name, message["code"])
     if rejection_code is None:
         await tell_lobby(lobby)
+    # Only a code that does not exist is a guess. A full or running lobby is not.
+    if rejection_code == "no_lobby":
+        limits.failed(websocket, "join_lobby", seconds_now())
     return rejection_code
 
 

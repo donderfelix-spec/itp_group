@@ -68,6 +68,8 @@ REJECTIONS = {
     "character_taken": "That character is taken.",
     "not_host": "Only the host can do that.",
     "round_running": "This round has already started.",
+    # Guessing passwords or lobby codes (M1-2.6).
+    "too_many_attempts": "Too many attempts. Wait a moment and try again.",
     # The tasks at the stations (S-93).
     "not_in_round": "No round is running.",
     "no_station": "That station does not exist.",
