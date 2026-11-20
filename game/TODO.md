@@ -59,6 +59,8 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 - [x] **M1-1.9** Add the new texts to DESIGN.md: “Loading the campus…”, “Signed in as”, “Players”, “Character”, “Lobby code”, “Coming with the next milestone”. Added to section 4 (Home, Lobby, Profile), with the fourth heading “Mode” of the same panel; “Coming with the next milestone” was already there since M2-2.1. Documents only (2026-11-20)
 
 - [x] **M1-2.20** The test `test_a_second_log_in_signs_the_first_connection_out` sometimes hangs when the machine is busy (seen twice while four test runs ran at once; alone it passes). A hanging test would block CI: find the cause. Cause: the fixture `client` of that test file gave every connection an event loop of its own, and a message sent from one loop to a connection waiting in another could fail to wake it. The server was right. The fixture now uses one loop, like `tests/test_server_lobby.py`; the change to the test file was approved by Felix (2026-11-20)
+- [ ] **M1-2.21** Tests that depend on timing fail now and then under load and pass alone: one in `test_play_round` (a start that is refused) and one in `test_play_walking` (sliding along a wall diagonally) failed once each on 2026-11-20, and a third, not named, failed once in the session of M2-1.11. Find them, make them independent of the load (as M1-2.20 did for the second log-in), without weakening what they check (Felix)
+- [ ] **M1-2.22** DESIGN.md, section 9, lacks rejection texts the server already sends: “That character does not exist.”, “That message is incomplete.” and the texts for a refused move. Add them; documents only (Felix)
 
 **To check by a person (the tools could not)**
 
@@ -97,6 +99,7 @@ Milestone 2 was built up to the Duel by Claude as lead (pull requests #19 to #26
 - [x] **M2-2.5** Countdown before a round: after “Start game” everybody sees “Round starts in” and 5 to 1, then the round starts as before; a ranking that is still open stays readable (Felix). Code review, play test with three players in real browsers, decisions in S-104 (2026-11-19)
 - [x] **M2-2.7** Home screen: “Profile” and “Leaderboard” are two round icons at the top right instead of two buttons in the card (Felix). Requested by Felix on 2026-11-19; one code review, tried in the browser as an account and as a guest at 320 to 1280 px (2026-11-19)
 - [x] **M2-2.8** All character buttons in the lobby have the same height: the quote under the name of the chosen character made its button taller, so the list jumped when the choice changed. The quote stays visible for the chosen character; nothing in the list moves when the choice changes, at 1280 px and in a narrow window, with one- and two-line names (Felix). Requested by Felix on 2026-11-20; one code review, played with two to eight guests in Chromium at 1280x800, 900x700 and 390x844, no button moves (2026-11-20)
+- [ ] **M2-2.9** Checks on the deployed site that only a person can make (Felix): (1) the character buttons in the lobby, also whether the panel is 1 px too high in a window of about 900 by 700 with visible scroll bars (M2-2.8); (2) reconnecting: join a lobby as a guest, turn Wi-Fi off for a few seconds, press “Play as guest” again, and land in the same lobby (M3-2.2); (3) six wrong log-ins in a row show “Too many attempts. Try again in a minute.”, and a log-in works again after a minute (M1-2.6)
 
 A complete Duel round needs nothing more from area 2: start, play, ranking and the next round work. M2-2.2 and M2-2.3 are about what is shown and about playing it with several people; M2-2.4 is the only part of the required scope (S-40) that is not built at all.
 
@@ -106,6 +109,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard (S-94). In the pull request after #26
 - [ ] **M2-4.8** Play test: two players play a Duel through to the leaderboard (Lennart). A scripted run with two browsers and the real minigames exists from the building of M2-4.7 (both finish, ranking, second round, time running out). Left to do: two people on two computers on the deployed server, and write down what gets in the way
 - [ ] **M2-4.9** After a solved minigame the “Done” window stays for one second and the walking keys are ignored during it; a key that is already held only counts again when the window has closed. In a Duel that is three seconds of standing per route and feels like lag (found in the play test of M2-2.2, after Felix reported lag). Let a held or newly pressed walking key take effect at once, or shorten the window (Lennart)
+- [ ] **M2-4.12** At a window width of 320 px the title “Brew the order” of the Mon Café minigame is cut off. Let it wrap or shrink (Felix; found while building M1-1.7)
 
 **Known and open after the Duel**
 
