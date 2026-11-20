@@ -18,6 +18,9 @@ window.Game = window.Game || {};
     // so the same error there appears at the top centre.
     round_running: 'code',
     bad_code: 'code',
+    // Sent for log-ins and for lobby codes alike: `attempts` is the log-in
+    // form on the Log in screen and the code field on the Home screen.
+    too_many_attempts: 'attempts',
   };
 
   // The stations with a minigame (1 to 5; station 6 is not in use yet).

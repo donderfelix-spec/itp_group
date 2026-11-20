@@ -35,7 +35,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 **Security and accounts (area 2)**
 
-- [ ] **M1-2.6** Limit log-in attempts and lobby-code guessing per connection (found in the code reviews, S-83)
+- [x] **M1-2.6** Limit log-in attempts and lobby-code guessing per connection (found in the code reviews, S-83). After 5 wrong log-ins or 10 wrong lobby codes within 60 seconds a connection reads “Too many attempts. Try again in a minute.”; the rule is `server/net/attempts.py`, the decisions are in S-107. Tried in one browser: the sixth wrong log-in and the eleventh wrong code show the text at their field (2026-11-20)
 - [x] **M1-2.7** Show or hide the password with an eye icon in the sign-up and log-in forms. Played in the browser with mouse and keyboard, at 1280 and 360 px (2026-11-19)
 - [x] **M1-2.8** Tell a player why they were signed out when the same account logs in somewhere else (needs a text in DESIGN.md, section 9). The browser shows “You were signed in somewhere else.”; the text is a proposal (S-106). Played with two browsers (2026-11-19)
 - [ ] **M1-2.9** Add `sslmode=require` to `DATABASE_URL` on Render, as Supabase recommends, and check that sign up still works
@@ -55,17 +55,17 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 - [ ] **M1-1.5** Close or widen the gap between the third tree and the hedge on the Main Deck: it is exactly one player wide, and a player squeezing through is drawn over both
 - [ ] **M1-1.6** Give each room a label position in `campus.json`: “Pingo Doce” is drawn in the middle of the room instead of at the right as in the sketch, and “Main Deck” sits on the spawn point
 - [ ] **M1-1.7** Narrow windows (under about 800 px): the walking hint overlaps a room name and the top message overlaps the lobby code. Between about 800 and 920 px the button “E Use” also covers the end of the walking hint (seen in the play test of M2-1.1)
-- [ ] **M1-1.10** Messages at the top of the page use only half the width of a narrow window: at 320 px the guest message wraps into four lines and covers the profile icon on Home while it shows. Let a message use the width of the page (found while building M2-2.7)
+- [x] **M1-1.10** Messages at the top of the page use the width of the page: the window minus 16 px on each side, centred, only as wide as the text. At 320 px the guest message takes two lines instead of four. Tried in the browser at 320, 768 and 1280 px on Start, Home and Lobby, with two players (2026-11-20)
 - [ ] **M1-1.8** Keep the list of characters in one place: the lobby panel has its own fallback copy next to `world/characters.js` and `protocol.CHARACTERS`
 - [ ] **M1-1.9** Add the new texts to DESIGN.md: “Loading the campus…”, “Signed in as”, “Players”, “Character”, “Lobby code”, “Coming with the next milestone”
 
-- [ ] **M1-2.20** The test `test_a_second_log_in_signs_the_first_connection_out` sometimes hangs when the machine is busy (seen twice while four test runs ran at once; alone it passes). A hanging test would block CI: find the cause
+- [x] **M1-2.20** The test `test_a_second_log_in_signs_the_first_connection_out` sometimes hangs when the machine is busy (seen twice while four test runs ran at once; alone it passes). A hanging test would block CI: find the cause. Cause: the fixture `client` of that test file gave every connection an event loop of its own, and a message sent from one loop to a connection waiting in another could fail to wake it. The server was right. The fixture now uses one loop, like `tests/test_server_lobby.py`; the change to the test file was approved by Felix (2026-11-20)
 
 **To check by a person (the tools could not)**
 
-- [ ] **M1-2.17** Hold a walking key and switch to another tab or window: the character must stop (only tested with simulated events)
-- [ ] **M1-2.18** Watch two players walk on two real screens and judge whether the movement looks smooth (only measured: one position every 68 ms, no jumps)
-- [ ] **M1-2.19** Hold a key, press Cmd and release the key on a Mac: the character must stop (only tested with simulated events)
+- [x] **M1-2.17** Hold a walking key and switch to another tab or window: the character must stop (only tested with simulated events) (checked by Felix on a real device, 2026-11-20)
+- [x] **M1-2.18** Watch two players walk on two real screens and judge whether the movement looks smooth (only measured: one position every 68 ms, no jumps) (checked by Felix on a real device, 2026-11-20)
+- [x] **M1-2.19** Hold a key, press Cmd and release the key on a Mac: the character must stop (only tested with simulated events) (checked by Felix on a real device, 2026-11-20)
 
 **For the team to decide**
 
@@ -93,7 +93,7 @@ Milestone 2 was built up to the Duel by Claude as lead (pull requests #19 to #26
 - [x] **M2-2.2** Back to the lobby after the round (Felix). Played through with three players in real browsers, also with the time running out and three rounds in a row; the run is `tests/test_play_back_to_lobby.py`. What the panel shows and where the players stand is decided in S-101 (2026-11-19)
 - [x] **M2-2.3** A player leaves the round, the host changes (Felix). Played through with three players in real browsers: leaving with the button, closing the tab, the same account logging in elsewhere, the host leaving, two of three leaving, coming back after a lost connection or a restart of the server; the run is `tests/test_play_leave_round.py`. A player who comes back cannot rejoin the running round and reads “This round has already started.” until it is over; rejoining is M3-2.2, the missing text for being signed out elsewhere is M1-2.8 (2026-11-19)
 - [x] **M2-2.4** Statistics: the server writes the result of every Duel round, profile with rounds, wins and best Duel time, leaderboard of the accounts that have played (Felix). Two code reviews, the SQL run against a real Postgres 16 by the reviewer, play test with two accounts and a guest; decisions in S-103 (2026-11-19). **Still to check by a person:** play one Duel on the deployed server with two accounts and open both screens, because the real Supabase database could not be reached while building
-- [ ] **M2-2.6** Small follow-ups from the second review of M2-2.4, none of them a defect (Felix). Done on 2026-11-19: `result` is a required argument of `tell_round_ended`; `tests/conftest.py` resets the leaderboard cache; a new test runs three calls of `leaderboard_totals` directly, without waiting. **Left:** a person decides whether the old test that waits 0.2 seconds (`test_players_who_ask_while_the_store_is_busy_wait_for_the_same_answer`) is removed now that the new one exists (rule 7); and the same width for “Profile” and “Leaderboard” on Home, or the corrected comment in the stylesheet, waits for the Home icons (branch `game/m2-2.7-home-icons`), which replace both buttons
+- [x] **M2-2.6** Small follow-ups from the second review of M2-2.4, none of them a defect (Felix). Done on 2026-11-19: `result` is a required argument of `tell_round_ended`; `tests/conftest.py` resets the leaderboard cache; a new test runs three calls of `leaderboard_totals` directly, without waiting. The same width for “Profile” and “Leaderboard” on Home has fallen away: M2-2.7 replaced both buttons with icons. The old test that waits 0.2 seconds (`test_players_who_ask_while_the_store_is_busy_wait_for_the_same_answer`) stays next to the new one; removing a test is for a person to decide (rule 7) (2026-11-20)
 - [x] **M2-2.5** Countdown before a round: after “Start game” everybody sees “Round starts in” and 5 to 1, then the round starts as before; a ranking that is still open stays readable (Felix). Code review, play test with three players in real browsers, decisions in S-104 (2026-11-19)
 - [x] **M2-2.7** Home screen: “Profile” and “Leaderboard” are two round icons at the top right instead of two buttons in the card (Felix). Requested by Felix on 2026-11-19; one code review, tried in the browser as an account and as a guest at 320 to 1280 px (2026-11-19)
 

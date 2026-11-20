@@ -34,7 +34,12 @@ class CrashingStore:
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    # Used as a context manager, the test client runs all its connections in
+    # one event loop, like the real server does. Without it every connection
+    # gets a loop of its own, and `signed_out` from the second connection's
+    # handler could fail to wake the first one: the test then hung (M1-2.20).
+    with TestClient(app) as shared_client:
+        yield shared_client
 
 
 @pytest.fixture
