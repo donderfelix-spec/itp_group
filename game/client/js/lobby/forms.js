@@ -162,6 +162,12 @@ window.Game = window.Game || {};
     Game.screens.show('home');
   }
 
+  // Puts a lobby code into the join field (S-109, after a lost connection).
+  // Call it after `showHome`, whose reset empties the field.
+  function putCodeInJoinField(code) {
+    joinForm.elements.code.value = code;
+  }
+
   function showStart() {
     stopWaiting();
     forgetTypedPasswords();
@@ -176,5 +182,6 @@ window.Game = window.Game || {};
     showSignedIn: showSignedIn,
     showHome: showHome,
     showStart: showStart,
+    putCodeInJoinField: putCodeInJoinField,
   };
 })();
