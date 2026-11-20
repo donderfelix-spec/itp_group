@@ -526,3 +526,25 @@ def test_a_burst_while_walking_left_keeps_the_character_facing_left_and_walking(
     assert all(drawn(frame, MARA)["mirrored"] is True for frame in stopped)
     still = frames_between(frames, reached_at + STRIDE_FADES + FRAME)
     assert still and all(drawn(frame, MARA)["stride"] == 0 for frame in still)
+
+
+@needs_node
+def test_after_the_start_of_a_round_the_same_place_as_before_still_ends_the_drawing_there():
+    # Mara walks; the round starts while her last positions are still queued,
+    # so the drawing stops short of them. The server then sends her same
+    # last place again, but only after the placement window (1 s).
+    count = 20
+    places = [[place] for place in walk("Mara", count, SPAWN, (1, 0), 6)]
+    messages = on_time(places)
+    round_at = messages[-1][0] + 1
+    again_at = round_at + 1000 + 100
+    last = (places[-1][0]["x"], places[-1][0]["y"])
+    messages.append((again_at, [places[-1][0]]))
+    frames = run_world(messages, until=again_at + 600, players=["Mara"], own="Mara", start_of_round=round_at)
+
+    waiting = frames_between(frames, round_at + FRAME, again_at - EXACT)
+    assert waiting and all(camera(frame)[0] < last[0] - 1 for frame in waiting)  # stopped short
+    ended = frames_between(frames, again_at + LONGEST_DELAY + TICK)
+    assert ended and all(math.dist(camera(frame), last) < EXACT for frame in ended)
+    xs = [frame["camera"]["x"] for frame in frames_between(frames, messages[0][0])]
+    assert all(x <= last[0] + EXACT for x in xs)

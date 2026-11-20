@@ -381,12 +381,25 @@ Game.world = Game.world || {};
       return;
     }
     // While anybody walks, the server sends every player's position on
-    // every tick. The same place again adds nothing to draw; queued, it
-    // would only make this player's next real step wait behind it.
-    if (previous.x === x && previous.y === y) {
+    // every tick. The place where the drawing will end anyway adds nothing
+    // to draw; queued, it would only make this player's next real step
+    // wait behind it.
+    var drawingEnds = drawingEndsAt(player);
+    if (drawingEnds && drawingEnds.x === x && drawingEnds.y === y) {
       return;
     }
     schedulePosition(player, x, y, now, delay);
+  }
+
+  // Where the drawing of the player will stand once its queue is played:
+  // the target of the last queued entry, or else the current glide's.
+  // Not player.server: startOfRound() can empty the queue before the
+  // drawing got there.
+  function drawingEndsAt(player) {
+    if (player.queue.length > 0) {
+      return player.queue[player.queue.length - 1];
+    }
+    return player.to;
   }
 
   // Puts the position into the player's queue with the time its glide
