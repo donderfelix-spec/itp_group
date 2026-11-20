@@ -21,12 +21,12 @@ These points hold up the start. The reasoning behind them is under “Open decis
 - [x] **K7** The four areas: area 1 Hanna, area 2 Felix, area 3 Laurin, area 4 Lennart (2026-11-19). The name after an open to-do below says who takes it
 - [x] **K8** “We Be(a)t” is put aside for now (S-27)
 - [x] **K9** Render account created and service set up (2026-11-18)
-- [ ] **K10** Names and student numbers of all members for the README (S-36)
+- [x] **K10** Names and student numbers of all members are in the README (S-36, given by Felix on 2026-11-20)
 - [x] **K16** Settled 2026-11-19 (S-102): players may walk while the ranking card is up; a start by the host begins with a countdown of 5 seconds (M2-2.5); a finished player waits for the others as before
 
 ## M0: Preparation
 
-- [ ] **M0-4.1** The five minigames are described in the DESIGN.md, the team should proofread them once more
+- [ ] **M0-4.1** The five minigames are described in the DESIGN.md, the team should proofread them once more (Lennart)
 - [x] **M0-2.7** Write the README in the main folder in English for the submission (S-36), and decide whether the planning documents will be translated. The README names the game, the public URL, the commands to run and test, what works today and the four areas with their owners (S-96); the planning documents are already in English. The names and student numbers are a marked placeholder until K10 is settled (2026-11-19)
 
 ## M1: Walking
@@ -40,7 +40,6 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 - [x] **M1-2.8** Tell a player why they were signed out when the same account logs in somewhere else (needs a text in DESIGN.md, section 9). The browser shows “You were signed in somewhere else.”; the text is a proposal (S-106). Played with two browsers (2026-11-19)
 - [ ] **M1-2.9** Add `sslmode=require` to `DATABASE_URL` on Render, as Supabase recommends, and check that sign up still works
 - [ ] **M1-2.10** Check in the Supabase dashboard that the Data API returns no rows of `accounts` with the public key (row level security is on, S-90)
-- [ ] **M1-2.11** Before the demo: open the Supabase project and make sure it is not paused (free projects pause after a week without activity, S-39)
 
 **Server and hosting (area 2)**
 
@@ -86,7 +85,7 @@ Milestone 2 was built up to the Duel by Claude as lead (pull requests #19 to #26
 - [x] **M2-1.6** More realistic walking: front, side and back view of all eight characters, alternating feet, a soft stop. Two code reviews, play test with two players, the icons in the lobby are unchanged (2026-11-19). Known and accepted: a player put back onto the spawn from fewer than 15 map units away is drawn taking one step, because the browser cannot tell that from a real step; hair and headwear do not turn yet (M2-1.7)
 - [x] **M2-1.7** The hair, buns and headwear of the characters follow the head when it turns. Built with M2-1.5: the whole three-quarter view is mirrored, so hair and headwear turn with the face (2026-11-19)
 - [ ] **M2-1.8** Eight players put on the spawn stand on one point, and at the larger size only the last one drawn can be seen until they walk (S-88); name labels of players standing close cover their neighbours. Spread the players around the spawn on the server, or accept it (Hanna, with Felix for the server)
-- [ ] **M2-1.9** The sketch `design/characters.svg` still shows the Latecomer with speed lines, sweat and steam, and the characters from the front only; bring it in line with the game or mark it as the first sketch (Hanna)
+- [x] **M2-1.9** The sketch `design/characters.svg` still shows the Latecomer with speed lines, sweat and steam, and the characters from the front only; bring it in line with the game or mark it as the first sketch (Hanna). Done on 2026-11-20: the speed lines, sweat drop and steam are gone from the Latecomer; the sketch and DESIGN.md section 3 say that it shows the lobby portraits from the front and that the map uses the three-quarter view facing left or right (S-105). No game code changed
 - [x] **M2-1.10** Remove the small badge with the station's number that is drawn under a character standing on a station (S-105); the large number in the circle, the pulsing border and the button “E Use” stay. Requested by Felix on 2026-11-20; one code review, play test with two guests in Chromium in the lobby and in a Duel round at stations 1, 2, 5 and 6, compared with main (2026-11-20)
 
 **Area 2 (Felix)**
