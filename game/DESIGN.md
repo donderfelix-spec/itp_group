@@ -268,6 +268,11 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | A guest asks for a profile | “Guests have no statistics. Sign up to keep yours.” |
 | Profile or leaderboard while the database is not reachable | “Statistics are unavailable right now.” |
 | A minigame gets content from the server that it cannot show | “This task could not be loaded.” (shown inside the minigame window) |
+| A message that is not text, is not a JSON object or is longer than 2048 bytes (only when someone bypasses the page) | “Messages must be text.” / “That message could not be read.” / “That message is too long.” |
+| A message with a type the server does not know (only when someone bypasses the page) | “The server does not know that action.” |
+| A message with a field the server does not expect, or without a field it needs (only when someone bypasses the page) | “That message has a field the server does not expect.” / “That message is incomplete.” |
+| Choosing a character that does not exist (only when someone bypasses the page) | “That character does not exist.” |
+| A walking direction that is not -1, 0 or 1 (only when someone bypasses the page) | “That move could not be read.” |
 
 ## 10. What is deliberately not included
 

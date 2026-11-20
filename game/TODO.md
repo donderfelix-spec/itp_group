@@ -48,6 +48,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 - [x] **M1-2.14** Add `server/world/` and `server/net/` to the area table in `AGENTS.md` (S-79), by pull request. `server/world/` now stands with area 1; `server/net/` was already listed with area 2 (2026-11-19)
 - [x] **M1-2.15** A lobby that fails on every tick writes 15 log lines per second: log it once and then only now and then. The same fault of the tick (same place, same lobby) is logged at once and then at most once every 60 seconds, with the number of times in between; the rule is `server/net/repeated_faults.py` (2026-11-19)
 - [x] **M1-2.16** Use Python 3.13 in the local `.venv` like CI and Render (it runs 3.14 on the development machine). Done by Felix on 2026-11-20: the local `.venv` runs Python 3.13.18
+- [x] **M1-2.21** Add the texts of `server/protocol.py` that were missing from DESIGN.md, section 9: “Messages must be text.”, “That message could not be read.”, “That message is too long.”, “The server does not know that action.”, “That message has a field the server does not expect.”, “That message is incomplete.”, “That character does not exist.” and “That move could not be read.” (found in the play tests of M1-1.5 and M1-1.8). Documents only; every text the server sends is now in the table (2026-11-20)
 
 **Map and look (area 1)**
 
