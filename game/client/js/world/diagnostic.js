@@ -6,7 +6,8 @@
 //   - how long a message to the server and back takes (a `hello` probe),
 //   - how evenly the browser draws its frames,
 //   - how smoothly the own character is drawn while it walks, starts and stops,
-// and shows the numbers in a small panel with the buttons Copy and Reset.
+// and shows the numbers in a small panel with the buttons Copy, Reset and
+// Hide (Hide folds the panel down to its title; the recording goes on).
 //
 // Without `debug` it does nothing at all: no handler on Game.net, no timer,
 // no frame loop, no element, no message. It only puts its pure helper
@@ -27,7 +28,8 @@ window.Game = window.Game || {};
   // A drawn character that moved less than this, in map units, stood still.
   const SAME_PLACE = 0.01;
   // After the key is released, the character counts as stopped once it has
-  // not moved for this long.
+  // not moved for this long. A walk counts as a start from standing only
+  // when the character had not moved for this long before the key.
   const STOPPED_FOR_MS = 200;
   const LARGE_GAP_MS = 150;
   const LAST_ONES_SHOWN = 12;
@@ -43,15 +45,22 @@ window.Game = window.Game || {};
 
   const PROBE_EVERY_MS = 1000;
   const PROBE_LOST_AFTER_MS = 5000;
-  const PROBE_MESSAGE = { type: 'hello', name: 'debug' };
+  // Every probe has its own name, which the server sends back: "debug0",
+  // "debug1", ... up to "debug9999", then from "debug0" again. (A name is
+  // 3 to 16 letters and digits, see server/protocol.py.)
+  const PROBE_NAME = 'debug';
+  const PROBE_NAMES = 10000;
   const REFRESH_EVERY_MS = 500;
   const COPIED_SHOWN_MS = 1500;
+  // Shown in the panel and in the report: the tool cannot tell these apart.
+  const WALL_NOTE = 'Walk in the open: pressing against a wall counts as a gap and a stall.';
 
-  // Memory stays bounded: older samples are forgotten. 20 000 frames are
-  // about 5 minutes at 60 frames per second.
-  const MOST_FRAMES = 20000;
-  const MOST_MESSAGES = 6000;
-  const MOST_ROUND_TRIPS = 3000;
+  // Memory and the time a refresh of the panel takes stay bounded: older
+  // samples are forgotten. Every list keeps about the last three minutes,
+  // so all numbers of a long recording cover the same time.
+  const MOST_FRAMES = 10800; // 60 frames per second
+  const MOST_MESSAGES = 2700; // 15 `positions` messages per second
+  const MOST_ROUND_TRIPS = 180; // one probe per second
 
   // The buckets of the gap histogram, in ms. A gap belongs to the bucket
   // with from <= gap < to. About 67 ms is a message on time.
@@ -68,51 +77,107 @@ window.Game = window.Game || {};
 
   // ---- Pure helpers: statistics of a list of numbers ------------------------
 
-  function sortedCopy(values) {
-    return values.slice().sort((a, b) => a - b);
+  // The panel is refreshed twice a second over thousands of values, and the
+  // tool must not disturb what it measures. Sorting a whole list to read
+  // two values from it was the expensive part (several ms each time). So
+  // each list is copied once, and the median and the percentiles are picked
+  // out of that one copy with valueAtRank(), without sorting it.
+
+  // A copy the functions below may reorder; the list itself keeps its order.
+  function copyOf(values) {
+    return new Float64Array(values);
+  }
+
+  // The value a full sort would put at place `rank` (0 is the smallest). It
+  // reorders `list` only as far as needed to know that ("quickselect"): take
+  // the value in the middle of the part still searched, move everything
+  // smaller to its left and everything larger to its right, and go on in
+  // the side that holds `rank`. About four times faster than sorting.
+  function valueAtRank(list, rank) {
+    let left = 0;
+    let right = list.length - 1;
+    while (left < right) {
+      const middleValue = list[Math.floor((left + right) / 2)];
+      let low = left;
+      let high = right;
+      while (low <= high) {
+        while (list[low] < middleValue) low++;
+        while (list[high] > middleValue) high--;
+        if (low <= high) {
+          const kept = list[low];
+          list[low] = list[high];
+          list[high] = kept;
+          low++;
+          high--;
+        }
+      }
+      // Now left..high holds the smaller values and low..right the larger.
+      if (rank <= high) right = high;
+      else if (rank >= low) left = low;
+      else break; // `rank` lies between the two sides: it holds middleValue
+    }
+    return list[rank];
   }
 
   // The middle value; for an even count the mean of the two middle ones.
-  // Null for an empty list.
-  function median(values) {
-    if (values.length === 0) return null;
-    const sorted = sortedCopy(values);
-    const middle = Math.floor(sorted.length / 2);
-    if (sorted.length % 2 === 1) return sorted[middle];
-    return (sorted[middle - 1] + sorted[middle]) / 2;
+  // Null for an empty list. `copy` is reordered.
+  function medianIn(copy) {
+    if (copy.length === 0) return null;
+    const middle = Math.floor(copy.length / 2);
+    if (copy.length % 2 === 1) return valueAtRank(copy, middle);
+    return (valueAtRank(copy, middle - 1) + valueAtRank(copy, middle)) / 2;
   }
 
   // The smallest value that at least `percent` % of the values are not
   // above ("nearest rank"). It is always one of the values, also in a short
   // list: the 95th percentile of 3 values is the largest. Null when empty.
+  // `copy` is reordered.
+  function percentileIn(copy, percent) {
+    if (copy.length === 0) return null;
+    const rank = Math.ceil((percent / 100) * copy.length);
+    return valueAtRank(copy, Math.max(0, rank - 1));
+  }
+
+  function median(values) {
+    return medianIn(copyOf(values));
+  }
+
   function percentile(values, percent) {
-    if (values.length === 0) return null;
-    const sorted = sortedCopy(values);
-    const rank = Math.ceil((percent / 100) * sorted.length);
-    return sorted[Math.max(0, rank - 1)];
+    return percentileIn(copyOf(values), percent);
   }
 
   // Not Math.max(...values): a very long list would be too many arguments.
   function maximum(values) {
     if (values.length === 0) return null;
-    return values.reduce((largest, value) => Math.max(largest, value), -Infinity);
+    let largest = values[0];
+    values.forEach((value) => {
+      if (value > largest) largest = value;
+    });
+    return largest;
   }
 
   function summary(values) {
-    return { count: values.length, median: median(values), p95: percentile(values, 95), max: maximum(values) };
+    const copy = copyOf(values);
+    return { count: values.length, median: medianIn(copy), p95: percentileIn(copy, 95), max: maximum(values) };
   }
 
   function countAbove(values, limit) {
-    return values.filter((value) => value > limit).length;
+    let count = 0;
+    values.forEach((value) => {
+      if (value > limit) count += 1;
+    });
+    return count;
   }
 
   // How many values fall into each bucket: [{label, count}].
   function histogram(values, buckets) {
     const used = buckets || GAP_BUCKETS;
-    return used.map((bucket) => ({
-      label: bucket.label,
-      count: values.filter((value) => value >= bucket.from && value < bucket.to).length,
-    }));
+    const counts = used.map((bucket) => ({ label: bucket.label, count: 0 }));
+    values.forEach((value) => {
+      const index = used.findIndex((bucket) => value >= bucket.from && value < bucket.to);
+      if (index !== -1) counts[index].count += 1;
+    });
+    return counts;
   }
 
   function lastOnes(list) {
@@ -126,18 +191,24 @@ window.Game = window.Game || {};
   }
 
   // Since when the player has been walking without a break, or null while
-  // the direction is (0, 0). `walkingSince` is the value so far.
-  function nextWalkingSince(walkingSince, direction, now) {
-    if (!isWalkingDirection(direction)) return null;
-    return walkingSince === null ? now : walkingSince;
+  // the direction is (0, 0). `direction` is what Game.world.walkingDirection()
+  // returns: {dx, dy, since}. world.js sets `since` at the key itself, so a
+  // release and a new key between two frames is still seen as a new walk.
+  function walkingSinceOf(direction) {
+    if (!isWalkingDirection(direction) || typeof direction.since !== 'number') return null;
+    return direction.since;
   }
 
   function hasPosition(sample) {
     return typeof sample.x === 'number' && typeof sample.y === 'number';
   }
 
+  // Pythagoras; `** 0.5` is the square root. Not Math.hypot: it is many times
+  // slower, and this runs for every frame kept each time the panel is refreshed.
   function distance(a, b) {
-    return Math.hypot(b.x - a.x, b.y - a.y);
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    return (dx * dx + dy * dy) ** 0.5;
   }
 
   function hasMoved(previous, current) {
@@ -156,8 +227,8 @@ window.Game = window.Game || {};
 
   // `messages` is [{time, walkingSince}] in the order they arrived. A gap
   // counts only when the player walked at both messages without a break in
-  // between (the same `walkingSince`): the server sends positions only when
-  // somebody moves, so a gap while standing means nothing.
+  // between (the same `walkingSince`, see walkingSinceOf): the server sends
+  // positions only when somebody moves, so a gap while standing means nothing.
   // Returns [{at, gap}]: `at` is the arrival of the later message.
   function walkingGaps(messages) {
     const gaps = [];
@@ -192,7 +263,8 @@ window.Game = window.Game || {};
   // ---- Pure helpers: frames ---------------------------------------------------
 
   // `frames` is [{time, x, y, walkingSince}]: one per frame, x and y where
-  // the own character was drawn (null without a position).
+  // the own character was drawn (null without a position), walkingSince as
+  // walkingSinceOf() gave it in that frame.
 
   function frameTimes(frames) {
     const times = [];
@@ -268,26 +340,38 @@ window.Game = window.Game || {};
     return (100 * uneven) / speeds.length;
   }
 
-  // For every walk: the time from the key (direction no longer zero) to the
-  // first later frame in which the character moves. In ms.
+  // For every walk that began while the character stood: the time from the
+  // key (walkingSince) to the first later frame in which the character
+  // moves. In ms. A walk that began while the character was still gliding
+  // out of the walk before (a quick turn) is not a start: the character
+  // "moves" in the very next frame, whatever the connection does.
   function startDelays(frames) {
     const delays = [];
-    let waitingSince = null; // a walk that has not moved yet
+    let waitingSince = null; // the key of a start that has not moved yet
+    // Since when the character has not been seen moving: at first only
+    // since the first frame, later since the last frame in which it moved.
+    let stillSince = frames.length > 0 ? frames[0].time : null;
     for (let i = 1; i < frames.length; i++) {
       const previous = frames[i - 1];
       const frame = frames[i];
-      const sameWalk = frame.walkingSince !== null && frame.walkingSince === waitingSince;
-      if (sameWalk && hasMoved(previous, frame)) {
+      const moved = hasMoved(previous, frame);
+      if (moved) stillSince = frame.time;
+      if (frame.walkingSince !== previous.walkingSince) {
+        // A walk began or ended, or both, since the frame before.
+        waitingSince = isStartFromStanding(frame, stillSince) ? frame.walkingSince : null;
+      } else if (waitingSince !== null && moved) {
         delays.push(frame.time - waitingSince);
         waitingSince = null;
-      } else if (!sameWalk) {
-        waitingSince = null;
-      }
-      if (frame.walkingSince !== null && frame.walkingSince !== previous.walkingSince) {
-        waitingSince = frame.walkingSince; // a new walk starts in this frame
       }
     }
     return delays;
+  }
+
+  // Did a walk begin in this frame with the character standing for
+  // STOPPED_FOR_MS before the key? (A move in this same frame counts as
+  // "still moving": the server cannot have answered the key yet.)
+  function isStartFromStanding(frame, stillSince) {
+    return frame.walkingSince !== null && frame.walkingSince - stillSince >= STOPPED_FOR_MS;
   }
 
   // For every stop (direction back to zero): how far the character still
@@ -323,6 +407,7 @@ window.Game = window.Game || {};
     const secondsIn = (time) => (time - recording.startedAt) / 1000;
     return {
       recordedSeconds: (now - recording.startedAt) / 1000,
+      fullBuffers: fullBuffers(recording, now),
       tabWasHidden: recording.tabWasHidden,
       walkingGaps: gapNumbers(walkingGaps(recording.messages), secondsIn),
       ownStep: shortSummary(ownSteps(recording.messages)),
@@ -334,8 +419,31 @@ window.Game = window.Game || {};
     };
   }
 
+  // Which lists are full. Their numbers then cover only the newest part of
+  // the recording: the last `kept` entries, which are the last `seconds`.
+  // Returns [{what, kept, seconds}]; round trips carry no time, so no seconds.
+  function fullBuffers(recording, now) {
+    const full = [];
+    const secondsSince = (sample) => (now - sample.time) / 1000;
+    if (recording.frames.length >= MOST_FRAMES) {
+      full.push({ what: 'frames', kept: MOST_FRAMES, seconds: secondsSince(recording.frames[0]) });
+    }
+    if (recording.messages.length >= MOST_MESSAGES) {
+      full.push({ what: 'positions messages', kept: MOST_MESSAGES, seconds: secondsSince(recording.messages[0]) });
+    }
+    if (recording.roundTrips.length >= MOST_ROUND_TRIPS) {
+      full.push({ what: 'round trips', kept: MOST_ROUND_TRIPS, seconds: null });
+    }
+    return full;
+  }
+
   function shortSummary(values) {
     return { count: values.length, median: median(values), max: maximum(values) };
+  }
+
+  function speedNumbers(speeds) {
+    const copy = copyOf(speeds);
+    return { median: medianIn(copy), p5: percentileIn(copy, 5), p95: percentileIn(copy, 95) };
   }
 
   function gapNumbers(gaps, secondsIn) {
@@ -363,7 +471,7 @@ window.Game = window.Game || {};
       stallsPerSecond: found.walkingMs > 0 ? found.stalls.length / (found.walkingMs / 1000) : null,
       longestStallMs: maximum(lengths),
       lastStalls: lastOnes(found.stalls).map((stall) => ({ atSeconds: secondsIn(stall.at), ms: stall.length })),
-      speed: { median: median(speeds), p5: percentile(speeds, 5), p95: percentile(speeds, 95) },
+      speed: speedNumbers(speeds),
       unevenPercent: unevenPercent(speeds),
     };
   }
@@ -397,6 +505,7 @@ window.Game = window.Game || {};
     const frames = numbers.frames;
     const walk = numbers.walking;
     return [
+      WALL_NOTE,
       'Positions messages while walking',
       '  walking gaps: ' + gaps.count + ', messages per second: ' + shown(gaps.perSecond),
       '  gap ms: ' + shownSummary(gaps),
@@ -426,6 +535,17 @@ window.Game = window.Game || {};
     ];
   }
 
+  // Says which lists are full and what their numbers then cover, for example
+  // "Buffers full: frames: the last 10800 only (180.0 s)".
+  function fullBuffersLine(full) {
+    if (full.length === 0) return 'Buffers full: none';
+    const parts = full.map((buffer) => {
+      const seconds = buffer.seconds === null ? '' : ' (' + shown(buffer.seconds) + ' s)';
+      return buffer.what + ': the last ' + buffer.kept + ' only' + seconds;
+    });
+    return 'Buffers full: ' + parts.join('; ');
+  }
+
   // The first lines of the report: what browser and screen it came from.
   // `facts` is {date, userAgent, devicePixelRatio, canvas}; canvas is
   // {width, height, pageWidth, pageHeight} or null.
@@ -438,6 +558,7 @@ window.Game = window.Game || {};
       'Group Project walking diagnostic',
       'Date: ' + facts.date,
       'Recorded: ' + shown(numbers.recordedSeconds) + ' s',
+      fullBuffersLine(numbers.fullBuffers),
       'Browser: ' + facts.userAgent,
       'Device pixel ratio: ' + facts.devicePixelRatio,
       'Canvas: ' + canvasText,
@@ -456,11 +577,14 @@ window.Game = window.Game || {};
   Game.diagnostic = {
     active: false,
     GAP_BUCKETS: GAP_BUCKETS,
+    MOST_FRAMES: MOST_FRAMES,
+    MOST_MESSAGES: MOST_MESSAGES,
+    MOST_ROUND_TRIPS: MOST_ROUND_TRIPS,
     median: median,
     percentile: percentile,
     maximum: maximum,
     histogram: histogram,
-    nextWalkingSince: nextWalkingSince,
+    walkingSinceOf: walkingSinceOf,
     ownPositionIn: ownPositionIn,
     walkingGaps: walkingGaps,
     messagesPerSecond: messagesPerSecond,
@@ -482,9 +606,9 @@ window.Game = window.Game || {};
   // ---- Recording ------------------------------------------------------------
 
   let recording = null;
-  let walkingSince = null; // see nextWalkingSince()
   let ownName = null; // only to find the own entry in `positions`; never shown
-  let probeSentAt = null; // the probe in flight, or null: never more than one
+  let probeInFlight = null; // {name, sentAt}, or null: never more than one
+  let probesSent = 0; // numbers the probes, see PROBE_NAME
 
   function newRecording(now) {
     return {
@@ -515,26 +639,23 @@ window.Game = window.Game || {};
     return world && typeof world.ownDrawnPosition === 'function' ? world.ownDrawnPosition(now) : null;
   }
 
-  function noteDirection(now) {
-    walkingSince = nextWalkingSince(walkingSince, currentDirection(), now);
-  }
-
   function whenPositions(message) {
-    const now = performance.now();
-    noteDirection(now);
-    const sample = { time: now, walkingSince: walkingSince, own: ownPositionIn(message, ownName) };
+    const sample = {
+      time: performance.now(),
+      walkingSince: walkingSinceOf(currentDirection()),
+      own: ownPositionIn(message, ownName),
+    };
     pushBounded(recording.messages, sample, MOST_MESSAGES);
   }
 
   function onFrame(now) {
     window.requestAnimationFrame(onFrame);
-    noteDirection(now);
     const position = ownDrawnPosition(now);
     const frame = {
       time: now,
       x: position ? position.x : null,
       y: position ? position.y : null,
-      walkingSince: walkingSince,
+      walkingSince: walkingSinceOf(currentDirection()),
     };
     pushBounded(recording.frames, frame, MOST_FRAMES);
   }
@@ -543,19 +664,32 @@ window.Game = window.Game || {};
   // nothing else. A probe without an answer after PROBE_LOST_AFTER_MS is lost.
   function probe() {
     const now = performance.now();
-    if (probeSentAt !== null) {
-      if (now - probeSentAt < PROBE_LOST_AFTER_MS) return; // still waiting for it
+    if (probeInFlight !== null) {
+      if (now - probeInFlight.sentAt < PROBE_LOST_AFTER_MS) return; // still waiting for it
       recording.lostProbes += 1;
-      probeSentAt = null;
+      probeInFlight = null;
     }
+    const name = PROBE_NAME + (probesSent % PROBE_NAMES);
     // send() is false without a connection: then nothing is in flight.
-    if (Game.net.send(PROBE_MESSAGE)) probeSentAt = now;
+    if (Game.net.send({ type: 'hello', name: name })) {
+      probeInFlight = { name: name, sentAt: now };
+      probesSent += 1;
+    }
   }
 
-  function whenWelcome() {
-    if (probeSentAt === null) return; // late answer to a lost probe
-    pushBounded(recording.roundTrips, performance.now() - probeSentAt, MOST_ROUND_TRIPS);
-    probeSentAt = null;
+  // Only the answer that carries the name of the probe in flight counts. A
+  // late answer to a probe given up as lost has an older name: counted, it
+  // would make the round trip of the next probe look far too short.
+  function whenWelcome(message) {
+    if (probeInFlight === null || !message || message.name !== probeInFlight.name) return;
+    pushBounded(recording.roundTrips, performance.now() - probeInFlight.sentAt, MOST_ROUND_TRIPS);
+    probeInFlight = null;
+  }
+
+  // The connection is gone, and with it the answer to the probe in flight.
+  // That says nothing about a lost message, so it is forgotten, not counted.
+  function whenConnectionCloses() {
+    probeInFlight = null;
   }
 
   function whenVisibilityChanges() {
@@ -589,12 +723,13 @@ window.Game = window.Game || {};
 
   function reset() {
     recording = newRecording(performance.now());
-    probeSentAt = null; // an answer to an earlier probe is not counted
+    probeInFlight = null; // an answer to an earlier probe is not counted
   }
 
   // ---- The panel ------------------------------------------------------------
 
   let panelText = null;
+  let isCollapsed = false; // true after "Hide": only the title and the buttons show
 
   function makePanel() {
     const panel = document.createElement('div');
@@ -611,6 +746,7 @@ window.Game = window.Game || {};
     panel.appendChild(panelText);
     panel.appendChild(makeButton('Copy', copyReport));
     panel.appendChild(makeButton('Reset', reset));
+    panel.appendChild(makeButton('Hide', hideOrShow));
     document.body.appendChild(panel);
   }
 
@@ -633,9 +769,26 @@ window.Game = window.Game || {};
   }
 
   function refreshPanel() {
-    const all = summarize(recording, performance.now());
-    const title = 'Walking diagnostic, ' + shown(all.recordedSeconds) + ' s recorded';
-    panelText.textContent = [title].concat(numberLines(all)).join('\n');
+    const now = performance.now();
+    const title = 'Walking diagnostic, ' + shown((now - recording.startedAt) / 1000) + ' s recorded';
+    if (isCollapsed) {
+      // No numbers are worked out while they are not shown: the recording
+      // goes on, and Copy and Show work them out when they are asked for.
+      panelText.textContent = title;
+      return;
+    }
+    const all = summarize(recording, now);
+    const lines = [title];
+    if (all.fullBuffers.length > 0) lines.push(fullBuffersLine(all.fullBuffers));
+    panelText.textContent = lines.concat(numberLines(all)).join('\n');
+  }
+
+  // The panel covers a part of the map: "Hide" folds it down to its title
+  // line and the buttons, "Show" brings the numbers back.
+  function hideOrShow(button) {
+    isCollapsed = !isCollapsed;
+    button.textContent = isCollapsed ? 'Show' : 'Hide';
+    refreshPanel();
   }
 
   function copyReport(button) {
@@ -684,6 +837,7 @@ window.Game = window.Game || {};
   });
   Game.net.on('positions', whenPositions);
   Game.net.on('welcome', whenWelcome);
+  Game.net.on('close', whenConnectionCloses);
   document.addEventListener('visibilitychange', whenVisibilityChanges);
   makePanel();
   refreshPanel();

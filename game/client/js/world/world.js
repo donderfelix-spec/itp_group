@@ -135,6 +135,9 @@ Game.world = Game.world || {};
   var players = new Map(); // name -> player record, see newPlayer()
   var pressedKeys = {}; // event.code -> true while the key is held down
   var sentDirection = { dx: 0, dy: 0 }; // what the server heard last
+  // When the player started to walk: the time at which the direction last
+  // changed from (0, 0) to something else. Only the walking diagnostic reads it.
+  var walkingSince = null;
   var usableStations = null; // ids of the stations that count, null = all
   var useHandler = null; // called with the id of the station that is opened
   var useButton = null; // the button "E Use", while the world runs
@@ -730,6 +733,9 @@ Game.world = Game.world || {};
     if (dx === sentDirection.dx && dy === sentDirection.dy) {
       return;
     }
+    if (sentDirection.dx === 0 && sentDirection.dy === 0) {
+      walkingSince = performance.now(); // a new walk; turning keeps the old time
+    }
     sentDirection = { dx: dx, dy: dy };
     if (typeof sendMove === "function") {
       sendMove(dx, dy);
@@ -1164,15 +1170,37 @@ Game.world = Game.world || {};
 
   // ---- Read-only views for the walking diagnostic (diagnostic.js) ------
 
-  // Where the own character is drawn at the time `now`: {x, y}, or null.
+  // Where the frame at the time `now` draws the own character: {x, y}, or
+  // null. It changes nothing, so it may be asked at any time, any number of
+  // times.
   function ownDrawnPosition(now) {
     var own = ownName !== null && players.has(ownName) ? players.get(ownName) : null;
-    return own ? drawnPosition(own, now) : null;
+    if (!own) {
+      return null;
+    }
+    // The diagnostic's frame callback runs before drawFrame(), which starts
+    // the queued glides whose time has come (playQueue). Follow them here
+    // without starting them: `glide` is the glide the frame will draw.
+    var glide = own;
+    for (var i = 0; i < own.queue.length && own.queue[i].startAt <= now; i++) {
+      var entry = own.queue[i];
+      // As in moveTo(): the glide starts where the character is drawn at
+      // that moment, or at its end when that is a jump away.
+      var start = drawnPosition(glide, entry.startAt) || entry;
+      if (isFarApart(start, entry.x, entry.y)) {
+        start = entry;
+      }
+      glide = { from: start, to: entry, arrivedAt: entry.startAt, glideMilliseconds: entry.endAt - entry.startAt };
+    }
+    return drawnPosition(glide, now);
   }
 
-  // A copy of the direction the server heard last, so it cannot be changed.
+  // The direction the server heard last, as a copy so it cannot be changed,
+  // and `since`: when this walk started (the clock of performance.now()),
+  // or null while the direction is (0, 0).
   function walkingDirection() {
-    return { dx: sentDirection.dx, dy: sentDirection.dy };
+    var isMoving = sentDirection.dx !== 0 || sentDirection.dy !== 0;
+    return { dx: sentDirection.dx, dy: sentDirection.dy, since: isMoving ? walkingSince : null };
   }
 
   Game.world.start = start;

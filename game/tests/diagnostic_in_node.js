@@ -9,16 +9,23 @@
 // Input (stdin): JSON {search, clipboard, calls, steps}
 //   search      the `location.search` of the page, for example "" or "?debug"
 //   clipboard   "works" (default), "refuses" (writeText fails) or "missing"
-//   calls       [[name, ...arguments]]: pure functions of Game.diagnostic to call
+//   calls       [[name, ...arguments]]: pure functions of Game.diagnostic to call.
+//               The script also checks that a call left its arguments as they
+//               were (output `changedArguments`: the names of calls that did not).
 //   steps       a list of steps, each a list:
 //     ["frame", time]          the browser draws a frame at this time
 //     ["clock", time]          performance.now() returns this from now on
-//     ["direction", dx, dy]    Game.world.walkingDirection() returns this
+//     ["direction", dx, dy]    Game.world.walkingDirection() returns this; as in world.js, its
+//                              `since` is the clock when it changed from zero, null while zero
 //     ["position", x, y]       Game.world.ownDrawnPosition() returns this (x null: no position)
 //     ["receive", message]     Game.net hands this message to the handlers
 //     ["tick", delay]          the interval timers with this delay run once
 //     ["timeouts"]             the waiting timeouts run
 //     ["connected", yes]       whether Game.net.send() can send
+//     ["long_walk", seconds]   the player walks this long: frames, `positions` messages and
+//                              answered probes with a little jitter, enough to fill the buffers
+//     ["time_refresh", runs]   runs the panel's refresh timer this often and writes down how
+//                              long each run really took (output `record.refreshMs`)
 //     ["hide"]                 the tab is hidden
 //     ["click", text]          the player clicks the panel's button with this text
 //     ["reset"]                Game.diagnostic.reset()
@@ -40,13 +47,15 @@ const record = {
   intervals: [], // delays of setInterval
   timeouts: 0,
   listeners: [], // "window:type" or "document:type"
+  elementListeners: [], // "TAG:type" for every listener put on an element the diagnostic made
+  refreshMs: [], // how long each refresh of ["time_refresh"] took, in real ms
   copied: [], // texts given to navigator.clipboard.writeText
   execCommands: [],
   focusAfterClicks: [], // was the clicked button still focused afterwards?
 };
 
 let clock = 0;
-let direction = { dx: 0, dy: 0 };
+let direction = { dx: 0, dy: 0, since: null };
 let drawn = null;
 let connected = true;
 const netHandlers = new Map();
@@ -77,6 +86,7 @@ class FakeElement {
   }
 
   addEventListener(type, listener) {
+    record.elementListeners.push(this.tagName + ':' + type);
     if (!this.listeners[type]) this.listeners[type] = [];
     this.listeners[type].push(listener);
   }
@@ -180,7 +190,7 @@ page.Game = {
     },
   },
   world: {
-    walkingDirection: () => ({ dx: direction.dx, dy: direction.dy }),
+    walkingDirection: () => ({ dx: direction.dx, dy: direction.dy, since: direction.since }),
     ownDrawnPosition: () => (drawn ? { x: drawn.x, y: drawn.y } : null),
   },
 };
@@ -191,6 +201,17 @@ const diagnostic = page.Game.diagnostic;
 
 function buttonWithText(text) {
   return document.body.all().find((element) => element.tagName === 'BUTTON' && element.textContent === text);
+}
+
+// Numbers from 0 up to 1 that look random but are the same in every run.
+let seed = 12345;
+function jitter() {
+  seed = (seed * 1103515245 + 12345) % 2147483648;
+  return seed / 2147483648;
+}
+
+function isZero(some) {
+  return some.dx === 0 && some.dy === 0;
 }
 
 const STEPS = {
@@ -204,7 +225,10 @@ const STEPS = {
     clock = time;
   },
   direction(dx, dy) {
-    direction = { dx: dx, dy: dy };
+    const next = { dx: dx, dy: dy, since: direction.since };
+    if (isZero(next)) next.since = null;
+    else if (isZero(direction)) next.since = clock;
+    direction = next;
   },
   position(x, y) {
     drawn = x === null ? null : { x: x, y: y };
@@ -223,6 +247,40 @@ const STEPS = {
   connected(yes) {
     connected = yes;
   },
+  long_walk(seconds) {
+    const end = clock + seconds * 1000;
+    let nextMessage = clock;
+    let nextProbe = clock;
+    let x = 0;
+    STEPS.direction(1, 0);
+    let lastFrame = clock;
+    while (clock < end) {
+      const frameAt = clock + 14 + 6 * jitter(); // about 60 frames per second
+      x += (90 * (frameAt - lastFrame)) / 1000; // drawn at the server's walking speed
+      lastFrame = frameAt;
+      drawn = { x: x, y: 0 };
+      STEPS.frame(frameAt);
+      if (clock >= nextMessage) {
+        STEPS.receive({ type: 'positions', players: [{ name: 'Ana', x: x, y: 0 }] });
+        nextMessage = clock + 50 + 40 * jitter();
+      }
+      if (clock >= nextProbe) {
+        STEPS.tick(1000);
+        const sent = record.sent[record.sent.length - 1];
+        clock += 20 + 40 * jitter(); // the round trip
+        STEPS.receive({ type: 'welcome', name: sent.name });
+        nextProbe = clock + 1000;
+      }
+    }
+  },
+  time_refresh(runs) {
+    const refreshTimers = intervalTimers.filter((timer) => timer.delay === 500);
+    for (let run = 0; run < runs; run++) {
+      const before = process.hrtime.bigint();
+      refreshTimers.forEach((timer) => timer.callback());
+      record.refreshMs.push(Number(process.hrtime.bigint() - before) / 1e6);
+    }
+  },
   hide() {
     document.hidden = true;
     document.visibilityListeners.forEach((listener) => listener());
@@ -239,7 +297,13 @@ const STEPS = {
 };
 
 async function main() {
-  const results = (input.calls || []).map(([name, ...values]) => diagnostic[name](...values));
+  const changedArguments = [];
+  const results = (input.calls || []).map(([name, ...values]) => {
+    const before = JSON.stringify(values);
+    const result = diagnostic[name](...values);
+    if (JSON.stringify(values) !== before) changedArguments.push(name);
+    return result;
+  });
   for (const [name, ...values] of input.steps || []) {
     STEPS[name](...values);
     await new Promise((done) => setImmediate(done)); // let a copy finish
@@ -250,6 +314,7 @@ async function main() {
     active: diagnostic.active,
     exported: Object.keys(diagnostic),
     results: results,
+    changedArguments: changedArguments,
     record: record,
     bodyChildren: document.body.children.length,
     panelTexts: panelTexts,
