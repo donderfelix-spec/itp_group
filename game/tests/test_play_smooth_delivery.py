@@ -9,7 +9,7 @@ server's pace, one tick per position, a little later: about one largest gap
 behind the arrivals.
 
 Like test_play_walking_glide.py, these tests run the page's own world.js in
-Node (tests/world_glide_in_node.js): a test decides exactly when a message
+Node (tests/world_playback_in_node.js): a test decides exactly when a message
 arrives and when a frame is drawn, and reads where the camera looks and where
 every character is drawn. Without Node the tests are skipped; CI has Node.
 """
@@ -26,7 +26,7 @@ from server.main import TICKS_PER_SECOND, app
 from server.protocol import CHARACTERS
 
 TESTS = Path(__file__).resolve().parent
-WORLD_IN_NODE = TESTS / "world_glide_in_node.js"
+WORLD_IN_NODE = TESTS / "world_playback_in_node.js"
 NODE = shutil.which("node")
 needs_node = pytest.mark.skipif(NODE is None, reason="Node is needed to run the page's JavaScript")
 
@@ -62,23 +62,31 @@ TIAGO = CHARACTERS[1]
 # ---- Helpers ---------------------------------------------------------------
 
 
-def run_world(messages, until, players, own, start_of_round=None, usable=None):
+def lobby(players):
+    """The lobby list for setPlayers: the i-th name gets the i-th character."""
+    return [{"name": name, "character": CHARACTERS[i]} for i, name in enumerate(players)]
+
+
+def run_world(messages, until, players, own, start_of_round=None, usable=None, paused=None, steps=()):
     """Play `messages` [(t, [{name, x, y}, ...])] into world.js and draw frames until `until` ms.
 
     `players` are the names in the lobby; each gets its own character.
+    `paused` (from, to): no frames in between, as in a hidden tab.
+    `steps`: more steps of the lobby page, each a list [name, t, ...] (see the harness).
     Returns one dict per frame: {t, camera, glow, useButtonOn, characters}.
     """
     events = [(t, 0, ["positions", t, places]) for t, places in messages]
     if start_of_round is not None:
         events.append((start_of_round, 0, ["start_of_round", start_of_round]))
+    events += [(step[1], 0, list(step)) for step in steps]
     t = FRAME_OFFSET
     while t <= until:
-        events.append((t, 1, ["frames", t, t]))
+        if paused is None or not paused[0] <= t < paused[1]:
+            events.append((t, 1, ["frames", t, t]))
         t += FRAME
     # A message that arrives at the same moment as a frame comes first.
     events.sort(key=lambda event: (event[0], event[1]))
-    lobby = [{"name": name, "character": CHARACTERS[i]} for i, name in enumerate(players)]
-    program = {"own": own, "players": lobby, "usable": usable, "steps": [event[2] for event in events]}
+    program = {"own": own, "players": lobby(players), "usable": usable, "steps": [event[2] for event in events]}
     finished = subprocess.run(
         [NODE, str(WORLD_IN_NODE)],
         input=json.dumps(program),
@@ -369,3 +377,123 @@ def test_the_start_of_a_round_puts_a_nearby_character_on_the_spawn_in_one_frame(
             assert c["mirrored"] is False
             assert c["stride"] == 0 and c["walkPhase"] is None
     assert math.dist(camera(after[0]), SPAWN) < EXACT
+
+
+# ---- Bursts and hold-ups -------------------------------------------------------
+
+
+def assert_stops_on_time(frames, messages, last):
+    """The camera never goes past `last` nor backwards, and is on `last` at most
+    the longest delay plus one tick after the last message, and stays there."""
+    last_at = messages[-1][0]
+    xs = [frame["camera"]["x"] for frame in frames_between(frames, messages[0][0])]
+    assert all(a <= b + EXACT for a, b in zip(xs, xs[1:]))
+    assert all(x <= last[0] + EXACT for x in xs)
+    on_time_frames = frames_between(frames, last_at + LONGEST_DELAY + TICK)
+    assert on_time_frames and all(math.dist(camera(frame), last) < EXACT for frame in on_time_frames)
+
+
+@needs_node
+@pytest.mark.parametrize("bursts", [[35], [15, 35]], ids=["at the end", "in the middle and at the end"])
+def test_five_messages_at_once_still_stop_on_the_last_position_in_time(bursts):
+    count = 40
+    places = [[place] for place in walk("Mara", count, SPAWN, (1, 0), 6)]
+    # From each message in `bursts` on, five messages arrive together with the fifth.
+    held = {first + k: first + 4 for first in bursts for k in range(4)}
+    messages = delivered(places, TICK, lambda k: (held[k] - k) * TICK if k in held else 0)
+    assert abs(messages[35][0] - messages[39][0]) < EXACT
+    frames = run_world(messages, until=messages[-1][0] + 600, players=["Mara"], own="Mara")
+
+    assert_stops_on_time(frames, messages, (places[-1][0]["x"], places[-1][0]["y"]))
+
+
+@needs_node
+def test_a_hold_up_of_two_seconds_and_thirty_messages_at_once_still_stop_in_time():
+    count = 50
+    places = [[place] for place in walk("Mara", count, SPAWN, (1, 0), 6)]
+    # From message 20 on nothing arrives for 2 s; then all 30 at once.
+    burst_at = 20 * TICK + 2000
+    messages = delivered(places, TICK, lambda k: burst_at - k * TICK if k >= 20 else 0)
+    assert all(abs(t - burst_at) < EXACT for t, _ in messages[20:])
+    frames = run_world(messages, until=burst_at + 800, players=["Mara"], own="Mara")
+
+    assert_stops_on_time(frames, messages, (places[-1][0]["x"], places[-1][0]["y"]))
+
+
+@needs_node
+def test_after_frames_paused_for_five_seconds_the_drawing_is_not_seconds_behind():
+    # A hidden tab: the browser draws no frames, the messages keep coming.
+    count = 160
+    places = [[place] for place in walk("Mara", count, SPAWN, (1, 0), FELIX_STEP)]
+    messages = felix(places)
+    paused = (2000, 7000)
+    frames = run_world(messages, until=messages[-1][0] + 600, players=["Mara"], own="Mara", paused=paused)
+
+    resumed = frames_between(frames, paused[1])[0]
+    newest = [p for t, p in messages if t <= resumed["t"]][-1][0]
+    # At most one longest delay plus one tick of walking behind the newest position.
+    assert newest["x"] - resumed["camera"]["x"] <= FELIX_STEP * (LONGEST_DELAY + TICK) / FELIX_TICK
+    assert_stops_on_time(frames, messages, (places[-1][0]["x"], places[-1][0]["y"]))
+
+
+# ---- Leaving and the list of players -------------------------------------------
+
+
+@needs_node
+def test_a_long_gap_before_stop_does_not_slow_the_drawing_after_start():
+    # Walking, a gap of 380 ms (long, but no pause), then stop() and start().
+    before = walk("Mara", 21, SPAWN, (1, 0), 6)
+    messages = [(k * TICK, [place]) for k, place in enumerate(before[:20])]
+    messages.append((19 * TICK + 380, [before[20]]))
+    stop_at = messages[-1][0] + 100
+    start_at = stop_at + 100
+    # After the new start: a new walk with messages on time.
+    first_at = start_at + 100
+    after = walk("Mara", 30, (SPAWN[0], SPAWN[1] + 40), (1, 0), 6)
+    messages += [(first_at + k * TICK, [place]) for k, place in enumerate(after)]
+    steps = [["stop", stop_at], ["start", start_at], ["players", start_at, lobby(["Mara"])]]
+    frames = run_world(messages, until=messages[-1][0] + 500, players=["Mara"], own="Mara", steps=steps)
+
+    # The old gap is forgotten: the smallest delay, the same distance in every frame.
+    moves = moves_per_frame(frames, camera, first_at + TICK + 110 + FRAME, messages[-1][0])
+    normal = 6 / TICK * FRAME
+    assert all(abs(move - normal) <= 0.1 * normal for move in moves), (min(moves), max(moves))
+    last = (after[-1]["x"], after[-1]["y"])
+    there = frames_between(frames, messages[-1][0] + 110 + FRAME)
+    assert there and all(math.dist(camera(frame), last) < EXACT for frame in there)
+
+
+@needs_node
+def test_a_player_who_leaves_with_queued_positions_is_no_longer_drawn():
+    count = 30
+    mara = [{"name": "Mara", "x": SPAWN[0], "y": SPAWN[1]}] * count
+    tiago = walk("Tiago", count, (300, 400), (1, 0), FELIX_STEP)
+    messages = felix([[m, t] for m, t in zip(mara, tiago)])
+    leaves_at = messages[-1][0] + 1  # his last positions are still queued
+    steps = [["players", leaves_at, lobby(["Mara"])]]
+    frames = run_world(messages, until=leaves_at + 500, players=["Mara", "Tiago"], own="Mara", steps=steps)
+
+    just_before = frames_between(frames, 0, leaves_at)[-1]
+    assert drawn(just_before, TIAGO)["x"] < tiago[-1]["x"] - 1  # still behind
+    after = frames_between(frames, leaves_at)
+    assert after and all(drawn(frame, TIAGO) is None for frame in after)
+    assert all(drawn(frame, MARA) is not None for frame in after)
+
+
+@needs_node
+def test_a_standing_player_starts_at_once_while_another_player_walks():
+    # Tiago walks the whole time, so every tick brings Mara's same place too.
+    count = 60
+    starts = 30
+    mara = [{"name": "Mara", "x": SPAWN[0], "y": SPAWN[1]}] * starts
+    mara += walk("Mara", count - starts + 1, SPAWN, (1, 0), 6)[1:]
+    tiago = walk("Tiago", count, (300, 400), (1, 0), 6)
+    messages = on_time([[m, t] for m, t in zip(mara, tiago)])
+    first_step_at = messages[starts][0]
+    frames = run_world(messages, until=messages[-1][0], players=["Mara", "Tiago"], own="Mara")
+
+    standing = frames_between(frames, 0, first_step_at - EXACT)
+    assert all(math.dist(camera(frame), SPAWN) < EXACT for frame in standing)
+    first_after = frames_between(frames, first_step_at)[0]
+    assert first_after["t"] - first_step_at < FRAME
+    assert first_after["camera"]["x"] > SPAWN[0] + 0.01

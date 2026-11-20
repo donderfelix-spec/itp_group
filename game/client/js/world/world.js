@@ -190,7 +190,7 @@ Game.world = Game.world || {};
   // jumps, also when messages arrive early or late.
   function moveTo(player, x, y, now) {
     var start = drawnPosition(player, now) || { x: x, y: y };
-    var isJump = Math.abs(x - start.x) > JUMP_DISTANCE || Math.abs(y - start.y) > JUMP_DISTANCE;
+    var isJump = isFarApart(start, x, y);
     var isPlacement = now < player.placedUntil;
     player.placedUntil = -Infinity; // it counts for one position only
     if (isJump || isPlacement) {
@@ -208,6 +208,11 @@ Game.world = Game.world || {};
     player.from = start;
     player.to = { x: x, y: y };
     player.arrivedAt = now;
+  }
+
+  // Further apart than a walk can go in one message: a jump.
+  function isFarApart(place, x, y) {
+    return Math.abs(x - place.x) > JUMP_DISTANCE || Math.abs(y - place.y) > JUMP_DISTANCE;
   }
 
   // Starts the glide to (x, y) at `startAt`; it lasts `milliseconds`.
@@ -360,16 +365,19 @@ Game.world = Game.world || {};
     if (!previous || isFarApart(previous, x, y) || isPlacement) {
       // The first position, a respawn or the start of a round: shown at
       // once, without waiting behind the queue. moveTo() puts it there.
+      // (moveTo() measures a jump from the drawn place, which is a little
+      // behind; a jump just over JUMP_DISTANCE may then glide instead.)
       emptyQueue(player);
       startGlide(player, x, y, now, GLIDE_MILLISECONDS);
       return;
     }
+    // While anybody walks, the server sends every player's position on
+    // every tick. The same place again adds nothing to draw; queued, it
+    // would only make this player's next real step wait behind it.
+    if (previous.x === x && previous.y === y) {
+      return;
+    }
     schedulePosition(player, x, y, now, delay);
-  }
-
-  // Further apart than a walk can go in one message: a jump.
-  function isFarApart(place, x, y) {
-    return Math.abs(x - place.x) > JUMP_DISTANCE || Math.abs(y - place.y) > JUMP_DISTANCE;
   }
 
   // Puts the position into the player's queue with the time its glide
@@ -383,17 +391,34 @@ Game.world = Game.world || {};
     var endAt = now + delay;
     // Otherwise: follow on from the end of the queue.
     if (lastEnd !== null && lastEnd + TICK_MILLISECONDS >= now) {
+      if (isQueueFull(player, now, delay)) {
+        // Several messages arrived at once (after a hold-up). A longer
+        // queue would draw the character ever further behind, so the
+        // newest position takes the place of the last waiting one, at its
+        // times. The server's taking_positions keeps the newest move too.
+        var last = player.queue[player.queue.length - 1];
+        last.x = x;
+        last.y = y;
+        return;
+      }
       startAt = Math.max(lastEnd, now);
       endAt = clamp(lastEnd + nextSpacing(lastEnd, now, delay),
         now + TICK_MILLISECONDS / 2, now + delay + TICK_MILLISECONDS);
-      // Only after the delay has just shrunk can the queue be ahead of
-      // the latest end allowed above. A glide never takes less than half
-      // a tick, so the character never jumps; the short spacing then
-      // shortens the queue step by step.
+      // Only a safety net: with a queue that is not full, the clamp above
+      // already gives every glide at least half a tick. A glide of no time
+      // would be a jump.
       endAt = Math.max(endAt, startAt + TICK_MILLISECONDS / 2);
     }
     player.queue.push({ x: x, y: y, startAt: startAt, endAt: endAt });
     player.queueEndsAt = endAt;
+  }
+
+  // Does the queue already reach far enough, past this arrival plus the
+  // delay and half a tick? Only an entry that is still waiting can take a
+  // newer position; without one the queue counts as not full.
+  function isQueueFull(player, now, delay) {
+    var reachesPast = player.queueEndsAt > now + delay + TICK_MILLISECONDS / 2;
+    return reachesPast && player.queue.length > 0;
   }
 
   // How long the next glide in the queue lasts: one tick, a little longer
