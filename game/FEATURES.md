@@ -32,9 +32,9 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Choose a character from the list of stereotypes | M2 | Done |
 | Display of the current room | M2 | Planned |
 | Nicer, more detailed map: floors, furniture and plants | M2 | In progress |
-| Larger characters | M2 | Planned |
+| Larger characters in a three-quarter view, facing only left or right; held objects stay in the same hand | M2 | Done |
 | Walking animation: moving feet, head turned in the walking direction | M2 | Done |
-| Hair, buns and headwear follow the head when it turns in the walking direction | M2 | Planned |
+| Hair, buns and headwear follow the head when it turns in the walking direction | M2 | Done |
 | Limited view: You only see what is nearby and not behind a wall | M3 | Planned |
 | Show failed players as ghosts | M3 | Planned |
 | Four hiding spots in which you are visible only from close by | M3 | Planned |

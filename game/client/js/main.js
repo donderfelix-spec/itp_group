@@ -87,7 +87,10 @@ window.Game = window.Game || {};
 
   function noteThePhase(phase) {
     const isRound = phase === 'round';
-    if (isRound && !roundIsRunning) finishedStations = new Set(); // a new round
+    if (isRound && !roundIsRunning) { // a new round
+      finishedStations = new Set();
+      callWorld('startOfRound'); // everybody stands and faces right
+    }
     if (!isRound) Game.minigames.close(); // no round, no task
     roundIsRunning = isRound;
   }
