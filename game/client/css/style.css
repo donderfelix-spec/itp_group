@@ -732,20 +732,30 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 /* ---- Minigame "Brew the order", built by js/minigames/brew_order.js ---- */
 
-/* The order slip on the left, the coffee machine on the right. */
+/* The order slip on the left, the coffee machine on the right. In a narrow
+   window the two do not fit next to each other (120px + 14px + 282px, see
+   .brew-slip and .brew-machine), and the machine moves below the slip. */
 .brew-layout {
   display: flex;
+  flex-wrap: wrap;
   align-items: stretch;
   justify-content: center;
   gap: 14px;
   width: 100%;
 }
 
+/* In a narrow window the map is low, and the window is often lower than
+   the slip and the machine together. The body of the window would shrink
+   to what is left and centre the minigame in it, so the top of the slip
+   would lie over the header and the sentence, out of reach of the scroll
+   bar. So the body keeps its full height here, and the window scrolls. */
+.minigame-body:has(> .brew-layout) { flex-shrink: 0; }
+
 .brew-error { margin: 0; }
 
 /* The slip: a note of paper, hanging a little crooked. */
 .brew-slip {
-  flex: 1 1 130px;
+  flex: 1 1 120px;
   align-self: flex-start;
   min-width: 120px;
   padding: 10px 12px;
@@ -809,12 +819,16 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 .brew-step-done .brew-step-name { text-decoration: line-through; }
 
+/* At least 282px next to the slip: three buttons in a row still fit
+   (see .brew-panel). The free room is shared with the slip, so in a wide
+   window the machine is 306px and the slip gets the rest. Alone in its
+   row it may get narrower than 282px, so that it fits into the window
+   of a 320px wide page. */
 .brew-machine {
-  flex: none;
+  flex: 1 1 282px;
   display: flex;
   flex-direction: column;
-  width: 306px;
-  max-width: 100%;
+  max-width: 306px;
   border: var(--outline);
   border-radius: 16px;
   /* Not coral: a wrong button flashes coral and must stand out. */
@@ -823,10 +837,12 @@ body:has(#screen-lobby:not([hidden])) .message {
   overflow: hidden;
 }
 
-/* The six buttons, three in a row. */
+/* The six buttons, three in a row, or two in a narrow window: as many
+   columns of at least 80px as fit. 80px holds the longest name,
+   "Hot water", which stays on one line. */
 .brew-panel {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
   gap: 8px;
   padding: 10px 10px 12px;
   border-bottom: var(--outline);
