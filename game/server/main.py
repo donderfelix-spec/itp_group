@@ -496,15 +496,26 @@ async def handle_choose_mode(websocket: WebSocket, name: str, message: dict):
 
 
 async def handle_start_game(websocket: WebSocket, name: str, message: dict):
-    # The new state with phase "round" is the news that the round started;
-    # there is no message of its own for it (S-91). The next tick sends
-    # everybody's position on the spawn.
-    lobby, rejection_code = app.state.lobbies.start(name)
+    # The round does not start here: the lobby counts down first (S-102),
+    # and the tick starts the round when the countdown is over (see
+    # `start_round_if_due`). Until then nothing of the round exists.
+    lobby, rejection_code = app.state.lobbies.start(name, seconds_now())
     if rejection_code is None:
-        set_up_round(lobby)
         await tell_lobby(lobby)
-        await tell_round_started(lobby)
+        await tell_countdown(lobby)
     return rejection_code
+
+
+async def tell_countdown(lobby):
+    """After the lobby's state with phase "countdown": tell every member how long it is."""
+    await asyncio.gather(*(tell_member_the_countdown(name, lobby) for name in lobby.names()))
+
+
+async def tell_member_the_countdown(name: str, lobby):
+    # Asked right before the send, like in `tell_member`: the countdown may
+    # have been cancelled in the meantime, or the player may have left.
+    if is_member(name, lobby) and lobby.countdown_is_running():
+        await send_to(name, protocol.countdown(lobby.countdown_seconds_left(seconds_now())))
 
 
 async def handle_leave_lobby(websocket: WebSocket, name: str, message: dict):
@@ -689,6 +700,13 @@ def tick(seconds: float):
             # Only the kind of error is logged.
             log_tick_fault("The tick failed for one lobby", lobby.code, problem)
         try:
+            # A countdown that is over starts its round here (S-102). A try
+            # of its own, like the end of a round below.
+            if start_round_if_due(lobby):
+                run_in_background(tell_round_begins(lobby))
+        except Exception as problem:
+            logger.error("The start of a round failed: %s", type(problem).__name__)
+        try:
             # A round whose time is up ends here, with no message from a
             # browser needed. A try of its own: a fault in the walking above
             # must not keep a round from ending.
@@ -734,7 +752,7 @@ async def send_positions(name: str, connection, lobby, message: dict):
 
 
 def seconds_now() -> float:
-    """The server's clock for the tasks, the rounds and the leaderboard's cache.
+    """The server's clock for the tasks, the countdown, the rounds and the leaderboard's cache.
 
     A function of its own, so tests can replace it.
     """
@@ -852,6 +870,39 @@ TASK_HANDLERS = {
 # (S-94); the functions here ask them and send the news. A further mode gets
 # its own line in ROUND_SETUPS, its own place in the lobby (like `lobby.duel`)
 # and its own branch in the functions that ask `lobby.duel`.
+
+
+def start_round_if_due(lobby) -> bool:
+    """Start the lobby's round if its countdown is over (S-102). Returns whether the countdown ended.
+
+    Called by the tick. This function does not wait for anything, and the
+    rules change the phase before anything else happens: so one countdown
+    starts exactly one round, also when a tick comes late or twice. The
+    round is set up now, for the players who are in the lobby now.
+    """
+    try:
+        if not lobby.start_round_if_due(seconds_now()):
+            return False
+        set_up_round(lobby)
+    except Exception as problem:
+        # Whatever failed, in the rules' own start or while the round was
+        # set up: a round without its tasks could never end. The lobby is
+        # open again instead, and the host can press "Start game" once
+        # more. Only the kind of error is logged.
+        logger.error("A round could not be started: %s", type(problem).__name__)
+        lobby.end_round()
+    return True
+
+
+async def tell_round_begins(lobby):
+    """The news that the round started: the lobby's state with phase "round", then what the mode tells.
+
+    There is no message of its own for the start (S-91). The next tick
+    sends everybody's position on the spawn. If the round could not be
+    started, the state says that the lobby is open again, and nothing follows it.
+    """
+    await tell_lobby(lobby)
+    await tell_round_started(lobby)
 
 
 def set_up_round(lobby):
@@ -1009,5 +1060,25 @@ def run_in_background(coroutine):
     task.add_done_callback(background_sends.discard)
 
 
+class ClientFiles(StaticFiles):
+    """The files of the client, each sent with `Cache-Control: no-cache`.
+
+    `no-cache` means: the browser may keep its copy, but it asks the server
+    before every use whether the copy is still current. An unchanged file is
+    answered with a short `304 Not Modified`, so nothing is downloaded twice.
+    Without the header a browser guesses how long a file stays fresh, and a
+    normal reload after a deploy showed an old script.
+
+    Not `no-store`: then every file would be downloaded again on every visit.
+    Not a long `max-age`: that is only safe when a changed file gets a new
+    name (a version in the file name), and without a build step ours never do.
+    """
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 # Mounted last, so /health and /ws win over files of the same name.
-app.mount("/", StaticFiles(directory=CLIENT_DIR, html=True), name="client")
+app.mount("/", ClientFiles(directory=CLIENT_DIR, html=True), name="client")
