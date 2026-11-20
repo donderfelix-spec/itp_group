@@ -833,7 +833,8 @@ Game.world = Game.world || {};
   }
 
   // Stops the loop and the keyboard, takes the button "E Use" away and
-  // forgets players, pressed keys and which stations were usable.
+  // forgets players, hidden name labels, pressed keys and which stations
+  // were usable.
   // Nothing is sent: whoever stops the world has left the lobby already.
   function stop() {
     if (running) {
@@ -845,6 +846,7 @@ Game.world = Game.world || {};
     running = false;
     usableStations = null; // the next lobby starts with all stations again
     players.clear();
+    hiddenNames = new Set(); // in the next lobby nobody counts as hidden before
     pressedKeys = {};
     sentDirection = { dx: 0, dy: 0 };
     sendMove = null;

@@ -254,6 +254,16 @@ def test_the_stacking_code_is_gone(name):
     assert name not in world_script()
 
 
+def test_stopping_the_world_forgets_the_hidden_names():
+    # A player hidden on the last frame before leaving a lobby must not need
+    # the margin in the next lobby: there they are a player not seen before.
+    script = world_script()
+    stop = script[script.index("function stop() {"):]
+    stop = stop[:stop.index("\n  }\n")]
+    assert "players.clear();" in stop
+    assert "hiddenNames = new Set();" in stop
+
+
 def test_world_js_asks_draw_js_which_labels_to_draw():
     assert "Game.world.chooseLabels(" in world_script()
     assert "var LABEL_COME_BACK_MARGIN = 4;" in (WORLD_FOLDER / "draw.js").read_text(encoding="utf-8")
