@@ -21,6 +21,7 @@
 //       ["frames", from, to]                           frames every 1000/60 ms from `from` up to `to`
 //       ["key", t, "down" or "up", code]               a key of the keyboard, for example "KeyD"
 //       ["direction", t]                               write down Game.world.walkingDirection()
+//       ["start_of_round", t]                          Game.world.startOfRound(), as the lobby page calls it
 //       ["stop", t]                                    Game.world.stop()
 //       ["start", t]                                   Game.world.start() again
 //     ]
@@ -201,6 +202,10 @@ const STEPS = {
   direction(t) {
     clock = t;
     directions.push(world.walkingDirection());
+  },
+  start_of_round(t) {
+    clock = t;
+    world.startOfRound();
   },
   stop(t) {
     clock = t;

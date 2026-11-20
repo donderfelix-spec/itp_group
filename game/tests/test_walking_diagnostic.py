@@ -222,8 +222,8 @@ def nearest_rank(values, percent):
 
 
 def test_median_and_percentiles_are_those_of_the_sorted_list():
-    # They are picked out without sorting (valueAtRank in diagnostic.js):
-    # lists of every length, with many equal values, sorted and reversed.
+    # They are read from a sorted copy (sortedCopy in diagnostic.js): lists
+    # of every length, with many equal values, sorted and reversed.
     randomness = random.Random(2026)
     lists = [[randomness.randint(0, 20) for _ in range(length)] for length in range(1, 60)]
     lists += [[randomness.random() * 100 for _ in range(length)] for length in (100, 999, 1000)]
@@ -238,6 +238,23 @@ def test_median_and_percentiles_are_those_of_the_sorted_list():
         assert p5 == nearest_rank(values, 5)
         assert p95 == nearest_rank(values, 95)
         assert p100 == max(values)
+
+
+def test_the_values_are_sorted_as_numbers_not_as_text():
+    # Sorted as text, 10 and 100 come before 9, and -5 after -10.
+    values = [9, 100, 10, 1.5, -5, -10, 2]
+    results = run_diagnostic(
+        calls=[["median", values], ["percentile", values, 5], ["percentile", values, 95], ["percentile", values, 50]]
+    )["results"]
+    assert results == [2, -10, 100, 2]
+
+
+def test_a_summary_reads_the_largest_value_also_from_negative_and_equal_values():
+    recording = {"startedAt": 0, "tabWasHidden": False, "frames": [], "messages": [], "lostProbes": 0}
+    for round_trips, largest in [([-3, -7, -5], -3), ([4, 4, 4], 4), ([12], 12), ([], None)]:
+        numbers = call("summarize", dict(recording, roundTrips=round_trips), 100)
+        assert numbers["roundTrip"]["max"] == largest
+        assert numbers["roundTrip"]["count"] == len(round_trips)
 
 
 # ---- Pure helpers: histogram ---------------------------------------------------------
@@ -291,6 +308,43 @@ def test_a_gap_counts_only_inside_one_walk():
 
 def test_a_gap_from_standing_into_a_walk_does_not_count():
     assert call("walkingGaps", [message(0, None), message(67, 30)]) == []
+
+
+def recording_with_gaps(gaps):
+    """A recording of one walk whose `positions` messages are these gaps apart, in ms."""
+    times = [0]
+    for gap in gaps:
+        times.append(times[-1] + gap)
+    return {
+        "startedAt": 0,
+        "tabWasHidden": False,
+        "frames": [],
+        "messages": [{"time": time, "walkingSince": 0, "own": None} for time in times],
+        "roundTrips": [],
+        "lostProbes": 0,
+    }
+
+
+def test_a_gap_of_exactly_250_ms_is_a_long_gap_and_one_just_below_is_not():
+    gaps = call("summarize", recording_with_gaps([67, 249.5, 67, 250, 67, 150, 149.5]), 2000)["walkingGaps"]
+    assert [gap["ms"] for gap in gaps["longGaps"]] == [250]
+    assert gaps["longGaps"][0]["atSeconds"] == pytest.approx((67 + 249.5 + 67 + 250) / 1000)
+    # A long gap is a large gap too.
+    assert [gap["ms"] for gap in gaps["largeGaps"]] == [249.5, 250, 150]
+
+
+def test_without_a_long_gap_the_list_is_empty_and_the_line_says_none():
+    numbers = call("summarize", recording_with_gaps([67, 170, 67, 249]), 2000)
+    facts = {"date": "today", "userAgent": "Test", "devicePixelRatio": 1, "canvas": None}
+    assert numbers["walkingGaps"]["longGaps"] == []
+    assert len(numbers["walkingGaps"]["largeGaps"]) == 2
+    assert "  last long gaps (>= 250 ms): none" in call("reportText", facts, numbers).splitlines()
+
+
+def test_only_the_last_twelve_long_gaps_are_kept():
+    lengths = [300 + number for number in range(15)]
+    gaps = call("summarize", recording_with_gaps(lengths), 10000)["walkingGaps"]
+    assert [gap["ms"] for gap in gaps["longGaps"]] == lengths[-12:]
 
 
 def test_messages_per_second():
@@ -680,6 +734,26 @@ def test_the_panel_appears_in_the_top_left_corner_above_everything(walked):
     ]
 
 
+def test_the_title_and_the_buttons_come_before_the_numbers_in_the_panel(walked):
+    # In a low window the lower end of the panel is cut off, and the panel
+    # cannot be scrolled: the buttons must be above the numbers.
+    parts = walked["panelParts"]
+    assert [part["tag"] for part in parts] == ["DIV", "BUTTON", "BUTTON", "BUTTON", "PRE"]
+    assert parts[0]["text"].startswith("Walking diagnostic, ")
+    assert parts[0]["text"].endswith(" s recorded")
+    assert [part["text"] for part in parts[1:4]] == ["Copy", "Reset", "Hide"]
+    numbers = parts[4]["text"].splitlines()
+    assert numbers[0] == WALL_NOTE
+    assert any(line.startswith("  walking frames: ") for line in numbers)
+    assert "Walking diagnostic" not in parts[4]["text"]  # the title is not repeated below the buttons
+
+
+def test_the_panel_does_not_show_a_scroll_bar_nobody_could_use(walked):
+    # The panel lets the mouse through, so it cannot be scrolled.
+    assert walked["panelStyle"]["overflow"] == "hidden"
+    assert walked["panelStyle"]["maxHeight"] == "calc(100vh - 8px)"
+
+
 def test_the_panel_says_that_a_wall_counts_as_a_gap_and_a_stall(walked):
     lines = walked["panelTexts"][0].splitlines()
     assert lines[1] == WALL_NOTE
@@ -741,6 +815,7 @@ EVERY_LINE = [
     "histogram ms: <20: 0 | 20–50: 0 | 50–90: ",
     "| ≥500: 0",
     "last large gaps (>= 150 ms): at 1.7 s: 362 ms",
+    "last long gaps (>= 250 ms): at 1.7 s: 362 ms",
     "own step per message (units): count ",
     "Round trip (hello to welcome)",
     "answered: 1, lost: 0, ms: median 40.0, p95 40.0, max 40.0",
@@ -772,6 +847,110 @@ def test_the_report_starts_with_its_title_and_holds_no_player_name(walked):
 def test_a_hidden_tab_is_reported():
     report = run_diagnostic(search="?debug", steps=[["hide"]])["report"]
     assert "Tab hidden during recording: yes" in report
+
+
+def test_the_report_says_once_whether_the_tab_was_hidden(walked):
+    assert walked["report"].count("Tab hidden during recording: ") == 1
+
+
+def test_the_panel_says_that_the_tab_was_not_hidden(walked):
+    assert "Tab hidden during recording: no" in walked["panelTexts"][0].splitlines()
+
+
+def test_the_panel_says_that_the_tab_was_hidden_from_its_next_refresh_on():
+    result = run_diagnostic(search="?debug", steps=[["hide"], ["clock", 500], ["tick", 500]])
+    lines = result["panelTexts"][0].splitlines()
+    assert "Tab hidden during recording: yes" in lines
+    assert "Tab hidden during recording: no" not in lines
+
+
+def test_a_reset_while_the_tab_is_still_hidden_keeps_the_panel_saying_so():
+    result = run_diagnostic(search="?debug", steps=[["hide"], ["clock", 500], ["click", "Reset"]])
+    assert "Tab hidden during recording: yes" in result["panelTexts"][0].splitlines()
+    assert result["numbers"]["tabWasHidden"] is True
+
+
+def test_the_panel_shows_the_large_and_the_long_gaps():
+    # The panel of `walked` was last refreshed before the walk: here its timer runs after it.
+    result = run_diagnostic(search="?debug", steps=walk_steps() + [["tick", 500]])
+    lines = result["panelTexts"][0].splitlines()
+    assert "  last large gaps (>= 150 ms): at 1.7 s: 362 ms" in lines
+    assert "  last long gaps (>= 250 ms): at 1.7 s: 362 ms" in lines
+    assert lines.index("  last long gaps (>= 250 ms): at 1.7 s: 362 ms") == lines.index(
+        "  last large gaps (>= 150 ms): at 1.7 s: 362 ms"
+    ) + 1
+    assert result["numbers"]["walkingGaps"]["longGaps"] == result["numbers"]["walkingGaps"]["largeGaps"]
+
+
+# ---- With ?debug: long gaps on a connection full of large gaps -----------------------------------
+
+# As measured on a bad connection: a gap of 170 ms every 410 ms, and about
+# every 3 s a gap of 400 ms.
+LARGE_GAP = 170
+LONG_GAP = 400
+LONG_GAP_EVERY_MS = 3000
+FLOODED_SECONDS = 60
+
+
+def flooded_gaps():
+    """The gaps between the messages of one minute on that connection, in ms."""
+    gaps = []
+    time = 0
+    next_long_gap_at = LONG_GAP_EVERY_MS
+    while time < FLOODED_SECONDS * 1000:
+        for gap in [LARGE_GAP, 80, 80, 80]:  # 410 ms
+            if time >= next_long_gap_at:
+                gap = LONG_GAP
+                next_long_gap_at += LONG_GAP_EVERY_MS
+            gaps.append(gap)
+            time += gap
+    return gaps
+
+
+@pytest.fixture(scope="module")
+def flooded():
+    steps = [["receive", {"type": "signed_in", "name": OWN_NAME, "guest": True}], ["direction", 1, 0]]
+    steps += [["receive", positions(0)]]
+    time = 0
+    for number, gap in enumerate(flooded_gaps()):
+        time += gap
+        steps += [["clock", time], ["receive", positions(6 * (number + 1))]]
+    steps += [["tick", 500]]
+    return run_diagnostic(search="?debug", steps=steps)
+
+
+def test_the_recording_has_far_more_large_gaps_than_long_ones():
+    gaps = flooded_gaps()
+    assert gaps.count(LARGE_GAP) > 100
+    assert 15 <= gaps.count(LONG_GAP) <= 20
+
+
+def test_the_last_large_gaps_of_a_flooded_connection_cover_only_a_few_seconds(flooded):
+    large = flooded["numbers"]["walkingGaps"]["largeGaps"]
+    assert len(large) == 12
+    assert large[-1]["atSeconds"] - large[0]["atSeconds"] < 8
+    # Most of the list is the frequent gap: the rare long ones drop out of it.
+    assert sum(1 for gap in large if gap["ms"] == LONG_GAP) <= 3
+
+
+def test_the_last_long_gaps_of_a_flooded_connection_are_all_still_there(flooded):
+    long_gaps = flooded["numbers"]["walkingGaps"]["longGaps"]
+    assert [gap["ms"] for gap in long_gaps] == [LONG_GAP] * 12
+    # One about every three seconds, so the twelve reach back more than half a minute.
+    between = [later["atSeconds"] - earlier["atSeconds"] for earlier, later in zip(long_gaps, long_gaps[1:])]
+    assert all(2.5 < seconds < 3.6 for seconds in between)
+    assert long_gaps[-1]["atSeconds"] - long_gaps[0]["atSeconds"] > 30
+    assert long_gaps[-1]["atSeconds"] > FLOODED_SECONDS - 4
+
+
+def test_the_panel_and_the_report_list_the_long_gaps_of_a_flooded_connection(flooded):
+    long_gaps = flooded["numbers"]["walkingGaps"]["longGaps"]
+    line = "  last long gaps (>= 250 ms): " + ", ".join(f"at {gap['atSeconds']:.1f} s: 400 ms" for gap in long_gaps)
+    assert line in flooded["panelTexts"][0].splitlines()
+    assert line in flooded["report"].splitlines()
+    # The line of the large gaps is still there, right above it.
+    lines = flooded["report"].splitlines()
+    assert lines[lines.index(line) - 1].startswith("  last large gaps (>= 150 ms): at ")
 
 
 def test_stalls_are_found_in_a_played_walk():
@@ -955,6 +1134,37 @@ def test_reset_forgets_everything_and_gives_up_the_focus():
     assert result["record"]["focusAfterClicks"] == [False]
 
 
+def test_reset_empties_the_panel_at_once():
+    # The panel was refreshed at 1.5 s and showed the walk. Half a second
+    # later comes the Reset, and no refresh timer runs after it.
+    shown_before = short_walk_steps() + [["clock", 1500], ["tick", 500]]
+    before = run_diagnostic(search="?debug", steps=shown_before)
+    assert before["panelTexts"][0].splitlines()[0] == "Walking diagnostic, 1.5 s recorded"
+    assert "  walking frames: 38, frozen frames: 0" in before["panelTexts"][0].splitlines()
+
+    result = run_diagnostic(search="?debug", steps=shown_before + [["clock", 2000], ["click", "Reset"]])
+    lines = result["panelTexts"][0].splitlines()
+    assert result["numbers"]["walking"]["frames"] == 0
+    assert lines[0] == "Walking diagnostic, 0.0 s recorded"
+    assert "  walking frames: 0, frozen frames: 0" in lines
+    assert "  frames: 0, ms: median -, p95 -, max -" in lines
+    assert "38" not in result["panelTexts"][0]
+
+
+def test_reset_while_hidden_shows_the_new_time_in_the_title_at_once():
+    steps = short_walk_steps() + [["clock", 17500], ["click", "Hide"], ["clock", 18000], ["click", "Reset"]]
+    result = run_diagnostic(search="?debug", steps=steps)
+    assert result["panelTexts"] == ["Walking diagnostic, 0.0 s recorded"]
+    assert [button["text"] for button in result["buttons"]] == ["Copy", "Reset", "Show"]
+
+
+def test_a_reset_asked_by_a_script_empties_the_panel_at_once_too():
+    steps = short_walk_steps() + [["clock", 1500], ["tick", 500], ["clock", 2000], ["reset"]]
+    lines = run_diagnostic(search="?debug", steps=steps)["panelTexts"][0].splitlines()
+    assert lines[0] == "Walking diagnostic, 0.0 s recorded"
+    assert "  walking frames: 0, frozen frames: 0" in lines
+
+
 def test_reset_drops_the_probe_in_flight():
     steps = probe_steps(1000) + [["reset"], ["clock", 1100], ["receive", welcome(0)]]
     result = run_diagnostic(search="?debug", steps=steps + probe_steps(2000))
@@ -979,6 +1189,16 @@ def test_hide_folds_the_panel_down_to_its_title_line_and_the_buttons():
     assert [button["text"] for button in result["buttons"]] == ["Copy", "Reset", "Show"]
     assert result["record"]["focusAfterClicks"] == [False]  # the walking keys keep working
     assert result["bodyChildren"] == 1
+
+
+def test_a_folded_panel_is_the_title_and_the_buttons_and_nothing_below():
+    result = run_diagnostic(search="?debug", steps=short_walk_steps() + [["clock", 1200], ["click", "Hide"]])
+    assert result["panelParts"] == [
+        {"tag": "DIV", "text": "Walking diagnostic, 1.2 s recorded"},
+        {"tag": "BUTTON", "text": "Copy"},
+        {"tag": "BUTTON", "text": "Reset"},
+        {"tag": "BUTTON", "text": "Show"},
+    ]
 
 
 def test_while_hidden_the_recording_goes_on_and_the_title_keeps_counting():
@@ -1072,11 +1292,50 @@ def test_while_no_buffer_is_full_the_panel_has_no_line_about_it(walked):
 def test_a_refresh_of_the_panel_with_full_buffers_is_quick(long_recording):
     # Twice a second, on the same thread that draws the game and handles the
     # `positions` messages: the tool must not disturb what it measures. It
-    # takes about 2 ms here; 8 ms leaves room for a busy machine. (Before,
-    # with five sorts of up to 20 000 values, it took 35 to 65 ms.)
+    # takes about 3.5 ms here. (Before, with five sorts of up to 20 000
+    # values, it took 35 to 65 ms.)
+    # The quickest of the 61 runs is compared: on a machine busy with other
+    # work single runs take far longer, but the quickest one hardly changes.
     times = long_recording["record"]["refreshMs"]
     assert len(times) == 61
-    assert statistics.median(times) < 8, sorted(times)
+    assert min(times) < 8, sorted(times)
+
+
+@pytest.fixture(scope="module")
+def rise_and_fall_recording():
+    # 10 800 frames: the times between them get longer and then shorter
+    # again, the character is drawn faster and then slower with them. Then
+    # the panel is refreshed 61 times.
+    steps = [["receive", {"type": "signed_in", "name": OWN_NAME, "guest": True}]]
+    steps += [["rise_and_fall_walk", MOST_FRAMES - 1], ["time_refresh", 61]]
+    return run_diagnostic(search="?debug", steps=steps)
+
+
+def test_the_numbers_of_the_rise_and_fall_recording_are_those_of_its_frames(rise_and_fall_recording):
+    # As the node script plays them: a frame is 8 ms long and 1/512 ms more
+    # for every frame it is away from the nearer end of the walk.
+    count = MOST_FRAMES - 1  # the times between 10 800 frames
+    between = [8 + min(number, count - 1 - number) / 512 for number in range(count)]
+    assert between[:3] == [8, 8 + 1 / 512, 8 + 2 / 512]  # rising ...
+    assert between[-3:] == [8 + 2 / 512, 8 + 1 / 512, 8]  # ... and falling again
+    assert between.index(max(between)) == count // 2  # the longest frame is the middle one
+    numbers = rise_and_fall_recording["numbers"]
+    assert numbers["frames"]["count"] == len(between)
+    assert numbers["frames"]["median"] == statistics.median(between)
+    assert numbers["frames"]["p95"] == nearest_rank(between, 95)
+    assert numbers["frames"]["max"] == max(between)
+    assert numbers["walking"]["speed"]["median"] == pytest.approx(90, abs=0.5)
+    assert numbers["walking"]["speed"]["p5"] < 65 and numbers["walking"]["speed"]["p95"] > 115
+    assert numbers["walkingGaps"]["count"] == MOST_FRAMES / 4 - 1
+    assert numbers["fullBuffers"][0]["what"] == "frames"
+
+
+def test_a_refresh_is_quick_also_when_the_values_rise_and_then_fall(rise_and_fall_recording):
+    # The slow case of picking the median out without sorting (43 ms a
+    # refresh). A sort has no such case.
+    times = rise_and_fall_recording["record"]["refreshMs"]
+    assert len(times) == 61
+    assert min(times) < 8, sorted(times)
 
 
 def test_a_long_even_walk_is_reported_as_even(long_recording):

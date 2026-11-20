@@ -24,6 +24,11 @@
 //     ["connected", yes]       whether Game.net.send() can send
 //     ["long_walk", seconds]   the player walks this long: frames, `positions` messages and
 //                              answered probes with a little jitter, enough to fill the buffers
+//     ["rise_and_fall_walk", frames]  the player walks for this many frames after a first one;
+//                              the frames get longer up to the middle and shorter again after it,
+//                              and so do the drawn speeds and the gaps between the `positions`
+//                              messages (a list in this order was the slow case of an earlier way
+//                              to find the median)
 //     ["time_refresh", runs]   runs the panel's refresh timer this often and writes down how
 //                              long each run really took (output `record.refreshMs`)
 //     ["hide"]                 the tab is hidden
@@ -31,6 +36,10 @@
 //     ["reset"]                Game.diagnostic.reset()
 // Output (stdout): JSON with what the diagnostic registered, sent and made,
 // the results of the calls, and, when active, its numbers and report.
+//   panelTexts   for each panel, what it says from top to bottom without its buttons:
+//                the title line and below it the numbers
+//   panelParts   the parts of the panel from top to bottom: [{tag, text}], tag being
+//                "DIV" (the title), "BUTTON" or "PRE" (the numbers)
 
 const fs = require('fs');
 const path = require('path');
@@ -199,6 +208,17 @@ vm.runInContext(fs.readFileSync(DIAGNOSTIC, 'utf8'), page, { filename: 'diagnost
 
 const diagnostic = page.Game.diagnostic;
 
+// An element with text of its own: the title, a button or the numbers.
+function isPart(element) {
+  return element.children.length === 0 && element.textContent !== '';
+}
+
+// What a panel says from top to bottom, without its buttons.
+function textOf(panel) {
+  const parts = panel.all().filter((element) => isPart(element) && element.tagName !== 'BUTTON');
+  return parts.map((element) => element.textContent).join('\n');
+}
+
 function buttonWithText(text) {
   return document.body.all().find((element) => element.tagName === 'BUTTON' && element.textContent === text);
 }
@@ -273,6 +293,22 @@ const STEPS = {
       }
     }
   },
+  rise_and_fall_walk(frames) {
+    let x = 0;
+    STEPS.direction(1, 0);
+    drawn = { x: x, y: 0 };
+    STEPS.frame(clock); // the frame the first frame time is measured from
+    for (let number = 0; number < frames; number++) {
+      const height = Math.min(number, frames - 1 - number); // 0, 1, 2, ... up to the middle and back down to 0
+      // Divided by a power of two, the times add up without rounding: the
+      // frame times the diagnostic works out are exactly these.
+      const frameMs = 8 + height / 512;
+      x += ((60 + (120 * height) / frames) * frameMs) / 1000; // drawn at 60 up to 120 units per second
+      drawn = { x: x, y: 0 };
+      STEPS.frame(clock + frameMs);
+      if (number % 4 === 0) STEPS.receive({ type: 'positions', players: [{ name: 'Ana', x: x, y: 0 }] });
+    }
+  },
   time_refresh(runs) {
     const refreshTimers = intervalTimers.filter((timer) => timer.delay === 500);
     for (let run = 0; run < runs; run++) {
@@ -308,7 +344,7 @@ async function main() {
     STEPS[name](...values);
     await new Promise((done) => setImmediate(done)); // let a copy finish
   }
-  const panelTexts = document.body.all().filter((element) => element.tagName === 'PRE').map((element) => element.textContent);
+  const panels = document.body.children.filter((element) => element.tagName === 'DIV');
   const buttons = document.body.all().filter((element) => element.tagName === 'BUTTON');
   process.stdout.write(JSON.stringify({
     active: diagnostic.active,
@@ -317,7 +353,8 @@ async function main() {
     changedArguments: changedArguments,
     record: record,
     bodyChildren: document.body.children.length,
-    panelTexts: panelTexts,
+    panelTexts: panels.map(textOf),
+    panelParts: panels.length ? panels[0].all().filter(isPart).map((part) => ({ tag: part.tagName, text: part.textContent })) : [],
     buttons: buttons.map((button) => ({ text: button.textContent, tabIndex: button.tabIndex })),
     panelStyle: document.body.children.length ? document.body.children[0].style : null,
     numbers: diagnostic.active ? diagnostic.numbers() : null,

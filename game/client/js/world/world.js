@@ -1186,6 +1186,10 @@ Game.world = Game.world || {};
       var entry = own.queue[i];
       // As in moveTo(): the glide starts where the character is drawn at
       // that moment, or at its end when that is a jump away.
+      // moveTo()'s placement rule (placedUntil) needs no mirror here: a queued
+      // entry is never a placement, because startOfRound() empties the queue
+      // and a position inside the placement window is shown at once, without
+      // the queue.
       var start = drawnPosition(glide, entry.startAt) || entry;
       if (isFarApart(start, entry.x, entry.y)) {
         start = entry;

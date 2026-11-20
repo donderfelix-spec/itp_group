@@ -168,6 +168,83 @@ def test_asked_for_a_later_time_it_is_where_a_frame_at_that_time_draws():
         assert math.dist(place(asked_in["asked"][0]), camera(drawn_in)) < EXACT
 
 
+# ---- ownDrawnPosition: a queued position a jump away ----------------------------
+
+JUMP_DISTANCE = 60  # as in world.js: further than this on an axis is a jump, not a glide
+BIG_STEP = 50  # map units; one of them is no jump, two of them are
+
+
+def jump_out_of_the_queue():
+    """Steps in which a position waits in the queue a jump away from the drawn character.
+
+    The server moves the player by 50 units per message, three times. The
+    second and third position are queued. Before the third is drawn, a round
+    starts, which empties the queue: the drawing stops at the second
+    position while the world knows the third. More than a second later (so
+    it is no placement any more) a fourth position comes. It is 50 units
+    from the third, so it is queued like a step, but 100 units from the
+    place the character is drawn.
+    Returns the steps, the place the glide before the queued entry ends, the
+    place of the queued entry, and the time it arrives.
+    """
+    at = [{"name": OWN, "x": SPAWN[0] + BIG_STEP * k, "y": SPAWN[1]} for k in range(4)]
+    arrives_at = 2000
+    steps = [
+        ["positions", 0, [at[0]]],
+        ["positions", 500, [at[1]]],
+        ["positions", 501, [at[2]]],
+        ["start_of_round", 505],
+        ["positions", arrives_at, [at[3]]],
+    ]
+    return steps, (at[1]["x"], at[1]["y"]), (at[3]["x"], at[3]["y"]), arrives_at
+
+
+def test_a_queued_position_a_jump_away_is_drawn_at_its_place_and_asked_before_the_frame_too():
+    steps, glide_ends, queued, arrives_at = jump_out_of_the_queue()
+    frames = run_world(with_frames(steps, until=arrives_at + 500), ask=[0])["frames"]
+    assert abs(queued[0] - glide_ends[0]) > JUMP_DISTANCE
+
+    # Right before the position arrives, the character is drawn where the glide before ended.
+    before = [frame for frame in frames if 1500 < frame["t"] < arrives_at]
+    assert len(before) > 20
+    assert all(math.dist(camera(frame), glide_ends) < EXACT for frame in before)
+    # The first frame after it draws the character at the new place at once: a jump, not a glide.
+    after = [frame for frame in frames if frame["t"] >= arrives_at]
+    assert len(after) > 20
+    assert math.dist(camera(after[0]), queued) < EXACT
+    # Asked before each frame, also before the one that takes the position
+    # out of the queue, the answer is what that frame drew.
+    for frame in frames:
+        if frame["t"] >= first_arrival(steps):
+            assert math.dist(place(frame["asked"][0]), camera(frame)) < EXACT, frame["t"]
+
+
+def test_asking_about_a_queued_jump_leaves_every_frame_as_it_was():
+    steps, _, _, arrives_at = jump_out_of_the_queue()
+    with_all_frames = with_frames(steps, until=arrives_at + 500)
+    never_asked = run_world(with_all_frames)["frames"]
+    asked = run_world(with_all_frames, ask=[0, 40, 500, -30])["frames"]
+    assert [frame["camera"] for frame in asked] == [frame["camera"] for frame in never_asked]
+
+
+def test_a_queued_position_just_inside_the_jump_distance_glides_and_is_followed_too():
+    # The same, with the fourth position 10 units on instead of 50: 60 units
+    # from the drawn character, which is exactly the jump distance and so no jump.
+    steps, glide_ends, _, arrives_at = jump_out_of_the_queue()
+    near = (SPAWN[0] + 2 * BIG_STEP + 10, SPAWN[1])
+    steps[-1] = ["positions", arrives_at, [{"name": OWN, "x": near[0], "y": near[1]}]]
+    frames = run_world(with_frames(steps, until=arrives_at + 500), ask=[0])["frames"]
+    assert abs(near[0] - glide_ends[0]) == JUMP_DISTANCE
+
+    after = [frame for frame in frames if frame["t"] >= arrives_at]
+    # It glides: the first frames are drawn on the way, and the last one at the new place.
+    assert glide_ends[0] < camera(after[0])[0] < glide_ends[0] + 15
+    assert glide_ends[0] < camera(after[1])[0] < near[0]
+    assert math.dist(camera(after[-1]), near) < EXACT
+    for frame in after:
+        assert math.dist(place(frame["asked"][0]), camera(frame)) < EXACT, frame["t"]
+
+
 # ---- ownDrawnPosition: asking changes nothing --------------------------------
 
 

@@ -32,6 +32,10 @@ window.Game = window.Game || {};
   // when the character had not moved for this long before the key.
   const STOPPED_FOR_MS = 200;
   const LARGE_GAP_MS = 150;
+  // On a connection with a large gap several times a second, the list of the
+  // last large gaps holds only a few seconds. The rare long gaps (the ones
+  // that make the character stop) get a list of their own.
+  const LONG_GAP_MS = 250;
   const LAST_ONES_SHOWN = 12;
   // A frame is "uneven" when the character is drawn at less than half or
   // more than one and a half times the server's walking speed (90 units/s).
@@ -56,11 +60,13 @@ window.Game = window.Game || {};
   const WALL_NOTE = 'Walk in the open: pressing against a wall counts as a gap and a stall.';
 
   // Memory and the time a refresh of the panel takes stay bounded: older
-  // samples are forgotten. Every list keeps about the last three minutes,
-  // so all numbers of a long recording cover the same time.
-  const MOST_FRAMES = 10800; // 60 frames per second
-  const MOST_MESSAGES = 2700; // 15 `positions` messages per second
-  const MOST_ROUND_TRIPS = 180; // one probe per second
+  // samples are forgotten. On a screen with 60 frames per second every list
+  // keeps about the last three minutes of walking. A faster screen fills
+  // the frames sooner (at 120 frames per second they are 90 seconds), so
+  // the report says how many seconds each full list covers.
+  const MOST_FRAMES = 10800; // three minutes at 60 frames per second
+  const MOST_MESSAGES = 2700; // three minutes at 15 `positions` messages per second
+  const MOST_ROUND_TRIPS = 180; // three minutes at one probe per second
 
   // The buckets of the gap histogram, in ms. A gap belongs to the bucket
   // with from <= gap < to. About 67 ms is a message on time.
@@ -78,72 +84,45 @@ window.Game = window.Game || {};
   // ---- Pure helpers: statistics of a list of numbers ------------------------
 
   // The panel is refreshed twice a second over thousands of values, and the
-  // tool must not disturb what it measures. Sorting a whole list to read
-  // two values from it was the expensive part (several ms each time). So
-  // each list is copied once, and the median and the percentiles are picked
-  // out of that one copy with valueAtRank(), without sorting it.
+  // tool must not disturb what it measures. So each list is sorted only once
+  // per refresh, and the median, the percentiles and the largest value are
+  // all read from that one sorted copy.
 
-  // A copy the functions below may reorder; the list itself keeps its order.
-  function copyOf(values) {
-    return new Float64Array(values);
-  }
-
-  // The value a full sort would put at place `rank` (0 is the smallest). It
-  // reorders `list` only as far as needed to know that ("quickselect"): take
-  // the value in the middle of the part still searched, move everything
-  // smaller to its left and everything larger to its right, and go on in
-  // the side that holds `rank`. About four times faster than sorting.
-  function valueAtRank(list, rank) {
-    let left = 0;
-    let right = list.length - 1;
-    while (left < right) {
-      const middleValue = list[Math.floor((left + right) / 2)];
-      let low = left;
-      let high = right;
-      while (low <= high) {
-        while (list[low] < middleValue) low++;
-        while (list[high] > middleValue) high--;
-        if (low <= high) {
-          const kept = list[low];
-          list[low] = list[high];
-          list[high] = kept;
-          low++;
-          high--;
-        }
-      }
-      // Now left..high holds the smaller values and low..right the larger.
-      if (rank <= high) right = high;
-      else if (rank >= low) left = low;
-      else break; // `rank` lies between the two sides: it holds middleValue
-    }
-    return list[rank];
+  // A sorted copy, smallest first; the list itself keeps its order. A
+  // Float64Array sorts by number (a plain array would sort by text: 10
+  // before 9).
+  function sortedCopy(values) {
+    return new Float64Array(values).sort();
   }
 
   // The middle value; for an even count the mean of the two middle ones.
-  // Null for an empty list. `copy` is reordered.
-  function medianIn(copy) {
-    if (copy.length === 0) return null;
-    const middle = Math.floor(copy.length / 2);
-    if (copy.length % 2 === 1) return valueAtRank(copy, middle);
-    return (valueAtRank(copy, middle - 1) + valueAtRank(copy, middle)) / 2;
+  // Null for an empty list.
+  function medianOfSorted(sorted) {
+    if (sorted.length === 0) return null;
+    const middle = Math.floor(sorted.length / 2);
+    if (sorted.length % 2 === 1) return sorted[middle];
+    return (sorted[middle - 1] + sorted[middle]) / 2;
   }
 
   // The smallest value that at least `percent` % of the values are not
   // above ("nearest rank"). It is always one of the values, also in a short
   // list: the 95th percentile of 3 values is the largest. Null when empty.
-  // `copy` is reordered.
-  function percentileIn(copy, percent) {
-    if (copy.length === 0) return null;
-    const rank = Math.ceil((percent / 100) * copy.length);
-    return valueAtRank(copy, Math.max(0, rank - 1));
+  function percentileOfSorted(sorted, percent) {
+    if (sorted.length === 0) return null;
+    const rank = Math.ceil((percent / 100) * sorted.length);
+    return sorted[Math.max(0, rank - 1)];
+  }
+
+  function largestOfSorted(sorted) {
+    return sorted.length === 0 ? null : sorted[sorted.length - 1];
   }
 
   function median(values) {
-    return medianIn(copyOf(values));
+    return medianOfSorted(sortedCopy(values));
   }
 
   function percentile(values, percent) {
-    return percentileIn(copyOf(values), percent);
+    return percentileOfSorted(sortedCopy(values), percent);
   }
 
   // Not Math.max(...values): a very long list would be too many arguments.
@@ -157,8 +136,13 @@ window.Game = window.Game || {};
   }
 
   function summary(values) {
-    const copy = copyOf(values);
-    return { count: values.length, median: medianIn(copy), p95: percentileIn(copy, 95), max: maximum(values) };
+    const sorted = sortedCopy(values);
+    return {
+      count: sorted.length,
+      median: medianOfSorted(sorted),
+      p95: percentileOfSorted(sorted, 95),
+      max: largestOfSorted(sorted),
+    };
   }
 
   function countAbove(values, limit) {
@@ -438,22 +422,29 @@ window.Game = window.Game || {};
   }
 
   function shortSummary(values) {
-    return { count: values.length, median: median(values), max: maximum(values) };
+    const sorted = sortedCopy(values);
+    return { count: sorted.length, median: medianOfSorted(sorted), max: largestOfSorted(sorted) };
   }
 
   function speedNumbers(speeds) {
-    const copy = copyOf(speeds);
-    return { median: medianIn(copy), p5: percentileIn(copy, 5), p95: percentileIn(copy, 95) };
+    const sorted = sortedCopy(speeds);
+    return { median: medianOfSorted(sorted), p5: percentileOfSorted(sorted, 5), p95: percentileOfSorted(sorted, 95) };
   }
 
   function gapNumbers(gaps, secondsIn) {
     const lengths = gaps.map((gap) => gap.gap);
-    const large = lastOnes(gaps.filter((gap) => gap.gap >= LARGE_GAP_MS));
     return Object.assign(summary(lengths), {
       perSecond: messagesPerSecond(lengths),
       histogram: histogram(lengths),
-      largeGaps: large.map((gap) => ({ atSeconds: secondsIn(gap.at), ms: gap.gap })),
+      largeGaps: lastGapsFrom(gaps, LARGE_GAP_MS, secondsIn),
+      longGaps: lastGapsFrom(gaps, LONG_GAP_MS, secondsIn),
     });
+  }
+
+  // The last gaps of at least `limit` ms, oldest first: [{atSeconds, ms}].
+  function lastGapsFrom(gaps, limit, secondsIn) {
+    const found = lastOnes(gaps.filter((gap) => gap.gap >= limit));
+    return found.map((gap) => ({ atSeconds: secondsIn(gap.at), ms: gap.gap }));
   }
 
   function frameNumbers(times) {
@@ -506,11 +497,14 @@ window.Game = window.Game || {};
     const walk = numbers.walking;
     return [
       WALL_NOTE,
+      // A hidden tab draws no frames and delays its timers: its numbers mislead.
+      'Tab hidden during recording: ' + (numbers.tabWasHidden ? 'yes' : 'no'),
       'Positions messages while walking',
       '  walking gaps: ' + gaps.count + ', messages per second: ' + shown(gaps.perSecond),
       '  gap ms: ' + shownSummary(gaps),
       '  histogram ms: ' + gaps.histogram.map((bucket) => bucket.label + ': ' + bucket.count).join(' | '),
       '  last large gaps (>= ' + LARGE_GAP_MS + ' ms): ' + shownMoments(gaps.largeGaps),
+      '  last long gaps (>= ' + LONG_GAP_MS + ' ms): ' + shownMoments(gaps.longGaps),
       '  own step per message (units): count ' + numbers.ownStep.count + ', median ' + shown(numbers.ownStep.median, 2) +
         ', max ' + shown(numbers.ownStep.max, 2),
       'Round trip (hello to welcome)',
@@ -562,7 +556,6 @@ window.Game = window.Game || {};
       'Browser: ' + facts.userAgent,
       'Device pixel ratio: ' + facts.devicePixelRatio,
       'Canvas: ' + canvasText,
-      'Tab hidden during recording: ' + (numbers.tabWasHidden ? 'yes' : 'no'),
     ];
   }
 
@@ -724,29 +717,39 @@ window.Game = window.Game || {};
   function reset() {
     recording = newRecording(performance.now());
     probeInFlight = null; // an answer to an earlier probe is not counted
+    refreshPanel(); // at once: the old numbers must not stay until the next refresh
   }
 
   // ---- The panel ------------------------------------------------------------
 
-  let panelText = null;
+  let panelTitle = null;
+  let panelNumbers = null;
   let isCollapsed = false; // true after "Hide": only the title and the buttons show
 
+  // The title and the buttons come first and the numbers below them: the
+  // panel cannot be scrolled (it lets the mouse through), so in a low window
+  // its lower end is cut off. That must never be the buttons.
   function makePanel() {
     const panel = document.createElement('div');
     Object.assign(panel.style, {
       position: 'fixed', top: '4px', left: '4px', zIndex: '1000',
-      maxWidth: '460px', maxHeight: 'calc(100vh - 8px)', overflow: 'auto',
+      maxWidth: '460px', maxHeight: 'calc(100vh - 8px)', overflow: 'hidden',
       padding: '6px 8px', background: 'rgba(20, 20, 30, 0.82)', color: '#f4efe3',
       font: '11px/1.35 ui-monospace, Menlo, Consolas, monospace', borderRadius: '4px',
       // Clicks go through the text to the game below; only the buttons catch them.
       pointerEvents: 'none',
     });
-    panelText = document.createElement('pre');
-    Object.assign(panelText.style, { margin: '0 0 6px', whiteSpace: 'pre-wrap', font: 'inherit' });
-    panel.appendChild(panelText);
-    panel.appendChild(makeButton('Copy', copyReport));
-    panel.appendChild(makeButton('Reset', reset));
-    panel.appendChild(makeButton('Hide', hideOrShow));
+    panelTitle = document.createElement('div');
+    panel.appendChild(panelTitle);
+    const buttons = document.createElement('div');
+    buttons.style.margin = '4px 0';
+    buttons.appendChild(makeButton('Copy', copyReport));
+    buttons.appendChild(makeButton('Reset', reset));
+    buttons.appendChild(makeButton('Hide', hideOrShow));
+    panel.appendChild(buttons);
+    panelNumbers = document.createElement('pre');
+    Object.assign(panelNumbers.style, { margin: '0', whiteSpace: 'pre-wrap', font: 'inherit' });
+    panel.appendChild(panelNumbers);
     document.body.appendChild(panel);
   }
 
@@ -770,17 +773,17 @@ window.Game = window.Game || {};
 
   function refreshPanel() {
     const now = performance.now();
-    const title = 'Walking diagnostic, ' + shown((now - recording.startedAt) / 1000) + ' s recorded';
+    panelTitle.textContent = 'Walking diagnostic, ' + shown((now - recording.startedAt) / 1000) + ' s recorded';
     if (isCollapsed) {
       // No numbers are worked out while they are not shown: the recording
       // goes on, and Copy and Show work them out when they are asked for.
-      panelText.textContent = title;
+      panelNumbers.textContent = '';
       return;
     }
     const all = summarize(recording, now);
-    const lines = [title];
+    const lines = [];
     if (all.fullBuffers.length > 0) lines.push(fullBuffersLine(all.fullBuffers));
-    panelText.textContent = lines.concat(numberLines(all)).join('\n');
+    panelNumbers.textContent = lines.concat(numberLines(all)).join('\n');
   }
 
   // The panel covers a part of the map: "Hide" folds it down to its title
