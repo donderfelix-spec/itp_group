@@ -10,6 +10,9 @@
 //   "failing-character"   it fails for the character "broken" halfway through
 //                         its drawing (after save and translate), and works
 //                         for every other character
+//   "failing-nested"      the same, but it fails inside a second save of its
+//                         own, after making the drawing see-through, as the
+//                         helpers of characters.js do (drawShadow, drawFace)
 //
 // Input (stdin): JSON {"players": [{name, character, x, y}], "frames": N}.
 //   The first player is the own player.
@@ -17,8 +20,8 @@
 //   warnings    every console.warn, as text
 //   errors      every console.error and every error thrown by a frame
 //   characters  every drawn character: {character, x, y} on the screen
-//   standIns    every circle filled in a player's place: {x, y, colour}
-//   names       every player name drawn: {text, x, y} on the screen
+//   standIns    every filled circle: {x, y, colour, alpha} on the screen
+//   names       every player name drawn: {text, x, y, alpha} on the screen
 
 const fs = require('fs');
 const path = require('path');
@@ -40,13 +43,15 @@ const characters = [];
 const standIns = [];
 const names = [];
 
-// ---- A canvas that follows only scale and move -----------------------
+// ---- A canvas that follows only scale, move and opacity ---------------
 // Enough for world.js: the camera is a scale and a move, and so is the
 // stand-in drawCharacter below. Every point drawn is written down where it
-// lands on the screen.
+// lands on the screen. save() and restore() keep the transform and the
+// opacity (globalAlpha), as a real canvas does.
 
 let transform = { scale: 1, x: 0, y: 0 };
-const savedTransforms = [];
+const state = { globalAlpha: 1 }; // fillStyle, font, globalAlpha, ...
+const savedStates = [];
 let lastArc = null;
 
 function onScreen(x, y) {
@@ -60,21 +65,33 @@ const doesNothing = new Proxy(function () {}, {
 });
 
 const contextMethods = {
-  setTransform(scale, b, c, d, x, y) { transform = { scale, x, y }; },
+  // Takes six numbers, or a transform from getTransform().
+  setTransform(scale, b, c, d, x, y) {
+    transform = typeof scale === 'object' ? { ...scale } : { scale, x, y };
+  },
+  getTransform() { return { ...transform }; },
   translate(x, y) { transform = { scale: transform.scale, ...onScreen(x, y) }; },
   scale(factor) { transform = { ...transform, scale: transform.scale * factor }; },
-  save() { savedTransforms.push(transform); },
-  restore() { if (savedTransforms.length) transform = savedTransforms.pop(); },
+  save() { savedStates.push({ transform, alpha: state.globalAlpha }); },
+  restore() {
+    if (savedStates.length) {
+      const saved = savedStates.pop();
+      transform = saved.transform;
+      state.globalAlpha = saved.alpha;
+    }
+  },
   beginPath() { lastArc = null; },
   arc(x, y) { lastArc = onScreen(x, y); },
-  fill() { if (lastArc) standIns.push({ ...lastArc, colour: context.fillStyle }); },
+  fill() {
+    if (lastArc) standIns.push({ ...lastArc, colour: state.fillStyle, alpha: state.globalAlpha });
+  },
   measureText(text) { return { width: String(text).length * 7 }; },
   fillText(text, x, y) {
-    if (playerNames.has(text)) names.push({ text, ...onScreen(x, y) });
+    if (playerNames.has(text)) names.push({ text, ...onScreen(x, y), alpha: state.globalAlpha });
   },
 };
 
-const context = new Proxy({}, {
+const context = new Proxy(state, {
   get(target, key) {
     if (key in contextMethods) return contextMethods[key];
     if (key in target) return target[key]; // fillStyle, font, lineWidth, ...
@@ -146,6 +163,19 @@ if (mode === 'with-characters') {
     ctx.translate(x, y);
     ctx.scale(0.5);
     throw new Error('This drawing fails halfway.');
+  };
+} else if (mode === 'failing-nested') {
+  page.Game.world.drawCharacter = (ctx, characterId, x, y) => {
+    if (characterId !== 'broken') {
+      recordCharacter(ctx, characterId, x, y);
+      return;
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(0.5);
+    ctx.save(); // a helper inside the drawing, like drawShadow
+    ctx.globalAlpha = 0.14;
+    throw new Error('This drawing fails inside a second save.');
   };
 } else if (mode !== 'without-characters') {
   throw new Error('Unknown mode: ' + mode);

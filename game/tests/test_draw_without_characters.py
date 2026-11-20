@@ -102,15 +102,48 @@ def test_a_failing_character_becomes_a_circle_and_the_others_stay_characters():
     assert sorted(item["character"] for item in result["characters"]) == ["c1", "c2"]
 
 
+# Higher up the map than Ana and Bo, so this one is drawn first and the
+# others are drawn after its drawing failed.
+BROKEN_DRAWN_FIRST = {"name": "Cy", "character": "broken", "x": 450, "y": 280}
+FAILING_MODES = [
+    "failing-character",  # fails after one save, a move and a scale
+    "failing-nested",  # fails inside a second save, see-through
+]
+
+
 @needs_node
-def test_a_drawing_that_fails_halfway_does_not_move_the_others_or_the_names():
-    # The failing drawing has already moved and scaled the canvas when it
-    # fails. The players after it and all names must still be in place.
-    expected = draw_frames("with-characters", [ANA, BROKEN, BO])
-    result = draw_frames("failing-character", [ANA, BROKEN, BO])
+@pytest.mark.parametrize("mode", FAILING_MODES)
+def test_in_the_frame_of_the_failure_the_later_players_and_the_names_stay_in_place(mode):
+    # Only the first frame is looked at: the one in which the drawing fails
+    # and has already moved, scaled and faded the canvas.
+    players = [ANA, BROKEN_DRAWN_FIRST, BO]
+    expected = draw_frames("with-characters", players, frames=1)
+    result = draw_frames(mode, players, frames=1)
     others = [item for item in expected["characters"] if item["character"] != "broken"]
     assert places(result["characters"]) == places(others)
     assert result["names"] == expected["names"]
+    assert all(name["alpha"] == 1 for name in result["names"])
+
+
+@needs_node
+@pytest.mark.parametrize("mode", FAILING_MODES)
+def test_in_the_frame_of_the_failure_the_stand_in_is_in_place_and_not_see_through(mode):
+    players = [ANA, BROKEN_DRAWN_FIRST, BO]
+    expected = draw_frames("with-characters", players, frames=1)
+    result = draw_frames(mode, players, frames=1)
+    broken = [item for item in expected["characters"] if item["character"] == "broken"]
+    circles = circles_in_outline_colour(result)
+    assert places(circles) == places(broken)
+    assert [circle["alpha"] for circle in circles] == [1]
+
+
+@needs_node
+@pytest.mark.parametrize("mode", FAILING_MODES)
+def test_the_warning_names_the_character_that_failed(mode):
+    result = draw_frames(mode, [ANA, BROKEN_DRAWN_FIRST, BO])
+    assert len(result["warnings"]) == 1
+    assert '"broken"' in result["warnings"][0]
+    assert result["errors"] == []
 
 
 @needs_node
