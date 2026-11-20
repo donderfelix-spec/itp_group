@@ -39,7 +39,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 - [x] **M1-2.7** Show or hide the password with an eye icon in the sign-up and log-in forms. Played in the browser with mouse and keyboard, at 1280 and 360 px (2026-11-19)
 - [x] **M1-2.8** Tell a player why they were signed out when the same account logs in somewhere else (needs a text in DESIGN.md, section 9). The browser shows “You were signed in somewhere else.”; the text is a proposal (S-106). Played with two browsers (2026-11-19)
 - [ ] **M1-2.9** Add `sslmode=require` to `DATABASE_URL` on Render, as Supabase recommends, and check that sign up still works
-- [ ] **M1-2.10** Check in the Supabase dashboard that the Data API returns no rows of `accounts` with the public key (row level security is on, S-90)
+- [x] **M1-2.10** Check in the Supabase dashboard that the Data API returns no rows of `accounts` with the public key (row level security is on, S-90). Checked by Felix on 2026-11-20: with the role `anon` the table editor shows no rows of `accounts` and none of `account_statistics`
 
 **Server and hosting (area 2)**
 
@@ -47,7 +47,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 - [x] **M1-2.13** Add a favicon (the server log shows a 404 for it on every visit). `client/favicon.ico`, linked from the page (2026-11-19)
 - [x] **M1-2.14** Add `server/world/` and `server/net/` to the area table in `AGENTS.md` (S-79), by pull request. `server/world/` now stands with area 1; `server/net/` was already listed with area 2 (2026-11-19)
 - [x] **M1-2.15** A lobby that fails on every tick writes 15 log lines per second: log it once and then only now and then. The same fault of the tick (same place, same lobby) is logged at once and then at most once every 60 seconds, with the number of times in between; the rule is `server/net/repeated_faults.py` (2026-11-19)
-- [ ] **M1-2.16** Use Python 3.13 in the local `.venv` like CI and Render (it runs 3.14 on the development machine)
+- [x] **M1-2.16** Use Python 3.13 in the local `.venv` like CI and Render (it runs 3.14 on the development machine). Done by Felix on 2026-11-20: the local `.venv` runs Python 3.13.18
 
 **Map and look (area 1)**
 
