@@ -36,6 +36,13 @@ window.Game = window.Game || {};
   // True from the moment this browser asked to log out until the server
   // answers. It tells a wanted `signed_out` from one that came unasked.
   let logOutWasAsked = false;
+  // The code of the lobby this player is in, from the last `lobby_state`.
+  // null outside a lobby.
+  let lobbyCode = null;
+  // The code of the lobby the player was in when the connection was lost
+  // (S-109). The page joins it once by itself after the next sign-in. It
+  // lives in memory only, so reloading the page forgets it.
+  let codeToRejoin = null;
 
   // The map is built by another part of the team and may be missing or
   // unfinished. The page must work without it, so every call goes through here.
@@ -104,6 +111,30 @@ window.Game = window.Game || {};
     Game.statistics.setOwnName(message.name);
     callWorld('setOwnName', message.name);
     Game.forms.showSignedIn(message.name, message.guest);
+    rejoinTheLostLobby(); // after showSignedIn, whose Home screen empties the join field
+  }
+
+  // S-109: a player whose connection was lost in a lobby is put back into
+  // it after signing in again, without typing the code. There is one try
+  // only: the code is forgotten at once. It also goes into the join field,
+  // so after a refusal ("This round has already started.") the player can
+  // press Join later. The server's answer does the rest, as for a click.
+  // `ask` sends nothing if the player clicked something first; the code
+  // then stays in the field all the same.
+  function rejoinTheLostLobby() {
+    if (codeToRejoin === null) return;
+    const code = codeToRejoin;
+    codeToRejoin = null;
+    Game.forms.putCodeInJoinField(code);
+    Game.net.ask({ type: 'join_lobby', code: code });
+  }
+
+  // Leaving with the button, logging out and being signed in somewhere else
+  // are wanted by the player or by the account: none of them may lead to
+  // joining the lobby again by itself (S-109).
+  function forgetTheLobby() {
+    lobbyCode = null;
+    codeToRejoin = null;
   }
 
   // The "Log out" button. `ask` sends nothing while another answer is
@@ -119,6 +150,7 @@ window.Game = window.Game || {};
   function whenSignedOut() {
     const wasAsked = logOutWasAsked;
     logOutWasAsked = false;
+    forgetTheLobby();
     stopWorld();
     Game.forms.showStart();
     if (!wasAsked) Game.screens.showMessage('You were signed in somewhere else.', false);
@@ -138,6 +170,7 @@ window.Game = window.Game || {};
 
   function whenLobbyChanged(message) {
     if (!isLobbyState(message)) return; // Unreadable: keep what is shown.
+    lobbyCode = message.code;
     Game.lobby.show(message);
     // Switching screens moves the keyboard focus, so it happens only on
     // entering the lobby and not on every change in it.
@@ -153,6 +186,7 @@ window.Game = window.Game || {};
   }
 
   function whenLeftLobby() {
+    forgetTheLobby();
     stopWorld();
     Game.forms.showHome();
   }
@@ -218,9 +252,20 @@ window.Game = window.Game || {};
   // connection is back; it is the feedback for every click in that time.
   function whenConnectionLost() {
     logOutWasAsked = false; // The answer to a log-out can no longer arrive.
+    rememberTheLobbyToRejoin();
     stopWorld();
     Game.forms.showStart();
     Game.screens.showLastingMessage('Connection lost. Reconnecting…', true);
+  }
+
+  // S-109: only a player who was in a lobby (in any phase) gets back into it.
+  // A connection lost on another screen adds nothing. A code still waiting
+  // for its one try is kept: the player has not signed in since, so it is
+  // still the last lobby. That happens when a new connection opens and is
+  // lost again before the player signs in.
+  function rememberTheLobbyToRejoin() {
+    if (lobbyCode !== null) codeToRejoin = lobbyCode;
+    lobbyCode = null;
   }
 
   Game.forms.setup(askToLogOut);
