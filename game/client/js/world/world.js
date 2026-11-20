@@ -47,13 +47,19 @@ Game.world = Game.world || {};
   // of a round): not a step, so the character neither walks nor turns.
   var LONGEST_STEP = 15;
   // The feet take full steps while the character glides. With the first
-  // step the steps grow to full size within this time; when no further step
-  // arrives they shrink to nothing within the second time, so the feet are
-  // put down softly instead of snapping to the ground.
-  var STRIDE_GROWS_MILLISECONDS = GLIDE_MILLISECONDS;
+  // step the steps grow to full size within this time, slowly at first and
+  // at the end; when no further step arrives they shrink to nothing within
+  // the second time, so the feet are put down softly instead of snapping to
+  // the ground. Both are their own numbers, not the glide time, so a start
+  // looks the same however long a glide takes.
+  var STRIDE_GROWS_MILLISECONDS = 180;
   var STRIDE_FADES_MILLISECONDS = 150;
-  // One walking cycle is two steps: left foot, right foot.
-  var WALK_CYCLE_MILLISECONDS = 420;
+  // One walking cycle is two steps: left foot, right foot. It runs on the
+  // way the drawn character covers, not on the time: one cycle every this
+  // many map units. So the feet move with the ground on every screen, also
+  // when messages come late or the character stops against a wall. At the
+  // speed of 90 units per second this is about 0.49 seconds per cycle.
+  var WALK_CYCLE_LENGTH = 44;
   // A change of position smaller than this, in map units, is not a step: it
   // neither turns the character nor moves its feet. A real step is about 6
   // units (90 units per second, 15 messages per second, S-86).
@@ -110,8 +116,12 @@ Game.world = Game.world || {};
       to: null,
       arrivedAt: 0, // when `to` arrived, in milliseconds
       lastStepAt: -Infinity, // when the character last took a step
-      strideAtLastStep: 0, // how big its steps were at that moment, 0 to 1
-      walkingSince: 0, // when it started to walk; the walking cycle starts here
+      openAtLastStep: 0, // how open its steps were at that moment, see stepsOpen()
+      // How far the drawn character had walked, in map units, when the
+      // current glide started (see walkedDistance()) ...
+      walkedBeforeGlide: 0,
+      // ... and when it started to walk; the walking cycle starts here.
+      walkedWhenItStarted: 0,
       // Until this time the next position is a placement by the server and
       // not a step, see startOfRound().
       placedUntil: -Infinity,
@@ -154,6 +164,8 @@ Game.world = Game.world || {};
   // character is drawn right now, so it never jumps, also when messages
   // arrive early or late.
   function moveTo(player, x, y, now) {
+    // Counted before the glide changes: the way up to this moment.
+    var walked = walkedDistance(player, now);
     var start = drawnPosition(player, now) || { x: x, y: y };
     var isJump = Math.abs(x - start.x) > JUMP_DISTANCE || Math.abs(y - start.y) > JUMP_DISTANCE;
     var isPlacement = now < player.placedUntil;
@@ -173,6 +185,23 @@ Game.world = Game.world || {};
     player.from = start;
     player.to = { x: x, y: y };
     player.arrivedAt = now;
+    player.walkedBeforeGlide = walked;
+  }
+
+  // How far the drawn character has walked up to the time `now`, in map
+  // units: the way of all earlier glides and the part of the current glide
+  // covered so far. A jump or a placement starts its glide where it ends,
+  // so it adds nothing. Like drawnPosition() it only depends on the time,
+  // so it is the same however often the screen is redrawn, and it does not
+  // depend on how long a glide takes.
+  function walkedDistance(player, now) {
+    var position = drawnPosition(player, now);
+    if (!position) {
+      return 0;
+    }
+    var dx = position.x - player.from.x;
+    var dy = position.y - player.from.y;
+    return player.walkedBeforeGlide + Math.sqrt(dx * dx + dy * dy);
   }
 
   // Looks at the way between the last two positions from the server, (dx, dy),
@@ -186,10 +215,10 @@ Game.world = Game.world || {};
       return;
     }
     if (!isWalking(player, now)) {
-      player.walkingSince = now;
+      player.walkedWhenItStarted = walkedDistance(player, now);
     }
-    // Remember how big the steps are right now: they grow on from there.
-    player.strideAtLastStep = stride(player, now);
+    // Remember how open the steps are right now: they grow on from there.
+    player.openAtLastStep = stepsOpen(player, now);
     player.lastStepAt = now;
     // Only the sideways part of a step turns the character, so a diagonal
     // takes the side of its sideways part. Walking straight up or down
@@ -208,7 +237,7 @@ Game.world = Game.world || {};
   // put there and like a character that has not moved yet.
   function standStill(player) {
     player.lastStepAt = -Infinity;
-    player.strideAtLastStep = 0;
+    player.openAtLastStep = 0;
     player.facingLeft = false;
   }
 
@@ -229,22 +258,29 @@ Game.world = Game.world || {};
     });
   }
 
-  // How big the steps of the player are at the time `now`, from 0 (it
-  // stands) to 1 (full steps). After a step they grow to full size; once the
-  // glide of that step is over and no new step has come, they fade away.
-  // It only depends on the time, like drawnPosition(), so it looks the same
-  // on every screen, however often that screen is redrawn.
-  function stride(player, now) {
+  // How open the steps of the player are at the time `now`, from 0 to 1,
+  // before the easing of stride(). After a step it rises evenly to 1 within
+  // STRIDE_GROWS_MILLISECONDS, starting from where it was; once the glide
+  // of that step is over and no new step has come, it falls evenly to 0
+  // within STRIDE_FADES_MILLISECONDS. It only depends on the time, like
+  // drawnPosition(), so it looks the same on every screen, however often
+  // that screen is redrawn.
+  function stepsOpen(player, now) {
     // Never below 0: the time of a frame can lie a moment before the time
     // at which the message with the step arrived.
     var sinceStep = Math.max(0, now - player.lastStepAt);
-    var grown = Math.min(1, player.strideAtLastStep + sinceStep / STRIDE_GROWS_MILLISECONDS);
-    var faded = (sinceStep - GLIDE_MILLISECONDS) / STRIDE_FADES_MILLISECONDS;
-    faded = Math.max(0, Math.min(1, faded));
-    // Slow at the start and at the end (the curve 3t² - 2t³). A message that
-    // is a little late then hardly shrinks the steps before it arrives.
-    var easedFade = faded * faded * (3 - 2 * faded);
-    return grown * (1 - easedFade);
+    var grown = Math.min(1, player.openAtLastStep + sinceStep / STRIDE_GROWS_MILLISECONDS);
+    var fading = Math.max(0, (sinceStep - GLIDE_MILLISECONDS) / STRIDE_FADES_MILLISECONDS);
+    return Math.max(0, grown - fading);
+  }
+
+  // How big the steps of the player are at the time `now`, from 0 (it
+  // stands) to 1 (full steps): stepsOpen() made slow at the start and at
+  // the end (the curve 3t² - 2t³). The steps grow softly, and a message
+  // that is a little late hardly shrinks them before it arrives.
+  function stride(player, now) {
+    var open = stepsOpen(player, now);
+    return open * open * (3 - 2 * open);
   }
 
   function isWalking(player, now) {
@@ -252,13 +288,14 @@ Game.world = Game.world || {};
   }
 
   // How far the player is in its walking cycle, from 0 to 1, or null when
-  // it stands. The cycle starts with both feet on the ground.
+  // it stands. The cycle starts with both feet on the ground and moves on
+  // only while the drawn character moves.
   function walkPhase(player, now) {
     if (!isWalking(player, now)) {
       return null;
     }
-    var walkedFor = Math.max(0, now - player.walkingSince);
-    return (walkedFor / WALK_CYCLE_MILLISECONDS) % 1;
+    var walked = Math.max(0, walkedDistance(player, now) - player.walkedWhenItStarted);
+    return (walked / WALK_CYCLE_LENGTH) % 1;
   }
 
   // ---- What the lobby page tells the world -----------------------------
@@ -875,4 +912,14 @@ Game.world = Game.world || {};
   Game.world.stationInRange = stationInRange;
   Game.world.setInputPaused = setInputPaused;
   Game.world.nearestStationInRange = nearestStationInRange;
+  // TEMPORARY (M2-1.13 proposals): the numbers the comparison page needs to
+  // walk a character the way this file does, without a server.
+  // Removed with the variant Felix does not choose, before the pull request.
+  Game.world.walkingProposal = {
+    cycleLength: WALK_CYCLE_LENGTH,
+    strideGrowsMs: STRIDE_GROWS_MILLISECONDS,
+    strideFadesMs: STRIDE_FADES_MILLISECONDS,
+    glideMs: GLIDE_MILLISECONDS,
+    smallestStep: SMALLEST_STEP
+  };
 })();

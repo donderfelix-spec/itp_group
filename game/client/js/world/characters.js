@@ -43,12 +43,9 @@ Game.world = Game.world || {};
   // because it depends on how small the character is drawn.
   var thinnestLine = 0;
 
-  // Walking, in design units: how high the rear foot is lifted, how far a
-  // foot swings forward and back, how far a free hand swings, and how far
-  // the body rises on a step.
-  var FOOT_LIFT = 5;
-  var FOOT_SWING = 4;
-  var HAND_SWING = 4;
+  // The highest the body may rise on a step, in design units. The name above
+  // a character on the map keeps room for this rise (HEAD_ROOM_BELOW_NAME
+  // in world.js), so no way of walking may rise higher.
   var BODY_BOB = 3;
   // A walking character leans this far into its walking direction (radians).
   var WALKING_LEAN = 0.05;
@@ -65,6 +62,40 @@ Game.world = Game.world || {};
   var BODY = { x: -19, y: 38, width: 38, height: 42, radius: 11 };
   var TURNED_BODY = { x: -18, y: 38, width: 35, height: 42, radius: 11 };
   var TURNED_BODY_MIDDLE = TURNED_BODY.x + TURNED_BODY.width / 2;
+  // The bottom of the body: the upper body sways around this height.
+  var HIPS_Y = TURNED_BODY.y + TURNED_BODY.height;
+
+  // TEMPORARY (M2-1.13 proposals): chooses the walking variant Felix compares.
+  // Removed with the variant he does not choose, before the pull request.
+  // All lengths in design units, angles in radians:
+  //   footTravel     how far a foot goes in front of and behind the hip
+  //   footLift       how high the swinging foot is lifted
+  //   handSwing      how far a free hand swings forward and back
+  //   heldHandShare  the part of that swing a hand makes that holds
+  //                  something alone (an object held with both hands
+  //                  does not swing at all)
+  //   bodyBob        how far the body rises between two steps
+  //   shoeRoll       how far a shoe tips as it rolls from heel to toe
+  //   headDelay      how much later the head bobs than the body (part of a
+  //                  walking cycle)
+  //   torsoSway      how far the upper body tilts to the side of the leg
+  //                  that carries it
+  var WALK_PROPOSALS = {
+    A: {
+      footTravel: 6, footLift: 3.5, handSwing: 5.5, heldHandShare: 1 / 3, bodyBob: 2,
+      shoeRoll: 0, headDelay: 0, torsoSway: 0
+    },
+    B: {
+      footTravel: 7, footLift: 4.5, handSwing: 6.5, heldHandShare: 1 / 3, bodyBob: 2.5,
+      shoeRoll: 0.3, headDelay: 0.06, torsoSway: 0.03
+    }
+  };
+
+  // TEMPORARY (M2-1.13 proposals): read at draw time, so the comparison
+  // page can switch between the variants. Missing or unknown: "A".
+  function walkProposal() {
+    return window.WALK_PROPOSAL === "B" ? WALK_PROPOSALS.B : WALK_PROPOSALS.A;
+  }
 
   // Ids, names and lines from DESIGN.md, section 3. `colour` is the body colour.
   var characters = [
@@ -775,14 +806,12 @@ Game.world = Game.world || {};
   }
 
   // ---- The turned view and its walking cycle ---------------------------
-
-  // The swing of the walking cycle, from -1 to 1, and 0 when standing.
-  // Above 0 the left foot is in front and the right one behind, below 0
-  // it is the other way round.
-  function swingOf(pose) {
-    var stride = strideOf(pose);
-    return stride === 0 ? 0 : Math.sin(pose.walkPhase * 2 * Math.PI) * stride;
-  }
+  //
+  // One walking cycle is two steps. At walkPhase 0 the left foot (drawn at
+  // the back) has just been put down in front and the right one is behind;
+  // at 0.5 it is the other way round. Around these two moments both feet
+  // are on the ground and the body is lowest. In between, one foot carries
+  // the weight while the other one swings past it; then the body is highest.
 
   // How big the steps are, from 0 (none, also when standing) to 1 (full).
   // Full if the character walks and nothing understandable was passed.
@@ -797,20 +826,187 @@ Game.world = Game.world || {};
     return Math.max(0, Math.min(1, pose.stride));
   }
 
-  // One leg with its shoe. `side` is -1 for the left and 1 for the right
-  // one. `ownSwing` is the swing of this foot: above 0 it stands in front,
-  // below 0 it is behind and lifted off the ground. `raised` is how far the
-  // body is lifted right now: the leg reaches that much further up, so it
-  // never comes off the body.
-  function drawTurnedLeg(ctx, look, side, ownSwing, raised) {
-    var footX = ownSwing * FOOT_SWING;
-    var lift = Math.max(0, -ownSwing) * FOOT_LIFT;
+  // Where the character is in its walking cycle, from 0 to 1 (0 when it
+  // stands). Any number is taken: 1.25 is the same moment as 0.25.
+  function phaseOf(pose) {
+    if (strideOf(pose) === 0) {
+      return 0;
+    }
+    var phase = pose.walkPhase % 1;
+    return phase < 0 ? phase + 1 : phase;
+  }
+
+  // The part of its own step a foot stands on the ground. The rest of the
+  // time it swings forward. As each foot stands more than half of the
+  // time, both stand together for a moment after every step.
+  var STANCE_SHARE = 0.6;
+  // Both feet stand from 0 to STANCE_SHARE - 0.5 (and half a cycle later).
+  // The body is lowest in the middle of that time.
+  var LOWEST_AT = (STANCE_SHARE - 0.5) / 2;
+
+  // Where one foot is in its own step, without sizes. `legPhase` runs from
+  // 0 to 1; at 0 the foot is put down in front. Then it carries the weight
+  // and moves backwards on the ground at a steady speed, as the ground
+  // moves under a walker; then it lifts and swings forward on a low arc.
+  //   forward  from 1 (in front) to -1 (behind)
+  //   lift     from 0 (on the ground) to 1 (highest)
+  //   roll     how the shoe tips: 1 is heel up as far as it goes, -0.6 toes up
+  function footAt(legPhase) {
+    if (legPhase < STANCE_SHARE) {
+      var stance = legPhase / STANCE_SHARE; // 0 to 1 through the stance
+      return { forward: 1 - 2 * stance, lift: 0, roll: rollOnTheGround(stance) };
+    }
+    var swing = (legPhase - STANCE_SHARE) / (1 - STANCE_SHARE); // 0 to 1 through the swing
+    // Slow when it leaves the ground and when it reaches the front.
+    var eased = (1 - Math.cos(Math.PI * swing)) / 2;
+    return { forward: -1 + 2 * eased, lift: Math.sin(Math.PI * swing), roll: 1 - 1.6 * eased };
+  }
+
+  // The roll of a foot on the ground: it lands on the heel with the toes
+  // up, lies flat, and at the end lifts its heel and pushes off its toes.
+  // The swing then turns it from "heel up" back to "toes up" (footAt).
+  function rollOnTheGround(stance) {
+    if (stance < 0.2) {
+      return -0.6 * (1 - stance / 0.2);
+    }
+    if (stance > 0.6) {
+      var pushingOff = (stance - 0.6) / 0.4;
+      return pushingOff * pushingOff;
+    }
+    return 0;
+  }
+
+  // How far the body is lifted at `phase`: lowest when both feet are on
+  // the ground and far apart, highest when the legs pass each other. Two
+  // bobs per cycle, one per step.
+  function bodyRaise(phase, stride, gait) {
+    var bob = Math.min(gait.bodyBob, BODY_BOB);
+    return bob * stride * (1 - Math.cos(4 * Math.PI * (phase - LOWEST_AT))) / 2;
+  }
+
+  // One foot with its sizes, in design units: how far in front of its hip
+  // (`x`), how high above the ground (`lift`) and how far the shoe tips
+  // (`roll`, radians: above 0 the heel is up).
+  function placedFoot(legPhase, stride, gait) {
+    var foot = footAt(legPhase);
+    return {
+      x: foot.forward * gait.footTravel * stride,
+      lift: foot.lift * gait.footLift * stride,
+      roll: foot.roll * gait.shoeRoll * stride
+    };
+  }
+
+  // Everything that moves at one moment of the walk, in design units and
+  // radians. A standing character (stride 0) gets all zeros.
+  //   leftFoot, rightFoot  see placedFoot()
+  //   raised               how far the body is lifted
+  //   headDrop             how far the head stays below where the body
+  //                        would carry it, because it bobs a little later
+  //   torsoTilt            how far the upper body tilts sideways
+  //   handSwing            how far a free hand swings; above 0 the right
+  //                        hand is in front and the left one behind
+  //   heldHandShare        see WALK_PROPOSALS
+  function walkingMoment(phase, stride) {
+    var gait = walkProposal();
+    var raised = bodyRaise(phase, stride, gait);
+    var raisedForTheHead = bodyRaise(phase - gait.headDelay, stride, gait);
+    return {
+      leftFoot: placedFoot(phase, stride, gait),
+      rightFoot: placedFoot((phase + 0.5) % 1, stride, gait),
+      raised: raised,
+      // Only ever lower than the body, never higher: a head that went up
+      // on its own would leave a gap above the shoulders.
+      headDrop: Math.max(0, raised - raisedForTheHead),
+      // Towards the leg that carries the weight: to the left (-x) while the
+      // left foot is on the ground on its own, around phase 0.3.
+      torsoTilt: -gait.torsoSway * stride * Math.sin(2 * Math.PI * (phase - LOWEST_AT)),
+      // The arms swing against the legs: the right hand is furthest in
+      // front when the left foot is (phase 0).
+      handSwing: gait.handSwing * stride * Math.cos(2 * Math.PI * phase),
+      heldHandShare: gait.heldHandShare
+    };
+  }
+
+  // A leg in the turned view is a thigh and a shin: one thick rounded line
+  // from the hip over the knee to the ankle, outlined like an arm. The hip
+  // is hidden behind the body. A standing character's leg is straight and
+  // covers the same place as the portrait's leg (x -13 to -2 or 2 to 13,
+  // down to y = 92).
+  var LEG_WIDTH = 11;
+  var HIP_Y = 72;
+  var ANKLE_Y = 92 - LEG_WIDTH / 2;
+  // The knee sits low on the leg: the body hides the upper part, and the
+  // bend must show below it.
+  var THIGH = 9.5;
+  var SHIN = ANKLE_Y - HIP_Y - THIGH;
+  var SHOE_WIDTH = 14;
+  var SHOE_HEIGHT = 8;
+  var SHOE_TOP = 89;
+
+  // The point `point` turned around `pivot` by `angle` (radians), the way
+  // ctx.rotate() turns a drawing.
+  function turnedAround(point, pivot, angle) {
+    var dx = point.x - pivot.x;
+    var dy = point.y - pivot.y;
+    return {
+      x: pivot.x + dx * Math.cos(angle) - dy * Math.sin(angle),
+      y: pivot.y + dx * Math.sin(angle) + dy * Math.cos(angle)
+    };
+  }
+
+  // Where the knee is on a leg from `hip` to `ankle`. Thigh and shin keep
+  // their lengths and the knee bends forward (+x), so a foot that is
+  // lifted bends the knee. If the ankle is as far away as the whole leg
+  // or further, the leg is straight (and stretched a little, like the
+  // legs of the portrait, when the body rises).
+  function kneeOf(hip, ankle) {
+    var dx = ankle.x - hip.x;
+    var dy = ankle.y - hip.y;
+    var distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance >= THIGH + SHIN) {
+      var share = THIGH / (THIGH + SHIN);
+      return { x: hip.x + dx * share, y: hip.y + dy * share };
+    }
+    // The triangle hip-knee-ankle: the law of cosines gives the angle
+    // between the line to the ankle and the thigh.
+    var cosine = (THIGH * THIGH + distance * distance - SHIN * SHIN) / (2 * THIGH * distance);
+    var bend = Math.acos(Math.max(-1, Math.min(1, cosine)));
+    // Turning the direction to the ankle towards +x makes its angle smaller.
+    var direction = Math.atan2(dy, dx) - bend;
+    return { x: hip.x + THIGH * Math.cos(direction), y: hip.y + THIGH * Math.sin(direction) };
+  }
+
+  // One leg with its shoe. `side` is -1 for the left leg (drawn at the
+  // back) and 1 for the right one. `foot` comes from placedFoot(), and
+  // `raised` is how far the body is lifted: the hip goes up with it while
+  // the foot stays where it is.
+  function drawTurnedLeg(ctx, look, side, foot, raised) {
     // The shoes point a little to the side the character is turned to.
-    var shoeX = (side < 0 ? -15 : 1) + SHOE_TURN + footX;
-    box(ctx, shoeX, 89 - lift, 14, 8, 4, look.shoes || OUTLINE, look.shoes ? 1.5 : 0);
-    // The hip moves less than the foot.
-    var legX = (side < 0 ? -13 : 2) + footX * 0.6;
-    box(ctx, legX, 74 - raised, 11, 18 + raised - lift, 4, look.legs, 2);
+    var shoeX = (side < 0 ? -15 : 1) + SHOE_TURN + foot.x;
+    var shoeY = SHOE_TOP - foot.lift;
+    var hip = { x: side * (LEG_WIDTH + 4) / 2, y: HIP_Y - raised };
+    var ankle = { x: hip.x + foot.x, y: ANKLE_Y - foot.lift };
+    // A shoe tips over its toes when its heel goes up, and over its heel
+    // when its toes go up. The ankle goes with it.
+    var pivot = { x: foot.roll > 0 ? shoeX + SHOE_WIDTH : shoeX, y: shoeY + SHOE_HEIGHT };
+    ankle = turnedAround(ankle, pivot, foot.roll);
+    ctx.save();
+    ctx.translate(pivot.x, pivot.y);
+    ctx.rotate(foot.roll);
+    ctx.translate(-pivot.x, -pivot.y);
+    box(ctx, shoeX, shoeY, SHOE_WIDTH, SHOE_HEIGHT, 4, look.shoes || OUTLINE, look.shoes ? 1.5 : 0);
+    ctx.restore();
+    var knee = kneeOf(hip, ankle);
+    ctx.beginPath();
+    ctx.moveTo(hip.x, hip.y);
+    ctx.lineTo(knee.x, knee.y);
+    ctx.lineTo(ankle.x, ankle.y);
+    // Thick in the outline colour, then thinner in the leg colour: the same
+    // outline of 2 as the portrait's leg.
+    paint(ctx, null, OUTLINE, LEG_WIDTH + 2);
+    ctx.strokeStyle = look.legs;
+    ctx.lineWidth = LEG_WIDTH - 2;
+    ctx.stroke();
   }
 
   // Where the arms start in the turned view. The body is a little narrower
@@ -818,6 +1014,9 @@ Game.world = Game.world || {};
   // to the middle than the one at the back.
   var FRONT_SHOULDER = 15;
   var BACK_SHOULDER = 16;
+  // A hand hangs about this far below its shoulder. Swinging, it moves on a
+  // circle around the shoulder, so it rises a little at both ends.
+  var ARM_REACH = 20;
 
   // One arm from the shoulder at `shoulderX` to (handX, handY - 3), like
   // drawArm() of the portrait. `side` is -1 if the arm is on the left of
@@ -834,18 +1033,29 @@ Game.world = Game.world || {};
     ctx.stroke();
   }
 
+  // The hand at `hand` ([x, y]) swung forward by `swing` (back if below 0).
+  function swungHand(hand, swing) {
+    return [hand[0] + swing, hand[1] - swing * swing / (2 * ARM_REACH)];
+  }
+
   // Arms, object and hands of the character as it is drawn turned to the
-  // right. Free hands swing against the legs, as in real walking; a hand
-  // that holds something stays where the object is.
-  function drawTurnedArmsObjectAndHands(ctx, look, swing) {
-    var handSwing = look.handsSwing ? swing * HAND_SWING : 0;
-    var left = look.turnedLeftHand;
-    var right = look.turnedRightHand;
-    drawTurnedArm(ctx, -BACK_SHOULDER, -1, left[0] - handSwing, left[1], look.body);
-    drawTurnedArm(ctx, FRONT_SHOULDER, 1, right[0] + handSwing, right[1], look.body);
+  // right. The hands swing against the legs, as in real walking: a free
+  // hand the whole way, a hand that holds something alone only a part of
+  // it, and its object goes with it. What is held with both hands does not
+  // swing; it only rises and sinks with the body.
+  function drawTurnedArmsObjectAndHands(ctx, look, moment) {
+    var leftIsFree = look.handsSwing || look.holdsInRightHand;
+    var rightShare = look.handsSwing ? 1 : look.holdsInRightHand ? moment.heldHandShare : 0;
+    var left = swungHand(look.turnedLeftHand, leftIsFree ? -moment.handSwing : 0);
+    var right = swungHand(look.turnedRightHand, moment.handSwing * rightShare);
+    drawTurnedArm(ctx, -BACK_SHOULDER, -1, left[0], left[1], look.body);
+    drawTurnedArm(ctx, FRONT_SHOULDER, 1, right[0], right[1], look.body);
+    ctx.save();
+    ctx.translate(right[0] - look.turnedRightHand[0], right[1] - look.turnedRightHand[1]);
     look.turnedObject(ctx);
-    circle(ctx, left[0] - handSwing, left[1], 5, SKIN, 2);
-    circle(ctx, right[0] + handSwing, right[1], 5, SKIN, 2);
+    ctx.restore();
+    circle(ctx, left[0], left[1], 5, SKIN, 2);
+    circle(ctx, right[0], right[1], 5, SKIN, 2);
   }
 
   // The same for a character that is turned to the left and holds its
@@ -855,26 +1065,40 @@ Game.world = Game.world || {};
   // view to the right, on the right of the screen. Only its shoulder moves,
   // because that side of the body is now the back. The free hand goes to
   // the other side, which is the side the character is turned to.
-  function drawArmsWithObjectKeptInHand(ctx, look) {
-    var free = look.turnedLeftHand;
-    var holding = look.turnedRightHand;
-    drawTurnedArm(ctx, FRONT_SHOULDER, 1, -free[0], free[1], look.body);
-    circle(ctx, -free[0], free[1], 5, SKIN, 2);
+  //
+  // The swing: the free hand now hangs at the front shoulder, so it swings
+  // like the front hand of drawTurnedArmsObjectAndHands(), and the holding
+  // hand like the back one. Mirrored back, "back" (-x) is +x for it.
+  function drawArmsWithObjectKeptInHand(ctx, look, moment) {
+    var free = swungHand([-look.turnedLeftHand[0], look.turnedLeftHand[1]], moment.handSwing);
+    var holding = swungHand(look.turnedRightHand, moment.handSwing * moment.heldHandShare);
+    drawTurnedArm(ctx, FRONT_SHOULDER, 1, free[0], free[1], look.body);
+    circle(ctx, free[0], free[1], 5, SKIN, 2);
     ctx.save();
     ctx.scale(-1, 1); // mirrored back: from here x grows to the right of the screen
     drawTurnedArm(ctx, BACK_SHOULDER, 1, holding[0], holding[1], look.body);
+    ctx.save();
+    ctx.translate(holding[0] - look.turnedRightHand[0], holding[1] - look.turnedRightHand[1]);
     look.turnedObject(ctx);
+    ctx.restore();
     circle(ctx, holding[0], holding[1], 5, SKIN, 2);
     ctx.restore();
   }
 
-  // The turned character. `swing` is where it is in its step and `stride`
+  // The upper body rises with the step and tilts a little to the side of
+  // the leg that carries it, turning around the middle of the hips.
+  function moveUpperBody(ctx, moment) {
+    ctx.translate(0, -moment.raised);
+    ctx.translate(TURNED_BODY_MIDDLE, HIPS_Y);
+    ctx.rotate(moment.torsoTilt);
+    ctx.translate(-TURNED_BODY_MIDDLE, -HIPS_Y);
+  }
+
+  // The turned character. `moment` comes from walkingMoment(), `stride` is
   // how big its steps are (0 when it stands). `isMirrored` says that the
   // drawing is mirrored right now, so the character is turned to the left.
-  function drawTurnedView(ctx, look, swing, stride, isMirrored) {
-    var raised = Math.abs(swing) * BODY_BOB;
-    // The shadow stays flat on the ground while the body rises above it,
-    // so a step reads as a small hop.
+  function drawTurnedView(ctx, look, moment, stride, isMirrored) {
+    // The shadow stays flat on the ground while the body rises above it.
     drawShadow(ctx);
     // A walking character leans into its walking direction.
     ctx.translate(0, GROUND_Y);
@@ -882,21 +1106,25 @@ Game.world = Game.world || {};
     ctx.translate(0, -GROUND_Y);
     // The legs stand on the ground while the body above them rises. They
     // are drawn between the things behind the body and the body itself, so
-    // each part needs its own shift upwards.
+    // each part needs its own move.
+    // What is behind is mostly part of the head (hood, bun, the band of the
+    // headphones), so it bobs with the head; a backpack lags the same way.
     ctx.save();
-    ctx.translate(0, -raised);
+    moveUpperBody(ctx, moment);
+    ctx.translate(0, moment.headDrop);
     look.turnedBehind(ctx);
     ctx.restore();
-    drawTurnedLeg(ctx, look, -1, swing, raised);
-    drawTurnedLeg(ctx, look, 1, -swing, raised);
-    ctx.translate(0, -raised);
+    drawTurnedLeg(ctx, look, -1, moment.leftFoot, moment.raised);
+    drawTurnedLeg(ctx, look, 1, moment.rightFoot, moment.raised);
+    moveUpperBody(ctx, moment);
     drawBodyBox(ctx, TURNED_BODY, look.body, 2.5);
     look.turnedClothes(ctx);
     if (isMirrored && look.holdsInRightHand) {
-      drawArmsWithObjectKeptInHand(ctx, look);
+      drawArmsWithObjectKeptInHand(ctx, look, moment);
     } else {
-      drawTurnedArmsObjectAndHands(ctx, look, swing);
+      drawTurnedArmsObjectAndHands(ctx, look, moment);
     }
+    ctx.translate(0, moment.headDrop);
     drawTurnedFace(ctx);
     look.turnedHead(ctx);
   }
@@ -920,8 +1148,9 @@ Game.world = Game.world || {};
   //              what is held in one hand stays in that hand.
   //   walkPhase  a number that runs from 0 to 1 during one walking cycle
   //              (two steps); 0 and 0.5 are the moments with both feet on
-  //              the ground. Leave it out or pass null for a standing
-  //              character.
+  //              the ground, at 0 with the left foot just put down in front
+  //              (see walkingMoment()). Leave it out or pass null for a
+  //              standing character.
   //   stride     how big the steps are, from 0 (the feet stay down) to 1
   //              (full steps, also when it is left out). world.js lets it
   //              grow and shrink so that starting and stopping look soft.
@@ -944,7 +1173,8 @@ Game.world = Game.world || {};
     ctx.lineCap = "round";
     thinnestLine = THINNEST_LINE_IN_PIXELS / (pixelsPerUnit(ctx) || 1);
     if (pose) {
-      drawTurnedView(ctx, lookOf(characterId), swingOf(pose), strideOf(pose), isMirrored);
+      var stride = strideOf(pose);
+      drawTurnedView(ctx, lookOf(characterId), walkingMoment(phaseOf(pose), stride), stride, isMirrored);
     } else {
       drawPortrait(ctx, lookOf(characterId));
     }
