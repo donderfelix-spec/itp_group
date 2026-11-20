@@ -13,11 +13,9 @@ Game.world = Game.world || {};
 (function () {
   var MAP_FILE = "js/world/campus.json";
 
-  // The camera shows about one room with some of what lies around it: this
-  // many map units along the longer side of the canvas (the largest room,
-  // the CTT Student Hall, is 330 long, most are about 200). Everything on
-  // the map is drawn in map units, so it all scales with this number.
-  var VIEW_SIZE = 320;
+  // The camera shows about one room: this many map units along the longer
+  // side of the canvas.
+  var VIEW_SIZE = 260;
 
   // Shown until the map file has arrived (background colour of DESIGN.md).
   var BACKGROUND = "#EADFC8";
@@ -625,15 +623,11 @@ Game.world = Game.world || {};
 
   // ---- Drawing the players ---------------------------------------------
 
-  // The name labels, in map units. With VIEW_SIZE 320 these numbers give a
-  // label the size on the screen it had when the camera showed 260 units
-  // (5.5, 8, 0.7, 1 and 6, each times 320 / 260).
-  var NAME_TEXT_SIZE = 6.8;
-  var LABEL_HEIGHT = 9.8;
-  var LABEL_OUTLINE = 0.86;
-  var LABEL_GAP = 1.2; // free space between two labels above each other
-  var LABEL_PADDING = 7.4; // how much wider the pill is than the name
-  var NAME_BELOW_MIDDLE = 0.37; // the letters look centred a little lower
+  // The name labels, in map units.
+  var NAME_TEXT_SIZE = 5.5;
+  var LABEL_HEIGHT = 8;
+  var LABEL_OUTLINE = 0.7;
+  var LABEL_GAP = 1; // free space between two labels above each other
 
   // In the drawing order the own character counts as standing this many map
   // units further down. Everyone starts on the same spawn point; this way a
@@ -696,7 +690,7 @@ Game.world = Game.world || {};
       name: entry.player.name,
       x: entry.x,
       y: headTop - LABEL_OUTLINE - LABEL_HEIGHT / 2,
-      width: ctx.measureText(entry.player.name).width + LABEL_PADDING
+      width: ctx.measureText(entry.player.name).width + 6
     };
   }
 
@@ -744,7 +738,7 @@ Game.world = Game.world || {};
     ctx.stroke();
 
     ctx.fillStyle = OUTLINE;
-    ctx.fillText(label.name, label.x, label.y + NAME_BELOW_MIDDLE);
+    ctx.fillText(label.name, label.x, label.y + 0.3);
   }
 
   // ---- Stations under a character -------------------------------------
