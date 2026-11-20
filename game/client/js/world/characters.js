@@ -754,11 +754,16 @@ Game.world = Game.world || {};
   }
 
   // Drawn on the head: the near part of the band lies over the band drawn
-  // behind. It ends flat ("butt"), so the two meet without a seam.
+  // behind. It runs a little past the top of the head, along the first
+  // bit of the far half (these short curves lie exactly on it: its first
+  // 7 % and 15 %), and ends flat ("butt"). Its coral line runs further
+  // than its dark line, so the coral covers the dark end and the band
+  // shows no seam where the two parts meet.
   function drawTurnedHeadphones(ctx) {
     ctx.save();
     ctx.lineCap = "butt";
-    drawHeadphoneBand(ctx, NEAR_BAND);
+    stroke(ctx, NEAR_BAND + " Q1.05 -2.5 2.02 -2.42", OUTLINE, 7);
+    stroke(ctx, NEAR_BAND + " Q2.25 -2.5 4.12 -2.15", "#F2695C", 3.5);
     ctx.restore();
     box(ctx, -20.5, 12.5, 11, 17, 5, "#F2695C", 2);
   }
