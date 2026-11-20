@@ -673,7 +673,57 @@ Game.world = Game.world || {};
     pose.mirrored = player.facingLeft;
     pose.walkPhase = walkPhase(player, now);
     pose.stride = stride(player, now);
-    Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
+    if (!canDrawCharacter(player.character)) {
+      drawStandIn(entry.x, entry.y);
+      return;
+    }
+    // save() and restore() put the camera back even when the drawing fails
+    // halfway, so the other players and the names still land in their place.
+    ctx.save();
+    try {
+      Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
+    } catch (problem) {
+      // Not tried again: it would fail on every frame (M1-1.11).
+      brokenCharacters.add(player.character);
+      warnOnce(problem);
+    } finally {
+      ctx.restore();
+    }
+    if (brokenCharacters.has(player.character)) {
+      drawStandIn(entry.x, entry.y);
+    }
+  }
+
+  // ---- Stand-in when a character cannot be drawn (M1-1.11) -------------
+
+  // If characters.js did not load, or its drawing fails for a character,
+  // that player is drawn as a plain circle instead. The map keeps working
+  // and every player stays visible.
+  var STAND_IN_RADIUS = 7;
+  var brokenCharacters = new Set(); // characters whose drawing failed once
+  var hasWarned = false; // one warning in total, not one per frame
+
+  function canDrawCharacter(characterId) {
+    if (typeof Game.world.drawCharacter !== "function") {
+      warnOnce("characters.js is missing.");
+      return false;
+    }
+    return !brokenCharacters.has(characterId);
+  }
+
+  function warnOnce(problem) {
+    if (!hasWarned) {
+      hasWarned = true;
+      console.warn("The characters could not be drawn; players are shown as circles.", problem);
+    }
+  }
+
+  // A circle in the outline colour where the body of the character would be.
+  function drawStandIn(x, y) {
+    ctx.beginPath();
+    ctx.arc(x, figureMiddleY(y), STAND_IN_RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = OUTLINE;
+    ctx.fill();
   }
 
   function useNameFont() {
