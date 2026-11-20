@@ -945,6 +945,19 @@ Game.world = Game.world || {};
     sendMove = null;
   }
 
+  // ---- Read-only views for the walking diagnostic (diagnostic.js) ------
+
+  // Where the own character is drawn at the time `now`: {x, y}, or null.
+  function ownDrawnPosition(now) {
+    var own = ownName !== null && players.has(ownName) ? players.get(ownName) : null;
+    return own ? drawnPosition(own, now) : null;
+  }
+
+  // A copy of the direction the server heard last, so it cannot be changed.
+  function walkingDirection() {
+    return { dx: sentDirection.dx, dy: sentDirection.dy };
+  }
+
   Game.world.start = start;
   Game.world.stop = stop;
   Game.world.setOwnName = setOwnName;
@@ -956,4 +969,6 @@ Game.world = Game.world || {};
   Game.world.stationInRange = stationInRange;
   Game.world.setInputPaused = setInputPaused;
   Game.world.nearestStationInRange = nearestStationInRange;
+  Game.world.ownDrawnPosition = ownDrawnPosition;
+  Game.world.walkingDirection = walkingDirection;
 })();
