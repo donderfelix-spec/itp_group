@@ -299,26 +299,36 @@ input {
   background: var(--sun);
 }
 
-/* When the map is narrow (below about 580px: on its own in a narrow window,
-   or next to the 380px panel in a window up to 960px), the centred hint
-   would run into "E Use". Then the hint stands right above the button,
-   with its right edge in line with the button's. 94px from the bottom is
-   the button's 34px, the button itself (about 52px high) and a gap of 8px.
-   The hint takes two lines: 160px is just wide enough for "or the arrow
-   keys" on one line, so it also fits into a window of 320px.
+/* When the map is narrow (below about 620px: on its own in a narrow window,
+   or next to the 380px panel in a window up to 1000px), the centred hint
+   would run into "E Use" (in Chromium below 552px; the rest is room for a
+   wider system font). Then the hint stands right above the button, with
+   its right edge in line with the button's. 94px from the bottom is the
+   button's 34px, the button itself (about 52px high) and a gap of 8px.
+   The hint has two lines, one per part in index.html, and is only as wide
+   as the longer one. So it is always two lines high, whatever the font.
+   The lines stand a little closer than elsewhere, so that in a low window
+   the hint stays below the own character in the middle of the map.
    At the spawn point the room names on a narrow map lie at the left edge
    ("Main Deck") and in the bottom right corner ("Pingo Doce"), so the hint
-   stays off both there. */
-@media (max-width: 580px), (min-width: 801px) and (max-width: 960px) {
+   stays off both there.
+   "800px < width" and not "min-width: 801px": the panel moves next to the
+   map above 800px (see the media query further down), and a window can be
+   800.5px wide when the page is zoomed. */
+@media (width <= 620px), (800px < width <= 1000px) {
   .hint {
     left: auto;
     right: 34px;
     bottom: 94px;
-    width: 160px;
+    width: max-content;
+    max-width: calc(100% - 60px); /* never wider than the map */
+    line-height: 1.25;
     white-space: normal;
     text-align: center;
     transform: none;
   }
+
+  .hint-part { display: block; }
 }
 
 /* ---- The message on the lobby screen ---- */
