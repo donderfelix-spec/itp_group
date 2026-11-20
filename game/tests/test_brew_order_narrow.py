@@ -193,17 +193,11 @@ def test_hot_water_is_still_the_longest_button_name(client):
 # ---- A window lower than the minigame ----
 
 
-def test_the_body_of_the_window_keeps_the_full_height_of_the_brew_order(client):
-    # Shrunk to what is left of a low window, the body centred the slip over
-    # the header and the sentence, where no scrolling reached it.
-    rule = rule_of(stylesheet_of(client), ".minigame-body:has(> .brew-layout)")
-    assert rule == {"flex-shrink: 0;"}
-
-
-def test_the_brew_layout_is_a_direct_child_of_the_body(client):
-    # The rule above finds the body by `> .brew-layout`: the script puts the
-    # layout straight into the body it gets from the frame.
+def test_the_brew_order_is_built_in_the_body_that_keeps_its_height(client):
+    # In a low window the body of every minigame window keeps its full height
+    # (test_minigames_narrow.py), so the slip cannot lie over the header and
+    # the sentence. The script puts its layout straight into that body.
     script = client.get("/js/minigames/brew_order.js").text
     assert "const layout = element('div', 'brew-layout');" in script
     assert "body.append(layout);" in script
-
+    assert "flex-shrink: 0;" in rule_of(stylesheet_of(client), ".minigame-body")
