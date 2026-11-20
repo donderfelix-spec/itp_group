@@ -52,16 +52,16 @@ The map is based on the real campus in Carcavelos: light buildings, a large pave
 
 The sketch shows the portraits from the front, as used in the lobby list; on the map the characters are drawn in a three-quarter view facing only left or right (S-105).
 
-All characters are the same size and the same speed, they differ only in how they look (S-06). Each one has a body colour, a hairstyle or headwear and an object in the hand, by which you can recognise the character even when it is small. The faces are the same for all of them (S-07).
+All characters are the same size and the same speed, they differ only in how they look (S-06). Each one has a body colour, a hairstyle or headwear and an object in the hand, by which you can recognise the character even when it is small. The faces are the same for all of them (S-07). What a character wears on the upper body (tie, vest, straps, lanyard, necklace, print, hoodie strings, collar, buttons) sits in the middle of the torso, also in the three-quarter view and while walking; only the face and the head turn (S-115).
 
 | Character | Colour | How to recognise the character | Line in the lobby |
 |---|---|---|---|
 | The Consultant | Dark blue suit | red tie, briefcase | “Let’s take this offline.” |
 | The Finance Bro | Light blue shirt | quilted vest, phone with a price chart | “What’s the upside?” |
-| The Exchange Student | Pink | yellow bucket hat, travel backpack, wheeled suitcase with stickers, lanyard | “Is this graded?” |
+| The Exchange Student | Pink | yellow bucket hat, travel backpack with its straps over the shoulders, lanyard | “Is this graded?” |
 | The Surfer | Turquoise | long blond hair, shell necklace, surfboard printed on the shirt | “Waves were good, sorry.” |
 | The Founder | Black hoodie | hood up, laptop covered in stickers | “We should pivot.” |
-| The Overachiever | Green cardigan | glasses, hair bun, folder with tabs and “A+” | “I already started.” |
+| The Overachiever | Green cardigan | glasses, hair bun, folder with “A+” | “I already started.” |
 | The Latecomer | Orange jacket | messy hair, coffee cup | “Did I miss anything?” |
 | The Library Local | Purple hoodie | large headphones, stack of books in front of the body | “Shhh.” |
 
