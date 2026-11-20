@@ -43,7 +43,7 @@ The map is based on the real campus in Carcavelos: light buildings, a large pave
 - **Main Deck:** reflecting pool, six trees, a hedge and the large NOVA logo. The red button for the emergency meeting stands to the right of the hedge. The sixth station is at the bottom, at the exit to the beach. You have to walk around all of these, and that is how players lose sight of each other.
 - At the bottom, a glass front closes off the deck. You can see the beach and the sea, but you cannot go out.
 - Every room has exactly one door to the deck and one task station (yellow dot). The stations are in the corners of the map, so that you really have to walk in Duel.
-- You only ever see the section around your own character: one room and a little of what lies around it (320 map units along the longer side of the picture). The camera follows the character.
+- You only ever see the section around your own character, about one room in size. The camera follows the character.
 - If time allows: You cannot see through walls.
 
 ## 3. Characters
