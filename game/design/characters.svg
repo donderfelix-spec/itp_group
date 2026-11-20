@@ -129,18 +129,15 @@
   <!-- 7 Latecomer -->
   <g transform="translate(422,212) scale(1.15)">
     <use href="#base"/>
-    <path d="M-44 50 h10 M-46 60 h14 M-44 70 h10" stroke="#B9B4A6" stroke-width="2.5"/>
     <rect x="-13" y="74" width="11" height="18" rx="4" fill="#3F5F8A" stroke="#2E2A3B" stroke-width="2"/><rect x="2" y="74" width="11" height="18" rx="4" fill="#3F5F8A" stroke="#2E2A3B" stroke-width="2"/>
     <rect x="-19" y="38" width="38" height="42" rx="11" fill="#F08A3C" stroke="#2E2A3B" stroke-width="2.5"/>
     <rect x="-6" y="39" width="12" height="40" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="1.5"/>
-    <path d="M23 46 q-3 -4 0 -8 M29 47 q3 -4 0 -8" fill="none" stroke="#B9B4A6" stroke-width="1.8"/>
     <path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q27.0 56.0 25 64" fill="none" stroke="#2E2A3B" stroke-width="10.5"/><path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q27.0 56.0 25 64" fill="none" stroke="#F08A3C" stroke-width="6.5"/>
     <polygon points="17,56 34,56 32,78 19,78" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="2"/>
     <rect x="16" y="52" width="19" height="5" rx="2" fill="#8A5A3B" stroke="#2E2A3B" stroke-width="1.5"/><rect x="19" y="63" width="13" height="7" fill="#C9A27A"/>
     <circle cx="-22" cy="65" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><circle cx="25" cy="67" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
     <use href="#face"/>
     <path d="M-18 19 Q-23 7 -13 4 Q-15 -5 -5 0 Q-2 -9 4 -1 Q11 -8 13 3 Q23 5 18 19 Q10 9 0 11 Q-10 9 -18 19 Z" fill="#7A4B2A" stroke="#2E2A3B" stroke-width="2"/>
-    <path d="M24 14 q4 6 0 10 q-4 -4 0 -10 Z" fill="#6FB8E8" stroke="#2E2A3B" stroke-width="1.2"/>
     <text y="120" font-size="11.3" fill="#2E2A3B">The Latecomer</text>
   </g>
 
@@ -160,4 +157,10 @@
   </g>
 
   </g>
+
+  <!-- Note: these are the lobby portraits; the map uses a three-quarter view (S-105) -->
+  <text x="340" y="374" font-size="11" fill="#5E5A6B" text-anchor="middle">
+    <tspan x="340">Portraits from the front, as in the lobby list.</tspan>
+    <tspan x="340" dy="15">On the map the characters are drawn in a three-quarter view facing left or right (S-105).</tspan>
+  </text>
 </svg>
