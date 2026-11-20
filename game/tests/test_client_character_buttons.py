@@ -45,6 +45,12 @@ def test_the_line_is_shown_on_the_own_card(stylesheet):
     assert "display" not in own_line
 
 
+def test_the_text_of_a_card_starts_at_the_top(stylesheet):
+    # In the middle of the card, the names of one row would not stand at the
+    # same height: the hidden line below a name is one or two lines high.
+    assert "align-self: flex-start;" in rule(stylesheet, ".character-text")
+
+
 def test_no_rule_removes_the_line_from_the_layout(stylesheet):
     # A "display: none" anywhere (also in a media query) would make the cards
     # change their height with the choice again.
