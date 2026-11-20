@@ -36,9 +36,15 @@ Game.world = Game.world || {};
   // way it collides with it.
   var FEET_BELOW_POSITION = 5;
 
-  // The server sends positions about 15 times per second (S-72). A character
-  // glides to each new position within one such interval.
-  var GLIDE_MILLISECONDS = 1000 / 15;
+  // How long a character glides to each new position. The server sends
+  // positions about every 67 ms (15 times per second, S-72), but over the
+  // internet a message often arrives later. The glide lasts longer than one
+  // interval, so a message up to about 40 ms late does not leave the
+  // character and the camera standing still. Every glide starts where the
+  // character is drawn, so the speed stays the same: the character is only
+  // drawn about 40 ms further behind the server than with a glide of one
+  // interval.
+  var GLIDE_MILLISECONDS = 110;
   // A longer way than this in one message is a respawn: jump, do not glide.
   var JUMP_DISTANCE = 60;
   // A real step is at most 9 map units on an axis: the server moves a player

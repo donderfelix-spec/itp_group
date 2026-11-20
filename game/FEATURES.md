@@ -36,6 +36,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Walking animation: moving feet, head turned in the walking direction | M2 | Done |
 | Hair, buns and headwear follow the head when it turns in the walking direction | M2 | Done |
 | Touch-ups of the characters: no suitcase, larger hat, headphones on the ear, clothes in the middle of the torso when turned | M2 | Done |
+| Smooth walking over the internet: characters and the camera keep moving when a position message comes a little late | M2 | Done |
 | Limited view: You only see what is nearby and not behind a wall | M3 | Planned |
 | Show failed players as ghosts | M3 | Planned |
 | Four hiding spots in which you are visible only from close by | M3 | Planned |
@@ -101,6 +102,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Feature | Milestone | Status |
 |---|---|---|
 | Frame for minigames: open at a station, close, report “done” | M2 | Done |
+| All minigames playable in narrow and low windows, from 320 px wide | M2 | Done |
 | Canteen: put four of six dishes from the order slip onto the tray | M2 | Done |
 | Mon Café: prepare a drink by recipe at the coffee machine | M2 | Done |
 | Lecture Hall: put slides into the right order | M2 | Done |

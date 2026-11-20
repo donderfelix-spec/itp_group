@@ -410,9 +410,20 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 .minigame-instructions { margin: 0; }
 
+/* In a narrow window the map is low, and the window is often lower than
+   the minigame. Without `flex-shrink: 0` the body would shrink to what is
+   left and centre the minigame in it, so the top of the minigame would lie
+   over the title, the close button and the sentence, out of reach of the
+   scroll bar. With it the body keeps its full height, and the window
+   scrolls.
+   The body is also the container the rules for a narrow window ask about
+   (see "Minigames in a narrow window" further down): its width is the room
+   the minigame has, whether the map is next to the panel or above it. */
 .minigame-body {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   align-items: center;
   gap: 12px;
   min-height: 80px;
@@ -732,9 +743,12 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 /* ---- Minigame "Brew the order", built by js/minigames/brew_order.js ---- */
 
-/* The order slip on the left, the coffee machine on the right. */
+/* The order slip on the left, the coffee machine on the right. In a narrow
+   window the two do not fit next to each other (120px + 14px + 282px, see
+   .brew-slip and .brew-machine), and the machine moves below the slip. */
 .brew-layout {
   display: flex;
+  flex-wrap: wrap;
   align-items: stretch;
   justify-content: center;
   gap: 14px;
@@ -745,7 +759,7 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 /* The slip: a note of paper, hanging a little crooked. */
 .brew-slip {
-  flex: 1 1 130px;
+  flex: 1 1 120px;
   align-self: flex-start;
   min-width: 120px;
   padding: 10px 12px;
@@ -809,12 +823,16 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 .brew-step-done .brew-step-name { text-decoration: line-through; }
 
+/* At least 282px next to the slip: three buttons in a row still fit
+   (see .brew-panel). The free room is shared with the slip, so in a wide
+   window the machine is 306px and the slip gets the rest. Alone in its
+   row it may get narrower than 282px, so that it fits into the window
+   of a 320px wide page. */
 .brew-machine {
-  flex: none;
+  flex: 1 1 282px;
   display: flex;
   flex-direction: column;
-  width: 306px;
-  max-width: 100%;
+  max-width: 306px;
   border: var(--outline);
   border-radius: 16px;
   /* Not coral: a wrong button flashes coral and must stand out. */
@@ -823,10 +841,12 @@ body:has(#screen-lobby:not([hidden])) .message {
   overflow: hidden;
 }
 
-/* The six buttons, three in a row. */
+/* The six buttons, three in a row, or two in a narrow window: as many
+   columns of at least 80px as fit. 80px holds the longest name,
+   "Hot water", which stays on one line. */
 .brew-panel {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
   gap: 8px;
   padding: 10px 10px 12px;
   border-bottom: var(--outline);
@@ -1380,6 +1400,107 @@ body:has(#screen-lobby:not([hidden])) .message {
 /* A product with a name nobody drew: a plain box. */
 .checkout-picture-box::before { left: 6px; top: 8px; width: 28px; height: 25px; border-radius: 4px; background: var(--sand); }
 .checkout-picture-box::after { display: none; }
+
+/* ---- Minigames in a narrow window ---- */
+
+/* Below 420px of room in the window of a minigame (a page up to about
+   530px wide, or up to about 910px with the panel next to the map) the
+   minigames are rearranged, so that nothing lies on anything else and
+   every text stays inside its button. 420px: "Sort the slides" needs
+   about 415px for five slides in a row with the name "Analysis". Above
+   it nothing changes, except the products of "Self-checkout" (below).
+   "Brew the order" needs no rule here: its machine moves below the slip
+   by itself (see .brew-layout). */
+@container (width < 420px) {
+  /* Sort the slides: the five places in a column on the left, the pile in
+     a column on the right. Five in a row left about 32px per slide at
+     320px, too narrow for the names. The slides are low and show only
+     their names, so that both columns (about 212px) fit into the window
+     of a 320 x 568 page, and every slide can be dragged to every place
+     without scrolling in between. */
+  .slides-board {
+    flex-direction: row;
+    gap: 12px;
+  }
+
+  .slides-row {
+    flex: 1;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .slides-place,
+  .slides-spot {
+    height: 36px;
+    aspect-ratio: auto;
+  }
+
+  .slides-number { line-height: 1; }
+  .slides-sketch { display: none; }
+
+  /* Build the tray: the order slip above the counter, and two dishes in a
+     row on the counter and on the tray. "Bacalhau" needs about 63px. */
+  .tray-game { grid-template-columns: minmax(0, 1fr); }
+  .tray-counter,
+  .tray-tray { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Shelve the books: two boards of three places, with less room around
+     them. A standing book in 18px needs about 44px for its place: the
+     number (about 35px), its outline and the dashed border of the place.
+     A place gets about 47px in a 320px page even with classic scroll
+     bars of 17px, one for the page and one for the window. */
+  .books-shelf {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 6px;
+    padding: 10px 8px 0;
+  }
+
+  .books-standing { font-size: 18px; }
+
+  /* The table: two books next to each other. A lying book needs about 62px
+     (the number in 26px, its outline and the pages on the right); three
+     in a row had only about 50px each (about 40px with scroll bars). */
+  .books-table { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Self-checkout: the total below the target, with the thin line above
+     it. Side by side each line needs about 135px ("Total", the gap and
+     "€12.00", the largest amount, plus the thin line). */
+  .checkout-display { grid-template-columns: minmax(0, 1fr); }
+
+  .checkout-line + .checkout-line {
+    padding-top: 6px;
+    padding-left: 0;
+    border-top: 2px solid var(--cream);
+    border-left: none;
+  }
+
+  /* "Unexpected item in the bagging area" is longer than the window is
+     wide: it goes below the name of the row and may take two lines. The
+     heading of the bagging area (the one with the message) is always as
+     high as the name, the gap and two lines of the message: 19.5px +
+     8px + 2 x 18px + 4px of border = 67.5px. So the row below it never
+     moves when the message comes and goes, and no click misses. */
+  .checkout-area-heading {
+    flex-wrap: wrap;
+    align-content: flex-start;
+  }
+
+  .checkout-area-heading:has(.checkout-message) { min-height: 68px; }
+  .checkout-message { white-space: normal; }
+}
+
+/* Self-checkout: a product needs about 67px, for "Chocolate" (about 60px)
+   with the padding and border of its button. Six in a row need about
+   445px, three about 225px. So three in a row below 450px, and two below
+   230px (a page up to about 340px wide). */
+@container (width < 450px) {
+  .checkout-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@container (width < 230px) {
+  .checkout-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 /* ---- Duel: the panel during the round and the ranking, built by js/minigames/duel.js ---- */
 
