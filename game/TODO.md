@@ -108,7 +108,6 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard (S-94). In the pull request after #26
 - [ ] **M2-4.8** Play test: two players play a Duel through to the leaderboard (Lennart). A scripted run with two browsers and the real minigames exists from the building of M2-4.7 (both finish, ranking, second round, time running out). Left to do: two people on two computers on the deployed server, and write down what gets in the way
 - [ ] **M2-4.9** After a solved minigame the “Done” window stays for one second and the walking keys are ignored during it; a key that is already held only counts again when the window has closed. In a Duel that is three seconds of standing per route and feels like lag (found in the play test of M2-2.2, after Felix reported lag). Let a held or newly pressed walking key take effect at once, or shorten the window (Lennart)
-- [ ] **M2-4.12** At a window width of 320 px the title “Brew the order” of the Mon Café minigame is cut off. Let it wrap or shrink (Felix; found while building M1-1.7)
 
 **Known and open after the Duel**
 
