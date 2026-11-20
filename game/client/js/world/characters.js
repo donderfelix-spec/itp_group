@@ -51,9 +51,9 @@ Game.world = Game.world || {};
   var WALKING_LEAN = 0.05;
   // The lean turns around the point between the feet, so they stay in place.
   var GROUND_Y = 96;
-  // In the turned view the face (eyes, mouth, glasses, the crown of a
-  // hat) sits this far towards the side it is turned to, and the shoes
-  // point a little that way.
+  // In the turned view the face (eyes, mouth, cheeks, glasses) sits this
+  // far towards the side it is turned to, and the shoes point a little
+  // that way.
   var TURN = 5;
   var SHOE_TURN = 2;
   // The body, a rounded box. In the turned view it is a little narrower on
@@ -258,19 +258,6 @@ Game.world = Game.world || {};
     ctx.restore();
   }
 
-  // TEMPORARY (M2-1.11 proposals): chooses between the variants Felix compares.
-  // Removed with the variants he does not choose, before the pull request.
-  // Read on every drawing, so a page can change it at any time:
-  //   window.CHARACTER_PROPOSAL = { hat: "A" | "B", headset: "fixed" | "none" }
-  // Anything missing or unknown means hat "A" and headset "fixed".
-  function chosenProposal() {
-    var chosen = window.CHARACTER_PROPOSAL || {};
-    return {
-      hat: chosen.hat === "B" ? "B" : "A",
-      headset: chosen.headset === "none" ? "none" : "fixed"
-    };
-  }
-
   // ---- What makes each character different -----------------------------
   //
   // A look has the colours `body`, `legs` and `shoes`, and two sets of
@@ -365,9 +352,7 @@ Game.world = Game.world || {};
         drawStrapsAndLanyard(ctx, BODY, 0);
       },
       object: nothing,
-      head: function (ctx) {
-        drawBucketHat(ctx, false);
-      },
+      head: drawBucketHat,
       turnedLeftHand: [-21, 65], turnedRightHand: [21, 65], handsSwing: true,
       turnedBehind: function (ctx) {
         // The backpack on the back shows on the left, behind the shoulder.
@@ -380,7 +365,7 @@ Game.world = Game.world || {};
       turnedHead: function (ctx) {
         // Under the hat the hair shows at the back of the head.
         shape(ctx, "M-17.6 16 Q-18.6 22 -16.6 27 Q-12 24 -11 15 Z", "#8A5A3B", 2);
-        drawBucketHat(ctx, true);
+        drawTurnedBucketHat(ctx);
       }
     },
 
@@ -507,16 +492,10 @@ Game.world = Game.world || {};
       },
       head: function (ctx) {
         shape(ctx, "M-18 24 Q-21 2 0 2 Q21 2 18 24 L15 14 Q0 8 -15 14 Z", "#2B2B33", 2);
-        if (chosenProposal().headset === "fixed") {
-          drawHeadphones(ctx);
-        }
+        drawHeadphones(ctx);
       },
       turnedLeftHand: [-12, 73], turnedRightHand: [21, 73],
-      turnedBehind: function (ctx) {
-        if (chosenProposal().headset === "fixed") {
-          drawTurnedHeadphonesBehind(ctx);
-        }
-      },
+      turnedBehind: drawTurnedHeadphonesBehind,
       turnedClothes: nothing,
       turnedObject: function (ctx) {
         box(ctx, -10, 67, 28, 8, 1.5, "#6FA8F0", 1.8);
@@ -525,9 +504,7 @@ Game.world = Game.world || {};
       },
       turnedHead: function (ctx) {
         shape(ctx, "M-18 28 Q-22 2 0 2 Q20 2 18.5 19 L17 13 Q9 7.5 2 9.5 Q-7 11 -10 20 Q-12 27 -18 28 Z", "#2B2B33", 2);
-        if (chosenProposal().headset === "fixed") {
-          drawTurnedHeadphones(ctx);
-        }
+        drawTurnedHeadphones(ctx);
       }
     }
   };
@@ -620,69 +597,29 @@ Game.world = Game.world || {};
     box(ctx, 19, 63, 13, 7, 0, "#C9A27A", 0);
   }
 
-  // The Exchange Student's bucket hat, two proposals (TEMPORARY, M2-1.11).
-  // Each has a crown, a brim and a line width for the brim, for the portrait
-  // and for the turned view. The brim always stays above the eyes (y = 22).
-  //   A: sits on the head, and its brim reaches equally far out on both
-  //      sides, also in the turned view. Where the brim crosses them (y = 12), the sides
-  //      of the crown are where the outline of the head is (x = -17 and
-  //      17), so the outline runs on into the crown as one line. The head
-  //      is not moved in the turned view, so neither are the crown and the
-  //      brim; only the top of the crown leans a little towards the face. The crown is rounded and
-  //      slightly narrower towards its top.
-  //   B: bigger and floppier, with a drooping brim and a darker band
-  //      around the bottom of the crown (from y = `bandTop` down). In the
-  //      turned view its brim reaches further out on the side the
-  //      character is turned to.
-  var BUCKET_HATS = {
-    A: {
-      brimLine: 5.5,
-      portrait: {
-        crown: "M-17 12 C-17 -1 -12.5 -5 0 -5 C12.5 -5 17 -1 17 12 Q0 7 -17 12 Z",
-        brim: "M-27 14.5 Q0 6.5 27 14.5"
-      },
-      turned: {
-        crown: "M-17 12 C-17 -1 -11 -5 1.5 -5 C13.5 -5 17 -1 17 12 Q0 7 -17 12 Z",
-        brim: "M-27 14.5 Q0 6.5 27 14.5"
-      }
-    },
-    B: {
-      brimLine: 6.5,
-      portrait: {
-        crown: "M-21 12 Q-20.5 -9 0 -9 Q20.5 -9 21 12 Q0 9 -21 12 Z",
-        bandTop: 5,
-        brim: "M-31 20 C-25 9 25 9 31 20"
-      },
-      turned: {
-        crown: "M-19 12 Q-18.5 -9 2.5 -9 Q22 -9 22.5 12 Q2.5 9 -19 12 Z",
-        bandTop: 5,
-        brim: "M-28 19 C-22 9 29 9 35 21"
-      }
-    }
-  };
-
-  function drawBucketHat(ctx, isTurned) {
-    var hat = BUCKET_HATS[chosenProposal().hat];
-    var parts = isTurned ? hat.turned : hat.portrait;
-    shape(ctx, parts.crown, "#FFD23F", 2);
-    if (parts.bandTop) {
-      drawHatBand(ctx, parts.crown, parts.bandTop);
-    }
-    // The brim of the hat: a thick dark line with a yellow one on top.
-    stroke(ctx, parts.brim, OUTLINE, hat.brimLine);
-    ctx.strokeStyle = "#FFD23F";
-    ctx.lineWidth = hat.brimLine - 3;
-    ctx.stroke(pathOf(parts.brim));
+  // The Exchange Student's bucket hat. It sits on the head: where the brim
+  // crosses them (y = 12), the sides of the rounded crown are where the
+  // outline of the head is (x = -17 and 17), so that outline runs on into
+  // the crown as one line. The brim reaches equally far out on both sides
+  // and stays above the eyes (y = 22).
+  function drawBucketHat(ctx) {
+    shape(ctx, "M-17 12 C-17 -1 -12.5 -5 0 -5 C12.5 -5 17 -1 17 12 Q0 7 -17 12 Z", "#FFD23F", 2);
+    drawBucketHatBrim(ctx);
   }
 
-  // The band is a wide box from `bandTop` down, coloured in only where it
-  // lies on the crown (the clip). Then the crown gets its outline back.
-  function drawHatBand(ctx, crown, bandTop) {
-    ctx.save();
-    ctx.clip(pathOf(crown));
-    box(ctx, -40, bandTop, 80, 20, 0, "#E8962E", 1.5);
-    ctx.restore();
-    shape(ctx, crown, null, 2);
+  // The head is not moved in the turned view, so neither is the hat; only
+  // the top of its crown leans a little towards the face.
+  function drawTurnedBucketHat(ctx) {
+    shape(ctx, "M-17 12 C-17 -1 -11 -5 1.5 -5 C13.5 -5 17 -1 17 12 Q0 7 -17 12 Z", "#FFD23F", 2);
+    drawBucketHatBrim(ctx);
+  }
+
+  // The brim of the hat: a thick dark line with a yellow one on top.
+  function drawBucketHatBrim(ctx) {
+    stroke(ctx, "M-27 14.5 Q0 6.5 27 14.5", OUTLINE, 5.5);
+    ctx.strokeStyle = "#FFD23F";
+    ctx.lineWidth = 2.5;
+    ctx.stroke(pathOf("M-27 14.5 Q0 6.5 27 14.5"));
   }
 
   function drawHairBun(ctx) {
