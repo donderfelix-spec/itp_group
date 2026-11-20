@@ -5,6 +5,10 @@
 // The document, the canvas and Game.net are small stand-ins. lobby.js is the
 // real code, and so is world/characters.js when it is loaded.
 //
+// Node has no Path2D, so the character drawings fail here and lobby.js draws
+// its plain dot instead. This helper checks names and clicks, not drawings;
+// the drawings are checked in a browser.
+//
 // Arguments: "with-characters" loads world/characters.js before lobby.js, as
 // index.html does; "without-characters" leaves it out.
 // Output (stdout): JSON list, one entry per character button in page order:

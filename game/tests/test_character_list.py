@@ -28,6 +28,12 @@ needs_node = pytest.mark.skipif(NODE is None, reason="Node is needed to run the 
 # ---- Reading characters.js ----
 
 
+# These readers are simple regular expressions, not a JavaScript parser. So the
+# list in characters.js must stay written out as flat entries inside
+# `var characters = [ ... ];`: no objects inside an entry, and no entries
+# added later with `push`.
+
+
 def list_block(source):
     """The text between `var characters = [` and the `];` that closes it."""
     found = re.search(r"var characters = \[(.*?)\];", source, re.DOTALL)
@@ -36,8 +42,11 @@ def list_block(source):
 
 
 def quoted_field(entry, field):
-    """The value of `field: "..."` in one entry, or None if it is missing."""
-    found = re.search(field + r"""\s*:\s*(["'])(.*?)\1""", entry)
+    """The value of `field: "..."` in one entry, or None if it is missing.
+
+    The \\b in front means the field name starts there, so `guid:` is not read as `id:`.
+    """
+    found = re.search(r"\b" + field + r"""\s*:\s*(["'])(.*?)\1""", entry)
     return found.group(2) if found else None
 
 
@@ -83,6 +92,15 @@ def test_reader_sees_a_missing_or_empty_name():
     assert browser_characters(source) == [("consultant", None), ("surfer", "")]
 
 
+def test_reader_does_not_take_a_longer_field_for_id():
+    source = """
+      var characters = [
+        { guid: "abc", id: "consultant", name: "The Consultant" }
+      ];
+    """
+    assert browser_characters(source) == [("consultant", "The Consultant")]
+
+
 def test_reader_fails_when_the_list_is_gone():
     with pytest.raises(AssertionError):
         browser_characters("var people = [];")
@@ -100,8 +118,10 @@ def test_lobby_names_no_character_id():
 
 def test_lobby_names_no_character_name():
     lobby = LOBBY_JS.read_text()
+    # Only names in quotes count: a comment may still mention a character.
     for _, name in browser_characters(CHARACTERS_JS.read_text()):
-        assert name not in lobby, f"lobby.js names {name}"
+        for quote in ("'", '"', "`"):
+            assert quote + name + quote not in lobby, f"lobby.js names {name}"
 
 
 def lobby_buttons(mode):
