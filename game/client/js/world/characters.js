@@ -52,22 +52,48 @@ Game.world = Game.world || {};
   var BODY_BOB = 3;
 
   // TEMPORARY (M2-1.13 proposals): chooses the walking variant Felix compares.
-  // Removed with the variant he does not choose, before the pull request.
-  //   cycleLength  map units the character covers in one walking cycle
-  //                (two steps); world.js asks for it, see walkCycleLength()
-  //   footTravel   how far a foot goes in front of and behind its place
-  //                when standing, in design units
-  // A foot on the ground moves back by 2 x footTravel during one step. The
-  // more of the step length that is, the less the foot slides on the ground.
+  // Removed with the variants he does not choose, before the pull request.
+  // C is a walk, R1 and R2 are runs. All lengths in design units except
+  // cycleLength:
+  //   cycleLength     map units the character covers in one cycle (two
+  //                   steps); world.js asks for it, see walkCycleLength()
+  //   footTravel      how far a foot goes in front of and behind its place
+  //                   when standing
+  //   groundFraction  the part of a step a foot is on the ground. 1 in the
+  //                   walk; below 1 in a run, which leaves a moment in the
+  //                   air between two steps
+  // Only for the runs:
+  //   kick            how high the back foot is lifted after it pushed off
+  //   hop             how far the body rises in the air (at most BODY_BOB)
+  //   lean            how far the runner leans forward (radians)
+  //   handRaise       how much higher the bent arms hold the hands
+  //   handInward      how much closer to the body the hands come
+  //   handPump        how far a free hand pumps forward and back ...
+  //   handPumpRise    ... and how much higher it is in front than behind
+  //   heldShare       the part of the pumping a hand makes that holds
+  //                   something alone
+  // A foot on the ground moves back by 2 x footTravel. The more of the way
+  // walked while it is down that covers, the less it slides.
   var WALK_PROPOSALS = {
-    C: { cycleLength: 27, footTravel: 6 },
-    D: { cycleLength: 18, footTravel: 7 }
+    C: { cycleLength: 27, footTravel: 6, groundFraction: 1 },
+    R1: {
+      cycleLength: 32, footTravel: 8, groundFraction: 0.62, isRun: true,
+      kick: 7, hop: 2, lean: 0.08,
+      handRaise: 7, handInward: 2, handPump: 5, handPumpRise: 2, heldShare: 1 / 3
+    },
+    R2: {
+      cycleLength: 36, footTravel: 9, groundFraction: 0.5, isRun: true,
+      kick: 9, hop: 3, lean: 0.11,
+      handRaise: 9, handInward: 3, handPump: 6, handPumpRise: 3, heldShare: 1 / 3
+    }
   };
 
   // TEMPORARY (M2-1.13 proposals): read at draw time, so the comparison
   // page can switch between the variants. Missing or unknown: "C".
   function walkProposal() {
-    return window.WALK_PROPOSAL === "D" ? WALK_PROPOSALS.D : WALK_PROPOSALS.C;
+    var chosen = window.WALK_PROPOSAL;
+    var isKnown = typeof chosen === "string" && Object.prototype.hasOwnProperty.call(WALK_PROPOSALS, chosen);
+    return isKnown ? WALK_PROPOSALS[chosen] : WALK_PROPOSALS.C;
   }
   // A walking character leans this far into its walking direction (radians).
   var WALKING_LEAN = 0.05;
@@ -813,6 +839,8 @@ Game.world = Game.world || {};
     return phase < 0 ? phase + 1 : phase;
   }
 
+  // ---- The walk (variant C) ----
+
   // Where the left foot is at `phase`, from 1 (furthest in front) to -1
   // (furthest behind). It is put down in front at phase 0.25 and then moves
   // backwards at a steady speed, as the ground moves under a walker, until
@@ -834,6 +862,112 @@ Game.world = Game.world || {};
   function leftFootLift(phase) {
     var sinceLifted = (phase + 0.25) % 1; // 0 at phase 0.75
     return sinceLifted < 0.5 ? Math.sin(2 * Math.PI * sinceLifted) : 0;
+  }
+
+  // Everything that moves at one moment of the walk, see walkingMoment().
+  function walkMoment(phase, swing, stride, proposal) {
+    var travel = proposal.footTravel * stride;
+    var leftPlace = leftFootPlace(phase);
+    return {
+      leftFootX: leftPlace * travel,
+      leftLift: leftFootLift(phase) * FOOT_LIFT * stride,
+      rightFootX: -leftPlace * travel,
+      rightLift: leftFootLift((phase + 0.5) % 1) * FOOT_LIFT * stride,
+      raised: Math.abs(swing) * BODY_BOB,
+      lean: stride * WALKING_LEAN,
+      // Free hands swing straight forward and back; a hand that holds
+      // something does not move, and neither does the free one beside it.
+      armSwing: swing,
+      handPump: HAND_SWING, handPumpRise: 0, handRaise: 0, handInward: 0,
+      heldShare: 0, holdersSwingTheFreeHand: false
+    };
+  }
+
+  // ---- The run (variants R1 and R2) ----
+
+  // Where one foot of a runner is in its own cycle. `legPhase` runs from 0
+  // to 1; at 0 the foot lands in front. It stays on the ground for
+  // `groundShare` of the cycle and moves backwards at a steady speed, as the
+  // ground moves under the runner. Then it pushes off: it kicks up behind
+  // and swings forward to land again. Returns `place`, from 1 (in front) to
+  // -1 (behind), and `lift`, from 0 (on the ground) to 1 (kicked up highest).
+  function runningFoot(legPhase, groundShare) {
+    if (legPhase < groundShare) {
+      return { place: 1 - 2 * legPhase / groundShare, lift: 0 };
+    }
+    var inTheAir = (legPhase - groundShare) / (1 - groundShare); // 0 to 1
+    // Slow at both ends (3t² - 2t³): the foot stays behind while it kicks
+    // up, and comes down gently in front.
+    var forward = inTheAir * inTheAir * (3 - 2 * inTheAir);
+    return { place: -1 + 2 * forward, lift: kickHeight(inTheAir) };
+  }
+
+  // The kick: the foot goes up quickly after it pushed off, is highest a
+  // third of the way through the air, and then comes down until it lands.
+  var KICK_HIGHEST_AT = 0.35;
+
+  function kickHeight(inTheAir) {
+    if (inTheAir < KICK_HIGHEST_AT) {
+      return Math.sin(Math.PI / 2 * inTheAir / KICK_HIGHEST_AT);
+    }
+    return Math.cos(Math.PI / 2 * (inTheAir - KICK_HIGHEST_AT) / (1 - KICK_HIGHEST_AT));
+  }
+
+  // Everything that moves at one moment of the run, see walkingMoment().
+  // The left foot lands at phase 0, the right one at 0.5. Each stays on the
+  // ground for groundFraction of a step (half a cycle); the rest of the step
+  // both feet are in the air.
+  function runMoment(phase, stride, proposal) {
+    var groundShare = proposal.groundFraction / 2;
+    var left = runningFoot(phase, groundShare);
+    var right = runningFoot((phase + 0.5) % 1, groundShare);
+    var travel = proposal.footTravel * stride;
+    // The body is lowest in the middle of a foot's time on the ground
+    // (phase groundShare / 2) and highest in the middle of the time in the
+    // air, a quarter of a cycle later. Two hops per cycle.
+    var hop = Math.min(proposal.hop, BODY_BOB) * stride;
+    return {
+      leftFootX: left.place * travel,
+      leftLift: left.lift * proposal.kick * stride,
+      rightFootX: right.place * travel,
+      rightLift: right.lift * proposal.kick * stride,
+      raised: hop * (1 - Math.cos(4 * Math.PI * (phase - groundShare / 2))) / 2,
+      lean: stride * proposal.lean,
+      // The arms pump against the legs: the right hand is furthest in front
+      // when the left foot lands (phase 0).
+      armSwing: Math.cos(2 * Math.PI * phase) * stride,
+      handPump: proposal.handPump,
+      handPumpRise: proposal.handPumpRise,
+      handRaise: proposal.handRaise * stride,
+      handInward: proposal.handInward * stride,
+      heldShare: proposal.heldShare,
+      holdersSwingTheFreeHand: true
+    };
+  }
+
+  // Everything that moves at one moment, in design units and radians, for
+  // the walk or the run of the chosen variant. A standing character (stride
+  // 0) gets all zeros, so it stands exactly as before.
+  //   leftFootX, rightFootX  how far a foot is in front of its standing place
+  //   leftLift, rightLift    how high a foot is off the ground
+  //   raised                 how far the body is lifted
+  //   lean                   how far the body leans forward
+  //   armSwing               from -1 to 1 (times stride): above 0 the right
+  //                          hand is in front and the left one behind
+  //   handPump, handPumpRise how far a free hand goes forward and back with
+  //                          armSwing, and how much higher it is in front
+  //   handRaise, handInward  how much higher and closer to the body the free
+  //                          hands are held (the bent arms of a runner)
+  //   heldShare              the part of the pumping a hand makes that holds
+  //                          something alone
+  //   holdersSwingTheFreeHand  true if a character that holds something in
+  //                          one hand swings its other hand
+  function walkingMoment(phase, swing, stride) {
+    var proposal = walkProposal();
+    if (proposal.isRun) {
+      return runMoment(phase, stride, proposal);
+    }
+    return walkMoment(phase, swing, stride, proposal);
   }
 
   // How big the steps are, from 0 (none, also when standing) to 1 (full).
@@ -884,18 +1018,52 @@ Game.world = Game.world || {};
     ctx.stroke();
   }
 
+  // How far a free hand is moved from where it hangs, as [dx, dy]. `side`
+  // is -1 for the hand at the back of the body and 1 for the one in front.
+  // A runner holds it higher and closer to the body, which bends the arm,
+  // and pumps it forward (and up) and back (and down).
+  function freeHandMove(side, moment) {
+    var forward = side * moment.armSwing; // from -1 (back) to 1 (forward)
+    return [
+      -side * moment.handInward + forward * moment.handPump,
+      -moment.handRaise - forward * moment.handPumpRise
+    ];
+  }
+
+  // The same for a hand that holds something alone: it stays where it is
+  // and only makes a part of the pumping, so its object does not fly about.
+  function heldHandMove(side, moment) {
+    var forward = side * moment.armSwing;
+    return [
+      forward * moment.handPump * moment.heldShare,
+      -forward * moment.handPumpRise * moment.heldShare
+    ];
+  }
+
   // Arms, object and hands of the character as it is drawn turned to the
-  // right. Free hands swing against the legs, as in real walking; a hand
-  // that holds something stays where the object is.
-  function drawTurnedArmsObjectAndHands(ctx, look, swing) {
-    var handSwing = look.handsSwing ? swing * HAND_SWING : 0;
-    var left = look.turnedLeftHand;
-    var right = look.turnedRightHand;
-    drawTurnedArm(ctx, -BACK_SHOULDER, -1, left[0] - handSwing, left[1], look.body);
-    drawTurnedArm(ctx, FRONT_SHOULDER, 1, right[0] + handSwing, right[1], look.body);
+  // right. The hand at the back is the left one. Free hands swing against
+  // the legs; a hand that holds something alone moves only a little, and its
+  // object goes with it. What is held with both hands does not swing; it
+  // only rises and sinks with the body.
+  function drawTurnedArmsObjectAndHands(ctx, look, moment) {
+    var backIsFree = look.handsSwing || (look.holdsInRightHand && moment.holdersSwingTheFreeHand);
+    var backMove = backIsFree ? freeHandMove(-1, moment) : [0, 0];
+    var frontMove = [0, 0];
+    if (look.handsSwing) {
+      frontMove = freeHandMove(1, moment);
+    } else if (look.holdsInRightHand) {
+      frontMove = heldHandMove(1, moment);
+    }
+    var left = [look.turnedLeftHand[0] + backMove[0], look.turnedLeftHand[1] + backMove[1]];
+    var right = [look.turnedRightHand[0] + frontMove[0], look.turnedRightHand[1] + frontMove[1]];
+    drawTurnedArm(ctx, -BACK_SHOULDER, -1, left[0], left[1], look.body);
+    drawTurnedArm(ctx, FRONT_SHOULDER, 1, right[0], right[1], look.body);
+    ctx.save();
+    ctx.translate(frontMove[0], frontMove[1]);
     look.turnedObject(ctx);
-    circle(ctx, left[0] - handSwing, left[1], 5, SKIN, 2);
-    circle(ctx, right[0] + handSwing, right[1], 5, SKIN, 2);
+    ctx.restore();
+    circle(ctx, left[0], left[1], 5, SKIN, 2);
+    circle(ctx, right[0], right[1], 5, SKIN, 2);
   }
 
   // The same for a character that is turned to the left and holds its
@@ -905,35 +1073,38 @@ Game.world = Game.world || {};
   // view to the right, on the right of the screen. Only its shoulder moves,
   // because that side of the body is now the back. The free hand goes to
   // the other side, which is the side the character is turned to.
-  function drawArmsWithObjectKeptInHand(ctx, look) {
-    var free = look.turnedLeftHand;
-    var holding = look.turnedRightHand;
-    drawTurnedArm(ctx, FRONT_SHOULDER, 1, -free[0], free[1], look.body);
-    circle(ctx, -free[0], free[1], 5, SKIN, 2);
+  //
+  // So the free hand now moves like the hand in front, and the holding hand
+  // like the one at the back. Mirrored back, "forward" is -x for it.
+  function drawArmsWithObjectKeptInHand(ctx, look, moment) {
+    var freeMove = moment.holdersSwingTheFreeHand ? freeHandMove(1, moment) : [0, 0];
+    var heldMove = heldHandMove(-1, moment);
+    var free = [-look.turnedLeftHand[0] + freeMove[0], look.turnedLeftHand[1] + freeMove[1]];
+    var holding = [look.turnedRightHand[0] - heldMove[0], look.turnedRightHand[1] + heldMove[1]];
+    drawTurnedArm(ctx, FRONT_SHOULDER, 1, free[0], free[1], look.body);
+    circle(ctx, free[0], free[1], 5, SKIN, 2);
     ctx.save();
     ctx.scale(-1, 1); // mirrored back: from here x grows to the right of the screen
     drawTurnedArm(ctx, BACK_SHOULDER, 1, holding[0], holding[1], look.body);
+    ctx.save();
+    ctx.translate(-heldMove[0], heldMove[1]);
     look.turnedObject(ctx);
+    ctx.restore();
     circle(ctx, holding[0], holding[1], 5, SKIN, 2);
     ctx.restore();
   }
 
-  // The turned character. `phase` is where it is in its walking cycle,
-  // `swing` the swing of the arms and the body at that moment (swingOf())
-  // and `stride` how big its steps are (0 when it stands). `isMirrored` says that the
-  // drawing is mirrored right now, so the character is turned to the left.
-  function drawTurnedView(ctx, look, phase, swing, stride, isMirrored) {
-    var raised = Math.abs(swing) * BODY_BOB;
-    var travel = walkProposal().footTravel * stride;
-    var leftPlace = leftFootPlace(phase);
-    var leftLift = leftFootLift(phase) * FOOT_LIFT * stride;
-    var rightLift = leftFootLift((phase + 0.5) % 1) * FOOT_LIFT * stride;
+  // The turned character. `moment` comes from walkingMoment(). `isMirrored`
+  // says that the drawing is mirrored right now, so the character is turned
+  // to the left.
+  function drawTurnedView(ctx, look, moment, isMirrored) {
+    var raised = moment.raised;
     // The shadow stays flat on the ground while the body rises above it,
     // so a step reads as a small hop.
     drawShadow(ctx);
     // A walking character leans into its walking direction.
     ctx.translate(0, GROUND_Y);
-    ctx.rotate(stride * WALKING_LEAN);
+    ctx.rotate(moment.lean);
     ctx.translate(0, -GROUND_Y);
     // The legs stand on the ground while the body above them rises. They
     // are drawn between the things behind the body and the body itself, so
@@ -942,15 +1113,15 @@ Game.world = Game.world || {};
     ctx.translate(0, -raised);
     look.turnedBehind(ctx);
     ctx.restore();
-    drawTurnedLeg(ctx, look, -1, leftPlace * travel, leftLift, raised);
-    drawTurnedLeg(ctx, look, 1, -leftPlace * travel, rightLift, raised);
+    drawTurnedLeg(ctx, look, -1, moment.leftFootX, moment.leftLift, raised);
+    drawTurnedLeg(ctx, look, 1, moment.rightFootX, moment.rightLift, raised);
     ctx.translate(0, -raised);
     drawBodyBox(ctx, TURNED_BODY, look.body, 2.5);
     look.turnedClothes(ctx);
     if (isMirrored && look.holdsInRightHand) {
-      drawArmsWithObjectKeptInHand(ctx, look);
+      drawArmsWithObjectKeptInHand(ctx, look, moment);
     } else {
-      drawTurnedArmsObjectAndHands(ctx, look, swing);
+      drawTurnedArmsObjectAndHands(ctx, look, moment);
     }
     drawTurnedFace(ctx);
     look.turnedHead(ctx);
@@ -1001,7 +1172,8 @@ Game.world = Game.world || {};
     ctx.lineCap = "round";
     thinnestLine = THINNEST_LINE_IN_PIXELS / (pixelsPerUnit(ctx) || 1);
     if (pose) {
-      drawTurnedView(ctx, lookOf(characterId), phaseOf(pose), swingOf(pose), strideOf(pose), isMirrored);
+      var moment = walkingMoment(phaseOf(pose), swingOf(pose), strideOf(pose));
+      drawTurnedView(ctx, lookOf(characterId), moment, isMirrored);
     } else {
       drawPortrait(ctx, lookOf(characterId));
     }
@@ -1018,9 +1190,11 @@ Game.world = Game.world || {};
   // TEMPORARY (M2-1.13 proposals): the numbers of the chosen variant, for
   // the comparison page. All in map units except footTravel (design units).
   // A character is drawn 39 map units high on the map (CHARACTER_HEIGHT in
-  // world.js), so one map unit is 112 / 39 design units. The foot on the
-  // ground moves back by 2 x footTravel during a step; the rest of the step
-  // it slides.
+  // world.js), so one map unit is 112 / 39 design units. While a foot is on
+  // the ground the character covers groundFraction x stepLength; the foot
+  // moves back by 2 x footTravel of it, and slides the rest.
+  var PLAYER_SPEED = 90; // map units per second, set by the server
+
   function walkProposalNumbers() {
     var proposal = walkProposal();
     var stepLength = proposal.cycleLength / 2;
@@ -1028,8 +1202,10 @@ Game.world = Game.world || {};
     return {
       cycleLength: proposal.cycleLength,
       stepLength: stepLength,
+      stepsPerSecond: PLAYER_SPEED / stepLength,
       footTravel: proposal.footTravel,
-      slidePerStep: stepLength - groundCovered
+      groundFraction: proposal.groundFraction,
+      slidePerStep: Math.max(0, proposal.groundFraction * stepLength - groundCovered)
     };
   }
 
