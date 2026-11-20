@@ -627,7 +627,11 @@ Game.world = Game.world || {};
   var NAME_TEXT_SIZE = 5.5;
   var LABEL_HEIGHT = 8;
   var LABEL_OUTLINE = 0.7;
-  var LABEL_GAP = 1; // free space between two labels above each other
+
+  // The names whose labels were hidden in the previous frame, because they
+  // would have covered another label. Game.world.chooseLabels() needs them
+  // so that a hidden name does not flicker back at the edge.
+  var hiddenNames = new Set();
 
   // In the drawing order the own character counts as standing this many map
   // units further down. Everyone starts on the same spawn point; this way a
@@ -683,53 +687,31 @@ Game.world = Game.world || {};
   }
 
   // The label of one player where it belongs: centred directly above the
-  // head. `x` and `y` are the middle of the label.
+  // head. `x` and `y` are the middle of the label; `width` and `height` are
+  // the whole space it covers, the dark outline included.
   function labelAboveHead(entry) {
     var headTop = figureMiddleY(entry.y) - CHARACTER_HEIGHT / 2 - HEAD_ROOM_BELOW_NAME;
+    var height = LABEL_HEIGHT + 2 * LABEL_OUTLINE;
     return {
       name: entry.player.name,
       x: entry.x,
-      y: headTop - LABEL_OUTLINE - LABEL_HEIGHT / 2,
-      width: ctx.measureText(entry.player.name).width + 6
+      y: headTop - height / 2,
+      width: ctx.measureText(entry.player.name).width + 6 + 2 * LABEL_OUTLINE,
+      height: height,
+      own: isOwn(entry.player)
     };
-  }
-
-  function labelsOverlap(a, b) {
-    var besideEachOther = Math.abs(a.x - b.x) >= (a.width + b.width) / 2 + 2 * LABEL_OUTLINE;
-    var aboveEachOther = Math.abs(a.y - b.y) >= LABEL_HEIGHT + 2 * LABEL_OUTLINE;
-    return !besideEachOther && !aboveEachOther;
-  }
-
-  // Decides where every label goes, so that no label covers another one.
-  // The labels are placed one after the other, the own one first: it always
-  // stays directly above the own head. A label that would cover one already
-  // placed moves up, one label height at a time, until its place is free.
-  // Nothing is remembered between frames, so a label is back above its
-  // figure as soon as the figures stand apart.
-  function placeLabels(visible) {
-    var ownFirst = visible.filter(function (entry) { return isOwn(entry.player); })
-      .concat(visible.filter(function (entry) { return !isOwn(entry.player); }));
-    var placed = [];
-    ownFirst.forEach(function (entry) {
-      var label = labelAboveHead(entry);
-      var isCovered = function (other) { return labelsOverlap(label, other); };
-      while (placed.some(isCovered)) {
-        label.y -= LABEL_HEIGHT + 2 * LABEL_OUTLINE + LABEL_GAP;
-      }
-      placed.push(label);
-    });
-    return placed;
   }
 
   // One name: dark letters on a light pill.
   function drawLabel(label) {
     // A line with round ends, as thick as the pill is high, is a pill. Drawn
     // twice: a slightly thicker dark one below gives the cream one its
-    // outline, so the pill shows on every floor.
+    // outline, so the pill shows on every floor. The round ends stick out
+    // half the thickness beyond the two points of the line.
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(label.x - label.width / 2 + LABEL_HEIGHT / 2, label.y);
-    ctx.lineTo(label.x + label.width / 2 - LABEL_HEIGHT / 2, label.y);
+    ctx.moveTo(label.x - label.width / 2 + label.height / 2, label.y);
+    ctx.lineTo(label.x + label.width / 2 - label.height / 2, label.y);
     ctx.lineWidth = LABEL_HEIGHT + 2 * LABEL_OUTLINE;
     ctx.strokeStyle = OUTLINE;
     ctx.stroke();
@@ -747,8 +729,12 @@ Game.world = Game.world || {};
       drawPlayer(entry, now);
     });
     // All names after all characters, so no name is hidden behind a head.
+    // Where labels would cover each other, only one of them is drawn; a
+    // label never moves away from its own head (S-117).
     useNameFont();
-    placeLabels(visible).forEach(drawLabel);
+    var choice = Game.world.chooseLabels(visible.map(labelAboveHead), hiddenNames);
+    hiddenNames = choice.hidden;
+    choice.shown.forEach(drawLabel);
   }
 
   // ---- The loop --------------------------------------------------------
