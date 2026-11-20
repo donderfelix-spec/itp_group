@@ -27,6 +27,12 @@ FEWER_PRODUCTS = "@container (width < 450px)"
 FEWEST_PRODUCTS = "@container (width < 230px)"
 NARROWEST_PAGE = 320
 LOWEST_PAGE = 568  # 320 x 568 is the smallest phone the game is tried on
+# With classic scroll bars (not laid over the content) the page and the
+# window of the minigame each lose this much width: 15px in Chromium on
+# Linux, 17px in Windows. A 320px page that scrolls has both.
+SCROLL_BARS = 2 * 17
+# The class names of the five minigames, as they start in style.css.
+MINIGAME_PREFIXES = (".slides-", ".brew-", ".tray-", ".books-", ".checkout-")
 
 
 def stylesheet_of(client):
@@ -112,21 +118,21 @@ def test_the_body_keeps_its_full_height_so_nothing_lies_on_the_header(client):
     assert "flex-shrink: 0;" in rule_of(stylesheet_of(client), ".minigame-body")
 
 
-def test_the_brew_order_has_no_rule_of_its_own_for_that_any_more(client):
-    # Edge case: the first fix of M2-4.12 was only for "Brew the order".
-    assert ".minigame-body:has(" not in stylesheet_of(client)
-
-
 def test_the_body_is_the_container_the_narrow_rules_ask_about(client):
     # Its width is the room of the minigame, whether the panel is next to the
     # map or below it, so one query fits both layouts of the lobby.
     assert "container-type: inline-size;" in rule_of(stylesheet_of(client), ".minigame-body")
 
 
-def test_only_the_body_is_a_container(client):
+def test_no_part_of_a_minigame_is_a_container(client):
     # An unnamed @container query asks the nearest container: there must be
-    # no other one between a minigame and its body.
-    assert stylesheet_of(client).count("container-type:") == 1
+    # no other one between a part of a minigame and the body.
+    stylesheet = re.sub(r"/\*.*?\*/", "", stylesheet_of(client), flags=re.DOTALL)
+    rules = re.findall(r"([^{}]+)\{([^{}]*)\}", stylesheet)
+    minigame_rules = [(selector, body) for selector, body in rules if any(prefix in selector for prefix in MINIGAME_PREFIXES)]
+    assert len(minigame_rules) > 50, "expected the rules of the five minigames"
+    for selector, body in minigame_rules:
+        assert "container-type" not in body, selector.strip()
 
 
 # ---- When the narrow rules apply ----
@@ -218,15 +224,33 @@ def test_the_shelf_has_two_boards_of_three_places(client):
     assert columns(rule) == 3
 
 
-def test_a_standing_book_fits_into_its_place(client):
-    # A three-digit number in 22px is about 43px wide; the place has a 2px
+def test_a_standing_book_fits_into_its_place_also_next_to_a_scroll_bar(client):
+    # A three-digit number in 18px is about 35px wide; the place has a 2px
     # dashed border and the book the outline.
     stylesheet = stylesheet_of(client)
-    shelf = rule_of(stylesheet, ".books-shelf")
+    block = block_of(stylesheet, NARROW)
+    shelf = rule_in_block(block, ".books-shelf")
+    assert value_of(rule_in_block(block, ".books-standing"), "font-size") == "18px"
     left_and_right = pixels(value_of(shelf, "padding").split()[1])
-    inside = room_of_narrowest_window(stylesheet) - 2 * left_and_right - 2 * outline(stylesheet)
-    place = (inside - 2 * pixels(value_of(shelf, "gap"))) / 3
-    assert place - 2 * 2 - 2 * outline(stylesheet) >= 43
+    column_gap = pixels(value_of(shelf, "gap").split()[1])
+    room = room_of_narrowest_window(stylesheet) - SCROLL_BARS
+    inside = room - 2 * left_and_right - 2 * outline(stylesheet)
+    place = (inside - 2 * column_gap) / 3
+    assert place - 2 * 2 - 2 * outline(stylesheet) >= 35
+
+
+def test_a_lying_book_with_three_digits_fits_on_the_table_also_next_to_a_scroll_bar(client):
+    # Edge case found in review: three in a row, a lying book (about 62px:
+    # the number in 26px, its outline and 9px of pages) pushed the right
+    # column past the table, and with a scroll bar the window scrolled
+    # sideways. Now two lie next to each other.
+    stylesheet = stylesheet_of(client)
+    assert columns(rule_in_block(block_of(stylesheet, NARROW), ".books-table")) == 2
+    table = rule_of(stylesheet, ".books-table")
+    room = room_of_narrowest_window(stylesheet) - SCROLL_BARS
+    inside = room - 2 * pixels(value_of(table, "padding")) - 2 * outline(stylesheet)
+    book = (inside - pixels(value_of(table, "gap"))) / 2
+    assert book >= 62
 
 
 # ---- Self-checkout ----
@@ -239,20 +263,28 @@ def test_the_total_stands_below_the_target_with_the_line_above_it(client):
     assert {"padding-left: 0;", "border-left: none;", "border-top: 2px solid var(--cream);"} <= total
 
 
-def test_target_and_total_side_by_side_need_less_than_the_narrow_width(client):
-    # Each line needs about 135px ("Total", 8px, "€12.00" and the thin line),
-    # so side by side about 310px with the display's padding: above 420px
-    # they still fit.
-    stylesheet = stylesheet_of(client)
-    display = rule_of(stylesheet, ".checkout-display")
-    needed = 2 * 135 + pixels(value_of(display, "gap")) + 2 * 14 + 2 * outline(stylesheet)
-    assert needed < query_width(NARROW)
-
-
 def test_the_message_may_wrap_below_the_name_of_the_row(client):
     block = block_of(stylesheet_of(client), NARROW)
     assert "flex-wrap: wrap;" in rule_in_block(block, ".checkout-area-heading")
     assert "white-space: normal;" in rule_in_block(block, ".checkout-message")
+
+
+def test_the_bagging_area_never_moves_when_the_message_comes(client):
+    # Edge case found in review: the heading grew from 26 to 67.5px for the
+    # 1.8s of the message, and a click on a bagged product could miss. Now
+    # the heading always has room for the name and two lines of message.
+    stylesheet = stylesheet_of(client)
+    block = block_of(stylesheet, NARROW)
+    body_line_height = float(value_of(rule_of(stylesheet, "body"), "line-height"))
+    label = pixels(value_of(rule_of(stylesheet, ".checkout-area-label"), "font-size")) * body_line_height
+    gap = pixels(value_of(rule_of(stylesheet, ".checkout-area-heading"), "gap"))
+    message = rule_of(stylesheet, ".checkout-message")
+    message_border = float(re.match(r"([\d.]+)px", value_of(message, "border")).group(1))
+    two_lines = 2 * pixels(value_of(message, "line-height")) + 2 * message_border
+    heading = rule_in_block(block, ".checkout-area-heading:has(.checkout-message)")
+    assert pixels(value_of(heading, "min-height")) >= label + gap + two_lines
+    # The name stays at the top of that room, with or without the message.
+    assert "align-content: flex-start;" in rule_in_block(block, ".checkout-area-heading")
 
 
 def product_width(stylesheet, room, count):

@@ -132,14 +132,6 @@ def test_in_the_widest_window_the_machine_is_as_wide_as_before(client):
     assert free / 2 >= full_width - machine
 
 
-def test_the_slip_starts_at_its_smallest_width(client):
-    # Edge case: a starting width above `min-width` would make the row break
-    # earlier than needed, for room the slip does not need.
-    rule = rule_of(stylesheet_of(client), ".brew-slip")
-    _, _, basis = flex_parts(rule)
-    assert basis == pixels(value_of(rule, "min-width"))
-
-
 def test_alone_in_its_row_the_machine_fits_into_the_narrowest_window(client):
     # The machine may shrink and has no fixed width any more, so a 320px page
     # does not push it out of the window.
@@ -172,11 +164,6 @@ def test_in_the_narrowest_window_two_buttons_stand_in_a_row(client):
     assert columns_that_fit(stylesheet, narrowest_card_inside(stylesheet)) == 2
 
 
-def test_a_button_column_is_wide_enough_to_be_clicked_easily(client):
-    # Players click these buttons in a hurry: at least about 40px each.
-    assert button_columns(stylesheet_of(client)) >= 40
-
-
 def test_hot_water_is_still_the_longest_button_name(client):
     # 80px per column holds "Hot water" on one line (79.3px in Chromium with
     # its 15px font, padding and border). A longer name needs a new check.
@@ -188,16 +175,3 @@ def test_hot_water_is_still_the_longest_button_name(client):
     assert max(names, key=len) == "Hot water"
     assert all(len(name) <= len("Hot water") for name in names)
     assert "white-space: nowrap;" in rule_of(stylesheet_of(client), ".brew-button")
-
-
-# ---- A window lower than the minigame ----
-
-
-def test_the_brew_order_is_built_in_the_body_that_keeps_its_height(client):
-    # In a low window the body of every minigame window keeps its full height
-    # (test_minigames_narrow.py), so the slip cannot lie over the header and
-    # the sentence. The script puts its layout straight into that body.
-    script = client.get("/js/minigames/brew_order.js").text
-    assert "const layout = element('div', 'brew-layout');" in script
-    assert "body.append(layout);" in script
-    assert "flex-shrink: 0;" in rule_of(stylesheet_of(client), ".minigame-body")

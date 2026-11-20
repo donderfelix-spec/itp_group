@@ -1444,13 +1444,24 @@ body:has(#screen-lobby:not([hidden])) .message {
   .tray-counter,
   .tray-tray { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-  /* Shelve the books: two boards of three places. A standing book needs
-     about 46px for its number. */
+  /* Shelve the books: two boards of three places, with less room around
+     them. A standing book in 18px needs about 44px for its place: the
+     number (about 35px), its outline and the dashed border of the place.
+     A place gets about 47px in a 320px page even with classic scroll
+     bars of 17px, one for the page and one for the window. */
   .books-shelf {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    row-gap: 10px;
+    gap: 10px 6px;
+    padding: 10px 8px 0;
   }
+
+  .books-standing { font-size: 18px; }
+
+  /* The table: two books next to each other. A lying book needs about 62px
+     (the number in 26px, its outline and the pages on the right); three
+     in a row had only about 50px each (about 40px with scroll bars). */
+  .books-table { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   /* Self-checkout: the total below the target, with the thin line above
      it. Side by side each line needs about 135px ("Total", the gap and
@@ -1465,8 +1476,17 @@ body:has(#screen-lobby:not([hidden])) .message {
   }
 
   /* "Unexpected item in the bagging area" is longer than the window is
-     wide: it goes below the name of the row and may take two lines. */
-  .checkout-area-heading { flex-wrap: wrap; }
+     wide: it goes below the name of the row and may take two lines. The
+     heading of the bagging area (the one with the message) is always as
+     high as the name, the gap and two lines of the message: 19.5px +
+     8px + 2 x 18px + 4px of border = 67.5px. So the row below it never
+     moves when the message comes and goes, and no click misses. */
+  .checkout-area-heading {
+    flex-wrap: wrap;
+    align-content: flex-start;
+  }
+
+  .checkout-area-heading:has(.checkout-message) { min-height: 68px; }
   .checkout-message { white-space: normal; }
 }
 
