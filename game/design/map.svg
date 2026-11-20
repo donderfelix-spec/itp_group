@@ -96,7 +96,7 @@
   </g>
 
   <!-- hiding spots -->
-  <rect x="566" y="236" width="58" height="26" rx="8" fill="#5FA86B" stroke="#2E2A3B" stroke-width="2.5"/>
+  <rect x="556" y="236" width="68" height="26" rx="8" fill="#5FA86B" stroke="#2E2A3B" stroke-width="2.5"/>
   <g fill="#FFFFFF" fill-opacity="0.55" stroke="#2E2A3B" stroke-width="2" stroke-dasharray="4 3">
     <circle cx="595" cy="249" r="9"/><circle cx="549" cy="468" r="9"/><circle cx="136" cy="524" r="9"/><circle cx="636" cy="128" r="9"/>
   </g>
