@@ -40,7 +40,7 @@ The map is based on the real campus in Carcavelos: light buildings, a large pave
 - **Canteen:** serving counter and square tables.
 - **CTT Student Hall:** tall and narrow, with eight rows of tables standing crosswise and the bookshelf at the end.
 - **Pingo Doce:** four shelves and the self-checkout.
-- **Main Deck:** reflecting pool, six trees, a hedge and the large NOVA logo. The red emergency button stands in the middle of the Main Deck and appears 45 seconds after a round starts. The sixth station is at the bottom, at the exit to the beach. You have to walk around all of these, and that is how players lose sight of each other.
+- **Main Deck:** reflecting pool, six trees, a hedge and the large NOVA logo. The red button for the emergency meeting stands to the right of the hedge and appears 45 seconds after a round starts. The sixth station is at the bottom, at the exit to the beach. You have to walk around all of these, and that is how players lose sight of each other.
 - At the bottom, a glass front closes off the deck. You can see the beach and the sea, but you cannot go out.
 - Every room has exactly one door to the deck and one task station (yellow dot). The stations are in the corners of the map, so that you really have to walk in Duel.
 - You only ever see the section around your own character, about one room in size. The camera follows the character.
@@ -136,7 +136,7 @@ Every action also works with a mouse click on the button.
 2. Each High Performer gets four of the five tasks, chosen at random. Every finished task fills the shared progress bar.
 3. The Free Rider has a list of fake tasks. At a station, the Free Rider sees a loading bar that does not count.
 4. The Free Rider can fail a High Performer who is in range (5 fields). After that, the Free Rider has to wait 15 seconds. The Free Rider starts with the ability loaded and cannot fail another Free Rider.
-5. Reporting happens right on the spot: For any living player who stands within 2 fields of an “F” sheet, the button “Report” lights up (key R). Pressing it starts the meeting for everyone at once, removes the reported sheet, and nobody has to walk anywhere. Without a find, each living player can call one meeting per round with the red button in the middle of the Main Deck, available 45 seconds after the round starts.
+5. Reporting happens right on the spot: For any living player who stands within 2 fields of an “F” sheet, the button “Report” lights up (key R). Pressing it starts the meeting for everyone at once, removes the reported sheet, and nobody has to walk anywhere. Without a find, each living player can call one meeting per round with the red button on the right of the Main Deck, next to the hedge, available 45 seconds after the round starts.
 6. Meeting: 45 seconds of discussion by chat, then 30 seconds for the vote. You vote for one person or “Skip”. The person with the most votes goes, and nobody goes if there is a tie or a majority for “Skip”. Anyone who does not vote counts as “Skip”.
 7. Whoever is voted out drifts out to sea: The character is caught by a wave on the beach, gets smaller and disappears on the horizon. A text says whether it was a Free Rider: “Mara was a Free Rider.” or “Mara was not a Free Rider.”
 8. After the meeting everyone stands on the Main Deck again, and the Free Rider’s cooldown starts again.
@@ -148,10 +148,10 @@ Every action also works with a mouse click on the button.
 | Free Riders | 1 with 4 or 5 players, 2 with 6 to 8 |
 | Tasks per High Performer | 4 |
 | Cooldown “Fail” | 15 s |
-
-Area 3 specification update: the Free Rider fail radius changed from 3 to 5 fields and its cooldown from 25 to 15 seconds. The initial fail ability remains loaded, and reporting an F-sheet still uses a 2-field radius.
 | Discussion / vote | 45 s / 30 s |
 | Emergency meetings | 1 per player |
+
+Area 3 specification update: the Free Rider fail radius changed from 3 to 5 fields and its cooldown from 25 to 15 seconds. The initial fail ability remains loaded, and reporting an F-sheet still uses a 2-field radius.
 
 **High Performers win:** The progress bar is full, or all Free Riders have been voted out.
 **Free Riders win:** There are as many Free Riders left as High Performers.
