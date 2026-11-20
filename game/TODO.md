@@ -35,7 +35,7 @@ Built, play-tested and on `main`, see “Done”. These points came up while bui
 
 **Security and accounts (area 2)**
 
-- [x] **M1-2.6** Limit log-in attempts and lobby-code guessing per connection (found in the code reviews, S-83). After 5 wrong log-ins or 10 wrong lobby codes within 60 seconds a connection reads “Too many attempts. Wait a moment and try again.”; the rule is `server/net/attempts.py`, the decisions are in S-107. Tried in one browser: the sixth wrong log-in and the eleventh wrong code show the text at their field (2026-11-20)
+- [x] **M1-2.6** Limit log-in attempts and lobby-code guessing per connection (found in the code reviews, S-83). After 5 wrong log-ins or 10 wrong lobby codes within 60 seconds a connection reads “Too many attempts. Try again in a minute.”; the rule is `server/net/attempts.py`, the decisions are in S-107. Tried in one browser: the sixth wrong log-in and the eleventh wrong code show the text at their field (2026-11-20)
 - [x] **M1-2.7** Show or hide the password with an eye icon in the sign-up and log-in forms. Played in the browser with mouse and keyboard, at 1280 and 360 px (2026-11-19)
 - [x] **M1-2.8** Tell a player why they were signed out when the same account logs in somewhere else (needs a text in DESIGN.md, section 9). The browser shows “You were signed in somewhere else.”; the text is a proposal (S-106). Played with two browsers (2026-11-19)
 - [ ] **M1-2.9** Add `sslmode=require` to `DATABASE_URL` on Render, as Supabase recommends, and check that sign up still works

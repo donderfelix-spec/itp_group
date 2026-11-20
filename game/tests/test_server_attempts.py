@@ -29,7 +29,7 @@ NO_LOBBY = {"type": "error", "code": "no_lobby", "message": "No lobby with that 
 TOO_MANY = {
     "type": "error",
     "code": "too_many_attempts",
-    "message": "Too many attempts. Wait a moment and try again.",
+    "message": "Too many attempts. Try again in a minute.",
 }
 
 
