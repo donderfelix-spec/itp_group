@@ -655,7 +655,11 @@ taking_positions = set()
 
 
 async def answer_move_message(websocket: WebSocket, message: dict):
-    """Remember the direction the player wants to walk. Only a rejection is answered."""
+    """Remember the direction the player wants to walk. Only a rejection is answered.
+
+    A numbered move (with "seq") is also remembered as heard, and the next
+    `positions` to this player says so (M2-1.16).
+    """
     name = app.state.sessions.name_of(websocket)
     if name is None:
         await websocket.send_json(protocol.rejection("not_signed_in"))
@@ -664,6 +668,10 @@ async def answer_move_message(websocket: WebSocket, message: dict):
     if lobby is None:
         await websocket.send_json(protocol.rejection("not_in_lobby"))
         return
+    if "seq" in message:
+        # Heard even if the direction is ignored just below: the browser
+        # must learn that the server had this move, whatever it did with it.
+        lobby.walkers.hear(name, message["seq"], seconds_now())
     # With a task open the player stands still (S-93). The message is not an
     # error: a key may have been pressed just before the window opened.
     if tasks.stands_still(lobby.tasks, name):
@@ -712,10 +720,13 @@ def tick(seconds: float):
     This function never waits for a browser: every send runs as its own task.
     So a slow player cannot delay the tick or the other players.
     """
+    # The clock is read once, so every lobby and every member of this tick
+    # gets the same time in `positions`.
+    tick_time = milliseconds(seconds_now())
     for lobby in app.state.lobbies.all():
         try:
             if lobby.walkers.advance(seconds, app.state.campus):
-                tell_positions(lobby)
+                tell_positions(lobby, tick_time)
         except Exception as problem:
             # A fault in one lobby must not freeze the lobbies after it.
             # Only the kind of error is logged.
@@ -738,9 +749,12 @@ def tick(seconds: float):
             log_tick_fault("The check for the end of a round failed", lobby.code, problem)
 
 
-def tell_positions(lobby):
-    """Start sending the lobby's positions to every member who needs them and is free."""
-    message = protocol.positions(lobby.walkers.positions())
+def tell_positions(lobby, tick_time: int):
+    """Start sending the lobby's positions to every member who needs them and is free.
+
+    `tick_time` is the server's clock at this tick, in whole milliseconds.
+    """
+    players = lobby.walkers.positions()
     for name in lobby.walkers.names_to_tell():
         connection = app.state.sessions.connection_of(name)
         if connection is None or connection in taking_positions:
@@ -749,9 +763,34 @@ def tell_positions(lobby):
             continue
         lobby.walkers.mark_told(name)
         taking_positions.add(connection)
+        message = positions_for(lobby.walkers, name, players, tick_time)
         task = asyncio.create_task(send_positions(name, connection, lobby, message))
         background_sends.add(task)
         task.add_done_callback(background_sends.discard)
+
+
+def positions_for(walkers, name: str, players: list, tick_time: int) -> dict:
+    """The `positions` message for one member.
+
+    Everybody in the lobby gets the same players and the same time. Only the
+    part "you" is different: each member gets their own, never anybody else's.
+    """
+    return protocol.positions(players, tick_time, what_was_heard_from(walkers, name))
+
+
+def what_was_heard_from(walkers, name: str):
+    """The part "you" of `protocol.positions` for this player, or None before a numbered move."""
+    heard = walkers.last_heard(name)
+    if heard is None:
+        return None
+    seq, heard_at = heard
+    dx, dy = walkers.direction_of(name)
+    return (seq, milliseconds(heard_at), dx, dy)
+
+
+def milliseconds(seconds: float) -> int:
+    """A time of the server's clock in whole milliseconds, as `positions` carries it."""
+    return round(seconds * 1000)
 
 
 async def send_positions(name: str, connection, lobby, message: dict):
@@ -773,7 +812,7 @@ async def send_positions(name: str, connection, lobby, message: dict):
 
 
 def seconds_now() -> float:
-    """The server's clock for the tasks, the countdown, the rounds and the leaderboard's cache.
+    """The server's clock for the tasks, the countdown, the rounds, the leaderboard's cache and `positions`.
 
     A function of its own, so tests can replace it.
     """

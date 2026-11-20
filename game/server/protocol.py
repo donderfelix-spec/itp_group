@@ -25,6 +25,10 @@ MAX_PASSWORD_LENGTH = 64
 # Log-in accepts any text up to this length, so the error never reveals the sign-up rules.
 MAX_CREDENTIAL_LENGTH = 64
 
+# The highest number a `move` may carry in "seq". A browser that sends 15
+# moves a second would need years to get there.
+MAX_MOVE_NUMBER = 2_000_000_000
+
 # The ids of the characters a player can choose.
 CHARACTERS = (
     "consultant",
@@ -169,6 +173,14 @@ def _check_step(value):
     return value
 
 
+def _check_move_number(value):
+    """The number of a `move`: the browser counts its moves up from 0 (M2-1.16)."""
+    # `type(value) is int` for the same reason as in `_check_step`.
+    if type(value) is not int or not 0 <= value <= MAX_MOVE_NUMBER:
+        raise ProtocolError("bad_move", "That move could not be read.")
+    return value
+
+
 def _check_station(value):
     """The id of a station on the map: 1 to STATION_COUNT.
 
@@ -204,6 +216,15 @@ CLIENT_MESSAGES = {
     "get_leaderboard": {},
 }
 
+# Fields a message may carry but does not have to, with the check for each.
+# A field that is sent is checked like a required one. A field that is not
+# sent is left out of the checked message, so older pages still work.
+OPTIONAL_FIELDS = {
+    # The number of the move, so `positions` can tell the browser which of
+    # its moves the server had heard (M2-1.16).
+    "move": {"seq": _check_move_number},
+}
+
 
 def parse_client_message(raw) -> dict:
     """Return the checked message, or raise ProtocolError."""
@@ -222,16 +243,20 @@ def parse_client_message(raw) -> dict:
     if not isinstance(message_type, str) or message_type not in CLIENT_MESSAGES:
         raise ProtocolError("unknown_type", "The server does not know that action.")
 
-    fields = CLIENT_MESSAGES[message_type]
+    required = CLIENT_MESSAGES[message_type]
+    optional = OPTIONAL_FIELDS.get(message_type, {})
     for key in data:
-        if key != "type" and key not in fields:
+        if key != "type" and key not in required and key not in optional:
             raise ProtocolError("unknown_field", "That message has a field the server does not expect.")
 
     checked = {"type": message_type}
-    for key, check in fields.items():
+    for key, check in required.items():
         if key not in data:
             raise ProtocolError("missing_field", "That message is incomplete.")
         checked[key] = check(data[key])
+    for key, check in optional.items():
+        if key in data:
+            checked[key] = check(data[key])
     return checked
 
 
@@ -296,13 +321,30 @@ def left_lobby() -> dict:
     return {"type": "left_lobby"}
 
 
-def positions(players) -> dict:
+def positions(players, t=None, you=None) -> dict:
     """`players` is a list of (name, x, y) triples.
 
     One decimal is enough to draw a character and keeps the message small.
+
+    `t` is the server's clock at the tick that produced these positions, in
+    whole milliseconds. Only differences of `t` mean anything: the browser
+    uses them to play the messages back in the server's order (M2-1.16).
+
+    `you` is for the one player the message goes to, and only once the
+    server has heard a numbered `move` from them: a (seq, heard_at, dx, dy)
+    tuple. `seq` is the number of the last move heard, `heard_at` the
+    server's clock when it was heard (like `t`), and dx, dy the direction the
+    server is walking that player now. Without `t` and `you` the message is
+    the same as before M2-1.16.
     """
     listed = [{"name": name, "x": round(x, 1), "y": round(y, 1)} for name, x, y in players]
-    return {"type": "positions", "players": listed}
+    message = {"type": "positions", "players": listed}
+    if t is not None:
+        message["t"] = t
+    if you is not None:
+        seq, heard_at, dx, dy = you
+        message["you"] = {"seq": seq, "t": heard_at, "dx": dx, "dy": dy}
+    return message
 
 
 def station_opened(station: int, title: str, content: dict) -> dict:

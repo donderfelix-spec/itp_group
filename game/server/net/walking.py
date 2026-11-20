@@ -23,6 +23,11 @@ class Walker:
         self.dy = 0
         # Whether this player still has to be sent the newest positions.
         self.needs_news = False
+        # The number of the last numbered `move` the server heard from this
+        # player, and the server's clock in seconds when it heard it. Both
+        # None until the first numbered move (M2-1.16).
+        self.heard_seq = None
+        self.heard_at = None
 
 
 class Walkers:
@@ -31,7 +36,7 @@ class Walkers:
         self._walkers = {}
 
     def add(self, name: str):
-        """A newcomer stands still on the spawn. Everybody must be told."""
+        """A newcomer stands still on the spawn and has sent no move yet. Everybody must be told."""
         self._walkers[name] = Walker()
         self._everybody_needs_news()
 
@@ -46,7 +51,8 @@ class Walkers:
         The next `advance` places them, exactly like newcomers. The direction
         a player is holding stays: the browser sends a direction only when it
         changes (S-74), so a player holding a key would otherwise stand still
-        until they let go and press again.
+        until they let go and press again. The last move heard stays too: it
+        is still the last one the browser sent.
         """
         for walker in self._walkers.values():
             walker.position = None
@@ -58,6 +64,30 @@ class Walkers:
         walker.dx = dx
         walker.dy = dy
 
+    def direction_of(self, name: str) -> tuple:
+        """The direction the server is walking the player now, as `(dx, dy)`."""
+        walker = self._walkers[name]
+        return (walker.dx, walker.dy)
+
+    def hear(self, name: str, seq: int, seconds):
+        """Remember the number of a `move` from this player and when it arrived.
+
+        `seconds` is the server's clock at that moment. This player is told
+        at the next tick even if nobody moves, so the browser learns that the
+        server heard the move. The others are not told anything more.
+        """
+        walker = self._walkers[name]
+        walker.heard_seq = seq
+        walker.heard_at = seconds
+        walker.needs_news = True
+
+    def last_heard(self, name: str):
+        """`(seq, seconds)` of the last numbered move heard from the player, or None."""
+        walker = self._walkers[name]
+        if walker.heard_seq is None:
+            return None
+        return (walker.heard_seq, walker.heard_at)
+
     def position_of(self, name: str):
         """Where the player stands, as `(x, y)`, or None before the first tick placed them."""
         return self._walkers[name].position
@@ -65,8 +95,9 @@ class Walkers:
     def advance(self, seconds, campus) -> bool:
         """Move every player for `seconds`. Returns whether there is news to send.
 
-        There is news if somebody moved in this step, or if somebody joined or
-        left since the members were last told. `campus` is the checked map
+        There is news if somebody moved in this step, if somebody joined or
+        left since the members were last told, or if a numbered move was
+        heard that its player has not been told about. `campus` is the checked map
         from `load_campus`.
         """
         somebody_moved = False
