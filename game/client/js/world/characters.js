@@ -207,8 +207,10 @@ Game.world = Game.world || {};
     // Lobby previews omit stride and keep their neutral pose.
     var pose = stride && typeof stride === "object" ? stride : null;
     if (pose) {
-      motion = { time: motion && motion.time || 0, walking: pose.walkPhase != null && pose.stride > 0, facing: motion && motion.facing || "side" };
-      stride = pose.walkPhase === null ? 0 : Math.sin(pose.walkPhase * Math.PI * 2) * pose.stride;
+      var strength = Number.isFinite(pose.stride) ? Math.max(0, Math.min(1, pose.stride)) : 1;
+      var hasPhase = Number.isFinite(pose.walkPhase);
+      motion = { time: motion && motion.time || 0, walking: hasPhase && strength > 0, facing: motion && motion.facing || "side" };
+      stride = hasPhase ? Math.sin(pose.walkPhase * Math.PI * 2) * strength : 0;
     }
     var profile = movement[characterId] || movement.consultant;
     var time = motion && Number.isFinite(motion.time) ? motion.time : 0;
