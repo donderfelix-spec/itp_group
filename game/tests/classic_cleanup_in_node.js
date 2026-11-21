@@ -265,7 +265,12 @@ page.Game = {
     characters: [],
     drawMap(ctx, map, view, emergencyVisible) { emergencyButtonDrawn = emergencyVisible === true; },
     drawStationGlow() {},
-    drawCharacter(ctx, character, x) { charactersDrawn.push({ character: character, x: x, alpha: ctx.globalAlpha }); },
+    // The character "broken" cannot be drawn, as when characters.js fails:
+    // the world then draws a circle in its place.
+    drawCharacter(ctx, character, x) {
+      if (character === 'broken') throw new Error('This character cannot be drawn.');
+      charactersDrawn.push({ character: character, x: x, alpha: ctx.globalAlpha });
+    },
     chooseLabels: (labels) => ({ shown: labels, hidden: new Set() }),
   },
 };

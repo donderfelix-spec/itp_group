@@ -265,3 +265,20 @@ def test_after_a_classic_round_a_player_left_out_stays_drawn_as_before():
     steps = classic_round() + end + stand(OUTSIDE, (OTHER, {"x": 300, "y": 330})) + stand(OUTSIDE) + [["lookAtDrawing"]]
     drawing = run_page(steps)["drawings"][0]
     assert [drawn["x"] for drawn in drawn_other(drawing)] == [300]
+
+
+@needs_node
+def test_the_text_follows_the_spot_also_when_the_own_character_is_drawn_as_a_circle():
+    broken = [dict(entry, character="broken") if entry["name"] == OWN else entry for entry in PLAYERS]
+    steps = [
+        ["receive", {"type": "signed_in", "name": OWN, "guest": False}],
+        lobby_state("lobby", players=broken),
+        lobby_state("countdown", players=broken),
+        lobby_state("round", players=broken),
+        ["receive", {"type": "you_are_fr"}],
+        ["receive", {"type": "classic_role", "role": "FR", "other_free_riders": []}],
+    ]
+    steps += stand(IN_THE_SPOT) + [["lookAtDrawing"]] + stand(OUTSIDE) + [["lookAtDrawing"]]
+    inside, outside = run_page(steps)["drawings"]
+    assert inside["hiddenHintShown"] is True
+    assert outside["hiddenHintShown"] is False

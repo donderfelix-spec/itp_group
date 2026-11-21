@@ -954,10 +954,16 @@ Game.world = Game.world || {};
     ownHidingCheck = typeof check === "function" ? check : null;
   }
 
+  // Asked once per frame by drawPlayers(), also when the own character is
+  // not drawn or drawn as a circle, so the check's text "Hidden" is always
+  // up to date. Without an own position the check gets no numbers: not hidden.
+  var ownIsHiddenNow = false;
+
   function isOwnHidden() {
+    if (!ownHidingCheck || !campus) return false;
     var own = ownPlayer();
-    if (!ownHidingCheck || !campus || !own || !own.server) return false;
-    return ownHidingCheck(own.server.x, own.server.y, campus.hiding_spots) === true;
+    var place = own && own.server ? own.server : { x: NaN, y: NaN };
+    return ownHidingCheck(place.x, place.y, campus.hiding_spots) === true;
   }
 
   // ---- Stations: which one is in range, and opening it -----------------
@@ -1542,7 +1548,7 @@ Game.world = Game.world || {};
     ctx.save();
     // A ghost (Classic) is drawn half transparent; only other ghosts see it.
     if (player.isGhost) ctx.globalAlpha = 0.38;
-    else if (isOwn(player) && isOwnHidden()) ctx.globalAlpha = HIDDEN_ALPHA;
+    else if (isOwn(player) && ownIsHiddenNow) ctx.globalAlpha = HIDDEN_ALPHA;
     try {
       Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
       ctx.restore();
@@ -1638,6 +1644,7 @@ Game.world = Game.world || {};
   }
 
   function drawPlayers(now) {
+    ownIsHiddenNow = isOwnHidden();
     var visible = visiblePlayers(now);
     visible.forEach(function (entry) {
       drawPlayer(entry, now);
