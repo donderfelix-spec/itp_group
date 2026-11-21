@@ -5,7 +5,8 @@ the browser and throws on the first check that fails:
 
 - test_client_room_tasks.js: the six room tasks of stations 7 to 12, and
   Duel and Solo in main.js
-- test_client_roster.js: the "Players" card over the map
+- test_client_player_progress.js: the player list of the side panel with
+  the progress of a Duel or Solo round
 - test_task_navigation.js: the task arrow and card, and which stations
   world.js and draw.js show
 - test_minigame_done_close.js: the × of the minigame window in its "Done" state
@@ -25,7 +26,7 @@ TESTS = Path(__file__).resolve().parent
 NODE = shutil.which("node")
 HARNESSES = [
     "test_client_room_tasks.js",
-    "test_client_roster.js",
+    "test_client_player_progress.js",
     "test_task_navigation.js",
     "test_minigame_done_close.js",
     "test_station_objects.js",

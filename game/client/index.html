@@ -190,13 +190,6 @@
             <span class="task-card-line"><span id="task-card-room" class="task-card-room"></span><span id="task-card-title" class="task-card-title"></span></span>
           </div>
         </div>
-        <!-- Public players only: portraits, names and an explicit life status. -->
-        <aside id="player-roster" class="player-roster" aria-label="Players in this round" hidden>
-          <header class="player-roster-header">
-            <h2>Players</h2><span id="player-roster-count" class="player-roster-count">0</span>
-          </header>
-          <ul id="player-roster-list" class="player-roster-list" aria-label="Current players"></ul>
-        </aside>
         <!-- Two parts, so that on a narrow map the hint can be two lines
              (style.css). On a wide map it is one line. -->
         <p class="hint"><span class="hint-part">Walk with WASD</span> <span class="hint-part">or the arrow keys</span></p>
@@ -250,7 +243,6 @@
             <h2 class="panel-heading">Duel</h2>
             <p id="duel-next" class="duel-next" role="status"></p>
             <p id="duel-clock" class="duel-clock" aria-label="Time left"></p>
-            <ul id="duel-players" class="duel-players"></ul>
           </div>
         </div>
 
@@ -331,7 +323,6 @@
   <script src="js/lobby/screens.js"></script>
   <script src="js/lobby/forms.js"></script>
   <script src="js/lobby/lobby.js"></script>
-  <script src="js/lobby/roster.js"></script>
   <script src="js/lobby/countdown.js"></script>
   <script src="js/minigames/frame.js"></script>
   <script src="js/minigames/build_tray.js"></script>

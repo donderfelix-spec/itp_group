@@ -31,6 +31,9 @@ window.Game = window.Game || {};
   let ownName = null;
   let ownIsFreeRider = false;
   let latestState = null;
+  // In a Duel or Solo round: how many stations each player has done, from
+  // `duel_progress` (see showProgress). null outside such a round.
+  let progress = null;
 
   function setup() {
     allCharacters().forEach(addCharacterButton);
@@ -228,11 +231,53 @@ window.Game = window.Game || {};
 
   // ---- Player list ----
 
+  // In a Duel or Solo round each row also shows the player's progress, "2/3"
+  // and a bar (Felix, 2026-11-21); the list is then one column wide. In the
+  // lobby and in Classic it is the list of main.
   function showPlayers(state) {
     playerList.replaceChildren();
+    const shown = isRaceRound(state) ? progress : null;
+    playerList.classList.toggle('players-progress', shown !== null);
     state.players.forEach((player) => {
-      playerList.appendChild(makePlayerRow(player, state.host));
+      const row = makePlayerRow(player, state.host);
+      if (shown && shown.done.has(player.name)) addProgress(row, shown.done.get(player.name), shown.total);
+      playerList.appendChild(row);
     });
+  }
+
+  function isRaceRound(state) {
+    return state.phase === 'round' && (state.mode === 'duel' || state.mode === 'solo');
+  }
+
+  // "2/3" at the right of the row and a bar under the name.
+  function addProgress(row, done, total) {
+    row.appendChild(makeText('span', 'player-done', done + '/' + total));
+    const bar = makeText('span', 'player-bar', '');
+    bar.setAttribute('aria-hidden', 'true'); // "2/3" already says it
+    const fill = makeText('span', 'player-bar-fill', '');
+    fill.style.width = Math.round(100 * done / total) + '%';
+    bar.appendChild(fill);
+    row.appendChild(bar);
+  }
+
+  // From main.js: what duel.js read from `duel_progress`, as
+  // {players: [{name, done}], total}, or null. Anything unreadable shows no
+  // progress; a count above the total is shown as the total.
+  function showProgress(given) {
+    progress = readProgress(given);
+    if (latestState) showPlayers(latestState);
+  }
+
+  function readProgress(given) {
+    const isReadable = Boolean(given) && Array.isArray(given.players)
+      && Number.isInteger(given.total) && given.total > 0;
+    if (!isReadable) return null;
+    const done = new Map();
+    given.players.forEach((player) => {
+      const isPlayer = Boolean(player) && typeof player.name === 'string' && Number.isInteger(player.done) && player.done >= 0;
+      if (isPlayer) done.set(player.name, Math.min(player.done, given.total));
+    });
+    return { done: done, total: given.total };
   }
 
   function makePlayerRow(player, hostName) {
@@ -260,6 +305,7 @@ window.Game = window.Game || {};
 
   function show(state) {
     latestState = state;
+    if (!isRaceRound(state)) progress = null; // a round that ended leaves no progress behind
     codeElement.textContent = state.code;
     showPlayers(state);
     const isHost = state.host === ownName;
@@ -294,6 +340,7 @@ window.Game = window.Game || {};
     setOwnName: setOwnName,
     setOwnFreeRider: setOwnFreeRider,
     setPlayers: setPlayers,
+    showProgress: showProgress,
     leaveLobby: leaveLobby,
     show: show
   };

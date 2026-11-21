@@ -350,7 +350,7 @@ input {
 
 .map-area {
   position: relative;
-  /* A size container, so the task card and roster can ask whether the map
+  /* A size container, so the card at the top left can ask whether the map
      is narrow and whether it is higher than wide. Its height comes from the
      grid row, never from what is inside. */
   container: map-area / size;
@@ -405,56 +405,6 @@ input {
   bottom: 86px;
   z-index: 1;
   background: var(--sun);
-}
-
-/* Public roster in a separate corner from the player's private task card.
-   The minigame/ranking overlays have z-index 1 and remain above this card. */
-.player-roster {
-  position: absolute;
-  top: 28px;
-  right: 28px;
-  display: flex;
-  flex-direction: column;
-  width: 206px;
-  max-width: calc(100% - 56px);
-  max-height: min(424px, calc(100% - 140px));
-  overflow: hidden;
-  border: 2px solid var(--ink);
-  border-radius: 14px;
-  background: #F9F4E8;
-  box-shadow: 3px 4px 0 var(--ink);
-}
-.player-roster-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none; padding: 8px 11px; border-bottom: 2px solid var(--ink); background: var(--sun); }
-.player-roster-header h2 { margin: 0; font-size: 12px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
-.player-roster-count { min-width: 23px; padding: 1px 5px; border: 1.5px solid var(--ink); border-radius: 6px; background: #FFF9E8; font-size: 11px; line-height: 1.35; text-align: center; font-variant-numeric: tabular-nums; font-weight: 800; }
-.player-roster-list { display: flex; flex-direction: column; gap: 3px; min-height: 0; margin: 0; padding: 6px; overflow-y: auto; overscroll-behavior: contain; list-style: none; scrollbar-width: thin; scrollbar-color: #A2967E transparent; }
-.player-roster-row { display: flex; align-items: center; gap: 8px; flex: none; min-height: 42px; padding: 3px 6px; border: 1px solid #D8CEBB; border-radius: 9px; background: #FFFDF7; }
-.player-roster-portrait { position: relative; display: flex; align-items: center; justify-content: center; flex: none; width: 34px; height: 36px; border-radius: 8px; background: #E9E3D0; }
-.player-roster-portrait canvas { display: block; width: 34px; height: 34px; }
-.player-roster-detail { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
-.player-roster-identity { display: flex; align-items: center; gap: 5px; min-width: 0; }
-.player-roster-name { overflow: hidden; font-size: 12px; line-height: 1.3; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
-.player-roster-you { flex: none; padding: 1px 4px; border-radius: 4px; background: #FFE99A; font-size: 8px; line-height: 1.4; font-weight: 850; }
-.player-roster-status { display: flex; align-items: center; gap: 5px; font-size: 10px; line-height: 1.3; font-weight: 650; color: #416A45; }
-.player-roster-status::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #5FA86B; }
-.player-roster-dead { background: #EAE6DF; border-style: dashed; }
-.player-roster-dead .player-roster-name { text-decoration: line-through 1.5px; color: #756E75; }
-.player-roster-dead .player-roster-portrait > canvas, .player-roster-dead .player-roster-fallback { opacity: .32; filter: grayscale(1); }
-.player-roster-dead .player-roster-status { color: #8B4844; }
-.player-roster-dead .player-roster-status::before { display: none; }
-.player-roster-cross { position: absolute; right: -3px; bottom: -3px; display: flex; align-items: center; justify-content: center; width: 17px; height: 17px; border: 1.5px solid var(--ink); border-radius: 50%; background: var(--coral); color: var(--ink); font-size: 15px; font-weight: 900; line-height: 1; }
-.player-roster-fallback { position: relative; width: 28px; height: 31px; }
-.player-roster-fallback-head { position: absolute; top: 3px; left: 8px; width: 13px; height: 13px; border: 1.5px solid var(--ink); border-radius: 50%; background: #D4C9B4; }
-.player-roster-fallback-body { position: absolute; bottom: 2px; left: 5px; width: 19px; height: 14px; border: 1.5px solid var(--ink); border-radius: 8px 8px 5px 5px; background: #A8B9AE; }
-/* On a map narrower than 610 px (28 + room label 340 + 8 + roster 206 + 28)
-   the roster is only its header ("Players" and the count), at the bottom
-   left next to the hint: so it never covers the room label, the task card,
-   the own character in the middle of the map, the hint or "E Use". */
-@container map-area (max-width: 610px) {
-  .player-roster { top: auto; bottom: 30px; left: 28px; right: auto; width: auto; }
-  .player-roster-header { padding: 4px 8px; border-bottom: none; }
-  .player-roster-header h2 { font-size: 10px; }
-  .player-roster-list { display: none; }
 }
 
 /* The card at the top left of the map (minigames/task_navigation.js): the
@@ -1755,7 +1705,6 @@ body:has(#screen-lobby:not([hidden])) .message {
   font-variant-numeric: tabular-nums;
 }
 
-.duel-players,
 .duel-rows {
   display: flex;
   flex-direction: column;
@@ -1765,7 +1714,6 @@ body:has(#screen-lobby:not([hidden])) .message {
   list-style: none;
 }
 
-.duel-player,
 .duel-row {
   display: flex;
   align-items: center;
@@ -1773,7 +1721,6 @@ body:has(#screen-lobby:not([hidden])) .message {
   min-width: 0;
 }
 
-.duel-player-name,
 .duel-row-name {
   flex: 1;
   min-width: 0;
@@ -1782,13 +1729,10 @@ body:has(#screen-lobby:not([hidden])) .message {
   white-space: nowrap;
 }
 
-.duel-player-done,
 .duel-row-result {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
-
-.duel-player-own { font-weight: 800; }
 
 /* The ranking lies over the map only, like the window of a minigame. */
 .duel-ranking {
@@ -1980,6 +1924,26 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 /* The own row can carry two markers, so it gets the full width. */
 .player-own { grid-column: 1 / -1; }
+
+/* In a Duel or Solo round (lobby.js): one column, "2/3" at the right of
+   each row and a bar under the name, filled in success green. */
+.players-progress { grid-template-columns: minmax(0, 1fr); }
+.players-progress .player { flex-wrap: wrap; row-gap: 2px; }
+.player-done {
+  margin-left: auto;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.player-bar {
+  flex-basis: calc(100% - 53px); /* under the name, beside the 48 px icon */
+  height: 7px;
+  margin: -4px 0 4px 53px;
+  overflow: hidden;
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  background: #EFE7D6;
+}
+.player-bar-fill { display: block; height: 100%; background: #5FA86B; }
 
 .player-name {
   min-width: 0;
@@ -2276,13 +2240,6 @@ body:has(#screen-lobby:not([hidden])) .message {
     grid-template-columns: 1fr;
     grid-template-rows: 55vh auto;
     height: auto;
-  }
-
-  /* Grow only a map with an active roster. The lobby and countdown keep
-     their original height; a short in-round map leaves one readable row
-     between the private task card and E Use, with page scrolling below. */
-  .screen-lobby:has(.player-roster:not([hidden])) {
-    grid-template-rows: minmax(340px, 55vh) auto;
   }
 
   .panel {

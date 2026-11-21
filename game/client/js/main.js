@@ -58,14 +58,6 @@ window.Game = window.Game || {};
     }
   }
 
-  // The "Players" card over the map (lobby/roster.js). Like callWorld: a
-  // page or test without it still works.
-  function callRoster(functionName, ...values) {
-    if (Game.roster && typeof Game.roster[functionName] === 'function') {
-      Game.roster[functionName](...values);
-    }
-  }
-
   function sendMove(dx, dy) {
     Game.net.send({ type: 'move', dx: dx, dy: dy });
   }
@@ -83,7 +75,6 @@ window.Game = window.Game || {};
     clearClassicLeftovers();
     Game.classicRound.hide();
     Game.duel.reset();
-    callRoster('reset');
     callTaskNavigation('reset');
     Game.countdown.reset();
     roundIsRunning = false;
@@ -189,7 +180,6 @@ window.Game = window.Game || {};
     Game.classicMeeting.setOwnName(message.name);
     Game.classicRound.setOwnName(message.name);
     Game.statistics.setOwnName(message.name);
-    callRoster('setOwnName', message.name);
     callWorld('setOwnName', message.name);
     Game.forms.showSignedIn(message.name, message.guest);
     rejoinTheLostLobby(); // after showSignedIn, whose Home screen empties the join field
@@ -253,7 +243,6 @@ window.Game = window.Game || {};
     if (!isLobbyState(message)) return; // Unreadable: keep what is shown.
     lobbyCode = message.code;
     Game.lobby.show(message);
-    callRoster('show', message);
     // Switching screens moves the keyboard focus, so it happens only on
     // entering the lobby and not on every change in it.
     if (Game.screens.current() !== 'lobby') Game.screens.show('lobby');
@@ -319,6 +308,13 @@ window.Game = window.Game || {};
     showUsableStations();
   }
 
+  // Everybody's progress: the clock of the Duel panel and, from what
+  // duel.js could read of it, the "2/3" and the bar in the player list.
+  function whenDuelProgress(message) {
+    Game.duel.showProgress(message);
+    Game.lobby.showProgress(Game.duel.progress());
+  }
+
   // The round is over. The server has closed an open task already; the
   // window goes too, so the ranking is not hidden behind it.
   function whenDuelResult(message) {
@@ -367,7 +363,6 @@ window.Game = window.Game || {};
   Game.classicRound.setup();
   Game.countdown.setup();
   Game.statistics.setup();
-  callRoster('setup');
   callWorld('setUseHandler', openStation);
   callWorld('setFailHandler', requestFail);
   callWorld('setReportHandler', requestReport);
@@ -386,7 +381,7 @@ window.Game = window.Game || {};
   Game.net.on('station_closed', Game.minigames.close);
   Game.net.on('station_done', whenStationDone);
   Game.net.on('duel_state', whenDuelState);
-  Game.net.on('duel_progress', Game.duel.showProgress);
+  Game.net.on('duel_progress', whenDuelProgress);
   Game.net.on('duel_result', whenDuelResult);
   Game.net.on('classic_fail', whenClassicFail);
   Game.net.on('classic_fail_status', whenClassicFailStatus);

@@ -62,7 +62,6 @@ function environment() {
     screens: { current: () => 'lobby', hideMessage() {}, showMessage() {} },
     statistics: { setup() {}, setOwnName() {}, showProfile() {}, showLeaderboard() {} },
     countdown: { setup() {}, noteLobby() {}, show() {}, reset() {} },
-    roster: { setup() {}, setOwnName() {}, show() {}, reset() {} },
     // Classic's own modules (from main): every call does nothing here.
     classicMeeting: new Proxy({}, { get: () => () => undefined }),
     classicRound: new Proxy({}, { get: () => () => undefined }),

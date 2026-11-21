@@ -1,7 +1,8 @@
 // What a player sees of a Duel (DESIGN.md, section 6, and S-94).
 //
-// In the lobby panel, while the round runs: the next station, the clock and
-// everybody's progress. At the end: the ranking, as a card over the map.
+// In the lobby panel, while the round runs: the next station and the clock;
+// everybody's progress is shown in the player list (lobby.js, from
+// `progress()`). At the end: the ranking, as a card over the map.
 //
 // The server decides everything. This file only draws what three messages
 // say and sends nothing:
@@ -14,6 +15,7 @@
 //   Game.duel.noteLobby(state)     every `lobby_state`: a round began or ended
 //   Game.duel.showState(message), showProgress(message), showResult(message)
 //   Game.duel.nextStation()        the station that may glow, or null
+//   Game.duel.progress()           {players: [{name, done}], total}, or null
 //   Game.duel.reset()              the player left the lobby
 
 window.Game = window.Game || {};
@@ -26,7 +28,6 @@ window.Game = window.Game || {};
   let panel = null; // the elements in index.html, looked up in setup()
   let nextText = null;
   let clockText = null;
-  let playerList = null;
   let rankingContainer = null;
 
   let ownName = null;
@@ -45,7 +46,6 @@ window.Game = window.Game || {};
     panel = document.getElementById('duel-panel');
     nextText = document.getElementById('duel-next');
     clockText = document.getElementById('duel-clock');
-    playerList = document.getElementById('duel-players');
     rankingContainer = document.getElementById('duel-ranking');
     loadStationNames();
   }
@@ -137,19 +137,6 @@ window.Game = window.Game || {};
     return 'Next: ' + stationName(state.next_station);
   }
 
-  function showPlayers() {
-    playerList.replaceChildren();
-    if (!progress) return;
-    progress.players.forEach((player) => {
-      const row = element('li', player.name === ownName ? 'duel-player duel-player-own' : 'duel-player');
-      // textContent, never innerHTML: a name is text from another player.
-      const name = element('span', 'duel-player-name', player.name);
-      name.title = player.name;
-      row.append(name, element('span', 'duel-player-done', player.done + '/' + total));
-      playerList.append(row);
-    });
-  }
-
   // The browser counts down by itself between two messages of the server,
   // from the seconds the server last said, and never below 0:00.
   function showClock() {
@@ -168,7 +155,6 @@ window.Game = window.Game || {};
     if (!hasSomething) return;
     nextText.textContent = nextLine();
     nextText.classList.toggle('duel-next-finished', Boolean(state) && state.next_station === null);
-    showPlayers();
     showClock();
   }
 
@@ -223,6 +209,12 @@ window.Game = window.Game || {};
 
   function nextStation() {
     return roundIsOn && state ? state.next_station : null;
+  }
+
+  // Everybody's progress in this round, for the player list, or null.
+  function progressOfPlayers() {
+    if (!roundIsOn || !progress) return null;
+    return { players: progress.players.map((player) => ({ name: player.name, done: player.done })), total: total };
   }
 
   // ---- The ranking at the end ----
@@ -293,6 +285,7 @@ window.Game = window.Game || {};
     showProgress: showProgress,
     showResult: showResult,
     nextStation: nextStation,
+    progress: progressOfPlayers,
     reset: reset,
     formatTime: formatTime,
   };
