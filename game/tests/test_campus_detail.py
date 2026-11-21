@@ -170,8 +170,18 @@ def test_mon_cafe_has_its_new_furniture_and_still_three_round_tables():
     assert [(table["w"], table["h"]) for table in tables] == [(20, 20)] * 3
 
 
-def test_every_new_solid_lies_in_pingo_doce_or_mon_cafe():
-    assert len(new_solids_in("pingo-doce")) + len(new_solids_in("mon-cafe")) == len(NEW_SOLIDS)
+def test_the_lecture_hall_has_a_lectern_on_the_stage():
+    [lectern] = new_solids_in("lecture-hall")
+    assert lectern["kind"] == "lectern"
+    board = next(solid for solid in SOLIDS if solid["id"] == "lecture-hall-board")
+    first_row = next(solid for solid in SOLIDS if solid["id"] == "lecture-hall-bench-1")
+    assert lectern["y"] + lectern["h"] < first_row["y"]  # in front of the rows
+    assert lectern["x"] + lectern["w"] < board["x"]  # beside the long table
+
+
+def test_every_new_solid_lies_in_pingo_doce_mon_cafe_or_the_lecture_hall():
+    rooms = ["pingo-doce", "mon-cafe", "lecture-hall"]
+    assert sum(len(new_solids_in(room)) for room in rooms) == len(NEW_SOLIDS)
 
 
 def test_every_decor_on_a_solid_lies_inside_a_solid():

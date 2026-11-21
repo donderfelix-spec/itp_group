@@ -8,7 +8,7 @@
   "colours": {"lawn": "#DCE6C8", "deck": "#F3F0E9", "outline": "#2E2A3B"},
 
   "rooms": [
-    {"id": "lecture-hall", "name": "Lecture Hall",     "x": 20,  "y": 20,  "w": 210, "h": 150, "floor": "#EAD3AE", "label": {"x": 125, "y": 152}, "pattern": "planks",        "wall_face": "bamboo-slats"},
+    {"id": "lecture-hall", "name": "Lecture Hall",     "x": 20,  "y": 20,  "w": 210, "h": 150, "floor": "#EAD3AE", "label": {"x": 125, "y": 152}, "pattern": "planks",        "wall_face": "white-wall"},
     {"id": "mon-cafe",     "name": "Mon Café",         "x": 250, "y": 20,  "w": 200, "h": 150, "floor": "#F6ECE0", "label": {"x": 350, "y": 152}, "pattern": "concrete",      "wall_face": "sage-tiles"},
     {"id": "canteen",      "name": "Canteen",          "x": 470, "y": 20,  "w": 190, "h": 150, "floor": "#D7EDDF", "label": {"x": 565, "y": 152}, "pattern": "mint-tiles",    "wall_face": "white-tiles"},
     {"id": "ctt",          "name": "CTT Student Hall", "x": 20,  "y": 230, "w": 140, "h": 330, "floor": "#D6E4F4", "label": {"x": 90,  "y": 248}, "pattern": "speckled",      "wall_face": "white-wall"},
@@ -68,6 +68,7 @@
     {"id": "glass-front",             "kind": "glass", "x": 163, "y": 561, "w": 274, "h": 10},
 
     {"id": "lecture-hall-board",      "kind": "board", "x": 60,  "y": 30,  "w": 110, "h": 8},
+    {"id": "lecture-hall-lectern",    "kind": "lectern", "x": 38, "y": 37,  "w": 8,   "h": 7},
     {"id": "lecture-hall-bench-1",    "kind": "bench", "x": 40,  "y": 60,  "w": 170, "h": 9},
     {"id": "lecture-hall-bench-2",    "kind": "bench", "x": 40,  "y": 81,  "w": 170, "h": 9},
     {"id": "lecture-hall-bench-3",    "kind": "bench", "x": 40,  "y": 102, "w": 170, "h": 9},
@@ -156,6 +157,21 @@
   ],
 
   "decor": [
+    {"kind": "stage",          "layer": "floor", "x": 23,  "y": 31,  "w": 204, "h": 23, "colour": "#F4E6CC"},
+    {"kind": "tier",           "layer": "floor", "x": 23,  "y": 54,  "w": 204, "h": 21, "colour": "#E8D0A9"},
+    {"kind": "tier",           "layer": "floor", "x": 23,  "y": 75,  "w": 204, "h": 21, "colour": "#E3C9A0"},
+    {"kind": "tier",           "layer": "floor", "x": 23,  "y": 96,  "w": 204, "h": 21, "colour": "#DEC297"},
+    {"kind": "tier",           "layer": "floor", "x": 23,  "y": 117, "w": 204, "h": 50, "colour": "#D9BB8E"},
+    {"kind": "aisle",          "layer": "floor", "x": 27,  "y": 54,  "w": 11,  "h": 113},
+    {"kind": "aisle",          "layer": "floor", "x": 213, "y": 54,  "w": 12,  "h": 113},
+    {"kind": "spotlights",     "layer": "floor", "x": 44,  "y": 71,  "w": 164, "h": 8},
+    {"kind": "spotlights",     "layer": "floor", "x": 44,  "y": 92,  "w": 164, "h": 8},
+    {"kind": "spotlights",     "layer": "floor", "x": 44,  "y": 113, "w": 164, "h": 8},
+    {"kind": "bamboo-wall",    "layer": "wall",  "x": 23,  "y": 23,  "w": 35,  "h": 8},
+    {"kind": "bamboo-wall",    "layer": "wall",  "x": 23,  "y": 31,  "w": 3,   "h": 136},
+    {"kind": "whiteboard",     "layer": "wall",  "x": 62,  "y": 23,  "w": 50,  "h": 7.5},
+    {"kind": "whiteboard",     "layer": "wall",  "x": 118, "y": 23,  "w": 50,  "h": 7.5},
+    {"kind": "clock",          "layer": "wall",  "x": 177, "y": 23,  "w": 7,   "h": 7},
     {"kind": "light-pool",     "layer": "floor", "x": 280, "y": 38,  "w": 30, "h": 26},
     {"kind": "light-pool",     "layer": "floor", "x": 318, "y": 38,  "w": 30, "h": 26},
     {"kind": "light-pool",     "layer": "floor", "x": 330, "y": 84,  "w": 40, "h": 40},
