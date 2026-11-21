@@ -81,7 +81,8 @@ Game.world = Game.world || {};
       ctx.fillRect(x, y, 0.8, 0.8);
     }
     util.circle(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2 + 2, 2, "#7A5434", 0.6); // the trunk
-    util.foliage(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2 - 2, bed.w * 0.44, util.LEAVES, 7);
+    // The crown reaches at most about 1 unit past its bed (the drawings of a tile reach 4).
+    util.foliage(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2 - 2, bed.w * 0.4, util.LEAVES, 7);
   };
 
   // The hedge: a row of leafy clumps with volume, inside its rectangle.

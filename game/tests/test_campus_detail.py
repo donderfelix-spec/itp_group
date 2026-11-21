@@ -186,7 +186,8 @@ def test_the_ctt_has_a_central_aisle_between_its_two_halves_of_tables():
     assert len(left) == len(right) == 8
     for left_table, right_table in zip(left, right):
         assert left_table["y"] == right_table["y"]
-        assert right_table["x"] - (left_table["x"] + left_table["w"]) >= 14
+        # Wide enough for two players side by side (round 9).
+        assert right_table["x"] - (left_table["x"] + left_table["w"]) >= 24
         # tests/test_movement.py walks straight down at x 85 to 95 into the first row.
         assert left_table["x"] <= 85 and left_table["x"] + left_table["w"] >= 95
 
@@ -324,15 +325,16 @@ def test_the_walking_distances_changed_only_a_little():
     #   of the CTT; spawn to 4: 783.1 -> 718.1);
     # - the ways to station 3 became up to 3.2 % longer (the larger canteen
     #   tables; 1 to 3: 800.7 -> 826.7); the others changed by less.
-    # Nothing may get more than 4 % longer or more than 10 % shorter, and
-    # every way to station 4 must be shorter.
+    # The ways to station 4 may be up to 10 % shorter and never longer; all
+    # other ways stay between 2 % shorter and 3.5 % longer.
     stations = sorted(minigames.MINIGAMES)
     before = station_distances(as_before_this_to_do(CAMPUS), stations)
     after = station_distances(CAMPUS, stations)
     for pair, distance in before.items():
-        assert distance * 0.9 <= after[pair] <= distance * 1.04, pair
         if 4 in pair:
-            assert after[pair] < distance, pair
+            assert distance * 0.9 <= after[pair] <= distance, pair
+        else:
+            assert distance * 0.98 <= after[pair] <= distance * 1.035, pair
 
 
 # Accepted: edge cases
