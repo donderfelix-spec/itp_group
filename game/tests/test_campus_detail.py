@@ -196,8 +196,13 @@ def test_the_ctt_has_pillars_along_its_outside_wall():
     assert [(solid["w"], solid["h"]) for solid in pillars if solid["kind"] == "pillar"] == [(8, 8)] * 3
 
 
+def test_the_canteen_has_a_microwave_corner_and_its_other_fittings():
+    kinds = sorted(solid["kind"] for solid in new_solids_in("canteen"))
+    assert kinds == ["fridge", "microwave-counter", "recycling-bins", "tray-rack", "water-fountain"]
+
+
 def test_every_new_solid_lies_in_one_of_the_rooms_built_so_far():
-    rooms = ["pingo-doce", "mon-cafe", "lecture-hall", "ctt"]
+    rooms = ["pingo-doce", "mon-cafe", "lecture-hall", "ctt", "canteen"]
     assert sum(len(new_solids_in(room)) for room in rooms) == len(NEW_SOLIDS)
 
 
