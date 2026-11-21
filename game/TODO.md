@@ -117,12 +117,18 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M2-4.7a** A fault after a task was counted takes the count back, in the frame and in the Duel, so the server never counts a station the browser was not told about (solved with M2-4.7)
 - [x] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard (S-94). In the pull request after #26
 - [ ] **M2-4.8** Play test: two players play a Duel through to the leaderboard (Lennart). A scripted run with two browsers and the real minigames exists from the building of M2-4.7 (both finish, ranking, second round, time running out). Left to do: two people on two computers on the deployed server, and write down what gets in the way
-- [x] **M2-4.9** After a solved minigame, show “Done” for 0.5 seconds and then close the window automatically (Lennart, user request 2026-11-21).
+- [x] **M2-4.9** After a solved minigame the “Done” window stays for one second and the walking keys are ignored during it; a key that is already held only counts again when the window has closed. In a Duel that is three seconds of standing per route and feels like lag (found in the play test of M2-2.2, after Felix reported lag). Shortened to 0.5 seconds, and the close button is hidden while “Done” shows (S-127, Lennart)
 - [x] **M2-4.12** All five minigames fit narrow and low windows: from 320 px wide, a body under 420 px gets its own layout (slides in two columns, brew buttons that wrap, the tray slip above the counter, books on two boards of three, checkout with Target above Total and two products per row); the card scrolls, nothing is cut off and nothing scrolls sideways. The self-checkout message brings itself into view when the belt is taller than the window, and the bagging row never moves when it appears. At 1280x800 every game looks exactly as before (Lennart's area, done by Felix's session). Found when "Brew the order" was cut off at 320 px; two code reviews, played to "Done" with two players in Chromium at 320x568, 320x700, 600x700, 920x700 and 1280x800, also with live resizing (2026-11-20)
 - [ ] **M2-4.14** Three of the six new minigames at stations 7 to 12 are too easy (Lennart). They come to `main` with the branch `Minispiele-und-Modi` (checked on `game/lennart-on-main-check`); found in its review on 2026-11-21. “De-buzzword the slides” prints the answer on every card (“Buzzword” or “Useful content”); “Decode the group chat” shows the whole sentence as a hint above the words; “Seagull quality control” is solved by clicking four to six times. All six also share one instruction line. Rework the three so that the player has to work the answer out, and give each minigame its own instruction
 
-- [ ] **M2-4.12** Make the minigames more exciting (Lennart). Revisit challenge, pacing and feedback, including the issues in K15.
-- [x] **M2-4.13** Show the other players in a corner at the top of the game screen (Lennart).
+- [ ] **M2-4.15** Make the minigames more exciting (Lennart). Revisit challenge, pacing and feedback, including the issues in K15.
+- [x] **M2-4.13** The other players with their progress in one list: the Players list of the side panel, with “2/3” and a bar in Duel and Solo; no card over the map (S-130, Lennart's branch, reworked on `game/lennart-on-main-check`)
+- [x] **M2-4.16** Six more minigames at stations 7 to 12, in Duel, Solo and Classic (S-124, Lennart)
+- [x] **M2-4.17** Solo mode, and the mode choice Duel and Solo side by side with Classic below (S-125, Lennart)
+- [x] **M2-4.18** Every player starts at a different station; `draw_routes` never fails for up to 8 players (S-126, Lennart)
+- [x] **M2-4.19** Stations as objects with a pulsing outline, one card at the top left (room and next task), a direction arrow in the sticker look (S-128, S-129, Lennart's branch; drawing in area 1 with Felix's consent)
+- [ ] **M2-4.20** Before PR 69 (Hanna) is merged: drop its room label `drawLocation`, keep the card of S-129 as the only room display, and use one `roomAt` (Hanna, Lennart)
+- [ ] **M2-4.21** The unused route search in `client/js/minigames/task_navigation.js` (`create`, `route`) is used only by `tests/test_task_navigation.js`: decide whether to keep both or drop both (Lennart)
 
 **Known and open after the Duel**
 
@@ -215,33 +221,3 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 - [x] **M0-2.4** Project skeleton: server, start page, message validation, 51 tests, CI with tests, dependency check and syntax check (2026-11-18)
 - [x] **M0-1.1** Floor plan of the map as a sketch (`design/map.svg`)
 - [x] Planning: feature overview, decision log, to-do list, workflow of the agents (2026-11-18)
-
-
-## User branch: Additional tasks and navigator (`Minispiele-und-Modi`)
-
-- [x] **CT-1** Six funny illustrated minigames at additional locations: buzzwords, emergency coffee, mouldy lunch, group-chat excuses, student budget and a project-stealing seagull. Preserve the original five games.
-- [x] **CT-2** Add the six stations to the existing Duel assignment pool; preserve all existing mode and round rules. No solo mode.
-- [x] **CT-3** Navigator with destination and direct direction arrow; no trail or step count. Draw only the station that is the local player's current task.
-- [x] **CT-4** Rule/integration tests, full suite and dependency audit, browser checks with several players. Human review and merge are still pending.
-
-These branch tasks implement Lennart's direct request and clarifications; Classic's roles and meetings remain separately planned.
-
-Branch validation: 2,184 Python tests passed, dependency audit clean, renderer checks passed, 18,010 navigation assertions and 7 private-marker checks passed. All six new puzzles were solved in the browser; two actual browser players received different private targets and their own navigators.
-
-- [x] **TM-1** Separate Test mode that starts with one player, preserving ordinary Duel rules; verify solo start/completion/restart and navigator.
-
-Test mode validation: 2,193 Python tests passed; dependency audit clean; client regression and independent review passed; one guest started Test mode alone in the browser with private current task and navigator.
-
-Main integration validated on Minispiele-und-Modi: upstream main 493ccdd, 2,398 Python tests passed, dependency audit clean, merged renderer/client tests and browser checks passed. Practice rounds do not affect competitive statistics.
-
-M2-4.13 branch validation: round player roster implemented; current members, portraits and own marker checked with two real browser clients. Eight-player fixture including explicit public alive:false displays Dead with cross, faded portrait and struck name; small600x450 layout and scrolling verified. No death mechanic is introduced.
-
-Main refresh validation (2026-11-21): integrated main d2be14d into Minispiele-und-Modi while retaining private tasks, the direct target arrow, solo Test mode and player roster. Full suite with Node enabled: 4,036 passed, 3 skipped. Dependency audit clean; independent review found no issues. Two real browser clients completed the five-second countdown and entered a round with different private tasks and the correct player roster. Additional station locations were adjusted to preserve all upstream furniture and room labels.
-
-- [x] **CT-5** Revise Save the lunch into an overhead tray with individually removable mouldy rice, vegetables and chicken (Lennart, user request 2026-11-21).
-
-CT-5 validation: 778 focused Python tests passed, including original minigames, narrow layouts and server task integration; dependency-free client harness and independent review passed. Browser preview using the real frame/module and server content completed after five removals; fresh-food clicks preserved the meal. The 360 by 220 px tray and all sixteen controls were checked at normal size and 320 by 568 without overlap or horizontal overflow. Dependencies unchanged; audit rerun was unavailable because pypi.org DNS could not resolve (last full audit clean).
-
-- [x] **CT-6** Give every player a different first station at round start (Lennart, user request 2026-11-21).
-
-Branch push validation (2026-11-21): complete Node-enabled suite 4,047 passed, 3 skipped; room-task client harness passed. Distinct first stations tested across 2–8 players over 300 random seeds each; Done window uses the existing automatic close timer at 500 ms.

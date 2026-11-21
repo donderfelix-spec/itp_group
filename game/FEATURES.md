@@ -113,7 +113,13 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | CTT Student Hall: sort books by number onto the shelf | M2 | Done |
 | Pingo Doce: scan products until exactly the target amount comes out | M2 | Done |
 | Duel: three stations per player, own random route with a walking distance of equal length | M2 | Done |
-| Duel: progress of the opponents as 1/3 at the edge | M2 | Done |
+| Duel: progress of every player as 1/3 with a bar in the Players list of the panel (S-130) | M2 | Done |
+| Six more minigames at stations 7 to 12, in Duel, Solo and Classic (S-124) | M2 | Done |
+| Solo mode for one player, without statistics (S-125) | M2 | Done |
+| Duel: every player starts at a different station, up to 8 players (S-126) | M2 | Done |
+| Stations as objects with a pulsing outline when they matter (S-128) | M2 | Done |
+| Card at the top left with room and next task, direction arrow (S-129) | M2 | Done |
+| “Done” for 0.5 s without a close button (S-127) | M2 | Done |
 | Duel: leaderboard with times at the end | M2 | Done |
 | Beach exit: “Catch the wave”, click at the right moment (first “If time allows” minigame) | M4 | Planned |
 | Canteen: stop the microwave at the right moment | M4 | Planned |
@@ -122,24 +128,3 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Mon Café: put chairs in rows for the event | M4 | Later |
 | Deadline mode: shared clock, progress bar, random disruptions | M4 | Planned |
 | Duel variants: best of 3, knockout rounds | M4 | Later |
-
-
-## User branch: Additional tasks and navigator
-
-These features are on `Minispiele-und-Modi`, awaiting validation and review; “Done” above continues to mean merged to `main`.
-
-| Feature | Status |
-|---|---|
-| Six funny illustrated tasks at six additional stations, retaining the original games | In progress |
-| Existing Duel assignment pool extended to eleven tasks; existing rules retained | In progress |
-| Private current-task station visibility and direct destination arrow, without a trail or step count | In progress |
-
-Branch validation complete: all six tasks and private navigation implemented and checked; 2,184 Python tests and the dependency audit passed. Status stays In progress here until the branch is merged.
-
-| Separate Test mode for solo testing, using existing round mechanics | In progress (implemented and validated on branch; merge pending) |
-
-| In-round player roster with public dead-state styling | In progress (implemented and validated on branch; merge pending) |
-
-| Canteen cleanup: compact overhead tray, 10 rice grains/3 vegetables/3 chicken pieces, 3/1/1 randomly discoloured | Implemented and validated on branch; merge pending |
-
-| Distinct first task station for each player; 0.5-second automatic Done window | Implemented and validated on branch; merge pending |

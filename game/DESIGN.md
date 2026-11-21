@@ -45,7 +45,7 @@ The map is based on the real campus in Carcavelos: light buildings, a large pave
 - **Corridor:** the strip of the deck in front of the top rooms is the building's common area: terrazzo floor, the taupe slatted façade with "ACADEMIC HALL", round ceiling lights, grid-cube dividers with plants, two sofas, a black column and a staircase at the left end. A wall with glass doors separates it from the Main Deck: one opening above the pool and a wide one on the right.
 - **Main Deck:** large paving slabs, the reflecting pool with a stone edge, six trees in gravel beds, a planted bed with a stone border, shrubs and flowers where the hedge stands, the NOVA sign in dark navy with its O as a ring above a bar, benches, lamp posts, a bike rack and a surfboard rack by the exit to the beach; on the sand towels and surfboards big enough for a character. The red button for the emergency meeting stands to the right of the hedge and appears 45 seconds after a round starts. The sixth station is at the bottom, at the exit to the beach. You have to walk around all of these, and that is how players lose sight of each other.
 - At the bottom, a glass front closes off the deck. You can see the beach and the sea, but you cannot go out.
-- Every room has exactly one door to the deck and one task station (yellow dot). The stations are in the corners of the map, so that you really have to walk in Duel.
+- Every room has exactly one door to the deck and two task stations (1 to 5 in the corners of the map, so that you really have to walk in Duel, and 7 to 11 at other places); station 12 stands on the Main Deck (S-124). A station is drawn as an object of its room, for example a coffee machine or a book cart (S-128).
 - You only ever see the section around your own character, about one room in size. The camera follows the character.
 - If time allows: You cannot see through walls.
 
@@ -80,7 +80,7 @@ All characters are the same size and the same speed, they differ only in how the
 | 1 | Start | Logo, “Log in”, “Sign up”, “Play as guest” |
 | 2 | Sign up / Log in | Username, password, error message directly at the field. When signing up, the rules stand below the fields from the start: “3–16 letters or numbers” and “8–64 characters”. A button with an eye in each password field shows or hides what was typed (“Show password” / “Hide password” for screen readers); the password is hidden again whenever the form is left |
 | 3 | Home | At the top of the card “Signed in as” and the player's name. “Create lobby” (yellow), “Join with code”, own profile, “Leaderboard”. Profile and leaderboard are two round icons at the top right of the screen (a person and a trophy), not buttons in the card. If time allows: friends list with status |
-| 4 | Lobby | Code in large letters for reading aloud, player list with characters, character selection. The panel next to the map has the headings “Lobby code”, “Players”, “Mode” and “Character”. Until the map has been downloaded, “Loading the campus…” stands in the middle of the map. Characters taken by other players are greyed out. Until “Start game” exists, everyone in the lobby already walks on the map, with the lobby shown next to it. The host chooses the mode: “Duel” or “Classic”. A mode that is not built yet is greyed out with “Coming with the next milestone”; everyone sees the chosen mode. At the bottom right is the yellow button “Start game”, which only the host sees. It is grey as long as too few players are there, and below it there is then a text such as “Classic needs 2 more players”. All others see “Waiting for the host” in that place. When the host presses “Start game”, the round does not begin at once: everybody sees “Round starts in” and a large number over the map that counts 5, 4, 3, 2, 1, and then the round starts. During this countdown everybody can still walk, but the characters, the mode and the start button are switched off, and nobody can join. A ranking that is still open stays readable; the countdown is then one slim line at the top edge of the map (“Round starts in 3”), above the ranking, and never covers it. If so many players leave during the countdown that too few are left for the mode, the countdown ends without a round and the lobby is open again. While a round is running, the panel shows “Round running” instead of the character selection and the start button |
+| 4 | Lobby | Code in large letters for reading aloud, player list with characters, character selection. The panel next to the map has the headings “Lobby code”, “Players”, “Mode” and “Character”. Until the map has been downloaded, “Loading the campus…” stands in the middle of the map. Characters taken by other players are greyed out. Until “Start game” exists, everyone in the lobby already walks on the map, with the lobby shown next to it. The host chooses the mode: “Duel” or “Classic”. A mode that is not built yet is greyed out with “Coming with the next milestone”; everyone sees the chosen mode. At the bottom right is the yellow button “Start game”, which only the host sees. It is grey as long as too few players are there, and below it there is then a text such as “Classic needs 2 more players”. All others see “Waiting for the host” in that place. When the host presses “Start game”, the round does not begin at once: everybody sees “Round starts in” and a large number over the map that counts 5, 4, 3, 2, 1, and then the round starts. During this countdown everybody can still walk, but the characters, the mode and the start button are switched off, and nobody can join. A ranking that is still open stays readable; the countdown is then one slim line at the top edge of the map (“Round starts in 3”), above the ranking, and never covers it. If so many players leave during the countdown that too few are left for the mode, the countdown ends without a round and the lobby is open again. While a round is running, the panel shows “Round running” instead of the character selection and the start button In “Mode”, Duel and Solo stand side by side and Classic below them over the whole width (S-125). |
 | 5 | Role reveal | Three seconds: “You are a High Performer” or “You are the Free Rider” in coral |
 | 6 | Game | Map with displays, see below |
 | 7 | Minigame | Window on top of the map, closes with Esc |
@@ -103,7 +103,7 @@ All characters are the same size and the same speed, they differ only in how the
 
 The same rule applies to E, R and Q. As soon as you stand close enough to a target (about one and a half character widths), two things happen at the same time:
 
-1. The target gets a glowing border that pulses slowly.
+1. The target gets a glowing border that pulses slowly (a station: its yellow outline at full strength, S-128).
 2. The matching button at the bottom right changes from grey to colour. The button shows the key and the word that goes with it, for example “E Use”.
 
 If you walk away, both disappear again. If two targets are in range, the closer one counts. There is no speech bubble above the target.
@@ -140,7 +140,7 @@ Every action also works with a mouse click on the button.
 4 to 8 players. With fewer than 4, the round cannot be started.
 
 1. Everyone starts on the Main Deck. Each player sees their role for three seconds. Two Free Riders also see who the other one is.
-2. Each High Performer gets four of the five tasks, chosen at random. Every finished task fills the shared progress bar.
+2. Each High Performer gets four of the eleven tasks (stations 1 to 5 and 7 to 12, S-124), chosen at random. Every finished task fills the shared progress bar.
 3. The Free Rider has a list of fake tasks. At a station, the Free Rider sees a loading bar that does not count.
 4. The Free Rider can fail a High Performer who is in range (5 fields). After that, the Free Rider has to wait 15 seconds. The Free Rider starts with the ability loaded and cannot fail another Free Rider.
 5. Reporting happens right on the spot: For any living player who stands within 2 fields of an “F” sheet, the button “Report” lights up (key R). Pressing it starts the meeting for everyone at once, removes the reported sheet, and nobody has to walk anywhere. Without a find, each living player can call one meeting per round with the red button on the right of the Main Deck, next to the hedge, available 45 seconds after the round starts.
@@ -173,12 +173,12 @@ If time allows: Sabotage “WiFi down”. The Free Rider locks all stations unti
 
 ## 6. Duel mode
 
-2 to 8 players.
+2 to 8 players. **Solo** plays the same rules alone and counts for no statistics (S-125).
 
-1. For each player, the server draws their own three of the five stations in their own order. Nobody knows in advance where they have to go, and nobody knows the routes of the others.
+1. For each player, the server draws their own three of the eleven stations in their own order, and every player starts at a different station (S-126). Nobody knows in advance where they have to go, and nobody knows the routes of the others.
 2. Everyone starts on the Main Deck. Each player sees only their next station. The one after that appears only when the previous one is done.
 3. To keep it fair, the server only draws routes whose walking distance is about the same length.
-4. On the right edge, only the progress is shown for each player: 0/3, 1/3, 2/3, 3/3. You only see where the others are at the moment if you meet them.
+4. In the Players list of the panel, only the progress is shown for each player: 0/3, 1/3, 2/3, 3/3, with a green bar (S-130). You only see where the others are at the moment if you meet them.
 5. Players do not block each other, they walk through each other.
 6. Whoever finishes all three first wins. The round continues until everyone is finished or 3 minutes are over, and then the leaderboard with times is shown.
 
@@ -186,8 +186,9 @@ The win and the time go into the statistics (S-40).
 
 **What a player sees in Duel**
 
-- In the panel on the right, in place of the character selection: “Next: Build the tray (Canteen)” with the title of the minigame and the room, below it the clock counting down from 3:00, and the list of all players with their progress, for example “Mara 1/3”. A player who has finished all three sees “Finished in 1:12.4. Waiting for the others.” instead of the next station.
-- Only the next station glows and opens. The other stations stay drawn but do nothing.
+- In the panel on the right, in place of the character selection: “Next: Build the tray (Canteen)” with the title of the minigame and the room, below it the clock counting down from 3:00. The progress of all players stands in the Players list above, for example “Mara 1/3”. A player who has finished all three sees “Finished in 1:12.4. Waiting for the others.” instead of the next station.
+- Every station is drawn as its object; only the next station has the pulsing yellow outline and opens (S-128).
+- The card at the top left of the map shows the room you are in and the next task; a yellow arrow next to your character points straight at the station (S-129).
 - When the round is over, the ranking appears over the map for everybody: heading “Duel ranking”, one row per player with place, name and time (“1:12.4”), or “2/3” for a player who did not finish, and the button “Back to lobby”. If the three minutes ran out, the line “Time is up.” stands above the rows. The lobby is open again at that moment, so the host can start the next round.
 - A player who leaves during the round is taken out of the list and the ranking. The round goes on for the others, also for a single player.
 
@@ -210,7 +211,7 @@ Every room has its fixed minigame, it does not change. But the content is shuffl
 
 After a mistake, only the wrong piece is reset, never the whole minigame.
 
-A minigame opens with E or the button “E Use” at its station, only while a round is running. While it is open the character stands still. The close button and Esc close it without counting; it can be opened again and then has new content. When it is solved, the window shows “Done” in green for 0.5 seconds and closes automatically. A station whose minigame is not built yet shows “This task is still being built.” and a button “Finish task”.
+A minigame opens with E or the button “E Use” at its station, only while a round is running. While it is open the character stands still. The close button and Esc close it without counting; it can be opened again and then has new content. When it is solved, the window shows “Done” in green for 0.5 seconds and closes automatically; the close button is hidden meanwhile (S-127). A station whose minigame is not built yet shows “This task is still being built.” and a button “Finish task”.
 
 | No. | Room | Title | Task | Done when | After a mistake |
 |---|---|---|---|---|---|
@@ -221,7 +222,7 @@ A minigame opens with E or the button “E Use” at its station, only while a r
 | 5 | Pingo Doce | Self-checkout | The checkout shows a target amount, for example €7.50. Six products with prices are on the belt. Scan as many as needed to get exactly that amount. A click on a scanned product puts it back | the total is exactly right | a product that takes the total above the amount is not accepted: “Unexpected item in the bagging area” |
 | 6 | Glass front to the beach on the Main Deck | Catch the wave (if time allows) | A surfboard lies on the water, a wave runs through the picture from left to right. Click exactly when the wave is under the board | three waves have been caught | a wrong click only costs this attempt, the hits stay |
 
-Minigame 6 is the only one with timing instead of sorting, selecting or calculating. It comes first of the “If time allows” minigames. As soon as it is built, everyone in Classic gets four of six tasks, and in Duel three of six stations are drawn.
+Minigame 6 is the only one with timing instead of sorting, selecting or calculating. It comes first of the “If time allows” minigames. As soon as it is built, station 6 joins the stations of Duel, Solo and Classic.
 
 **Sentences and names in the minigames**
 
@@ -234,6 +235,19 @@ Minigame 6 is the only one with timing instead of sorting, selecting or calculat
 About the drinks in minigame 2: Bica (Cup, Espresso), Abatanado (Cup, Espresso, Hot water), Meia de leite (Cup, Espresso, Milk), Galão (Glass, Espresso, Milk), Cappuccino (Cup, Espresso, Milk, Foam).
 
 About minigame 5: The prices are multiples of 50 cents, and the target amount is always the total of three of the six products. So there is always a solution, and every combination that hits the amount counts.
+
+**Minigames 7 to 12 (S-124)**
+
+| No. | Room | Title | Instruction |
+|---|---|---|---|
+| 7 | Lecture Hall | De-buzzword the slides | Cross out the nonsense buzzwords. Keep the useful content. |
+| 8 | Mon Café | Emergency caffeine protocol | Follow the recipe. The group deadline runs on caffeine. |
+| 9 | Canteen | Save the lunch | Remove the discoloured pieces from the tray. |
+| 10 | CTT Student Hall | Decode the group chat | Put the words in order to decode your teammate's excuse. |
+| 11 | Pingo Doce | Expense the essentials | Scan emergency supplies until the total matches the budget. |
+| 12 | Main Deck | Seagull quality control | Catch the seagull to recover every stolen project page. |
+
+All six share the header line “A group project emergency. Read the brief below.” (M2-4.14 gives each its own). A mistake keeps the progress. “Save the lunch” is one tray seen from above with 10 rice grains, 3 vegetable and 3 chicken pieces; 3, 1 and 1 of them are discoloured, without labels, and are clicked away. “Expense the essentials” has six products from €1.50 to €4.00; the budget is the total of three of them.
 
 After that, if time allows: “Stop the microwave” (Canteen), “Scan the attendance code” (Lecture Hall), “Fix the formula” (CTT Student Hall).
 
@@ -291,50 +305,3 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 - No phone controls, unless time allows (S-14).
 - No email addresses and no “forgot password” (S-38).
 - No return into a running round after a lost connection: the player signs in again and waits on Home until the round is over (S-109).
-
-
-
-## Branch extension: Additional room tasks and navigator
-
-On `Minispiele-und-Modi`, Lennart requested six funny additional tasks and a navigator. The existing rules, modes, minimum player counts, three-task Duel routes, random individual assignments, five original minigames and original station locations stay unchanged. A separately requested Test mode is described below. The six new games live at separate, additional locations, one in each room plus the Main Deck. They join the existing pool for the server's random routes; the next task is revealed after the current one is completed, as before.
-
-| Station | Room | Title | Instructions |
-|---|---|---|---|
-| 7 | Lecture Hall | De-buzzword the slides | Cross out the nonsense buzzwords. Keep the useful content. |
-| 8 | Mon Café | Emergency caffeine protocol | Follow the recipe. The group deadline runs on caffeine. |
-| 9 | Canteen | Save the lunch | Remove the mouldy pieces from the lunch tray. Keep the fresh food. |
-| 10 | CTT Student Hall | Decode the group chat | Put the words in order to decode your teammate's excuse. |
-| 11 | Pingo Doce | Expense the essentials | Scan emergency supplies until the total matches the budget. |
-| 12 | Main Deck | Seagull quality control | Catch the seagull to recover every stolen project page. |
-
-The original tasks at stations 1–5 remain unchanged; original station 6 remains reserved for Catch the wave. The map has six extra stations, each at a different location from the original one in that room. The server draws from the eleven playable stations, using the same comparable-length Duel routes, three-minute limit and three-task ranking. No new browser messages are introduced.
-
-Only the player's current assigned task station is drawn, named, highlighted or usable. All other task markers are hidden, including outside a round and after finishing. Other players' targets are never sent to this client. The navigator displays the own current task and destination room, with an arrow pointing directly towards the current task station and “E Use” on arrival. It shows no route, distance, step count or trail instructions. It changes when the server reveals the next task.
-
-The new minigames use illustrated room-specific compositions: a presentation board, coffee machine and layered cup, an overhead lunch tray with rice, vegetables and chicken, a group-chat conversation, an emergency shopping receipt and a project-stealing seagull. Labels and shapes supplement colour; large clickable targets and keyboard controls remain usable. Mistakes preserve valid progress. Esc closes without completing. Existing S-19 and S-93 server completion and permission checks stay in force.
-
-
-## Test mode (user request, 2026-11-19)
-
-The selectable “Test mode” lets one player start a round to try the game alone. It uses the existing three random tasks, three-minute timer, private task visibility, navigator and ranking. Normal Duel stays the default and still requires two players. The host selects Test mode in the lobby before pressing Start game. This mode reuses the existing messages and completion checks.
-
-
-## In-round player roster (M2-4.13)
-
-A compact “Players” card stays at the top right of the map during a round. It lists every current lobby member with their character portrait, name and a “You” marker for the local player. At most eight rows fit a scrolling card; narrow screens place it below the task card so the two do not overlap. It does not intercept walking keys or cover the use button, minigame or ranking. The card disappears outside a round and after leaving/disconnecting.
-
-Show “In game” for current members. Only an explicit public server value `alive: false` on a player in `lobby_state.players` marks them “Dead”: faded portrait, crossed-out name, a visible cross and text, never colour alone. Do not infer death from finishing Duel, missing positions, leaving or a disconnected connection. Current Duel/Test rules do not include elimination and send no such status, so current players remain “In game”. This optional presentation hook is for a future server-owned public life status; no death action, role leak, simulation switch or game rule is added here.
-
-
-
-## Main refresh integration (2026-11-21)
-
-Duel and Test mode keep the upstream five-second countdown before a round begins. The player roster stays hidden during countdown and is shown only in the running round. Added tasks remain at their own stations; their positions may shift slightly within the room to clear the detailed map furniture. Live arrival hints use the server position, while the direct arrow starts at the drawn character. Practice rounds stay excluded from competitive statistics.
-
-## Canteen lunch tray (user request, 2026-11-21)
-
-Save the lunch shows one compact tray from directly above, with exactly ten individual rice grains, three vegetable pieces and three chicken pieces. The server randomly marks three grains, one vegetable and one chicken piece as spoiled. Spoiled food has an unusual discoloration, without text labels, fuzzy patches or crosses. Click or keyboard-activate the spoiled pieces to remove them; fresh food stays and a mistaken selection gives feedback without losing progress. Accessible names identify food and piece number without revealing its condition. Complete after all five spoiled pieces have been removed; existing server completion checks and other minigames remain unchanged.
-
-## Distinct first tasks (user request, 2026-11-21)
-
-At the start of Duel and Test mode, every participant has a different first task station. The server draws three different stations per route and retains random individual assignments. It prefers routes within the existing 10 % walking-distance tolerance; when no distinct-start combination fits, it picks the closest available lengths.
