@@ -20,11 +20,13 @@ CAMPUS = load_campus()
 NEW_STATIONS = [7, 8, 9, 10, 11, 12]
 
 # Measured on main (d2be14d) with paths.station_distances, in map units.
+# Only 3-5 differs from that measurement: the hedge became walkable for
+# hiding (S-98, M3-1.4), which shortens that one way from 558.960 (S-140).
 DISTANCES_ON_MAIN = {
     (SPAWN, 1): 614.676, (SPAWN, 2): 345.990, (SPAWN, 3): 326.274, (SPAWN, 4): 718.108, (SPAWN, 5): 262.510,
     (1, 2): 597.019, (1, 3): 831.362, (1, 4): 584.167, (1, 5): 872.500,
     (2, 3): 535.931, (2, 4): 723.647, (2, 5): 603.813,
-    (3, 4): 957.990, (3, 5): 558.960,
+    (3, 4): 957.990, (3, 5): 542.392,
     (4, 5): 975.931,
 }
 
