@@ -195,16 +195,15 @@ def new_solids_in(room_id):
 def test_pingo_doce_has_its_new_furniture():
     kinds = sorted(solid["kind"] for solid in new_solids_in("pingo-doce"))
     assert kinds == ["fridge", "fridge", "fruit-stand", "hot-counter", "totem", "totem",
-                     "turnstile", "turnstile", "turnstile", "turnstile"]
+                     "turnstile", "turnstile"]
 
 
 def test_mon_cafe_has_its_new_furniture_and_still_three_round_tables():
     kinds = sorted(solid["kind"] for solid in new_solids_in("mon-cafe"))
     assert kinds == ["grid-shelf", "high-table"]
     tables = [solid for solid in SOLIDS if solid["kind"] == "round-table"]
-    # Grown from 14 to 30, so that a table with four chairs at the scale of
-    # the characters fits inside (round 9), and to 34 (round 10).
-    assert [(table["w"], table["h"]) for table in tables] == [(34, 34)] * 3
+    # Hanna requested smaller tables with clear walking routes around the chairs.
+    assert [(table["w"], table["h"]) for table in tables] == [(28, 28)] * 3
 
 
 def test_the_lecture_hall_has_a_lectern_on_the_stage():

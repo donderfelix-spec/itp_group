@@ -51,21 +51,20 @@ def test_every_room_has_a_label_inside_it():
 
 
 @pytest.mark.parametrize("room_id, x, y", [
-    ("lecture-hall", 125, 152),
     ("mon-cafe", 350, 152),
     ("canteen", 565, 152),
     ("ctt", 90, 248),
 ])
-def test_the_four_rooms_that_looked_right_keep_their_place(room_id, x, y):
+def test_other_room_names_keep_their_place(room_id, x, y):
     room = ROOMS[room_id]
     assert room["label"] == {"x": x, "y": y}
     assert room["label"] == old_label_place(room)
 
 
-def test_pingo_doce_stands_at_the_right_as_in_the_sketch():
-    # The sketch has <text x="614" y="424">; its baselines are 3 units below
-    # the middle of the text that draw.js uses.
-    assert ROOMS["pingo-doce"]["label"] == {"x": 614, "y": 421}
+def test_pingo_doce_name_moves_left_but_stays_right_of_the_exit():
+    # Hanna requested a small leftward adjustment from the original x614.
+    # Keep the exact placement and the right-hand room position checked.
+    assert ROOMS["pingo-doce"]["label"] == {"x": 608, "y": 421}
     room = ROOMS["pingo-doce"]
     assert ROOMS["pingo-doce"]["label"]["x"] > room["x"] + room["w"] / 2
 
@@ -209,3 +208,10 @@ def test_a_deck_label_outside_the_map_is_refused(x, y):
 def test_a_deck_label_inside_a_room_is_refused_and_names_the_room(x, y, room_id):
     with pytest.raises(CampusError, match=f"deck_label lies inside the room \"{room_id}\""):
         check_campus(broken(lambda bad: bad["deck_label"].update(x=x, y=y)))
+
+
+def test_lecture_name_is_in_the_new_clear_row_gap():
+    room = ROOMS["lecture-hall"]
+    assert room["label"] == {"x": 125, "y": 133}
+    rows = sorted((s for s in CAMPUS["solids"] if s["kind"] == "bench"), key=lambda s: s["y"])
+    assert rows[2]["y"] + rows[2]["h"] + 6 <= room["label"]["y"] <= rows[3]["y"] - 6

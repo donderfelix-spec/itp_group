@@ -229,3 +229,15 @@ Hanna requested returning to the original human student style with only subtle d
 Human character verification: 300 character, running-pose, running and character-list checks passed on 2026-11-21. The original natural human running model is used with the human drawings. Browser preview checked in the lobby and on the campus.
 
 - [x] Subtle personal outfit motifs for all eight human students: tie clip, finance pin, travel patches, wave-print shorts, hoodie emblem, checklist stitches, shirt stripes and a book emblem. Verified in the browser; 300 character and running checks pass (2026-11-21).
+
+## Pingo and planting polish, 2026-11-21
+
+- [x] Widen the Pingo entrance lanes without shrinking characters, draw recognisable candy, drinks, frozen pizza and fridge goods, and give the deck bushes and tree crowns a more natural shape. Requested by Hanna; implemented locally on game/campus-and-characters. 445 focused tests and 40 existing campus play checks passed; entrance and exit played with real keys in the browser. Independent code review found no substantive issues. One existing play test still expects an inaccessible hedge, contrary to this branch's already walkable hiding spot; three automated Chromium checks were skipped because the test environment could not launch Playwright. Browser visuals were checked manually. No existing test was altered.
+
+- [x] Pingo follow-up: three clearly marked exit posts clear of the name, detailed pantry and varied shelf products, recognisable self-checkouts, and a fruit assortment without the central tree. 456 distinct focused checks passed, including 21 entrance checks across both lanes and multiple approach offsets. The furniture inventory assertion now requires the requested three posts; all other inventory checks remain. Browser preview verified the unobstructed title, products and fruit stand. Code review clear and dependency audit reports no known vulnerabilities. Local campus branch, not pushed.
+
+- [x] Pingo alignment follow-up: two symmetric exit posts and centred EXIT marking, slightly left-shifted room name, and FRESH FRUITS on the stand. Requested by Hanna. 257 targeted entrance, map-art and room-label checks passed. The old exact label position was updated to the requested x608 while retaining position checks. Symmetric entry verified in the browser. Local changes, not pushed.
+
+## Lecture Hall and Mon Cafe access, 2026-11-21
+
+- [x] Create clear walking gaps between Lecture Hall rows and around Mon Cafe tables; add seated cafe guests with coffee/cake. Local implementation,34 new movement tests pass and browser preview checked. Known verification limitation: one historical station1-to4 route-length comparison fails (10.06% shorter vs old10% allowance). Other467 targeted campus/art/movement checks passed, and final77 room-label/walkway checks passed. No existing route threshold weakened. Independent review agents were unavailable during this task; local diff review performed.

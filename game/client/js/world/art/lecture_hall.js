@@ -100,7 +100,7 @@ Game.world = Game.world || {};
   // Desk and chairs lie inside the solid; chairs overhang it by less than 2.
   art.kinds.bench = function (ctx, bench) {
     var deskDepth = Math.min(6, bench.h * 0.4);
-    var chairSize = 7.4;
+    var chairSize = Math.min(7.4, bench.h * 0.4);
     var steps = 12;
     for (var x = bench.x + 9; x <= bench.x + bench.w - 8; x += 15) {
       var chairY = bench.y + deskDepth + bowAt((x - bench.x) / bench.w) + chairSize / 2 + 0.3;

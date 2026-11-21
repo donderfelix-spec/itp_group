@@ -82,33 +82,52 @@ Game.world = Game.world || {};
     }
     util.circle(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2 + 2, 2, "#7A5434", 0.6); // the trunk
     // The crown reaches at most about 1 unit past its bed (the drawings of a tile reach 4).
-    util.foliage(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2 - 2, bed.w * 0.4, util.LEAVES, 7);
+    leafyCrown(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2 - 1, bed.w * 0.43, bed.x);
   };
 
-  // The hedge, drawn as a planted green bed of campus landscaping: lawn in a
-  // low stone border, three rounded shrubs with volume and a few flowers.
-  art.kinds.hedge = function (ctx, bed) {
-    util.shadowBelow(ctx, bed.x + 2, bed.y + bed.h, bed.w - 4, 1.6);
-    util.box(ctx, bed.x, bed.y, bed.w, bed.h, 4, "#D9D2C2", 1.2);
-    util.box(ctx, bed.x + 2.2, bed.y + 2.2, bed.w - 4.4, bed.h - 4.4, 3, "#8CC56F", 0.6);
-    // Short strokes of grass.
-    util.strokeAll(ctx, "#76B05C", 0.4, function () {
-      for (var i = 0; i < 24; i++) {
-        var x = bed.x + 4 + util.noise(i, bed.x) * (bed.w - 8);
-        var y = bed.y + 4 + util.noise(bed.y, i) * (bed.h - 8);
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + 0.5, y - 1.2);
-      }
+  // An irregular woody crown: overlapping masses, forked branches and
+  // pointed leaf pairs, rather than concentric rings that read as lettuce.
+  function leafyCrown(ctx, x, y, radius, seed) {
+    var masses = [[-0.48, 0.18, 0.48], [0.36, 0.28, 0.58],
+      [-0.3, -0.34, 0.55], [0.28, -0.38, 0.47], [0, 0, 0.6]];
+    masses.forEach(function (mass, index) {
+      util.ellipse(ctx, x + radius * mass[0], y + radius * mass[1],
+        radius * mass[2], radius * mass[2] * 0.8,
+        ["#285A3E", "#326E46", "#447F4A", "#548B4D", "#397343"][index], 0.65);
     });
-    var flowers = ["#F2695C", "#F2C53D", "#FFFFFF", "#E8A0B4"];
-    for (var f = 0; f < 10; f++) {
-      var fx = bed.x + 5 + util.noise(f * 3.1, bed.y) * (bed.w - 10);
-      var fy = bed.y + bed.h * 0.65 + util.noise(bed.x, f * 1.7) * (bed.h * 0.2);
-      util.circle(ctx, fx, fy, 0.9, flowers[f % flowers.length], 0.3);
+    util.line(ctx, x, y + radius * 0.75, x - radius * 0.12, y - radius * 0.25, "#756044", 1.1);
+    util.line(ctx, x - radius * 0.04, y + radius * 0.3, x + radius * 0.53, y - radius * 0.12, "#756044", 0.75);
+    util.line(ctx, x - radius * 0.1, y, x - radius * 0.55, y - radius * 0.35, "#756044", 0.65);
+    // Small tapered leaves in loose sprays leave a few branches visible.
+    for (var i = 0; i < 30; i++) {
+      var angle = util.noise(seed + i, 31) * Math.PI * 2;
+      var reach = Math.sqrt(util.noise(i * 1.9, seed)) * radius * 0.83;
+      var lx = x + Math.cos(angle) * reach;
+      var ly = y + Math.sin(angle) * reach * 0.78;
+      var length = radius * (0.12 + util.noise(seed, i) * 0.07);
+      var direction = angle - 0.6;
+      var dx = Math.cos(direction) * length;
+      var dy = Math.sin(direction) * length;
+      ctx.beginPath();
+      ctx.moveTo(lx - dx, ly - dy);
+      ctx.quadraticCurveTo(lx - dy * 0.6, ly + dx * 0.6, lx + dx, ly + dy);
+      ctx.quadraticCurveTo(lx + dy * 0.6, ly - dx * 0.6, lx - dx, ly - dy);
+      ctx.fillStyle = i % 3 === 0 ? "#8BAC62" : i % 3 === 1 ? "#60964F" : "#3C7041";
+      ctx.fill();
     }
-    var radius = bed.h * 0.3;
-    [0.2, 0.5, 0.8].forEach(function (share, index) {
-      util.foliage(ctx, bed.x + bed.w * share, bed.y + bed.h * (index === 1 ? 0.42 : 0.5), radius * (index === 1 ? 1.15 : 1), util.LEAVES, 6);
+  }
+
+  // A continuous shrub hedge with a narrow earth base and woody stems.
+  // Its footprint and hiding behaviour stay exactly the same.
+  art.kinds.hedge = function (ctx, bed) {
+    util.shadowBelow(ctx, bed.x + 2, bed.y + bed.h - 1, bed.w - 4, 1.6);
+    util.box(ctx, bed.x + 2, bed.y + bed.h * 0.55, bed.w - 4, bed.h * 0.4, 3, "#817054", 0.6);
+    var radius = bed.h * 0.49;
+    [0.18, 0.4, 0.62, 0.82].forEach(function (share, index) {
+      var x = bed.x + bed.w * share;
+      var y = bed.y + bed.h * (index % 2 ? 0.44 : 0.51);
+      util.line(ctx, x, bed.y + bed.h - 1.5, x - 0.7, y, "#76583A", 1.7);
+      leafyCrown(ctx, x, y, radius * (index % 2 ? 1 : 0.9), bed.x + index * 7);
     });
   };
 

@@ -8,11 +8,11 @@
   "colours": {"lawn": "#DCE6C8", "deck": "#F3F0E9", "outline": "#2E2A3B"},
 
   "rooms": [
-    {"id": "lecture-hall", "name": "Lecture Hall",     "x": 20,  "y": 20,  "w": 210, "h": 150, "floor": "#EAD3AE", "label": {"x": 125, "y": 152}, "pattern": "planks",        "wall_face": "white-wall"},
+    {"id": "lecture-hall", "name": "Lecture Hall",     "x": 20,  "y": 20,  "w": 210, "h": 150, "floor": "#EAD3AE", "label": {"x": 125, "y": 133}, "pattern": "planks",        "wall_face": "white-wall"},
     {"id": "mon-cafe",     "name": "Mon Café",         "x": 250, "y": 20,  "w": 200, "h": 150, "floor": "#F6ECE0", "label": {"x": 350, "y": 152}, "pattern": "concrete",      "wall_face": "sage-tiles"},
     {"id": "canteen",      "name": "Canteen",          "x": 470, "y": 20,  "w": 190, "h": 150, "floor": "#D7EDDF", "label": {"x": 565, "y": 152}, "pattern": "mint-tiles",    "wall_face": "white-tiles"},
     {"id": "ctt",          "name": "CTT Student Hall", "x": 20,  "y": 230, "w": 140, "h": 330, "floor": "#D6E4F4", "label": {"x": 90,  "y": 248}, "pattern": "speckled",      "wall_face": "white-wall"},
-    {"id": "pingo-doce",   "name": "Pingo Doce",       "x": 440, "y": 400, "w": 220, "h": 160, "floor": "#DCEFC8", "label": {"x": 614, "y": 421}, "pattern": "diamond-tiles", "wall_face": "wood-slats"}
+    {"id": "pingo-doce",   "name": "Pingo Doce",       "x": 440, "y": 400, "w": 220, "h": 160, "floor": "#DCEFC8", "label": {"x": 608, "y": 421}, "pattern": "diamond-tiles", "wall_face": "wood-slats"}
   ],
 
   "deck_label": {"name": "Main Deck", "x": 365, "y": 350},
@@ -69,10 +69,10 @@
 
     {"id": "lecture-hall-board",      "kind": "board", "x": 60,  "y": 30,  "w": 110, "h": 8},
     {"id": "lecture-hall-lectern",    "kind": "lectern", "x": 38, "y": 37,  "w": 8,   "h": 7},
-    {"id": "lecture-hall-bench-1",       "kind": "bench",       "x": 40, "y": 58, "w": 170, "h": 18},
-    {"id": "lecture-hall-bench-2",       "kind": "bench",       "x": 40, "y": 76, "w": 170, "h": 18},
-    {"id": "lecture-hall-bench-3",       "kind": "bench",       "x": 40, "y": 108, "w": 170, "h": 18},
-    {"id": "lecture-hall-bench-4",       "kind": "bench",       "x": 40, "y": 126, "w": 170, "h": 18},
+    {"id": "lecture-hall-bench-1", "kind": "bench", "x": 48, "y": 52, "w": 154, "h": 12},
+    {"id": "lecture-hall-bench-2", "kind": "bench", "x": 48, "y": 82, "w": 154, "h": 12},
+    {"id": "lecture-hall-bench-3", "kind": "bench", "x": 48, "y": 112, "w": 154, "h": 12},
+    {"id": "lecture-hall-bench-4", "kind": "bench", "x": 48, "y": 142, "w": 154, "h": 12},
 
     {"id": "mon-cafe-counter",           "kind": "counter",     "x": 268, "y": 31, "w": 110, "h": 20},
     {"id": "mon-cafe-coffee-machine",    "kind": "machine",     "x": 392, "y": 31, "w": 41, "h": 18},
@@ -80,9 +80,9 @@
     {"id": "mon-cafe-column-2",          "kind": "column",      "x": 419, "y": 82, "w": 14, "h": 14},
     {"id": "mon-cafe-column-3",          "kind": "column",      "x": 267, "y": 122, "w": 14, "h": 14},
     {"id": "mon-cafe-column-4",          "kind": "column",      "x": 419, "y": 128, "w": 14, "h": 14},
-    {"id": "mon-cafe-table-1",           "kind": "round-table", "x": 333, "y": 108, "w": 34, "h": 34},
-    {"id": "mon-cafe-table-2",           "kind": "round-table", "x": 298, "y": 65, "w": 34, "h": 34},
-    {"id": "mon-cafe-table-3",           "kind": "round-table", "x": 368, "y": 65, "w": 34, "h": 34},
+    {"id": "mon-cafe-table-1", "kind": "round-table", "x": 336, "y": 118, "w": 28, "h": 28},
+    {"id": "mon-cafe-table-2", "kind": "round-table", "x": 300, "y": 70, "w": 28, "h": 28},
+    {"id": "mon-cafe-table-3", "kind": "round-table", "x": 372, "y": 70, "w": 28, "h": 28},
     {"id": "mon-cafe-high-table",        "kind": "high-table",  "x": 253, "y": 52, "w": 14, "h": 96},
     {"id": "mon-cafe-divider",           "kind": "grid-shelf",  "x": 271, "y": 79, "w": 6, "h": 43},
 
@@ -124,10 +124,8 @@
     {"id": "pingo-doce-shelf-3",         "kind": "shelf",       "x": 562, "y": 440, "w": 22, "h": 50},
     {"id": "pingo-doce-shelf-4",         "kind": "shelf",       "x": 612, "y": 440, "w": 22, "h": 50},
     {"id": "pingo-doce-checkout",        "kind": "checkout",    "x": 456, "y": 524, "w": 60, "h": 17},
-    {"id": "pingo-doce-gate-1",       "kind": "turnstile",   "x": 511, "y": 417, "w": 4,  "h": 9},
-    {"id": "pingo-doce-gate-2",       "kind": "turnstile",   "x": 529, "y": 417, "w": 4,  "h": 9},
-    {"id": "pingo-doce-gate-3",       "kind": "turnstile",   "x": 547, "y": 417, "w": 4,  "h": 9},
-    {"id": "pingo-doce-gate-4",       "kind": "turnstile",   "x": 565, "y": 417, "w": 4,  "h": 9},
+    {"id": "pingo-doce-gate-2",       "kind": "turnstile",   "x": 522, "y": 417, "w": 4,  "h": 9},
+    {"id": "pingo-doce-gate-3",       "kind": "turnstile",   "x": 554, "y": 417, "w": 4,  "h": 9},
     {"id": "pingo-doce-fridge-left",     "kind": "fridge",      "x": 443, "y": 403, "w": 13, "h": 117},
     {"id": "pingo-doce-fridge-right",    "kind": "fridge",      "x": 648, "y": 436, "w": 9, "h": 89},
     {"id": "pingo-doce-fruit-stand",     "kind": "fruit-stand", "x": 556, "y": 508, "w": 44, "h": 44},
@@ -259,6 +257,7 @@
     {"kind": "grinder", "layer": "on", "x": 427.5, "y": 32, "w": 5, "h": 16},
     {"kind": "pendant", "layer": "on", "x": 299, "y": 40, "w": 7, "h": 7},
     {"kind": "pendant", "layer": "on", "x": 346, "y": 40, "w": 7, "h": 7},
+    {"kind": "sign", "layer": "floor", "x": 533, "y": 429, "w": 14, "h": 5, "text": "EXIT", "colour": "#397E59"},
     {"kind": "sign", "layer": "on", "x": 472, "y": 483, "w": 18, "h": 6, "text": "CANDY"},
     {"kind": "sign", "layer": "on", "x": 514, "y": 483, "w": 18, "h": 6, "text": "DRINKS"},
     {"kind": "sign", "layer": "on", "x": 564, "y": 483, "w": 18, "h": 6, "text": "PIZZA"},

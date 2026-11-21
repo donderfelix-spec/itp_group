@@ -140,3 +140,19 @@ Campus branch verification (2026-11-21): complete suite 3,221 passed, additional
 Hanna requested returning to the original human student style with only subtle differences. Characters have human faces, hairstyles, clothes and student accessories again. Their smiles are gentler and their cheek tint is more subtle. The original human-rendering geometry and running-pose tests apply again. This replaces the robot and object-head visual direction on the Campus and Characters branch.
 
 The human campus students now have individual small outfit motifs in both lobby portraits and map views. Verified with 300 character and motion checks and a browser preview (2026-11-21); on game/campus-and-characters.
+
+## Pingo and planting polish, 2026-11-21
+
+| Feature | Milestone | Status |
+|---|---|---|
+| Wider Pingo entry lanes, recognisable shelf and fridge products, natural deck foliage | M2 | Implemented locally on campus branch |
+
+Verification: 445 focused checks and 40 existing campus play checks passed. Browser entrance/exit and artwork verified; code review clear. One pre-existing hedge accessibility expectation fails and three automated Chromium checks are unavailable in this environment (see TODO.md).
+
+Follow-up: three grouped exit posts with direction arrows and EXIT marking, pantry staples, varied candy/drinks/pizza, equipped self-checkouts, and apples/bananas/kiwi without the central tree. 456 distinct focused checks passed; browser preview and code review complete; dependency audit clear. Local campus branch, not pushed. The prior unrelated hedge-test limitation above remains unchanged.
+
+Final alignment: two exit posts symmetric around the doorway, centred EXIT marking, room name slightly left at x608, and a two-line FRESH FRUITS sign. 257 targeted checks passed; local preview on port8009, not pushed.
+
+## Lecture Hall and Mon Cafe access, 2026-11-21
+
+Lecture Hall walkable row gaps and wider side aisles, Mon Cafe smaller spaced tables and five seated guests with coffee/cake: implemented locally on campus branch. 34 new movement checks pass. Targeted campus/art/movement run:467 passed, one historical route-distance comparison fails due to the newly shorter lecture route. Final room-label plus walkway run:77 passed. Browser checked guests and lecture aisles. No commit or push.
