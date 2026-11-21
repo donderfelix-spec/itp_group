@@ -179,8 +179,25 @@ def test_the_lecture_hall_has_a_lectern_on_the_stage():
     assert lectern["x"] + lectern["w"] < board["x"]  # beside the long table
 
 
-def test_every_new_solid_lies_in_pingo_doce_mon_cafe_or_the_lecture_hall():
-    rooms = ["pingo-doce", "mon-cafe", "lecture-hall"]
+def test_the_ctt_has_a_central_aisle_between_its_two_halves_of_tables():
+    left = sorted((solid for solid in SOLIDS if solid["kind"] == "table-row"), key=lambda solid: solid["y"])
+    right = sorted((solid for solid in SOLIDS if solid["kind"] == "study-table"), key=lambda solid: solid["y"])
+    assert len(left) == len(right) == 8
+    for left_table, right_table in zip(left, right):
+        assert left_table["y"] == right_table["y"]
+        assert right_table["x"] - (left_table["x"] + left_table["w"]) >= 14
+        # tests/test_movement.py walks straight down at x 85 to 95 into the first row.
+        assert left_table["x"] <= 85 and left_table["x"] + left_table["w"] >= 95
+
+
+def test_the_ctt_has_pillars_along_its_outside_wall():
+    pillars = new_solids_in("ctt")
+    assert {solid["kind"] for solid in pillars} == {"study-table", "pillar"}
+    assert [(solid["w"], solid["h"]) for solid in pillars if solid["kind"] == "pillar"] == [(8, 8)] * 3
+
+
+def test_every_new_solid_lies_in_one_of_the_rooms_built_so_far():
+    rooms = ["pingo-doce", "mon-cafe", "lecture-hall", "ctt"]
     assert sum(len(new_solids_in(room)) for room in rooms) == len(NEW_SOLIDS)
 
 
@@ -224,10 +241,13 @@ def test_the_spawn_reaches_every_station():
 
 
 def as_before_this_to_do(campus):
-    """The map without anything M2-1.4 added, and with the old café tables."""
+    """The map without anything M2-1.4 added, with the old café tables and
+    the old rows of the CTT, which went across the whole room."""
     old = without_new_things(campus)
     for solid in old["solids"]:
         solid.update(OLD_CAFE_TABLES.get(solid["id"], {}))
+        if solid["kind"] == "table-row":
+            solid.update(x=40, w=92)
     return old
 
 
@@ -249,15 +269,21 @@ def test_the_new_furniture_of_pingo_doce_changes_no_walking_distance_of_the_duel
         assert after[pair] == pytest.approx(distance, abs=0.001), pair
 
 
-def test_the_new_furniture_of_mon_cafe_makes_the_ways_to_station_2_at_most_2_percent_longer():
+def test_only_the_ways_to_station_2_and_station_4_changed_and_not_by_much():
     # Measured for this to-do: every way to station 2 grew by 4.7 units
-    # (spawn to 2: 327.2 -> 331.9); no other way changed.
+    # (Mon Café's furniture; spawn to 2: 327.2 -> 331.9), every way to
+    # station 4 became 62.6 units shorter (the central aisle of the CTT;
+    # spawn to 4: 783.1 -> 720.5). No other way changed.
     stations = sorted(minigames.MINIGAMES)
     before = station_distances(as_before_this_to_do(CAMPUS), stations)
     after = station_distances(CAMPUS, stations)
     for pair, distance in before.items():
-        if 2 in pair:
+        if 2 in pair and 4 in pair:
+            assert distance * 0.9 <= after[pair] <= distance, pair
+        elif 2 in pair:
             assert distance <= after[pair] <= distance * 1.02, pair
+        elif 4 in pair:
+            assert distance * 0.9 <= after[pair] < distance, pair
         else:
             assert after[pair] == pytest.approx(distance, abs=0.001), pair
 
