@@ -1,13 +1,13 @@
-// The task navigator: an arrow beside the own character and a card with the
-// own next task (Lennart's request). It only reads the public map, the own
-// position and the own target; changing the target never moves anybody.
-// The live arrow points directly at the station, even through a wall. The
-// route search of `create` is not used by the page; tests check the map
-// with it (tests/test_task_navigation.js).
+// The task navigator: an arrow beside the own character and the card at the
+// top left with the own room and next task (Lennart's request, Felix's card).
+// It only reads the public map, the own position and the own target;
+// changing the target never moves anybody. The live arrow points directly
+// at the station, even through a wall. The route search of `create` is not
+// used by the page; tests check the map with it (tests/test_task_navigation.js).
 //
-// main.js sets the target (`setTarget`), world.js calls `draw` once per
-// frame. The card is the element #task-card of index.html, so it stays out
-// of the canvas: under the room label and under the ?debug panel.
+// main.js sets the target (`setTarget`, `reset`), world.js calls `draw`
+// once per frame. The card is the element #task-card of index.html, so it
+// stays out of the canvas and under the ?debug panel.
 "use strict";
 window.Game = window.Game || {};
 
@@ -241,49 +241,83 @@ window.Game = window.Game || {};
     arrow(ctx, position.x + Math.cos(angle) * 21, position.y + Math.sin(angle) * 21, angle, 5.8, YELLOW);
   }
 
-  // ---- The task card ----------------------------------------------------
+  // ---- The card at the top left -----------------------------------------
+  //
+  // Its head says which room the own character stands in, in every mode and
+  // also in the lobby. Below it, while this player has one next task (Duel,
+  // Solo; main.js decides), "NEXT TASK" and the task. It is the only room
+  // display of the page.
 
   let target = null; // the station id of the own next task, or null
   let shownCard = ''; // what the card shows now, so it is only changed on a change
+  let shownPlace = null; // the room the card shows now, or null while it is hidden
 
-  // The three lines of the card for `guidance`, or null for no card.
+  // The three lines of the task part for `guidance`, or null for none.
   function cardLines(guidance) {
     if (!guidance) return null;
-    return [guidance.arrived ? 'E Use · YOUR TASK' : 'YOUR NEXT TASK', guidance.room, guidance.title];
+    return [guidance.arrived ? 'E USE · YOUR TASK' : 'NEXT TASK', guidance.room, guidance.title];
   }
 
-  // Shows the card for `guidance`, or hides it for null. Without the card in
-  // the page (a test, an old page) nothing happens.
-  function showCard(guidance) {
+  // The name of the room at `position`, "Main Deck" outside the rooms.
+  // roomAt comes from world/draw.js; without it every place is the deck.
+  function placeName(campus, position) {
+    const roomAt = Game.world && Game.world.roomAt;
+    const room = typeof roomAt === 'function' ? roomAt(campus, position.x, position.y) : null;
+    return room && typeof room.name === 'string' ? room.name : 'Main Deck';
+  }
+
+  function setText(id, text) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = text;
+  }
+
+  // Shows the card with the room `place` (or hides it for null) and the
+  // task part for `guidance` (or none for null). Without the card in the
+  // page (a test, an old page) nothing happens.
+  function showCard(place, guidance) {
     const card = document.getElementById('task-card');
     if (!card) return;
-    const lines = cardLines(guidance);
-    const key = lines ? lines.join('\n') : '';
+    const lines = place === null ? null : cardLines(guidance);
+    const key = JSON.stringify([place, lines]);
     if (key === shownCard) return;
     shownCard = key;
-    card.hidden = lines === null;
-    card.classList.toggle('task-card-arrived', Boolean(guidance && guidance.arrived));
+    shownPlace = place;
+    card.hidden = place === null;
+    card.classList.toggle('task-card-arrived', Boolean(lines && guidance.arrived));
+    setText('task-card-here', place === null ? '' : place);
+    const task = document.getElementById('task-card-task');
+    if (task) task.hidden = lines === null;
     ['task-card-kicker', 'task-card-room', 'task-card-title'].forEach((id, index) => {
-      const line = document.getElementById(id);
-      if (line) line.textContent = lines ? lines[index] : '';
+      setText(id, lines ? lines[index] : '');
     });
   }
 
   // The station of the own next task, or null for none. From main.js.
   function setTarget(stationId) {
     target = Number.isInteger(stationId) ? stationId : null;
-    if (target === null) showCard(null);
+    if (target === null) showCard(shownPlace, null); // at once, not only at the next frame
+  }
+
+  // The player left the lobby: no target and no card until the next frame of a world.
+  function reset() {
+    target = null;
+    showCard(null, null);
   }
 
   // Once per frame from world.js, in map units and before the characters.
-  // `drawn` is where the own character is drawn (the arrow starts there),
-  // `server` the newest position from the server: like "E Use", the card
-  // says "E Use" only when the server counts the player in range.
+  // `drawn` is where the own character is drawn (the card names its room and
+  // the arrow starts there), `server` the newest position from the server:
+  // like "E Use", the card says "E USE" only when the server counts the
+  // player in range. While a minigame is open (`paused`) nothing is shown.
   function draw(ctx, campus, drawn, server, paused) {
-    const hasTask = target !== null && !paused;
-    const guidance = hasTask ? directGuidance(campus, server, target) : null;
-    showCard(guidance);
-    if (guidance && drawn) drawArrow(ctx, guidance, drawn);
+    const canShow = Boolean(campus) && isPosition(drawn) && !paused;
+    const guidance = canShow && target !== null ? directGuidance(campus, server, target) : null;
+    showCard(canShow ? placeName(campus, drawn) : null, guidance);
+    if (guidance) drawArrow(ctx, guidance, drawn);
+  }
+
+  function isPosition(position) {
+    return Boolean(position) && Number.isFinite(position.x) && Number.isFinite(position.y);
   }
 
   Game.taskNavigation = {
@@ -291,7 +325,9 @@ window.Game = window.Game || {};
     directGuidance: directGuidance,
     drawArrow: drawArrow,
     cardLines: cardLines,
+    placeName: placeName,
     setTarget: setTarget,
+    reset: reset,
     draw: draw,
   };
 })();

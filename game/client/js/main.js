@@ -84,7 +84,7 @@ window.Game = window.Game || {};
     Game.classicRound.hide();
     Game.duel.reset();
     callRoster('reset');
-    showTaskTarget(null);
+    callTaskNavigation('reset');
     Game.countdown.reset();
     roundIsRunning = false;
     finishedStations = new Set();
@@ -157,7 +157,7 @@ window.Game = window.Game || {};
     callWorld('setUsableStations', stations);
     // Only Duel and Solo have one next task to point at; in Classic the
     // card and arrow stay away, also when one station is left.
-    showTaskTarget(hasOneTaskAtATime() && stations.length === 1 ? stations[0] : null);
+    callTaskNavigation('setTarget', hasOneTaskAtATime() && stations.length === 1 ? stations[0] : null);
   }
 
   // Duel and Solo give each player one next station at a time.
@@ -165,10 +165,12 @@ window.Game = window.Game || {};
     return mode === 'duel' || mode === 'solo';
   }
 
-  // The task card and arrow (minigames/task_navigation.js) show the one
-  // station this player has to go to next, or nothing.
-  function showTaskTarget(station) {
-    if (Game.taskNavigation) Game.taskNavigation.setTarget(station);
+  // The card and the arrow (minigames/task_navigation.js) show the one
+  // station this player has to go to next, or none. Like callWorld.
+  function callTaskNavigation(functionName, ...values) {
+    if (Game.taskNavigation && typeof Game.taskNavigation[functionName] === 'function') {
+      Game.taskNavigation[functionName](...values);
+    }
   }
 
   function noteThePhase(phase) {

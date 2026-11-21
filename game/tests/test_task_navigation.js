@@ -145,7 +145,7 @@ function testDirectTaskNavigator(navigation, campus) {
   expect(card.includes('CTT Student Hall') && card.includes(target.name), 'Room and task must remain visible');
   expect(card.every((text) => !/trail|steps|about/i.test(text)), 'Trail and distance instructions must be removed');
   expect(card.every((text) => typeof text === 'string' && text.length > 0), 'The shorter task card should not retain a blank instruction row');
-  expect(navigation.cardLines(arrived)[0].includes('E Use'), 'Arrival should still explain how to open the task');
+  expect(/E Use/i.test(navigation.cardLines(arrived)[0]), 'Arrival should still explain how to open the task');
   return { assertions: checked };
 }
 
@@ -153,7 +153,7 @@ function testDirectTaskNavigator(navigation, campus) {
 // is still outside. The card and Use button follow the server; the arrow
 // stays beside the smoothly drawn character. Runs the real world.js and the
 // real task_navigation.js; only the drawing of the map is a stand-in.
-async function testWorldTaskArrival(vm, worldSource, navigationSource, campus) {
+async function testWorldTaskArrival(vm, worldSource, navigationSource, campus, roomAt) {
   let checked = 0;
   function expect(condition, message) {
     if (!condition) throw new Error(message);
@@ -178,13 +178,14 @@ async function testWorldTaskArrival(vm, worldSource, navigationSource, campus) {
     setAttribute: (key, value) => { labels[key] = value; }, getAttribute: (key) => labels[key] };
   // The card of index.html: one element and its three lines.
   const elements = {};
-  for (const id of ['task-card', 'task-card-kicker', 'task-card-room', 'task-card-title']) {
+  for (const id of ['task-card', 'task-card-here', 'task-card-task', 'task-card-kicker', 'task-card-room', 'task-card-title']) {
     const classes = new Set();
     elements[id] = { hidden: true, textContent: '', classList: {
       toggle: (name, on) => { if (on) classes.add(name); else classes.delete(name); },
       contains: (name) => classes.has(name) } };
   }
   const card = elements['task-card'];
+  const taskPart = elements['task-card-task'];
   const page = { console: console, devicePixelRatio: 1,
     performance: { now: () => now }, requestAnimationFrame: (callback) => { nextFrame = callback; return 1; },
     cancelAnimationFrame: () => {}, setTimeout: () => 0, clearTimeout: () => {},
@@ -199,6 +200,7 @@ async function testWorldTaskArrival(vm, worldSource, navigationSource, campus) {
     drawStationGlow(context, station) { glowingStation = station.id; },
     drawCharacter() {},
     chooseLabels: (entries) => ({ shown: entries, hidden: new Set() }),
+    roomAt: roomAt, // the real one of draw.js
   } };
   vm.createContext(page);
   vm.runInContext(navigationSource, page);
@@ -225,11 +227,16 @@ async function testWorldTaskArrival(vm, worldSource, navigationSource, campus) {
   nextFrame(now);
   const [, , drawnPosition, serverPosition, paused] = navigationCall;
   expect(serverPosition.y === target.y + 20, 'Arrival guidance must use the latest authoritative server position');
-  expect(!card.hidden && elements['task-card-kicker'].textContent.includes('E Use')
+  expect(!card.hidden && !taskPart.hidden && /E Use/i.test(elements['task-card-kicker'].textContent)
     && card.classList.contains('task-card-arrived') && !button.disabled && world.stationInRange() === target.id,
     'Card, button and server range must agree while the drawing is queued');
   expect(elements['task-card-room'].textContent === 'Mon Café' && elements['task-card-title'].textContent === target.name,
     'The card names the room and the task');
+  const drawnRoom = roomAt(campus, drawnPosition.x, drawnPosition.y);
+  expect(elements['task-card-here'].textContent === (drawnRoom ? drawnRoom.name : 'Main Deck'),
+    'The head of the card names where the drawn character stands');
+  expect(navigation.placeName(campus, target) === 'Mon Café' && navigation.placeName(campus, campus.spawn) === 'Main Deck',
+    'The room comes from roomAt, and outside the rooms it is the Main Deck');
   expect(drawnPosition.y !== serverPosition.y && paused === false, 'The test needs a queued drawing behind the server');
   const drawn = world.ownDrawnPosition(now);
   expect(drawnPosition.x === drawn.x && drawnPosition.y === drawn.y, 'Arrow must follow the drawn position');
@@ -242,10 +249,14 @@ async function testWorldTaskArrival(vm, worldSource, navigationSource, campus) {
   nextFrame(now + 2);
   expect(arrowPlaces.length === 1 && !card.hidden, 'Closing the minigame shows the navigation again');
   navigation.setTarget(null);
-  expect(card.hidden, 'No navigator target hides the card at once, also when no frame follows');
+  expect(taskPart.hidden && !card.hidden, 'No navigator target hides the task at once, also when no frame follows; the room stays');
   nextFrame(now + 3);
-  expect(arrowPlaces.length === 0 && card.hidden && labels['aria-label'] === 'Campus map',
+  expect(arrowPlaces.length === 0 && taskPart.hidden && labels['aria-label'] === 'Campus map',
     'No navigator target must hide guidance and reset its accessible label');
+  expect(!card.hidden && elements['task-card-here'].textContent.length > 0, 'Without a task the card still names the room');
+  navigation.reset();
+  expect(card.hidden, 'Leaving the lobby hides the whole card');
+  nextFrame(now + 3);
   expect(JSON.stringify(shownStations) === JSON.stringify([target.id]) && !button.disabled,
     'A sole private usable station must remain visible without the optional navigator API');
   for (const usable of [[], null]) {
@@ -276,6 +287,7 @@ if (require.main === module) {
   const client = path.join(__dirname, '..', 'client');
   const campus = JSON.parse(fs.readFileSync(path.join(client, 'js', 'world', 'campus.json'), 'utf8'));
   const navigationSource = fs.readFileSync(path.join(client, 'js', 'minigames', 'task_navigation.js'), 'utf8');
+  const drawSource = fs.readFileSync(path.join(client, 'js', 'world', 'draw.js'), 'utf8');
   const worldSource = fs.readFileSync(path.join(client, 'js', 'world', 'world.js'), 'utf8');
 
   // The real task_navigation.js and draw.js, each in a page of its own.
@@ -287,12 +299,13 @@ if (require.main === module) {
     return page.Game;
   }
   const navigation = load([navigationSource]).taskNavigation;
+  const roomAt = load([drawSource]).world.roomAt;
 
   (async () => {
     const results = [
       testTaskNavigation(navigation, campus),
       testDirectTaskNavigator(navigation, campus),
-      await testWorldTaskArrival(vm, worldSource, navigationSource, campus),
+      await testWorldTaskArrival(vm, worldSource, navigationSource, campus, roomAt),
     ];
     const assertions = results.reduce((sum, result) => sum + result.assertions, 0);
     console.log('Task navigation checks passed: ' + assertions + ' assertions.');
