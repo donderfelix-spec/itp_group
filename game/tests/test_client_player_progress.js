@@ -107,7 +107,7 @@ function environment() {
     return done ? [done.textContent, fill.style.width] : null;
   };
   return {
-    Game, ids, list, rows, progressOf, asked,
+    Game, ids, list, rows, progressOf, asked, document: context.document,
     emit: (type, payload) => handlers.get(type)(payload),
     roundStarts: () => roundStarts,
     intervalCount: () => intervals.size,
@@ -300,7 +300,30 @@ for (const [mode, name] of [['solo', 'Solo'], ['duel', 'Duel']]) {
   check(text('duel').hidden, 'Esc closes it, also while the "?" keeps the focus');
   why('duel').events.mouseenter();
   check(!text('duel').hidden, 'and it opens again on the next hover');
+  // With a mouse: the hover shows it, and the click pins it (it does not close it).
+  why('duel').events.pointerdown();
+  why('duel').events.focus();
+  why('duel').events.click();
+  why('duel').events.mouseleave();
+  check(!text('duel').hidden, 'hover, then click: the text stays open after the pointer leaves');
+  why('duel').events.mouseenter();
+  why('duel').events.pointerdown();
+  why('duel').events.click();
+  check(text('duel').hidden, 'a second click closes the pinned text');
+  // Enter or Space on the focused "?" (a click without a press) toggles too.
+  why('duel').events.focus();
+  why('duel').events.click();
+  check(text('duel').hidden, 'Enter on a "?" whose text the focus shows closes it');
+  why('duel').events.click();
+  check(!text('duel').hidden, 'and Enter again opens it');
+  // A guest joins while the focus is on the "?" of Duel: the "?" goes, the
+  // focus moves to the Duel button, which can be used now.
+  let focused = null;
+  button('duel').focus = () => { focused = 'duel'; };
+  env.document.activeElement = why('duel');
   env.emit('lobby_state', lobbyState(['Mara', 'Tiago'], 'duel', 'lobby'));
+  check(focused === 'duel', 'the focus moves from the hidden "?" to its mode button');
+  env.document.activeElement = null;
   check(!button('duel').disabled && !button('classic').disabled && button('solo').disabled, 'two: Solo greyed, Duel and Classic free');
   check(why('duel').hidden && text('duel').hidden && !why('solo').hidden, 'a mode that fits again loses its "?" and text');
   env.emit('lobby_state', lobbyState(['Mara', 'Tiago', 'Ines'], 'classic', 'lobby'));

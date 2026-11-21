@@ -13,11 +13,13 @@ window.Game = window.Game || {};
   const DOT_RADIUS = 15; // the plain dot drawn when there is no character drawing
   const DOT_COLOUR = '#8A8494';
 
-  // The modes the host sees, from DESIGN.md, section 4. `minPlayers` is only
-  // for the hint under the start button: the server checks it again (S-53).
+  // The modes the host sees, from DESIGN.md, section 4. `minPlayers` (and
+  // `maxPlayers`, only Solo has one) give the hint under the start button,
+  // the texts of the "?" and which modes are greyed (see fitsPlayerCount).
+  // The server checks all of it again (S-53).
   const MODES = [
     { id: 'duel', name: 'Duel', minPlayers: 2, isBuilt: true },
-    { id: 'solo', name: 'Solo', minPlayers: 1, isBuilt: true },
+    { id: 'solo', name: 'Solo', minPlayers: 1, maxPlayers: 1, isBuilt: true },
     { id: 'classic', name: 'Classic', minPlayers: 4, isBuilt: true },
   ];
 
@@ -189,10 +191,16 @@ window.Game = window.Game || {};
   const whyTexts = {};
   const whyShownBy = {};
 
-  // Solo is for one player alone; the other modes need company. Classic
-  // with 2 or 3 players still fits here: its start hint says who is missing.
+  // The fewest players a mode played together can be chosen with: the
+  // smallest minimum of the modes without a maximum (Duel's 2).
+  const FEWEST_TOGETHER = Math.min(...MODES.filter((mode) => !mode.maxPlayers).map((mode) => mode.minPlayers));
+
+  // Solo fits up to its maximum (one player alone); the other modes need
+  // company. Classic with 2 or 3 players still fits here: its start hint
+  // says who is missing.
   function fitsPlayerCount(mode, playerCount) {
-    return mode.id === 'solo' ? playerCount === 1 : playerCount >= 2;
+    if (mode.maxPlayers) return playerCount <= mode.maxPlayers;
+    return playerCount >= Math.min(mode.minPlayers, FEWEST_TOGETHER);
   }
 
   // The same texts as the server's (protocol.py), with the minimum of MODES.
@@ -219,19 +227,26 @@ window.Game = window.Game || {};
     why.addEventListener('mouseleave', () => set('pointer', false));
     why.addEventListener('focus', () => set('focus', true));
     why.addEventListener('blur', () => set('focus', false));
-    // A tap or a click toggles it: it closes what was shown before the
-    // press, else opens it. (A tap also gives the focus, which alone would
-    // show the text already, so what counts is the state before the press.)
-    let shownBeforePress = null;
-    why.addEventListener('pointerdown', () => { shownBeforePress = isWhyShown(mode.id); });
+    // A tap or a click toggles it: it closes a text that was pinned (by a
+    // click or the focus) before the press, else pins it. Only hovering
+    // does not count, so a mouse click pins what the hover just showed; and
+    // a tap, which gives the focus only after the press, opens it.
+    let pinnedBeforePress = null;
+    why.addEventListener('pointerdown', () => { pinnedBeforePress = isWhyPinned(mode.id); });
     why.addEventListener('click', () => {
-      const wasShown = shownBeforePress === null ? isWhyShown(mode.id) : shownBeforePress;
-      shownBeforePress = null;
-      if (wasShown) closeWhy(mode.id); else set('click', true);
+      // Without a press first (Enter or Space on the focused "?"): what is shown counts.
+      const wasPinned = pinnedBeforePress === null ? isWhyShown(mode.id) : pinnedBeforePress;
+      pinnedBeforePress = null;
+      if (wasPinned) closeWhy(mode.id); else set('click', true);
     });
     whyButtons[mode.id] = why;
     whyTexts[mode.id] = text;
     return why;
+  }
+
+  function isWhyPinned(modeId) {
+    const shownBy = whyShownBy[modeId];
+    return !whyButtons[modeId].hidden && (shownBy.focus || shownBy.click);
   }
 
   function isWhyShown(modeId) {
@@ -291,8 +306,13 @@ window.Game = window.Game || {};
       const fits = fitsPlayerCount(mode, playerCount);
       button.disabled = !mode.isBuilt || !isOpen || !fits;
       button.classList.toggle('mode-unfit', !fits);
-      whyButtons[mode.id].hidden = fits;
+      const why = whyButtons[mode.id];
+      // A "?" that goes away must not take the focus with it to nowhere:
+      // the focus moves to its mode's button, which can be used now.
+      const hadFocus = fits && document.activeElement === why;
+      why.hidden = fits;
       if (fits) closeWhy(mode.id);
+      if (hadFocus && !button.disabled) button.focus();
     });
   }
 

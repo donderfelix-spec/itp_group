@@ -198,8 +198,9 @@ window.Game = window.Game || {};
   // ---- The arrow: a plain triangle (Felix, 2026-11-21) -------------------
 
   // An isosceles triangle pointing right, 11 map units long and 9 wide,
-  // around (0, 0). A character is 39 units high.
-  const TRIANGLE_POINTS = [[6, 0], [-5, -4.5], [-5, 4.5]];
+  // around (0, 0), with its tip the corner farthest from (0, 0). A
+  // character is 39 units high.
+  const TRIANGLE_POINTS = [[6.5, 0], [-4.5, -4.5], [-4.5, 4.5]];
   const TRIANGLE_OUTLINE = 1.6; // the game's dark outline, readable on every floor
   // Where the arrow stands: this far from the middle of the character's
   // body, which is 14.5 units above its position (feet 5 below it, 39 high).

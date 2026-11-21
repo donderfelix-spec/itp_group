@@ -96,13 +96,14 @@ function testDirectTaskNavigator(navigation, campus) {
   expect(!('path' in direct), 'Live guidance must not calculate a route');
 
   function record() {
-    const calls = { translations: [], rotations: [], texts: [], lines: [], rectangles: [], fills: [], strokes: [], alphas: [] };
+    const calls = { translations: [], rotations: [], texts: [], lines: [], moves: [], rectangles: [], fills: [], strokes: [], alphas: [] };
     const state = {};
     const ctx = new Proxy({
       translate: (x, y) => calls.translations.push([x, y]),
       rotate: (angle) => calls.rotations.push(angle),
       fillText: (text) => calls.texts.push(text),
       lineTo: (x, y) => calls.lines.push([x, y]),
+      moveTo: (x, y) => calls.moves.push([x, y]),
       fillRect: (x, y, width, height) => calls.rectangles.push([x, y, width, height]),
       fill: () => { calls.fills.push(state.fillStyle); calls.alphas.push(state.globalAlpha); },
       stroke: () => calls.strokes.push([state.strokeStyle, state.lineWidth]),
@@ -126,6 +127,13 @@ function testDirectTaskNavigator(navigation, campus) {
   expect(Math.abs(Math.hypot(placed[0] - bodyMiddle.x, placed[1] - bodyMiddle.y) - 24) < 1e-8,
     'Compass must stay beside the player, outside the body');
   expect(compass.calls.lines.length === 2, 'Only the three corners of the triangle may be drawn, no route line');
+  // In the arrow's own frame (before it is turned) the tip, the corner
+  // farthest from the middle, lies on +x: so it points at the station.
+  const corners = [...compass.calls.moves, ...compass.calls.lines];
+  const tip = corners.reduce((far, corner) => (Math.hypot(...corner) > Math.hypot(...far) ? corner : far));
+  expect(corners.length === 3 && tip[0] > 0 && Math.abs(tip[1]) < 1e-9, 'The tip of the triangle lies on +x');
+  const length = Math.max(...corners.map(([x]) => x)) - Math.min(...corners.map(([x]) => x));
+  expect(length >= 10 && length <= 12, 'The triangle is 10 to 12 units long (' + length + ')');
   expect(JSON.stringify(compass.calls.fills) === JSON.stringify(['#FFD23F']), 'One sun-yellow triangle, nothing else filled');
   expect(compass.calls.strokes.length === 1 && compass.calls.strokes.every(([colour, width]) => colour === '#2E2A3B' && width >= 1.4 && width <= 1.8),
     'A thick dark outline');
