@@ -109,6 +109,7 @@ Milestone 2 was built up to the Duel by Claude as lead (pull requests #19 to #26
 - [x] **M2-2.8** All character buttons in the lobby have the same height: the quote under the name of the chosen character made its button taller, so the list jumped when the choice changed. The quote stays visible for the chosen character; nothing in the list moves when the choice changes, at 1280 px and in a narrow window, with one- and two-line names (Felix). Requested by Felix on 2026-11-20; one code review, played with two to eight guests in Chromium at 1280x800, 900x700 and 390x844, no button moves (2026-11-20)
 - [ ] **M2-2.9** Checks on the deployed site that only a person can make (Felix): (1) the character buttons in the lobby, also whether the panel is 1 px too high in a window of about 900 by 700 with visible scroll bars (M2-2.8); (2) reconnecting: join a lobby as a guest, turn Wi-Fi off for a few seconds, press “Play as guest” again, and land in the same lobby (M3-2.2); (3) six wrong log-ins in a row show “Too many attempts. Try again in a minute.”, and a log-in works again after a minute (M1-2.6)
 - [ ] **M2-2.10** One run with the walking diagnostic on the deployed site after “bridging the gaps” (M2-1.16) was merged (Felix): open the site with `?debug`, press “Reset”, keep the tab in front, walk for one to two minutes with changes of direction and along furniture, and paste the log to the lead; for comparison the same with `?debug&bridge=off`. Only a person on the real connection can do this
+- [ ] **M2-2.11** With eight players in a Duel the clock in the side panel is only visible after scrolling in a window of 1280 by 800: the player list with its progress rows pushes it down (Felix). Keep the clock visible without scrolling for up to eight players, for example above the list. Found in the play test of pull request 75; requested by Felix on 2026-11-21
 
 A complete Duel round needs nothing more from area 2: start, play, ranking and the next round work. M2-2.2 and M2-2.3 are about what is shown and about playing it with several people; M2-2.4 is the only part of the required scope (S-40) that is not built at all.
 
@@ -117,9 +118,18 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M2-4.7a** A fault after a task was counted takes the count back, in the frame and in the Duel, so the server never counts a station the browser was not told about (solved with M2-4.7)
 - [x] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard (S-94). In the pull request after #26
 - [ ] **M2-4.8** Play test: two players play a Duel through to the leaderboard (Lennart). A scripted run with two browsers and the real minigames exists from the building of M2-4.7 (both finish, ranking, second round, time running out). Left to do: two people on two computers on the deployed server, and write down what gets in the way
-- [ ] **M2-4.9** After a solved minigame the “Done” window stays for one second and the walking keys are ignored during it; a key that is already held only counts again when the window has closed. In a Duel that is three seconds of standing per route and feels like lag (found in the play test of M2-2.2, after Felix reported lag). Let a held or newly pressed walking key take effect at once, or shorten the window (Lennart)
+- [x] **M2-4.9** After a solved minigame the “Done” window stays for one second and the walking keys are ignored during it; a key that is already held only counts again when the window has closed. In a Duel that is three seconds of standing per route and feels like lag (found in the play test of M2-2.2, after Felix reported lag). Shortened to 0.5 seconds, and the close button is hidden while “Done” shows (S-127, Lennart)
 - [x] **M2-4.12** All five minigames fit narrow and low windows: from 320 px wide, a body under 420 px gets its own layout (slides in two columns, brew buttons that wrap, the tray slip above the counter, books on two boards of three, checkout with Target above Total and two products per row); the card scrolls, nothing is cut off and nothing scrolls sideways. The self-checkout message brings itself into view when the belt is taller than the window, and the bagging row never moves when it appears. At 1280x800 every game looks exactly as before (Lennart's area, done by Felix's session). Found when "Brew the order" was cut off at 320 px; two code reviews, played to "Done" with two players in Chromium at 320x568, 320x700, 600x700, 920x700 and 1280x800, also with live resizing (2026-11-20)
 - [ ] **M2-4.14** Three of the six new minigames at stations 7 to 12 are too easy (Lennart). They come to `main` with the branch `Minispiele-und-Modi` (checked on `game/lennart-on-main-check`); found in its review on 2026-11-21. “De-buzzword the slides” prints the answer on every card (“Buzzword” or “Useful content”); “Decode the group chat” shows the whole sentence as a hint above the words; “Seagull quality control” is solved by clicking four to six times. All six also share one instruction line. Rework the three so that the player has to work the answer out, and give each minigame its own instruction
+
+- [ ] **M2-4.15** Make the minigames more exciting (Lennart). Revisit challenge, pacing and feedback, including the issues in K15.
+- [x] **M2-4.13** The other players with their progress in one list: the Players list of the side panel, with “2/3” and a bar in Duel and Solo; no card over the map (S-130, Lennart's branch, reworked on `game/lennart-on-main-check`)
+- [x] **M2-4.16** Six more minigames at stations 7 to 12, in Duel, Solo and Classic (S-124, Lennart)
+- [x] **M2-4.17** Solo mode, and the mode choice Duel and Solo side by side with Classic below (S-125, Lennart)
+- [x] **M2-4.18** Every player starts at a different station; `draw_routes` never fails for up to 8 players (S-126, Lennart)
+- [x] **M2-4.19** Stations as objects with a pulsing outline, one card at the top left (room and next task), a direction arrow as a plain yellow triangle (S-128, S-129, Lennart's branch; drawing in area 1 with Felix's consent)
+- [ ] **M2-4.20** Before PR 69 (Hanna) is merged: drop its room label `drawLocation`, keep the card of S-129 as the only room display, and use one `roomAt` (Hanna, Lennart)
+- [ ] **M2-4.21** The unused route search in `client/js/minigames/task_navigation.js` (`create`, `route`) is used only by `tests/test_task_navigation.js`: decide whether to keep both or drop both (Lennart)
 
 **Known and open after the Duel**
 
@@ -172,6 +182,8 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 **Area 4 (Lennart)**
 
 - [ ] **M3-4.1** Connect the minigames to the task list of the Classic mode (Lennart). The frame asks a function which stations a player needs (`needed_stations` in `server/modes/tasks.py`); Duel passes “only the next one”, Classic passes the player's task list
+
+- [ ] **M3-4.2** Test the emergency button Classic already has (S-123) in play (Lennart): it unlocks 45 seconds into the round, the server checks range and use (see M3-3.15), and a ghost sees the hint of M3-3.19. Report every bug to Laurin; no second button is built.
 
 ## M4: Extension
 

@@ -124,7 +124,7 @@ def finished_by(name):
 
 
 def test_the_real_minigames_stand_at_all_five_stations():
-    assert sorted(minigames.MINIGAMES) == ALL_STATIONS
+    assert sorted(minigames.MINIGAMES) == ALL_STATIONS + list(range(7, 13))
     for station in ALL_STATIONS:
         assert minigames.MINIGAMES[station].title == TITLES[station]
         assert minigames.MINIGAMES[station].min_seconds == 1
