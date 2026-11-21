@@ -10,7 +10,8 @@
 //             canvas, as in the other Node tests. Output: {texts, warnings,
 //             fills: every colour something was filled with, art: the names
 //             each group of Game.world.art registers}. With "failingKind" in
-//             the input, the art of that kind of solid throws an error.
+//             the input, the art of that kind of solid throws an error;
+//             with "failingDoor", the art of a door's opening does.
 //   "tiles"   a page that can make canvases: drawMap() draws the static part
 //             into tiles and copies them. Input (stdin): {"frames": [{scale,
 //             e, f, width, height}]}, one camera per frame. Output: {frames:
@@ -89,6 +90,9 @@ const world = page.Game.world;
 if (mode === 'direct') {
   if (input.failingKind) {
     world.art.kinds[input.failingKind] = () => { throw new Error('This drawing fails.'); };
+  }
+  if (input.failingDoor) {
+    world.art.doors.opening = () => { throw new Error('This drawing fails.'); };
   }
   world.drawMap(recordingContext(), input.campus);
   const art = {};

@@ -45,6 +45,14 @@ OLD_KINDS = {
 }
 NEW_SOLIDS = [solid for solid in SOLIDS if solid["kind"] not in OLD_KINDS]
 
+# The three round tables of Mon Café before M2-1.4 grew them.
+OLD_CAFE_TABLES = {
+    "mon-cafe-table-1": {"x": 343, "y": 97, "w": 14, "h": 14},
+    "mon-cafe-table-2": {"x": 311, "y": 59, "w": 14, "h": 14},
+    "mon-cafe-table-3": {"x": 375, "y": 119, "w": 14, "h": 14},
+}
+
+
 # A gap a player (10 units wide) could just squeeze into (S-111).
 SQUEEZE_GAPS = range(10, 14)
 
@@ -143,13 +151,27 @@ def test_the_deck_has_a_pattern_a_wall_face_and_faces_are_at_most_10_high():
     assert 0 < CAMPUS["wall_face_height"] <= 10
 
 
+def new_solids_in(room_id):
+    room = next(room for room in CAMPUS["rooms"] if room["id"] == room_id)
+    return [solid for solid in NEW_SOLIDS if lies_inside(solid, room)]
+
+
 def test_pingo_doce_has_its_new_furniture():
-    kinds = sorted(solid["kind"] for solid in NEW_SOLIDS)
+    kinds = sorted(solid["kind"] for solid in new_solids_in("pingo-doce"))
     assert kinds == ["fridge", "fridge", "fruit-stand", "hot-counter", "totem", "totem",
                      "turnstile", "turnstile", "turnstile", "turnstile"]
-    pingo = next(room for room in CAMPUS["rooms"] if room["id"] == "pingo-doce")
-    for solid in NEW_SOLIDS:
-        assert lies_inside(solid, pingo), solid["id"]
+
+
+def test_mon_cafe_has_its_new_furniture_and_still_three_round_tables():
+    kinds = sorted(solid["kind"] for solid in new_solids_in("mon-cafe"))
+    assert kinds == ["grid-shelf", "grid-shelf", "high-table"]
+    tables = [solid for solid in SOLIDS if solid["kind"] == "round-table"]
+    # Grown from 14 to 20, so that a table with four chairs fits inside.
+    assert [(table["w"], table["h"]) for table in tables] == [(20, 20)] * 3
+
+
+def test_every_new_solid_lies_in_pingo_doce_or_mon_cafe():
+    assert len(new_solids_in("pingo-doce")) + len(new_solids_in("mon-cafe")) == len(NEW_SOLIDS)
 
 
 def test_every_decor_on_a_solid_lies_inside_a_solid():
@@ -174,6 +196,14 @@ def test_a_new_solid_leaves_no_gap_a_player_could_just_squeeze_into(solid):
             assert gap_between(solid, other, SOLIDS) not in SQUEEZE_GAPS, (solid["id"], other["id"])
 
 
+@pytest.mark.parametrize("table_id", sorted(OLD_CAFE_TABLES))
+def test_a_grown_cafe_table_leaves_no_gap_a_player_could_just_squeeze_into(table_id):
+    table = next(solid for solid in SOLIDS if solid["id"] == table_id)
+    for other in SOLIDS:
+        if other is not table:
+            assert gap_between(table, other, SOLIDS) not in SQUEEZE_GAPS, (table_id, other["id"])
+
+
 def test_the_spawn_reaches_every_station():
     grid = paths.Grid(SOLIDS, CAMPUS["width"], CAMPUS["height"])
     spawn = grid.nearest_free_point(CAMPUS["spawn"]["x"], CAMPUS["spawn"]["y"], paths.GRID_STEP)
@@ -183,15 +213,43 @@ def test_the_spawn_reaches_every_station():
         assert point in reached, station["id"]
 
 
-def test_the_new_solids_change_no_walking_distance_of_the_duel():
+def as_before_this_to_do(campus):
+    """The map without anything M2-1.4 added, and with the old café tables."""
+    old = without_new_things(campus)
+    for solid in old["solids"]:
+        solid.update(OLD_CAFE_TABLES.get(solid["id"], {}))
+    return old
+
+
+def without_the_new_solids_of_pingo_doce(campus):
+    changed = copy.deepcopy(campus)
+    pingo_ids = {solid["id"] for solid in new_solids_in("pingo-doce")}
+    changed["solids"] = [solid for solid in changed["solids"] if solid["id"] not in pingo_ids]
+    return changed
+
+
+def test_the_new_furniture_of_pingo_doce_changes_no_walking_distance_of_the_duel():
     # Measured for this to-do: spawn to station 5 stays 262.5, 4 to 5 stays 1031.5.
     stations = sorted(minigames.MINIGAMES)
-    before = station_distances(without_new_things(CAMPUS), stations)
+    before = station_distances(without_the_new_solids_of_pingo_doce(CAMPUS), stations)
     after = station_distances(CAMPUS, stations)
     assert after.keys() == before.keys()
     for pair, distance in before.items():
         # Only the order of adding up the steps may differ.
         assert after[pair] == pytest.approx(distance, abs=0.001), pair
+
+
+def test_the_new_furniture_of_mon_cafe_makes_the_ways_to_station_2_at_most_2_percent_longer():
+    # Measured for this to-do: every way to station 2 grew by 4.7 units
+    # (spawn to 2: 327.2 -> 331.9); no other way changed.
+    stations = sorted(minigames.MINIGAMES)
+    before = station_distances(as_before_this_to_do(CAMPUS), stations)
+    after = station_distances(CAMPUS, stations)
+    for pair, distance in before.items():
+        if 2 in pair:
+            assert distance <= after[pair] <= distance * 1.02, pair
+        else:
+            assert after[pair] == pytest.approx(distance, abs=0.001), pair
 
 
 # Accepted: edge cases
@@ -378,6 +436,7 @@ def test_every_drawing_the_map_names_is_there():
         assert item["kind"] in art["decor"], item
     for kind in {solid["kind"] for solid in NEW_SOLIDS}:
         assert kind in art["kinds"], kind
+    assert {"opening", "frame"} <= set(art["doors"])
 
 
 @needs_node
@@ -486,3 +545,11 @@ def test_tiles_ahead_follow_the_camera_moving_up_too():
     top_edge = min(copy_["y"] for copy_ in frames[2]["copies"]) - 512
     [ahead] = frames[2]["drawnAt"]
     assert ahead["y"] == top_edge
+
+
+@needs_node
+def test_without_the_art_of_doors_a_door_is_still_drawn_plain():
+    # A door's opening that fails is drawn as before: a strip of the deck's colour.
+    result = run_node("direct", {"campus": CAMPUS, "failingDoor": True})
+    assert CAMPUS["colours"]["deck"] in result["fills"]
+    assert len(result["warnings"]) == 1

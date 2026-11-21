@@ -26,6 +26,7 @@ Game.world = Game.world || {};
   art.decor = art.decor || {};
   art.floors = art.floors || {};
   art.faces = art.faces || {};
+  art.doors = art.doors || {};
 
   var OUTLINE = "#2E2A3B";
   var FONT = "system-ui, sans-serif";
@@ -228,40 +229,149 @@ Game.world = Game.world || {};
 
   // ---- Floor patterns --------------------------------------------------
   // Low contrast on purpose: stations, players and names must stand out.
+  //
+  // Each floor repeats a square of `period` map units. That square is drawn
+  // once per zoom into a small canvas, and the floor is covered with copies
+  // of it, placed on whole canvas pixels: a few quick copies instead of
+  // hundreds of small shapes per tile of the map. The copies start at the
+  // map's corner (0, 0), so they line up from one tile of the map to the
+  // next. Variation inside the square comes from noise() of the cell's place
+  // in the square, so the square fits onto its neighbours.
+  //
+  // (A canvas pattern, ctx.createPattern, does the same; it was tried and
+  // is slower here, because it resamples every pixel it fills.)
 
-  // Calls `visit(x, y, row)` for every piece of a running bond: rows of
-  // `height`, cut into pieces of `length`, each row shifted by `shiftOf(row)`.
-  function eachPiece(area, length, height, shiftOf, visit) {
-    var firstRow = Math.floor((area.y - CELL_OVERHANG) / height);
-    var lastRow = Math.floor((area.y + area.h + CELL_OVERHANG) / height);
-    for (var row = firstRow; row <= lastRow; row++) {
-      var shift = shiftOf(row);
-      var first = Math.floor((area.x - CELL_OVERHANG - shift) / length);
-      var last = Math.floor((area.x + area.w + CELL_OVERHANG - shift) / length);
-      for (var piece = first; piece <= last; piece++) {
-        visit(shift + piece * length, row * height, row);
+  var SQUARES_KEPT = 24;
+  var squares = new Map(); // "name|colour|zoom" -> canvas
+
+  // Fills `area` with copies of the square drawn by `drawPeriod(ctx)`, which
+  // draws from (0, 0) to (period, period) in map units. Without a page that
+  // can make canvases (tests in Node), the square is drawn again and again
+  // over the area instead: the same picture, only slower.
+  function repeating(ctx, area, key, period, drawPeriod) {
+    var camera = typeof ctx.getTransform === "function" ? ctx.getTransform() : null;
+    var square = camera ? squareFor(key, period, camera.a, drawPeriod) : null;
+    if (square && camera.b === 0 && camera.c === 0 && camera.a === camera.d) {
+      copySquares(ctx, area, square, camera);
+      return;
+    }
+    eachCell(area, 0, 0, period, period, function (x, y) {
+      ctx.save();
+      ctx.translate(x, y);
+      drawPeriod(ctx);
+      ctx.restore();
+    });
+  }
+
+  // Copies the square over `area`, in canvas pixels. The clip that is set
+  // (the room) still holds.
+  function copySquares(ctx, area, square, camera) {
+    var size = square.width;
+    var originX = Math.round(camera.e);
+    var originY = Math.round(camera.f);
+    var first = { x: Math.floor((area.x * camera.a + camera.e - originX) / size), y: Math.floor((area.y * camera.a + camera.f - originY) / size) };
+    var last = { x: Math.floor(((area.x + area.w) * camera.a + camera.e - originX) / size), y: Math.floor(((area.y + area.h) * camera.a + camera.f - originY) / size) };
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    for (var row = first.y; row <= last.y; row++) {
+      for (var column = first.x; column <= last.x; column++) {
+        ctx.drawImage(square, originX + column * size, originY + row * size);
+      }
+    }
+    ctx.restore();
+  }
+
+  // The square for this pattern at this zoom, drawn once, or null.
+  function squareFor(key, period, scale, drawPeriod) {
+    if (typeof document === "undefined" || typeof document.createElement !== "function" || !(scale > 0)) {
+      return null;
+    }
+    var fullKey = key + "|" + scale;
+    if (squares.has(fullKey)) {
+      return squares.get(fullKey);
+    }
+    var pixels = Math.max(1, Math.round(period * scale));
+    var square = document.createElement("canvas");
+    var squareCtx = square && typeof square.getContext === "function" ? square.getContext("2d") : null;
+    if (!squareCtx) {
+      return null;
+    }
+    square.width = pixels;
+    square.height = pixels;
+    var pixelsPerUnit = pixels / period;
+    // Drawn nine times, shifted by a whole square each way: whatever sticks
+    // out of one side of the square comes back in on the other side.
+    for (var dx = -1; dx <= 1; dx++) {
+      for (var dy = -1; dy <= 1; dy++) {
+        squareCtx.setTransform(pixelsPerUnit, 0, 0, pixelsPerUnit, dx * pixels, dy * pixels);
+        squareCtx.lineJoin = "round";
+        drawPeriod(squareCtx);
+      }
+    }
+    if (squares.size >= SQUARES_KEPT) {
+      squares.delete(squares.keys().next().value);
+    }
+    squares.set(fullKey, square);
+    return square;
+  }
+
+  // Calls `visit(x, y, column, row)` for each of `count` by `count` cells
+  // of `size` inside one square of a pattern.
+  function eachCellOfSquare(count, size, visit) {
+    for (var row = 0; row < count; row++) {
+      for (var column = 0; column < count; column++) {
+        visit(column * size, row * size, column, row);
       }
     }
   }
 
+  // Small dots, at most one in every cell, inside one square of a pattern.
+  function speckles(ctx, period, colour, cell, share) {
+    ctx.fillStyle = colour;
+    eachCellOfSquare(Math.round(period / cell), cell, function (x, y, column, row) {
+      if (noise(column * 3.1, row * 1.7) < share) {
+        ctx.fillRect(x + noise(column, row * 2.3) * cell, y + noise(column * 1.9, row) * cell, 0.7, 0.7);
+      }
+    });
+  }
+
+  // The joints of a grid of square cells, as one path.
+  function gridJoints(ctx, period, cell, colour, lineWidth) {
+    strokeAll(ctx, colour, lineWidth, function () {
+      eachCellOfSquare(Math.round(period / cell), cell, function (x, y) {
+        ctx.rect(x, y, cell, cell);
+      });
+    });
+  }
+
   // Wooden planks running left to right, joints staggered from row to row.
-  // First all planks, then all joints, so no plank covers a joint.
+  // The square is two plank lengths wide and 14 rows high (84 by 84).
   art.floors.planks = function (ctx, area, room) {
     var floor = room ? room.floor : "#EAD3AE";
     var plankHeight = 6;
     var plankLength = 42;
-    var shiftOf = function (row) { return Math.floor(noise(row, 7) * plankLength); };
-    eachPiece(area, plankLength, plankHeight, shiftOf, function (x, y, row) {
-      var tone = noise(x, row);
-      ctx.fillStyle = tone < 0.5 ? darker(floor, 0.02 + tone * 0.05) : lighter(floor, (tone - 0.5) * 0.3);
-      ctx.fillRect(x, y, plankLength, plankHeight);
-    });
-    strokeAll(ctx, darker(floor, 0.16), 0.5, function () {
-      eachPiece(area, plankLength, plankHeight, shiftOf, function (x, y) {
-        ctx.moveTo(x, y + plankHeight);
-        ctx.lineTo(x, y);
-        ctx.lineTo(x + plankLength, y);
-      });
+    var period = 2 * plankLength;
+    var rows = period / plankHeight;
+    repeating(ctx, area, "planks|" + floor, period, function (square) {
+      var joint = darker(floor, 0.16);
+      for (var row = 0; row < rows; row++) {
+        var shift = Math.floor(noise(row, 7) * plankLength);
+        var y = row * plankHeight;
+        for (var piece = -1; piece <= 2; piece++) {
+          var x = shift + piece * plankLength;
+          var tone = noise((piece + 2) % 2, row);
+          square.fillStyle = tone < 0.5 ? darker(floor, 0.02 + tone * 0.05) : lighter(floor, (tone - 0.5) * 0.3);
+          square.fillRect(x, y, plankLength, plankHeight);
+        }
+        strokeAll(square, joint, 0.5, function () {
+          square.moveTo(0, y);
+          square.lineTo(period, y);
+          for (var cut = -1; cut <= 2; cut++) {
+            square.moveTo(shift + cut * plankLength, y);
+            square.lineTo(shift + cut * plankLength, y + plankHeight);
+          }
+        });
+      }
     });
   };
 
@@ -269,52 +379,41 @@ Game.world = Game.world || {};
   art.floors.concrete = function (ctx, area, room) {
     var floor = room ? room.floor : "#EDEAE4";
     var slab = 30;
-    eachCell(area, 0, 0, slab, slab, function (x, y, column, row) {
-      ctx.fillStyle = mix(floor, "#C9C6C0", 0.22 + noise(column, row) * 0.12);
-      ctx.fillRect(x, y, slab, slab);
-    });
-    strokeAll(ctx, mix(floor, "#B8B3AA", 0.45), 0.5, function () {
-      eachCell(area, 0, 0, slab, slab, function (x, y) {
-        ctx.rect(x, y, slab, slab);
+    var period = 90;
+    repeating(ctx, area, "concrete|" + floor, period, function (square) {
+      eachCellOfSquare(3, slab, function (x, y, column, row) {
+        square.fillStyle = mix(floor, "#C9C6C0", 0.22 + noise(column, row) * 0.12);
+        square.fillRect(x, y, slab, slab);
       });
+      gridJoints(square, period, slab, mix(floor, "#B8B3AA", 0.45), 0.5);
+      speckles(square, period, mix(floor, "#9C978F", 0.5), 5, 0.35);
     });
-    speckles(ctx, area, mix(floor, "#9C978F", 0.5), 5, 0.35);
   };
 
-  // Small dots spread over the floor, one at most in every cell of `cell`.
-  function speckles(ctx, area, colour, cell, share) {
-    ctx.fillStyle = colour;
-    eachCell(area, 0, 0, cell, cell, function (x, y, column, row) {
-      if (noise(column * 3.1, row * 1.7) < share) {
-        var dotX = x + noise(column, row * 2.3) * cell;
-        var dotY = y + noise(column * 1.9, row) * cell;
-        ctx.fillRect(dotX, dotY, 0.7, 0.7);
-      }
-    });
-  }
-
-  // Square tiles with light joints (the canteen).
+  // Square tiles with light joints, every other one a little darker (the canteen).
   art.floors["mint-tiles"] = function (ctx, area, room) {
     var floor = room ? room.floor : "#D7EDDF";
     var tile = 10;
-    ctx.fillStyle = darker(floor, 0.035);
-    eachCell(area, 0, 0, tile, tile, function (x, y, column, row) {
-      if ((column + row) % 2 === 0) {
-        ctx.fillRect(x, y, tile, tile);
-      }
-    });
-    strokeAll(ctx, lighter(floor, 0.4), 0.5, function () {
-      eachCell(area, 0, 0, tile, tile, function (x, y) {
-        ctx.rect(x, y, tile, tile);
-      });
+    repeating(ctx, area, "mint|" + floor, 2 * tile, function (square) {
+      square.fillStyle = floor;
+      square.fillRect(0, 0, 2 * tile, 2 * tile);
+      square.fillStyle = darker(floor, 0.035);
+      square.fillRect(0, 0, tile, tile);
+      square.fillRect(tile, tile, tile, tile);
+      gridJoints(square, 2 * tile, tile, lighter(floor, 0.4), 0.5);
     });
   };
 
   // A pale floor with fine dark and light speckles (CTT, terrazzo).
   art.floors.speckled = function (ctx, area, room) {
     var floor = room ? room.floor : "#E4DED2";
-    speckles(ctx, area, darker(floor, 0.28), 3, 0.45);
-    speckles(ctx, area, lighter(floor, 0.7), 4, 0.4);
+    var period = 48;
+    repeating(ctx, area, "speckled|" + floor, period, function (square) {
+      square.fillStyle = floor;
+      square.fillRect(0, 0, period, period);
+      speckles(square, period, darker(floor, 0.28), 3, 0.45);
+      speckles(square, period, lighter(floor, 0.7), 4, 0.4);
+    });
   };
 
   // Pingo Doce: small white tiles with a regular pattern of grey diamonds,
@@ -322,27 +421,23 @@ Game.world = Game.world || {};
   art.floors["diamond-tiles"] = function (ctx, area, room) {
     var floor = room ? room.floor : "#DCEFC8";
     var tile = 5;
-    var diamondEvery = 20;
+    var period = 20; // a grey diamond on every fourth crossing of the joints
     var base = lighter(floor, 0.62);
-    ctx.fillStyle = base;
-    ctx.fillRect(area.x, area.y, area.w, area.h);
-    // The joints of the small tiles.
-    strokeAll(ctx, darker(base, 0.07), 0.35, function () {
-      eachCell(area, 0, 0, tile, tile, function (x, y) {
-        ctx.rect(x, y, tile, tile);
-      });
+    repeating(ctx, area, "diamonds|" + floor, period, function (square) {
+      square.fillStyle = base;
+      square.fillRect(0, 0, period, period);
+      gridJoints(square, period, tile, darker(base, 0.07), 0.35);
+      // One diamond on the corner; the copies of the square add the others.
+      var half = tile / 2 + 0.6;
+      square.beginPath();
+      square.moveTo(0, -half);
+      square.lineTo(half, 0);
+      square.lineTo(0, half);
+      square.lineTo(-half, 0);
+      square.closePath();
+      square.fillStyle = mix(base, "#8E978F", 0.38);
+      square.fill();
     });
-    // A grey diamond on every fourth crossing of the joints.
-    ctx.beginPath();
-    eachCell(area, 0, 0, diamondEvery, diamondEvery, function (x, y) {
-      ctx.moveTo(x, y - tile / 2 - 0.6);
-      ctx.lineTo(x + tile / 2 + 0.6, y);
-      ctx.lineTo(x, y + tile / 2 + 0.6);
-      ctx.lineTo(x - tile / 2 - 0.6, y);
-      ctx.closePath();
-    });
-    ctx.fillStyle = mix(base, "#8E978F", 0.38);
-    ctx.fill();
     if (room) {
       tileBorder(ctx, room, floor);
     }
@@ -387,16 +482,15 @@ Game.world = Game.world || {};
   art.floors.paving = function (ctx, area, room, campus) {
     var deck = campus && campus.colours ? campus.colours.deck : "#F3F0E9";
     var slab = 24;
-    eachCell(area, 0, 0, slab, slab, function (x, y, column, row) {
-      var tone = noise(column, row);
-      ctx.fillStyle = tone < 0.5 ? darker(deck, tone * 0.04) : lighter(deck, (tone - 0.5) * 0.45);
-      ctx.fillRect(x, y, slab, slab);
-    });
-    speckles(ctx, area, darker(deck, 0.12), 6, 0.3);
-    strokeAll(ctx, "#E3DDD0", 0.8, function () {
-      eachCell(area, 0, 0, slab, slab, function (x, y) {
-        ctx.rect(x, y, slab, slab);
+    var period = 4 * slab;
+    repeating(ctx, area, "paving|" + deck, period, function (square) {
+      eachCellOfSquare(4, slab, function (x, y, column, row) {
+        var tone = noise(column, row);
+        square.fillStyle = tone < 0.5 ? darker(deck, tone * 0.04) : lighter(deck, (tone - 0.5) * 0.45);
+        square.fillRect(x, y, slab, slab);
       });
+      speckles(square, period, darker(deck, 0.12), 6, 0.3);
+      gridJoints(square, period, slab, "#E3DDD0", 0.8);
     });
   };
 
@@ -507,6 +601,52 @@ Game.world = Game.world || {};
       line(ctx, left + 1.5, band.y + band.h - 2.4, left + 3.5, band.y + 2.6, "#FFFFFF", 0.5);
     }
   });
+
+  // ---- Doors -----------------------------------------------------------
+  // A door in campus.json is a rectangle across the wall line (10 deep for a
+  // wall of 6). The doors of this map all lie in walls running left to
+  // right, with the wall's face on the south side.
+
+  var WALL_THICKNESS = 6;
+  var DOOR_LEAF_WIDTH = 12;
+
+  // The strip of the door that lies in the wall itself.
+  function doorThreshold(door) {
+    return { x: door.x, y: door.y + (door.h - WALL_THICKNESS) / 2, w: door.w, h: WALL_THICKNESS };
+  }
+
+  // The opening: a threshold in the floor colour of the room, between two
+  // thin metal sills.
+  art.doors.opening = function (ctx, door, room) {
+    var sill = doorThreshold(door);
+    ctx.fillStyle = room ? darker(room.floor, 0.06) : "#E6E0D4";
+    ctx.fillRect(sill.x, sill.y, sill.w, sill.h);
+    ctx.fillStyle = "#C3C7CF";
+    ctx.fillRect(sill.x, sill.y, sill.w, 0.8);
+    ctx.fillRect(sill.x, sill.y + sill.h - 0.8, sill.w, 0.8);
+  };
+
+  // Dark door posts at both ends of the opening, and the two glass leaves
+  // standing open, flat against the wall's face on either side.
+  art.doors.frame = function (ctx, door, room, campus) {
+    var sill = doorThreshold(door);
+    var faceHeight = campus && typeof campus.wall_face_height === "number" ? campus.wall_face_height : 8;
+    var faceTop = sill.y + sill.h;
+    [door.x - 1.5 - DOOR_LEAF_WIDTH, door.x + door.w + 1.5].forEach(function (leafX, index) {
+      var leaf = { x: leafX, y: faceTop + 0.4, w: DOOR_LEAF_WIDTH, h: faceHeight - 0.9 };
+      box(ctx, leaf.x, leaf.y, leaf.w, leaf.h, 0.4, "rgba(170, 216, 234, 0.7)", 0.5);
+      ctx.strokeStyle = "#E4E8EE";
+      ctx.lineWidth = 0.6;
+      ctx.strokeRect(leaf.x + 0.6, leaf.y + 0.6, leaf.w - 1.2, leaf.h - 1.2);
+      line(ctx, leaf.x + 2, leaf.y + leaf.h - 1.4, leaf.x + 4.5, leaf.y + 1.4, "rgba(255, 255, 255, 0.9)", 0.5);
+      // The handle, on the edge next to the opening.
+      var handleX = index === 0 ? leaf.x + leaf.w - 1.6 : leaf.x + 1.6;
+      line(ctx, handleX, leaf.y + leaf.h * 0.35, handleX, leaf.y + leaf.h * 0.7, OUTLINE, 0.6);
+    });
+    [door.x - 1.5, door.x + door.w - 1.5].forEach(function (postX) {
+      box(ctx, postX, sill.y - 1, 3, sill.h + faceHeight + 1, 0.6, "#4A4560", 0.6);
+    });
+  };
 
   // ---- Decor every room can use ----------------------------------------
 

@@ -314,17 +314,62 @@ Game.world = Game.world || {};
   }
 
   // A door is an opening in the wall, shown as a strip of deck paving.
-  function drawDoors(ctx, campus) {
+  // With the art files, a door is drawn in two parts: its "opening" (the
+  // threshold in the wall) here, and its "frame" (posts and open glass
+  // leaves) after the furniture, see drawDoorFrames().
+  function drawDoors(ctx, campus, area) {
     var doors = list(campus.doors);
     for (var i = 0; i < doors.length; i++) {
-      ctx.fillStyle = campus.colours.deck;
-      ctx.fillRect(doors[i].x, doors[i].y, doors[i].w, doors[i].h);
+      var door = doors[i];
+      var room = roomOfDoor(campus, door);
+      var opening = artFor("doors", room, "opening");
+      if (!reachesDoor(door, area)) {
+        continue;
+      }
+      if (!opening || !drawWithArt(ctx, opening, door, room, campus)) {
+        ctx.fillStyle = campus.colours.deck;
+        ctx.fillRect(door.x, door.y, door.w, door.h);
+      }
     }
+  }
+
+  // The posts and the open glass leaves of every door, on top of the walls.
+  function drawDoorFrames(ctx, campus, area) {
+    var doors = list(campus.doors);
+    for (var i = 0; i < doors.length; i++) {
+      var door = doors[i];
+      var room = roomOfDoor(campus, door);
+      var frame = artFor("doors", room, "frame");
+      if (frame && reachesDoor(door, area)) {
+        drawWithArt(ctx, frame, door, room, campus);
+      }
+    }
+  }
+
+  // A door's leaves stand open beside it, so its drawing reaches this far
+  // past the door's own rectangle.
+  var DOOR_LEAF_REACH = 16;
+
+  function reachesDoor(door, area) {
+    var reach = DOOR_LEAF_REACH;
+    return reaches({ x: door.x - reach, y: door.y - reach, w: door.w + 2 * reach, h: door.h + 2 * reach }, area);
+  }
+
+  function roomOfDoor(campus, door) {
+    var rooms = list(campus.rooms);
+    for (var i = 0; i < rooms.length; i++) {
+      if (rooms[i].id === door.room) {
+        return rooms[i];
+      }
+    }
+    return null;
   }
 
   // Each room's name stands at its `label` from the map file: the middle of
   // the text, placed by hand where the sketch has it.
-  function drawRoomNames(ctx, campus) {
+  // Without `area` every name is drawn; with it, only the names that reach
+  // into it (a generous guess of the space a name takes).
+  function drawRoomNames(ctx, campus, area) {
     var rooms = list(campus.rooms);
     for (var i = 0; i < rooms.length; i++) {
       var room = rooms[i];
@@ -333,7 +378,11 @@ Game.world = Game.world || {};
       }
       // A long name gets smaller letters in a narrow room.
       var size = room.name.length * 8 > room.w ? 12 : 13;
-      text(ctx, room.name, room.label.x, room.label.y, size);
+      var halfWidth = room.name.length * size * 0.4;
+      var space = { x: room.label.x - halfWidth, y: room.label.y - size, w: 2 * halfWidth, h: 2 * size };
+      if (!area || reaches(space, area)) {
+        text(ctx, room.name, room.label.x, room.label.y, size);
+      }
     }
   }
 
@@ -567,13 +616,14 @@ Game.world = Game.world || {};
     drawGround(ctx, campus, area);
     drawDeck(ctx, campus, area);
     drawRoomFloors(ctx, campus, area);
-    drawDoors(ctx, campus);
+    drawDoors(ctx, campus, area);
     drawDecor(ctx, campus, area, "floor");
     drawWallFaces(ctx, campus, area);
-    drawRoomNames(ctx, campus);
+    drawRoomNames(ctx, campus, area);
     drawSolids(ctx, campus, area);
     drawDecor(ctx, campus, area, "wall");
     drawDecor(ctx, campus, area, "on");
+    drawDoorFrames(ctx, campus, area);
   }
 
   // The map is drawn on every frame, but most of it never changes. So the
@@ -591,6 +641,7 @@ Game.world = Game.world || {};
     campus: null, // the map and the zoom the tiles were drawn for
     scale: 0,
     kept: new Map(), // "column,row" -> canvas; the most recently used last
+    spare: [], // canvases of forgotten tiles, to draw new tiles into
     drawn: 0, // how many tiles were drawn so far
     lastOrigin: null, // where the map's corner was on the canvas last frame
     heading: { x: 0, y: 0 }, // the way the camera moved last, in canvas pixels
@@ -640,6 +691,7 @@ Game.world = Game.world || {};
     var scale = camera.a;
     if (tiles.campus !== campus || tiles.scale !== scale) {
       tiles.kept.clear(); // a new map or a new zoom: every tile is out of date
+      tiles.spare = [];
       tiles.campus = campus;
       tiles.scale = scale;
     }
@@ -721,9 +773,14 @@ Game.world = Game.world || {};
 
   function drawTile(campus, scale, column, row) {
     tiles.drawn += 1;
-    var tile = document.createElement("canvas");
-    tile.width = TILE_PIXELS;
-    tile.height = TILE_PIXELS;
+    // A canvas of a forgotten tile is used again: making a new one costs more
+    // than drawing into an old one. The lawn drawn first covers it all.
+    var tile = tiles.spare.pop();
+    if (!tile) {
+      tile = document.createElement("canvas");
+      tile.width = TILE_PIXELS;
+      tile.height = TILE_PIXELS;
+    }
     var tileCtx = typeof tile.getContext === "function" ? tile.getContext("2d") : null;
     if (!tileCtx) {
       throw new Error("A canvas for a tile of the map could not be made.");
@@ -737,9 +794,15 @@ Game.world = Game.world || {};
 
   // Keeps only the `count` tiles used most recently, so walking across the
   // whole map does not fill the memory.
+  var SPARE_TILES = 8;
+
   function forgetOldTiles(count) {
     while (tiles.kept.size > count) {
-      tiles.kept.delete(tiles.kept.keys().next().value);
+      var oldest = tiles.kept.keys().next().value;
+      if (tiles.spare.length < SPARE_TILES) {
+        tiles.spare.push(tiles.kept.get(oldest));
+      }
+      tiles.kept.delete(oldest);
     }
   }
 
