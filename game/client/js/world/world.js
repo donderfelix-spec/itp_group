@@ -3,7 +3,10 @@
 //
 // The browser decides nothing here (AGENTS.md, rule 1). The keyboard only
 // tells the server where the player wants to go, and every position that is
-// drawn, also the own one, comes from the server.
+// drawn, also the own one, comes from the server. (While the server's
+// positions are held up, the own character walks on for a moment by the
+// server's own rule and then takes the server's positions, see "Bridging
+// the gaps" below.)
 
 "use strict";
 
@@ -330,6 +333,7 @@ Game.world = Game.world || {};
       // the real placement would then be drawn as a step.
       emptyQueue(player);
     });
+    forgetTheBridge(now);
   }
 
   // How big the steps of the player are at the time `now`, from 0 (it
@@ -411,6 +415,7 @@ Game.world = Game.world || {};
     var previous = player.server;
     player.server = { x: x, y: y };
     var isPlacement = now < player.placedUntil;
+    // receiveOwnPosition() has the same test: CHANGE BOTH TOGETHER.
     if (!previous || isFarApart(previous, x, y) || isPlacement) {
       // The first position, a respawn or the start of a round: shown at
       // once, without waiting behind the queue. moveTo() puts it there.
@@ -511,6 +516,313 @@ Game.world = Game.world || {};
     });
   }
 
+  // ---- Bridging the gaps of the own character (M2-1.16) ----------------
+
+  // Now and then the messages stop for 260 to 690 ms (measured) and then
+  // arrive all at once. No playback delay covers that, so the own
+  // character and the camera stood that long. Instead the own character
+  // walks on by itself with the server's own movement and wall rule, for
+  // at most about 700 ms ("bridged steps"). When the server's positions
+  // arrive they take the place of the bridged steps, and the character
+  // always ends on the server's position: the server still decides (rule
+  // 1). Because of the bridge the own character needs no growing delay and
+  // is played at the smallest one, see ownDelay().
+  //
+  // The rules are plain functions in bridge.js (Game.world.bridge); the
+  // functions here apply them to the own player's record. Without
+  // bridge.js, or with `bridge=off` in the page's address, none of this
+  // happens and the own character is played from the queue like the others.
+
+  var bridge = Game.world.bridge || null;
+  // Read once. `bridge=off` is for comparing on the deployed game.
+  var bridgingSwitchedOff = isBridgingSwitchedOffInTheAddress();
+  // What the bridge remembers about the own character, see newWalk() in
+  // bridge.js: the directions sent, the bridged steps waiting for the server.
+  var ownWalk = bridge ? bridge.newWalk() : null;
+  // The last start delays measured, in ms, see rememberStartDelay() in
+  // bridge.js. They describe the connection, so they outlive a lobby.
+  var startDelays = [];
+  // How long the server's last ticks were, in seconds, read from its own
+  // steps, see rememberServerStep() in bridge.js.
+  var serverStepTimes = [];
+  // What the ?debug panel shows, see newTally() in bridge.js.
+  var bridgeTally = bridge ? bridge.newTally() : null;
+
+  function isBridgingSwitchedOffInTheAddress() {
+    // The tests run this file without a page address: then it is not off.
+    if (typeof location !== "object" || typeof URLSearchParams !== "function") {
+      return false;
+    }
+    return new URLSearchParams(location.search).get("bridge") === "off";
+  }
+
+  function isBridging() {
+    return bridge !== null && !bridgingSwitchedOff;
+  }
+
+  function ownPlayer() {
+    return ownName !== null && players.has(ownName) ? players.get(ownName) : null;
+  }
+
+  // How far the drawn character is behind the keys, in ms.
+  function currentInputLag() {
+    return bridge.inputLag(startDelays, GLIDE_MILLISECONDS, TICK_MILLISECONDS);
+  }
+
+  // The time one step of the server covers, in seconds.
+  function serverStepSeconds() {
+    return bridge.stepSeconds(serverStepTimes, TICK_MILLISECONDS);
+  }
+
+  // reportDirection() tells every direction it sends: `before` and `after`
+  // are {dx, dy}. A bridged step uses the direction of a moment ago.
+  function rememberOwnDirection(before, after, now) {
+    if (!isBridging()) {
+      return;
+    }
+    ownWalk.history = bridge.rememberDirection(ownWalk.history, now, after.dx, after.dy);
+    ownWalk.startedAt = bridge.walkStart(ownWalk.startedAt, before, after, now, ownWalk.lastMoveArrivedAt);
+  }
+
+  // The playback delay of the own character. While the player walks, a gap
+  // is bridged, so the fixed smallest delay is enough and the character
+  // follows the keys sooner. In every other case it is `delay`, the one of
+  // the other players.
+  function ownDelay(delay, now) {
+    var canBridge = Boolean(campus) && !inputPaused;
+    if (canBridge && bridge.isWalkingAt(ownWalk.history, now, currentInputLag())) {
+      return GLIDE_MILLISECONDS;
+    }
+    return delay;
+  }
+
+  // Takes one new position of the own player, arrived at `now`. Only
+  // called while isBridging().
+  function receiveOwnPosition(player, x, y, now, delay) {
+    // First everything that was due before this arrival, as a frame would
+    // do it. So the result does not depend on when the frames are drawn.
+    playQueue(player, now);
+    bridgeOwnGaps(player, ownWalk, now, bridgeTally);
+    var previous = player.server;
+    // The same test as in receivePosition(): CHANGE BOTH TOGETHER.
+    var isShownAtOnce = !previous || isFarApart(previous, x, y) || now < player.placedUntil;
+    noteOwnArrival(isShownAtOnce ? null : { dx: x - previous.x, dy: y - previous.y }, now);
+    if (isShownAtOnce) {
+      // The first position, a respawn or the start of a round: nothing of
+      // the walk before counts any more. Handled like for everybody.
+      forgetTheBridge(now);
+      receivePosition(player, x, y, now, delay);
+    } else if (ownWalk.waiting.length > 0) {
+      // The drawing is at this position or beyond it already: it is not
+      // queued. The station in range still uses it, see stationInRange().
+      player.server = { x: x, y: y };
+      replaceBridgedStep(player, ownWalk, x, y, now, bridgeTally);
+    } else {
+      receivePosition(player, x, y, now, ownDelay(delay, now));
+    }
+  }
+
+  // Writes down that an own position arrived. `change` is how far it is
+  // from the position before, {dx, dy} in map units, or null for a
+  // position that is shown at once (no walk). A change that is one step of
+  // the server tells how long its tick was. If it is the first change of a
+  // walk that started from standing, the time since the key is one sample
+  // of the start delay.
+  function noteOwnArrival(change, now) {
+    ownWalk.lastArrivalAt = now;
+    var hasMoved = change !== null && bridge.differs({ x: 0, y: 0 }, { x: change.dx, y: change.dy });
+    if (!hasMoved) {
+      return;
+    }
+    ownWalk.lastMoveArrivedAt = now;
+    var isOneStep = bridge.isOneServerStep(change.dx, change.dy);
+    serverStepTimes = bridge.rememberServerStep(serverStepTimes, change.dx, change.dy, TICK_MILLISECONDS);
+    if (ownWalk.startedAt !== null && isOneStep) {
+      startDelays = bridge.rememberStartDelay(startDelays, now - ownWalk.startedAt);
+    }
+    // The walk has begun, also when its first message held two steps
+    // (then it is no sample): later positions are not its start.
+    ownWalk.startedAt = null;
+  }
+
+  // Where the server is believed to be once the drawing has ended: at the
+  // newest bridged step, or at its newest position when no step waits.
+  function believedPlace(player, walk) {
+    var waiting = walk.waiting;
+    return waiting.length > 0 ? waiting[waiting.length - 1] : player.server;
+  }
+
+  // The server's position (x, y) takes the place of the oldest waiting
+  // bridged step. Where they differ, the bridge was wrong from there on.
+  function replaceBridgedStep(player, walk, x, y, now, tally) {
+    var result = bridge.takeServerPosition(walk.waiting, x, y, campus, serverStepSeconds());
+    walk.waiting = result.waiting;
+    tally.replaced += 1;
+    if (result.size === "none") {
+      return;
+    }
+    tally.corrections += 1;
+    tally.largestCorrection = Math.max(tally.largestCorrection, result.distance);
+    if (result.size === "small") {
+      // The server's ticks are not all equally long. The glide is left
+      // alone: turned now by a fraction of a unit, it would speed up or
+      // slow down for a moment. The next glide starts where the character
+      // is drawn and ends on the right place.
+      return;
+    }
+    // A wrong guess: the drawing turns towards the right place softly.
+    tally.largeCorrections += 1;
+    var left = player.arrivedAt + player.glideMilliseconds - now;
+    var milliseconds = bridge.correctionMilliseconds(left, TICK_MILLISECONDS);
+    aimDrawingAt(player, believedPlace(player, walk), now, milliseconds);
+  }
+
+  // Lets the drawing glide from where it is at `startAt` to `target`. This
+  // is a correction, not a step: it never turns the character and never
+  // starts, restarts or stops the run of its feet. Afterwards the glide is
+  // no walking step any more, so the bridge does not go on from it.
+  function aimDrawingAt(player, target, startAt, milliseconds) {
+    var walked = walkedDistance(player, startAt);
+    var start = drawnPosition(player, startAt);
+    if (isFarApart(start, target.x, target.y)) {
+      start = target; // too far to glide: shown there at once
+    }
+    player.from = { x: start.x, y: start.y };
+    player.to = { x: target.x, y: target.y };
+    player.arrivedAt = startAt;
+    player.glideMilliseconds = milliseconds;
+    player.walkedBeforeGlide = walked;
+  }
+
+  // Everything the bridge does when time has passed, up to `now`. Called
+  // before every frame and before every own position is taken. It only
+  // changes `player`, `walk` and `tally`, so ownDrawnPosition() can run it
+  // on copies.
+  function bridgeOwnGaps(player, walk, now, tally) {
+    takeBridgedSteps(player, walk, now, tally);
+    takeBackUnansweredSteps(walk, now, tally);
+    returnToTheServerPosition(player, walk, now);
+  }
+
+  function bridgeOwnCharacter(now) {
+    var own = ownPlayer();
+    if (own && isBridging()) {
+      bridgeOwnGaps(own, ownWalk, now, bridgeTally);
+    }
+  }
+
+  // What nextStep() in bridge.js needs to know.
+  function bridgeSituation(player, walk, now) {
+    return {
+      now: now,
+      campus: campus,
+      switchedOff: bridgingSwitchedOff,
+      inputPaused: inputPaused,
+      queueLength: player.queue.length,
+      glideEndsAt: player.arrivedAt + player.glideMilliseconds,
+      // takeStep() writes the start of the glide of a step into lastStepAt.
+      glideWasAStep: player.lastStepAt === player.arrivedAt,
+      from: believedPlace(player, walk),
+      waitingSteps: walk.waiting.length,
+      history: walk.history,
+      inputLag: currentInputLag(),
+      stepSeconds: serverStepSeconds()
+    };
+  }
+
+  // Makes the bridged steps that are due. Usually that is none, or one;
+  // after a late frame there is room for several, one after the other.
+  function takeBridgedSteps(player, walk, now, tally) {
+    for (var made = 0; made < bridge.MOST_BRIDGED_STEPS; made++) {
+      var step = bridge.nextStep(bridgeSituation(player, walk, now));
+      if (!step) {
+        return;
+      }
+      takeBridgedStep(player, walk, step, tally);
+    }
+  }
+
+  // The character glides to the bridged place. For its feet and the side
+  // it faces this is a step like one from the server.
+  function takeBridgedStep(player, walk, step, tally) {
+    var milliseconds = step.endAt - step.startAt;
+    startGlide(player, step.x, step.y, step.startAt, milliseconds);
+    // Later server positions are scheduled behind this glide.
+    player.queueEndsAt = step.endAt;
+    walk.waiting = walk.waiting.concat([{ x: step.x, y: step.y, dx: step.dx, dy: step.dy }]);
+    walk.lastBridgedEndsAt = step.endAt;
+    walk.mayBeOffServer = true;
+    tally.steps += 1;
+    tally.milliseconds += milliseconds;
+  }
+
+  // Bridged steps the server has not answered for a second were never
+  // walked by the server: they are forgotten.
+  function takeBackUnansweredSteps(walk, now, tally) {
+    if (walk.waiting.length === 0) {
+      return;
+    }
+    var takeBackAt = bridge.takeBackAt(walk.lastBridgedEndsAt, walk.lastArrivalAt);
+    if (now >= takeBackAt) {
+      walk.waiting = [];
+      walk.forgottenAt = takeBackAt;
+      tally.takenBack += 1;
+    }
+  }
+
+  // The rule that makes every bridge end right: once nothing is waiting,
+  // the queue is empty and the glide is over, the character stands on the
+  // newest server position. If it does not, it glides there.
+  function returnToTheServerPosition(player, walk, now) {
+    var isPlayedOut = walk.waiting.length === 0 && player.queue.length === 0;
+    var glideEndsAt = player.arrivedAt + player.glideMilliseconds;
+    if (!walk.mayBeOffServer || !isPlayedOut || glideEndsAt > now) {
+      return;
+    }
+    walk.mayBeOffServer = false;
+    // Compared exactly: a hair beside the server's position is not on it.
+    if (player.to.x !== player.server.x || player.to.y !== player.server.y) {
+      // From the moment this became due, not from `now`: a late frame
+      // then draws the character where it would have been.
+      var startAt = Math.max(glideEndsAt, walk.forgottenAt);
+      aimDrawingAt(player, player.server, startAt, TICK_MILLISECONDS);
+    }
+  }
+
+  // The bridged steps are not waited for any longer. The drawing still
+  // returns to the server's position, see returnToTheServerPosition().
+  function forgetBridgedSteps(now) {
+    if (isBridging()) {
+      ownWalk.waiting = [];
+      ownWalk.forgottenAt = now;
+    }
+  }
+
+  // The server put the own player somewhere else (the start of a round, a
+  // respawn): nothing is waited for and nothing is returned to.
+  function forgetTheBridge(now) {
+    forgetBridgedSteps(now);
+    if (isBridging()) {
+      ownWalk.mayBeOffServer = false;
+    }
+  }
+
+  // What the bridge did since the page loaded or since the last reset, for
+  // the walking diagnostic: the counts of newTally() in bridge.js, `on`
+  // (is the own character bridged?), `loaded` (did bridge.js load?),
+  // `inputLagMs` and `serverStepMs` (the time one step of the server covers).
+  function bridgeNumbers() {
+    if (!bridge) {
+      return { on: false, loaded: false };
+    }
+    var measured = { inputLagMs: currentInputLag(), serverStepMs: serverStepSeconds() * 1000 };
+    return Object.assign({ on: isBridging(), loaded: true }, measured, bridgeTally);
+  }
+
+  function resetBridgeNumbers() {
+    bridgeTally = bridge ? bridge.newTally() : null;
+  }
+
   // ---- What the lobby page tells the world -----------------------------
 
   function setOwnName(name) {
@@ -548,7 +860,11 @@ Game.world = Game.world || {};
     var delay = playbackDelay();
     (Array.isArray(list) ? list : []).forEach(function (entry) {
       if (entry && isName(entry.name) && isNumber(entry.x) && isNumber(entry.y)) {
-        receivePosition(playerNamed(entry.name), entry.x, entry.y, now, delay);
+        var player = playerNamed(entry.name);
+        // Only the own character is bridged (M2-1.16); the others are
+        // played from the queue as before.
+        var receive = isOwn(player) && isBridging() ? receiveOwnPosition : receivePosition;
+        receive(player, entry.x, entry.y, now, delay);
       }
     });
   }
@@ -736,6 +1052,7 @@ Game.world = Game.world || {};
     if (sentDirection.dx === 0 && sentDirection.dy === 0) {
       walkingSince = performance.now(); // a new walk; turning keeps the old time
     }
+    rememberOwnDirection(sentDirection, { dx: dx, dy: dy }, performance.now());
     sentDirection = { dx: dx, dy: dy };
     if (typeof sendMove === "function") {
       sendMove(dx, dy);
@@ -820,6 +1137,9 @@ Game.world = Game.world || {};
     inputPaused = paused === true;
     if (inputPaused) {
       releaseAllKeys();
+      // The server makes the player stand now: steps the browser made up
+      // are not waited for any longer.
+      forgetBridgedSteps(performance.now());
     }
   }
 
@@ -1054,6 +1374,7 @@ Game.world = Game.world || {};
     // Before anything is drawn: the camera, the names and the characters
     // must all use the same positions.
     playAllQueues(now);
+    bridgeOwnCharacter(now);
     fitCanvasToItsBox();
     if (canvas.width === 0 || canvas.height === 0) {
       return; // the canvas is hidden
@@ -1166,6 +1487,7 @@ Game.world = Game.world || {};
     pressedKeys = {};
     sentDirection = { dx: 0, dy: 0 };
     sendMove = null;
+    ownWalk = bridge ? bridge.newWalk() : null;
   }
 
   // ---- Read-only views for the walking diagnostic (diagnostic.js) ------
@@ -1174,29 +1496,22 @@ Game.world = Game.world || {};
   // null. It changes nothing, so it may be asked at any time, any number of
   // times.
   function ownDrawnPosition(now) {
-    var own = ownName !== null && players.has(ownName) ? players.get(ownName) : null;
+    var own = ownPlayer();
     if (!own) {
       return null;
     }
     // The diagnostic's frame callback runs before drawFrame(), which starts
-    // the queued glides whose time has come (playQueue). Follow them here
-    // without starting them: `glide` is the glide the frame will draw.
-    var glide = own;
-    for (var i = 0; i < own.queue.length && own.queue[i].startAt <= now; i++) {
-      var entry = own.queue[i];
-      // As in moveTo(): the glide starts where the character is drawn at
-      // that moment, or at its end when that is a jump away.
-      // moveTo()'s placement rule (placedUntil) needs no mirror here: a queued
-      // entry is never a placement, because startOfRound() empties the queue
-      // and a position inside the placement window is shown at once, without
-      // the queue.
-      var start = drawnPosition(glide, entry.startAt) || entry;
-      if (isFarApart(start, entry.x, entry.y)) {
-        start = entry;
-      }
-      glide = { from: start, to: entry, arrivedAt: entry.startAt, glideMilliseconds: entry.endAt - entry.startAt };
+    // the queued glides whose time has come (playQueue) and bridges a gap
+    // (bridgeOwnGaps). The very same functions run here, but on copies of
+    // what they change: the answer is what the frame will draw, and the
+    // real player is left as it was. (They change no object in place
+    // except the queue, so the copies can be shallow.)
+    var copy = Object.assign({}, own, { queue: own.queue.slice() });
+    playQueue(copy, now);
+    if (isBridging()) {
+      bridgeOwnGaps(copy, Object.assign({}, ownWalk), now, bridge.newTally());
     }
-    return drawnPosition(glide, now);
+    return drawnPosition(copy, now);
   }
 
   // The direction the server heard last, as a copy so it cannot be changed,
@@ -1220,4 +1535,6 @@ Game.world = Game.world || {};
   Game.world.nearestStationInRange = nearestStationInRange;
   Game.world.ownDrawnPosition = ownDrawnPosition;
   Game.world.walkingDirection = walkingDirection;
+  Game.world.bridgeNumbers = bridgeNumbers;
+  Game.world.resetBridgeNumbers = resetBridgeNumbers;
 })();

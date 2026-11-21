@@ -6,6 +6,8 @@
 //   - how long a message to the server and back takes (a `hello` probe),
 //   - how evenly the browser draws its frames,
 //   - how smoothly the own character is drawn while it walks, starts and stops,
+//   - how often the own character walked on by itself while messages were
+//     late ("bridging", M2-1.16; world.js counts, this file only shows),
 // and shows the numbers in a small panel with the buttons Copy, Reset and
 // Hide (Hide folds the panel down to its title; the recording goes on).
 //
@@ -519,6 +521,7 @@ window.Game = window.Game || {};
       '  last stalls: ' + shownMoments(walk.lastStalls),
       '  drawn speed (units/s): median ' + shown(walk.speed.median) + ', p5 ' + shown(walk.speed.p5) +
         ', p95 ' + shown(walk.speed.p95) + ', uneven frames: ' + shown(walk.unevenPercent) + ' %',
+    ].concat(bridgeLines(numbers.bridge), [
       'Start and stop',
       '  start delay ms: count ' + numbers.startDelay.count + ', median ' + shown(numbers.startDelay.median, 0) +
         ', max ' + shown(numbers.startDelay.max, 0),
@@ -526,6 +529,24 @@ window.Game = window.Game || {};
         ', max ' + shown(numbers.stop.distance.max, 2),
       '  stop time ms: count ' + numbers.stop.duration.count + ', median ' + shown(numbers.stop.duration.median, 0) +
         ', max ' + shown(numbers.stop.duration.max, 0),
+    ]);
+  }
+
+  // The group about bridging (M2-1.16). `bridge` is what
+  // Game.world.bridgeNumbers() returns, or nothing when the world cannot
+  // tell (an older world.js, or none).
+  function bridgeLines(bridge) {
+    const title = 'Bridging (the own character walks on while messages are late)';
+    if (!bridge) return [title, '  bridging: not available'];
+    if (bridge.loaded === false) return [title, '  bridging: off (bridge.js did not load)'];
+    if (!bridge.on) return [title, '  bridging: off'];
+    return [
+      title,
+      '  bridging: on, input lag ms: ' + shown(bridge.inputLagMs, 0) + ', server step ms: ' + shown(bridge.serverStepMs),
+      '  bridged steps: ' + bridge.steps + ', bridged ms: ' + shown(bridge.milliseconds, 0) +
+        ', server positions in their place: ' + bridge.replaced,
+      '  corrections: ' + bridge.corrections + ', largest units: ' + shown(bridge.largestCorrection, 2) +
+        ', above 1.5 units: ' + bridge.largeCorrections + ', taken back: ' + bridge.takenBack,
     ];
   }
 
@@ -632,6 +653,18 @@ window.Game = window.Game || {};
     return world && typeof world.ownDrawnPosition === 'function' ? world.ownDrawnPosition(now) : null;
   }
 
+  // What the world counted about bridging, or null when it cannot tell.
+  function bridgeNumbers() {
+    const world = Game.world;
+    return world && typeof world.bridgeNumbers === 'function' ? world.bridgeNumbers() : null;
+  }
+
+  // All numbers at the time `now`: those of the recording, and the
+  // world's numbers about bridging under `bridge`.
+  function allNumbers(now) {
+    return Object.assign(summarize(recording, now), { bridge: bridgeNumbers() });
+  }
+
   function whenPositions(message) {
     const sample = {
       time: performance.now(),
@@ -707,15 +740,17 @@ window.Game = window.Game || {};
   }
 
   function numbers() {
-    return Object.assign(facts(), summarize(recording, performance.now()));
+    return Object.assign(facts(), allNumbers(performance.now()));
   }
 
   function report() {
-    return reportText(facts(), summarize(recording, performance.now()));
+    return reportText(facts(), allNumbers(performance.now()));
   }
 
   function reset() {
     recording = newRecording(performance.now());
+    // The world counts the bridged steps: it starts from zero too.
+    if (Game.world && typeof Game.world.resetBridgeNumbers === 'function') Game.world.resetBridgeNumbers();
     probeInFlight = null; // an answer to an earlier probe is not counted
     refreshPanel(); // at once: the old numbers must not stay until the next refresh
   }
@@ -780,7 +815,7 @@ window.Game = window.Game || {};
       panelNumbers.textContent = '';
       return;
     }
-    const all = summarize(recording, now);
+    const all = allNumbers(now);
     const lines = [];
     if (all.fullBuffers.length > 0) lines.push(fullBuffersLine(all.fullBuffers));
     panelNumbers.textContent = lines.concat(numberLines(all)).join('\n');
