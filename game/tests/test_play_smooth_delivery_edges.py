@@ -38,8 +38,8 @@ from test_play_smooth_delivery import (
 
 
 # drawCharacter gets the middle of the figure: its feet are 5 below the
-# position and it is 39 high (FEET_BELOW_POSITION and the figure in world.js).
-MIDDLE_ABOVE_POSITION = 39 / 2 - 5
+# position and it is 38 high (FEET_BELOW_POSITION and the figure in world.js).
+MIDDLE_ABOVE_POSITION = 38 / 2 - 5
 
 
 def place_of(character):

@@ -164,3 +164,7 @@ Smaller canteen table groups with eight seated diners and food trays, locally im
 ## Round bushes, 2026-11-21
 
 Circular deck bushes and hedge crowns without square planters or gravel beds: implemented and visually checked. 324 map/art checks pass; the previously documented historical canteen-route comparison remains the sole failure. JavaScript syntax and diff checks pass.
+
+## Textured bushes and smaller figures, 2026-11-21
+
+Lobed bush silhouettes with larger veined leaves and layered greens; map figures subtly smaller at38 units. Browser preview checked. The earlier historical canteen-route comparison remains a known test failure.

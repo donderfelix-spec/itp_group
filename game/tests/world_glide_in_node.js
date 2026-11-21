@@ -102,6 +102,7 @@ page.Game = {
           character: character,
           x: x,
           middleY: middleY,
+          size: size,
           mirrored: pose.mirrored,
           stride: pose.stride,
           walkPhase: pose.walkPhase,

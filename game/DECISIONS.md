@@ -217,3 +217,7 @@ Hanna requested smaller canteen tables, easier passage between chairs, seated gu
 ## Round bushes, 2026-11-21
 
 Hanna explicitly requested simple round bushes with branches and leaves, no square frames, everywhere among the deck bushes, followed by a push. Only drawing and decorative gravel-ring entries change. Solid geometry and hiding rules stay unchanged.
+
+## Textured bushes and smaller figures, 2026-11-21
+
+Hanna replaced the simple-circle request with a natural lobed bush outline and larger textured leaves, and requested slightly smaller figures followed by a push. Final map height38 was chosen to keep the existing planted-foot slide within its tested tolerance. Movement/collision size is unchanged. Motion-test harnesses now measure the actual supplied character height rather than assuming39; test tolerances are unchanged.

@@ -70,40 +70,59 @@ Game.world = Game.world || {};
     ctx.lineCap = "butt";
   };
 
-  // Round bushes without gravel beds, planters or square borders.
+  // Bushes with rounded lobes, without planters or square borders.
   art.kinds.tree = function (ctx, bush) {
     leafyCrown(ctx, bush.x + bush.w / 2, bush.y + bush.h / 2,
       Math.min(bush.w, bush.h) / 2, bush.x);
   };
 
-  // A simple circular silhouette with visible branches and pointed leaves.
+  // Uneven rounded lobes form a bush silhouette; large leaves add texture.
   function leafyCrown(ctx, x, y, radius, seed) {
-    util.circle(ctx, x, y, radius, "#43864D", 0.8);
     ctx.save();
     ctx.beginPath();
-    ctx.arc(x, y, radius - 0.4, 0, Math.PI * 2);
+    var phase = util.noise(seed, 4) * Math.PI;
+    for (var edge = 0; edge <= 96; edge++) {
+      var angle = edge / 96 * Math.PI * 2;
+      var reach = radius * (0.87 + 0.09 * Math.cos(angle * 7 + phase)
+        + 0.035 * Math.sin(angle * 3 + phase));
+      var px = x + Math.cos(angle) * reach;
+      var py = y + Math.sin(angle) * reach;
+      if (edge === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = "#43864D";
+    ctx.fill();
+    ctx.strokeStyle = util.OUTLINE;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
     ctx.clip();
+    [[-0.35, -0.3, 0.47], [0.38, -0.18, 0.42], [-0.2, 0.4, 0.45]].forEach(function (clump, index) {
+      util.circle(ctx, x + radius * clump[0], y + radius * clump[1],
+        radius * clump[2], index === 0 ? "#659C50" : "#3B7B47", 0);
+    });
     util.ellipse(ctx, x + radius * 0.35, y + radius * 0.4,
       radius * 0.9, radius * 0.85, "#347043", 0);
     util.line(ctx, x, y + radius * 0.75, x - radius * 0.12, y - radius * 0.25, "#756044", 1.1);
     util.line(ctx, x - radius * 0.04, y + radius * 0.3, x + radius * 0.53, y - radius * 0.12, "#756044", 0.75);
     util.line(ctx, x - radius * 0.1, y, x - radius * 0.55, y - radius * 0.35, "#756044", 0.65);
-    // Small tapered leaves in loose sprays leave a few branches visible.
-    for (var i = 0; i < 30; i++) {
+    // Broad pointed leaves with a central vein leave some woody forks visible.
+    for (var i = 0; i < 22; i++) {
       var angle = util.noise(seed + i, 31) * Math.PI * 2;
-      var reach = Math.sqrt(util.noise(i * 1.9, seed)) * radius * 0.83;
+      var reach = Math.sqrt(util.noise(i * 1.9, seed)) * radius * 0.72;
       var lx = x + Math.cos(angle) * reach;
       var ly = y + Math.sin(angle) * reach * 0.78;
-      var length = radius * (0.12 + util.noise(seed, i) * 0.07);
+      var length = radius * (0.21 + util.noise(seed, i) * 0.1);
       var direction = angle - 0.6;
       var dx = Math.cos(direction) * length;
       var dy = Math.sin(direction) * length;
       ctx.beginPath();
       ctx.moveTo(lx - dx, ly - dy);
-      ctx.quadraticCurveTo(lx - dy * 0.6, ly + dx * 0.6, lx + dx, ly + dy);
-      ctx.quadraticCurveTo(lx + dy * 0.6, ly - dx * 0.6, lx - dx, ly - dy);
+      ctx.quadraticCurveTo(lx - dy * 0.9, ly + dx * 0.9, lx + dx, ly + dy);
+      ctx.quadraticCurveTo(lx + dy * 0.9, ly - dx * 0.9, lx - dx, ly - dy);
       ctx.fillStyle = i % 3 === 0 ? "#8BAC62" : i % 3 === 1 ? "#60964F" : "#3C7041";
       ctx.fill();
+      util.line(ctx, lx - dx * 0.7, ly - dy * 0.7, lx + dx * 0.75, ly + dy * 0.75, "#ACC27C", 0.23);
     }
     ctx.restore();
   }

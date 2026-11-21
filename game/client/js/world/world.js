@@ -33,7 +33,7 @@ Game.world = Game.world || {};
   // above a table (24). Only the drawing is this big: the server still
   // counts a player as a square of 10 by 10 units (S-86), which is about
   // as wide as the drawn body and legs.
-  var CHARACTER_HEIGHT = 39;
+  var CHARACTER_HEIGHT = 38;
   // The server's position is the middle of that 10 x 10 square. The feet are
   // drawn at its lower edge, so a character stands in front of a wall the
   // way it collides with it.

@@ -16,7 +16,7 @@ def with_tracked_player(frames, players, own):
         if actor is None:
             frame["tracked"] = dict(frame["camera"])
             continue
-        point = {"x": actor["x"], "y": actor["middleY"] - 5 + 39 / 2}
+        point = {"x": actor["x"], "y": actor["middleY"] - 5 + actor["size"] / 2}
         frame["tracked"] = point
         expected = (
             max(HALF_WIDTH, min(CAMPUS["width"] - HALF_WIDTH, point["x"])),

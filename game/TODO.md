@@ -249,3 +249,7 @@ Human character verification: 300 character, running-pose, running and character
 ## Round bushes, 2026-11-21
 
 - [x] Replace deck bush silhouettes with round circles, branches and leaves; remove square planter/soil/gravel outlines, including the hedge. Browser verified. 324 map/art checks passed; retained known historical route-distance failure. Push authorised by Hanna.
+
+## Textured bushes and smaller figures, 2026-11-21
+
+- [x] Replace plain circular bushes with lobed outlines, branches and larger textured leaves; subtly reduce map figure height and push the campus branch. Requested by Hanna. Motion harnesses read actual render size; existing test thresholds retained.

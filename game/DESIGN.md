@@ -313,3 +313,7 @@ Canteen keeps five table groups with mint chairs, reduced from40x36 to32x28 arou
 ## Round bushes, 2026-11-21
 
 Deck bushes use a circular green silhouette containing woody branches and pointed leaves. Both individual tree-kind objects and the hedge use this drawing. Square gravel beds, outer gravel rings and the hedge soil rectangle are removed.
+
+## Textured bushes and smaller figures, 2026-11-21
+
+Bushes use an uneven outline with rounded lobes, overlapping leaf clusters, larger pointed leaves with veins and visible woody branches. Square borders remain removed. Map characters are drawn38 units high instead of39, a subtle2.6% reduction; their feet stay at the same ground position.
