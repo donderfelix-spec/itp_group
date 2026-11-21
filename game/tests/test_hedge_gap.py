@@ -5,8 +5,11 @@ Before, tree 3 ended at x 556 and the hedge began at x 566: a gap of exactly
 both. Now the hedge begins at x 556. These tests use the real map file and
 the real walking rules.
 
-They assume a solid hedge (S-87). When the hedge becomes walkable for hiding
-in M3-1.4 (S-98), these tests must be rethought, not just made to pass.
+They are about a solid hedge (S-87). Since M3-1.4 the hedge is walkable for
+hiding (S-98), so these tests run on a copy of the real map with the hedge
+made solid again: the gap to tree 3 must stay closed should the hedge ever be
+solid again. Walking into the walkable hedge is tested in
+`test_hiding_visibility.py`.
 """
 
 import copy
