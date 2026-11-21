@@ -156,3 +156,7 @@ Final alignment: two exit posts symmetric around the doorway, centred EXIT marki
 ## Lecture Hall and Mon Cafe access, 2026-11-21
 
 Lecture Hall walkable row gaps and wider side aisles, Mon Cafe smaller spaced tables and five seated guests with coffee/cake: implemented locally on campus branch. 34 new movement checks pass. Targeted campus/art/movement run:467 passed, one historical route-distance comparison fails due to the newly shorter lecture route. Final room-label plus walkway run:77 passed. Browser checked guests and lecture aisles. No commit or push.
+
+## Canteen seating, 2026-11-21
+
+Smaller canteen table groups with eight seated diners and food trays, locally implemented and browser checked. 19 new bidirectional walkway/entry checks passed; the targeted map/art/movement run reports452 passed and one historical distance comparison failure because the route is shorter.

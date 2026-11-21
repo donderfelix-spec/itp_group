@@ -305,3 +305,7 @@ Two Pingo exit gate posts form one 28-unit clear lane centred on the doorway and
 ## Lecture Hall and Mon Cafe access, 2026-11-21
 
 Lecture Hall keeps four curved rows, now spaced at y52/82/112/142 with 12-unit depth and 18-unit clear cross aisles. Narrower rows leave wider side aisles; chairs scale with row depth. Its floor label sits in the clear third aisle at y133. Mon Cafe keeps three round table groups, reduced to28 units and spaced to leave a20-unit cross aisle. Five small seated guests with varied hair, skin and clothes hold cups; coffee and cake sit on the tables. These are static scenery within the existing table/chair footprints, not network players or extra collision objects.
+
+## Canteen seating, 2026-11-21
+
+Canteen keeps five table groups with mint chairs, reduced from40x36 to32x28 around their existing centres. Clear cross aisles are22 units and column gaps25 units. Eight decorative seated diners have varied clothes/skin/hair, cutlery and meal trays. They stay inside chair footprints; no extra network entities or collision rectangles are added.

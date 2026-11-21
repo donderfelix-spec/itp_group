@@ -209,3 +209,7 @@ Final alignment requested by Hanna: remove the left post and place the remaining
 ## Lecture Hall and Mon Cafe access, 2026-11-21
 
 Hanna requested accessible gaps between every lecture row, more space around Mon Cafe tables and seated cafe guests with coffee/cake. Four row rectangles and three table rectangles remain the authoritative collision objects. Character size and movement rules are unchanged. The exact table-size test now checks28 instead of34 and the lecture-label test checks its new free aisle placement. Existing route-comparison test still expects station1-to4 to be at most10% shorter than the historical map; the open rows now produce577.54 versus642.11 units (10.06% shorter), just below its577.90 lower bound. That historical distance assertion is retained and reported, rather than weakened.
+
+## Canteen seating, 2026-11-21
+
+Hanna requested smaller canteen tables, easier passage between chairs, seated guests and a push to the campus branch. The group rectangles shrink symmetrically around the same centres; player size and movement rules remain unchanged. The historical route comparison now flags spawn-to-station3 as315.93 instead of317.30 units: the requested open layout makes that path shorter. The old assertion is retained and the deviation disclosed.

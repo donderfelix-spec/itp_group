@@ -241,3 +241,7 @@ Human character verification: 300 character, running-pose, running and character
 ## Lecture Hall and Mon Cafe access, 2026-11-21
 
 - [x] Create clear walking gaps between Lecture Hall rows and around Mon Cafe tables; add seated cafe guests with coffee/cake. Local implementation,34 new movement tests pass and browser preview checked. Known verification limitation: one historical station1-to4 route-length comparison fails (10.06% shorter vs old10% allowance). Other467 targeted campus/art/movement checks passed, and final77 room-label/walkway checks passed. No existing route threshold weakened. Independent review agents were unavailable during this task; local diff review performed.
+
+## Canteen seating, 2026-11-21
+
+- [x] Reduce canteen table groups and add seated diners with meal trays, requested by Hanna. Browser checked;19 new movement regressions pass,452 targeted checks pass in total. One retained historical distance comparison fails for the shorter canteen route. Ready for the authorised campus-branch push.
