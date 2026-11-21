@@ -84,10 +84,21 @@ OLD_PLACES = {
     "pingo-doce-checkout": {"x": 456, "y": 528, "w": 56, "h": 13},
 }
 
-# The round tables of Mon Café that M2-1.4 grew and that are still on the
-# map: M2-1.19 took out mon-cafe-table-1, in front of the door (S-125).
+# The old pieces that M2-1.19 took out of the map (S-125), with their kinds.
+# Their places before M2-1.4 are in OLD_PLACES.
+REMOVED_BY_M2_1_19 = {
+    "lecture-hall-bench-4": "bench",
+    "mon-cafe-column-2": "column",
+    "mon-cafe-table-1": "round-table",
+    "canteen-table-2": "table",
+    "canteen-table-5": "table",
+}
+
+# The round tables of Mon Café that M2-1.4 grew. mon-cafe-table-1, the one
+# in front of the door, was taken out by M2-1.19 (S-125); it is named here so
+# that a table removed later makes the test fail instead of shrinking it.
 OLD_CAFE_TABLES = {key: value for key, value in OLD_PLACES.items()
-                   if key.startswith("mon-cafe-table") and any(solid["id"] == key for solid in SOLIDS)}
+                   if key.startswith("mon-cafe-table") and key != "mon-cafe-table-1"}
 
 
 # A gap a player (10 units wide) could just squeeze into (S-111).
@@ -335,11 +346,13 @@ def test_the_spawn_reaches_every_station():
 
 
 def as_before_this_to_do(campus):
-    """The map as it was on main before M2-1.4: nothing added, and every old
-    solid back in its old place."""
+    """The map as it was on main before M2-1.4: nothing added, every old
+    solid back in its old place, and the pieces M2-1.19 took out back too."""
     old = without_new_things(campus)
     for solid in old["solids"]:
         solid.update(OLD_PLACES.get(solid["id"], {}))
+    for solid_id, kind in REMOVED_BY_M2_1_19.items():
+        old["solids"].append({"id": solid_id, "kind": kind, **OLD_PLACES[solid_id]})
     return old
 
 
@@ -373,16 +386,22 @@ def test_the_walking_distances_changed_only_a_little():
     # - round 10, the wall between corridor and deck: spawn to 2 is now 5.7 %
     #   longer than on main (327.2 -> 346.0); 1 to 5 and 2 to 5 grew a
     #   little, 4 to 5 too but it stays 5.4 % shorter than on main.
-    # The ways to station 4 may be up to 10 % shorter and never longer; no
-    # other way is shorter than on main or more than 6 % longer.
+    # - M2-1.19 (S-125, Felix's mix) took out five pieces (a lecture row, a
+    #   café table and column, two canteen tables), which shortened ways
+    #   through those rooms; "before" still has them. Measured against it:
+    #   the ways to station 4 are 5.1 to 11.2 % shorter (1 to 4: 642.1 ->
+    #   570.5), every other way between 1.8 % shorter (1 to 2: 587.1 ->
+    #   576.3) and 4.3 % longer (spawn to 2: 327.2 -> 341.3).
+    # The ways to station 4 are 4 to 12 % shorter; every other way is at
+    # most 2 % shorter and at most 5 % longer.
     stations = sorted(minigames.MINIGAMES)
     before = station_distances(as_before_this_to_do(CAMPUS), stations)
     after = station_distances(CAMPUS, stations)
     for pair, distance in before.items():
         if 4 in pair:
-            assert distance * 0.9 <= after[pair] <= distance, pair
+            assert distance * 0.88 <= after[pair] <= distance * 0.96, pair
         else:
-            assert distance - 0.001 <= after[pair] <= distance * 1.06, pair
+            assert distance * 0.98 <= after[pair] <= distance * 1.05, pair
 
 
 # Accepted: edge cases

@@ -69,8 +69,8 @@
 
     {"id": "lecture-hall-board",      "kind": "board", "x": 60,  "y": 30,  "w": 110, "h": 8},
     {"id": "lecture-hall-lectern",    "kind": "lectern", "x": 38, "y": 37,  "w": 8,   "h": 7},
-    {"id": "lecture-hall-bench-1",       "kind": "bench",       "x": 48, "y": 54, "w": 154, "h": 18},
-    {"id": "lecture-hall-bench-2",       "kind": "bench",       "x": 48, "y": 90, "w": 154, "h": 18},
+    {"id": "lecture-hall-bench-1",       "kind": "bench",       "x": 48, "y": 56, "w": 154, "h": 18},
+    {"id": "lecture-hall-bench-2",       "kind": "bench",       "x": 48, "y": 91, "w": 154, "h": 18},
     {"id": "lecture-hall-bench-3",       "kind": "bench",       "x": 48, "y": 126, "w": 154, "h": 18},
 
     {"id": "mon-cafe-counter",           "kind": "counter",     "x": 268, "y": 31, "w": 110, "h": 20},

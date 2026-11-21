@@ -111,7 +111,14 @@ def gap_between(first, second):
 def test_the_lecture_hall_has_three_rows_of_the_same_size():
     rows = solids_of_kind("bench")
     assert [(row["x"], row["y"], row["w"], row["h"]) for row in rows] == [
-        (48, 54, 154, 18), (48, 90, 154, 18), (48, 126, 154, 18)]
+        (48, 56, 154, 18), (48, 91, 154, 18), (48, 126, 154, 18)]
+
+
+def test_the_circle_of_station_1_lies_clear_of_the_first_lecture_row():
+    # A drawing around every station must not sit on the desks (review of M2-1.19).
+    station = next(station for station in CAMPUS["stations"] if station["id"] == 1)
+    first_row = solids_of_kind("bench")[0]
+    assert station["y"] + station["r"] <= first_row["y"]
 
 
 def test_a_player_walks_from_wall_to_wall_between_every_two_lecture_rows():

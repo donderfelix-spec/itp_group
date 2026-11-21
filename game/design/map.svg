@@ -52,8 +52,8 @@
   <g stroke="#2E2A3B" stroke-width="1.5">
     <rect x="60" y="30" width="110" height="8" rx="1.5" fill="#2E2A3B"><title>lecture-hall-board</title></rect>
     <rect x="38" y="37" width="8" height="7" rx="1.5" fill="#E9E3D6"><title>lecture-hall-lectern</title></rect>
-    <rect x="48" y="54" width="154" height="18" rx="1.5" fill="#FFFFFF"><title>lecture-hall-bench-1</title></rect>
-    <rect x="48" y="90" width="154" height="18" rx="1.5" fill="#FFFFFF"><title>lecture-hall-bench-2</title></rect>
+    <rect x="48" y="56" width="154" height="18" rx="1.5" fill="#FFFFFF"><title>lecture-hall-bench-1</title></rect>
+    <rect x="48" y="91" width="154" height="18" rx="1.5" fill="#FFFFFF"><title>lecture-hall-bench-2</title></rect>
     <rect x="48" y="126" width="154" height="18" rx="1.5" fill="#FFFFFF"><title>lecture-hall-bench-3</title></rect>
     <rect x="268" y="31" width="110" height="20" rx="1.5" fill="#B98A5E"><title>mon-cafe-counter</title></rect>
     <rect x="392" y="31" width="41" height="18" rx="1.5" fill="#5E6472"><title>mon-cafe-coffee-machine</title></rect>
