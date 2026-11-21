@@ -489,6 +489,8 @@ def rejection_for(name: str, rejection_code: str) -> dict:
     if rejection_code == "too_few_players":
         # The only rejection without a fixed text: it names the lobby's mode.
         return protocol.too_few_players(app.state.lobbies.lobby_of(name).mode)
+    if rejection_code == protocol.SOLO_NEEDS_ONE_PLAYER:
+        return protocol.solo_needs_one_player()
     return protocol.rejection(rejection_code)
 
 

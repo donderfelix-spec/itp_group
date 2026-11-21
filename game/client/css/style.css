@@ -2043,7 +2043,44 @@ body:has(#screen-lobby:not([hidden])) .message {
 }
 
 /* Duel and Solo side by side, Classic (the last mode) below over the whole width. */
-#lobby-modes > .mode:last-child { grid-column: 1 / -1; }
+/* Duel and Solo side by side, Classic below over the whole width. Each
+   "?" stands on the right of its mode's button, in the same cell; the
+   text it shows takes a line of its own under the buttons. */
+#lobby-modes { grid-template-areas: "duel solo" "classic classic"; }
+#lobby-modes > [data-mode="duel"] { grid-area: duel; }
+#lobby-modes > [data-mode="solo"] { grid-area: solo; }
+#lobby-modes > [data-mode="classic"] { grid-area: classic; }
+#lobby-modes > .mode-why-text { grid-area: auto; grid-column: 1 / -1; }
+
+.mode-why {
+  z-index: 1;
+  align-self: center;
+  justify-self: end;
+  width: 24px;
+  height: 24px;
+  margin-right: 6px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--cream);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: help;
+}
+.mode-why[aria-expanded="true"] { background: var(--sun); }
+
+.mode-why-text {
+  margin: 0;
+  padding: 4px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--cream);
+  font-size: 13px;
+  font-weight: 600;
+}
 
 .mode {
   display: flex;
@@ -2072,6 +2109,13 @@ body:has(#screen-lobby:not([hidden])) .message {
 .mode:disabled:not(.mode-own) {
   background: #D9D3C5;
   opacity: 0.6;
+}
+/* Does not fit the number of players: greyed out, and room on the right
+   for its "?". When it is the chosen mode it stays marked, in a pale yellow. */
+.mode-unfit { padding-right: 36px; }
+.mode-unfit.mode-own {
+  background: #EFE2A8;
+  opacity: 0.75;
 }
 
 .mode-note {

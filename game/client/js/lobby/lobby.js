@@ -43,6 +43,7 @@ window.Game = window.Game || {};
       Game.net.ask({ type: 'start_game' });
     });
     document.getElementById('lobby-leave').addEventListener('click', leaveLobby);
+    modeGrid.addEventListener('keydown', closeWhyOnEscape);
   }
 
   function setOwnName(name) {
@@ -161,17 +162,103 @@ window.Game = window.Game || {};
 
   // ---- Mode ----
 
-  // Built once, like the character buttons.
+  // Built once, like the character buttons. Each mode also gets a small
+  // "?" and the text it shows: why the mode does not fit the number of
+  // players (Felix, 2026-11-21). The "?" stands on its button (style.css),
+  // the text in a line of its own under the buttons, so it covers nothing.
   function addModeButton(mode) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'mode';
+    button.setAttribute('data-mode', mode.id);
     button.appendChild(makeText('span', 'mode-name', mode.name));
     button.addEventListener('click', () => {
       Game.net.ask({ type: 'choose_mode', mode: mode.id });
     });
     modeButtons[mode.id] = button;
     modeGrid.appendChild(button);
+    modeGrid.appendChild(makeWhyButton(mode));
+    modeGrid.appendChild(whyTexts[mode.id]);
+  }
+
+  // ---- Why a mode does not fit (the "?") ----
+
+  // mode id -> its "?" button, its text, and why it is shown: the pointer
+  // is on it, it has the focus, or a click or tap opened it.
+  const whyButtons = {};
+  const whyTexts = {};
+  const whyShownBy = {};
+
+  // Solo is for one player alone; the other modes need company. Classic
+  // with 2 or 3 players still fits here: its start hint says who is missing.
+  function fitsPlayerCount(mode, playerCount) {
+    return mode.id === 'solo' ? playerCount === 1 : playerCount >= 2;
+  }
+
+  // The same texts as the server's (protocol.py), with the minimum of MODES.
+  function whyNotText(mode) {
+    if (mode.id === 'solo') return 'Solo is only for one player alone.';
+    return mode.name + ' needs at least ' + mode.minPlayers + ' players.';
+  }
+
+  function makeWhyButton(mode) {
+    const text = makeText('p', 'mode-why-text', whyNotText(mode));
+    text.id = 'mode-why-' + mode.id;
+    text.setAttribute('role', 'tooltip');
+    text.setAttribute('data-mode', mode.id);
+    text.hidden = true;
+    const why = makeText('button', 'mode-why', '?');
+    why.type = 'button';
+    why.hidden = true;
+    why.setAttribute('data-mode', mode.id);
+    why.setAttribute('aria-label', 'Why can ' + mode.name + ' not be chosen?');
+    why.setAttribute('aria-describedby', text.id);
+    whyShownBy[mode.id] = { pointer: false, focus: false, click: false };
+    const set = (reason, value) => { whyShownBy[mode.id][reason] = value; showWhy(mode.id); };
+    why.addEventListener('mouseenter', () => set('pointer', true));
+    why.addEventListener('mouseleave', () => set('pointer', false));
+    why.addEventListener('focus', () => set('focus', true));
+    why.addEventListener('blur', () => set('focus', false));
+    // A tap or a click toggles it: it closes what was shown before the
+    // press, else opens it. (A tap also gives the focus, which alone would
+    // show the text already, so what counts is the state before the press.)
+    let shownBeforePress = null;
+    why.addEventListener('pointerdown', () => { shownBeforePress = isWhyShown(mode.id); });
+    why.addEventListener('click', () => {
+      const wasShown = shownBeforePress === null ? isWhyShown(mode.id) : shownBeforePress;
+      shownBeforePress = null;
+      if (wasShown) closeWhy(mode.id); else set('click', true);
+    });
+    whyButtons[mode.id] = why;
+    whyTexts[mode.id] = text;
+    return why;
+  }
+
+  function isWhyShown(modeId) {
+    const shownBy = whyShownBy[modeId];
+    return !whyButtons[modeId].hidden && (shownBy.pointer || shownBy.focus || shownBy.click);
+  }
+
+  function showWhy(modeId) {
+    const shown = isWhyShown(modeId);
+    if (shown) {
+      // Only one text at a time.
+      Object.keys(whyButtons).filter((other) => other !== modeId).forEach(closeWhy);
+    }
+    whyTexts[modeId].hidden = !shown;
+    whyButtons[modeId].setAttribute('aria-expanded', String(shown));
+  }
+
+  function closeWhy(modeId) {
+    whyShownBy[modeId] = { pointer: false, focus: false, click: false };
+    whyTexts[modeId].hidden = true;
+    whyButtons[modeId].setAttribute('aria-expanded', 'false');
+  }
+
+  // Esc closes an open text, also while its "?" keeps the focus (the key
+  // comes to the grid from the focused "?").
+  function closeWhyOnEscape(event) {
+    if (event.key === 'Escape') Object.keys(whyButtons).forEach(closeWhy);
   }
 
   function findMode(modeId) {
@@ -185,8 +272,10 @@ window.Game = window.Game || {};
     return mode ? mode.name : modeId;
   }
 
-  // The host gets the buttons, everybody else only the text.
-  function showMode(modeId, isHost, isOpen) {
+  // The host gets the buttons, everybody else only the text. A mode that
+  // does not fit the number of players is greyed (and stays marked when it
+  // is the chosen one) and gets its "?".
+  function showMode(modeId, isHost, isOpen, playerCount) {
     modeGrid.hidden = !isHost;
     const modeText = document.getElementById('lobby-mode-text');
     modeText.hidden = isHost;
@@ -199,7 +288,11 @@ window.Game = window.Game || {};
       button.setAttribute('aria-pressed', String(isChosen));
       // The server refuses these anyway (S-91); switching the button off
       // only saves the host the error.
-      button.disabled = !mode.isBuilt || !isOpen;
+      const fits = fitsPlayerCount(mode, playerCount);
+      button.disabled = !mode.isBuilt || !isOpen || !fits;
+      button.classList.toggle('mode-unfit', !fits);
+      whyButtons[mode.id].hidden = fits;
+      if (fits) closeWhy(mode.id);
     });
   }
 
@@ -314,7 +407,7 @@ window.Game = window.Game || {};
     // characters, the mode and the start button can be used.
     const isOpen = state.phase === 'lobby';
     showCharacters(state.players, isOpen);
-    showMode(state.mode, isHost, isOpen);
+    showMode(state.mode, isHost, isOpen, state.players.length);
     showStartButton(state, isOpen);
     // During a round "Round running" stands where the character selection
     // and the start button (or "Waiting for the host") were.

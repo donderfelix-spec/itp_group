@@ -266,6 +266,49 @@ for (const [mode, name] of [['solo', 'Solo'], ['duel', 'Duel']]) {
   check(env.ids.get('duel-heading').textContent === 'Duel', 'a Duel after a Solo round is called Duel again');
 }
 
+// Modes that do not fit the number of players (brief D): greyed, with a "?".
+{
+  const env = environment();
+  const grid = env.ids.get('lobby-modes');
+  const button = (id) => grid.children.find((child) => child.className.split(' ').includes('mode') && child.getAttribute('data-mode') === id);
+  const why = (id) => grid.children.find((child) => child.className === 'mode-why' && child.getAttribute('data-mode') === id);
+  const text = (id) => grid.children.find((child) => child.getAttribute('role') === 'tooltip' && child.getAttribute('data-mode') === id);
+  env.emit('signed_in', { name: 'Mara', guest: true });
+  env.emit('lobby_state', lobbyState(['Mara'], 'duel', 'lobby'));
+  check(button('duel').disabled && button('classic').disabled && !button('solo').disabled, 'alone: Duel and Classic greyed, Solo free');
+  check(button('duel').classList.contains('mode-own') && button('duel').classList.contains('mode-unfit'), 'the chosen Duel stays marked, greyed');
+  check(!why('duel').hidden && !why('classic').hidden && why('solo').hidden, 'a "?" only at the greyed modes');
+  check(text('duel').textContent === 'Duel needs at least 2 players.' && text('classic').textContent === 'Classic needs at least 4 players.'
+    && text('solo').textContent === 'Solo is only for one player alone.', 'the reasons, with the minimums of the page');
+  check(why('duel').getAttribute('aria-describedby') === text('duel').id && text('duel').getAttribute('role') === 'tooltip', 'tooltip and aria-describedby');
+  check([text('duel'), text('classic'), text('solo')].every((entry) => entry.hidden), 'no text before it is asked for');
+  why('duel').events.mouseenter();
+  check(!text('duel').hidden, 'hover shows the text');
+  why('duel').events.mouseleave();
+  check(text('duel').hidden, 'leaving hides it');
+  why('classic').events.focus();
+  check(!text('classic').hidden, 'focus shows the text');
+  why('duel').events.click();
+  check(!text('duel').hidden && text('classic').hidden, 'a click opens it, and only one text is shown');
+  why('duel').events.click();
+  check(text('duel').hidden, 'a second click closes it');
+  why('duel').events.pointerdown();
+  why('duel').events.focus();
+  why('duel').events.click();
+  check(!text('duel').hidden, 'a tap (press, focus, click) opens it');
+  grid.events.keydown({ key: 'Escape', preventDefault() {} });
+  check(text('duel').hidden, 'Esc closes it, also while the "?" keeps the focus');
+  why('duel').events.mouseenter();
+  check(!text('duel').hidden, 'and it opens again on the next hover');
+  env.emit('lobby_state', lobbyState(['Mara', 'Tiago'], 'duel', 'lobby'));
+  check(!button('duel').disabled && !button('classic').disabled && button('solo').disabled, 'two: Solo greyed, Duel and Classic free');
+  check(why('duel').hidden && text('duel').hidden && !why('solo').hidden, 'a mode that fits again loses its "?" and text');
+  env.emit('lobby_state', lobbyState(['Mara', 'Tiago', 'Ines'], 'classic', 'lobby'));
+  check(!button('classic').disabled, 'Classic with three players stays selectable, as on main');
+  env.emit('lobby_state', { ...lobbyState(['Mara'], 'solo', 'lobby'), host: 'Tiago' });
+  check(grid.hidden, 'a player who is not host sees only the text of the mode');
+}
+
 // main.js around the round (from test_client_roster.js): the countdown, the
 // movement reset at the start of a round, and leaving.
 for (const mode of ['duel', 'solo']) {

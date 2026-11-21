@@ -10,22 +10,52 @@ A player is identified by name. Names are unique among connected players
 Every action returns the rejection code as its last value: None when the
 action was accepted, otherwise a key of `protocol.REJECTIONS` or
 "too_few_players" (whose text depends on the mode, see
-`protocol.too_few_players`). A rejected action changes nothing.
+`protocol.too_few_players`) or "solo_needs_one_player" (see
+`protocol.solo_needs_one_player`). A rejected action changes nothing.
 """
 
 import math
 
 from server.net.walking import Walkers
-from server.protocol import CHARACTERS, DEFAULT_MODE, MIN_PLAYERS, PHASE_COUNTDOWN, PHASE_LOBBY, PHASE_ROUND
+from server.protocol import (
+    CHARACTERS,
+    DEFAULT_MODE,
+    MIN_PLAYERS,
+    PHASE_COUNTDOWN,
+    PHASE_LOBBY,
+    PHASE_ROUND,
+    SOLO_NEEDS_ONE_PLAYER,
+)
 
 # Every player has a character of their own (S-75), so a lobby cannot hold
 # more players than there are characters.
 MAX_PLAYERS = len(CHARACTERS)
 
+# Solo is the practice round for one player alone (Felix, 2026-11-21).
+SOLO = "solo"
+
 # How long everybody sees the countdown between the host's "Start game" and
 # the start of the round (S-102). The only place where this number stands:
 # the browser is told it in the `countdown` message.
 COUNTDOWN_SECONDS = 5
+
+
+def solo_refusal(mode: str, player_count: int):
+    """Why `mode` cannot be chosen or started with this many players, or None.
+
+    Solo is only for one player alone. Duel and Classic with too few players
+    may still be chosen; only their start is refused (`has_too_few_players`).
+    """
+    if mode == SOLO and player_count > 1:
+        return SOLO_NEEDS_ONE_PLAYER
+    return None
+
+
+def mode_after_a_join(mode: str, player_count: int) -> str:
+    """The mode once somebody joined: a Solo lobby with a second player plays the default mode."""
+    if mode == SOLO and player_count > 1:
+        return DEFAULT_MODE
+    return mode
 
 
 class Lobby:
@@ -233,6 +263,8 @@ class Lobbies:
         if lobby.is_full():
             return (None, "lobby_full")
         self._put_in(lobby, name)
+        # Before anybody is told: the chosen mode is never one that cannot be played.
+        lobby.mode = mode_after_a_join(lobby.mode, len(lobby.names()))
         return (lobby, None)
 
     def choose_character(self, name: str, character: str):
@@ -262,6 +294,9 @@ class Lobbies:
         lobby, rejection_code = self._lobby_hosted_by(name)
         if rejection_code is not None:
             return (None, rejection_code)
+        refusal = solo_refusal(mode, len(lobby.names()))
+        if refusal is not None:
+            return (None, refusal)
         lobby.mode = mode
         return (lobby, None)
 
@@ -274,6 +309,9 @@ class Lobbies:
         lobby, rejection_code = self._lobby_hosted_by(name)
         if rejection_code is not None:
             return (None, rejection_code)
+        refusal = solo_refusal(lobby.mode, len(lobby.names()))
+        if refusal is not None:
+            return (None, refusal)
         if lobby.has_too_few_players():
             return (None, "too_few_players")
         lobby.start_countdown(now)
