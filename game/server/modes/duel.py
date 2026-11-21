@@ -11,6 +11,7 @@ still in it has finished, or after ROUND_SECONDS.
 
 import itertools
 import math
+from collections import Counter
 
 from server.world.paths import SPAWN
 
@@ -47,78 +48,86 @@ def route_length(route, distances) -> float:
 def draw_routes(names, stations_in_use, distances, rng) -> dict:
     """Draw a route for every player. Returns `{name: (first, second, third)}`.
 
-    One route is drawn at random. Each further route starts at a different
-    station: two players must never receive the same first task. Prefer
-    routes within 10 % of the first route, then the closest remaining
-    starting stations if that is not possible. Which player gets which
-    route is random as well.
+    One route is drawn at random. Then the other routes are added one at a
+    time, and each new route must follow these rules, in this order:
+
+    1. No two players get the same route, as long as there are routes left.
+    2. The first stations are all different as long as there are stations
+       left; after that they are spread as evenly as possible.
+    3. Its length is within 10 % of the first route where possible,
+       otherwise the nearest in length (see `routes_about_as_long`).
+       The first route is drawn so that this is possible wherever it can
+       be (see `draw_first_route`).
+
+    Which player gets which route is random as well. Never raises for any
+    number of players, as long as there are at least three stations.
     """
     if len(names) == 0:
         return {}
-    if len(names) > len(set(stations_in_use)):
-        raise ValueError("Each player needs a different starting station")
-    if len(set(stations_in_use)) < STATIONS_PER_ROUTE:
-        raise ValueError("A route needs three different stations")
     candidates = all_routes(stations_in_use)
-    first = rng.choice(candidates)
-    if len(names) > 1:
-        lengths = {route: route_length(route, distances) for route in candidates}
-
-        def enough_close_starts(anchor):
-            wanted = lengths[anchor]
-            starts = set()
-            for route, length in lengths.items():
-                if abs(length - wanted) <= LENGTH_TOLERANCE * wanted:
-                    starts.add(route[0])
-                    if len(starts) >= len(names):
-                        return True
-            return False
-
-        if not enough_close_starts(first):
-            # A bad first draw must not force an unfair round when another
-            # anchor permits distinct starts within the usual tolerance.
-            alternatives = list(candidates)
-            rng.shuffle(alternatives)
-            first = next((route for route in alternatives if enough_close_starts(route)), first)
-    others = routes_with_different_starts(first, candidates, distances, len(names) - 1, rng)
-    routes = [first] + others
+    first = draw_first_route(candidates, distances, len(names), rng)
+    routes = [first]
+    while len(routes) < len(names):
+        routes.append(next_route(first, routes, candidates, distances, rng))
     rng.shuffle(routes)
     return dict(zip(names, routes))
 
 
-def routes_with_different_starts(first, candidates, distances, count, rng) -> list:
-    """Choose one route per unused first station, keeping lengths close.
+def draw_first_route(candidates, distances, player_count, rng):
+    """The route the others are measured against, drawn at random.
 
-    Fairness is compared between starting stations, not just full routes:
-    ten short routes to the same first task cannot serve ten players.
+    A route that has too few routes within 10 % starting at other stations
+    is put aside and another one is drawn: with it, rule 2 of `draw_routes`
+    would push some players onto much longer or shorter ways. If every
+    route is like that, the first one drawn is kept.
     """
-    if count == 0:
-        return []
+    station_count = len({route[0] for route in candidates})
+    other_starts_needed = min(player_count, station_count) - 1
+    first_drawn = rng.choice(candidates)
+    left = list(candidates)
+    first = first_drawn
+    while not has_close_routes_from_other_starts(first, candidates, distances, other_starts_needed):
+        left.remove(first)
+        if not left:
+            return first_drawn
+        first = rng.choice(left)
+    return first
+
+
+def has_close_routes_from_other_starts(first, candidates, distances, count) -> bool:
+    """Whether at least `count` other first stations have a route within 10 % of `first`."""
     wanted = route_length(first, distances)
-    lengths = {route: route_length(route, distances) for route in candidates}
-    groups = {}
-    for route in candidates:
-        if route[0] != first[0]:
-            groups.setdefault(route[0], []).append(route)
+    close_starts = {
+        route[0]
+        for route in candidates
+        if route[0] != first[0] and abs(route_length(route, distances) - wanted) <= LENGTH_TOLERANCE * wanted
+    }
+    return len(close_starts) >= count
 
-    def difference(route):
-        return abs(lengths[route] - wanted)
 
-    close = {station: [route for route in routes if difference(route) <= LENGTH_TOLERANCE * wanted]
-             for station, routes in groups.items()}
-    close_stations = [station for station, routes in close.items() if routes]
-    if len(close_stations) >= count:
-        return [rng.choice(close[station]) for station in rng.sample(close_stations, count)]
+def next_route(first, routes, candidates, distances, rng):
+    """One more route for `draw_routes`, chosen from the least used ones."""
+    allowed = least_used(routes, candidates)
+    about_as_long = routes_about_as_long(first, allowed, distances, 1, rng)
+    # Empty only if `first` itself is the one route left to give again.
+    return about_as_long[0] if about_as_long else allowed[0]
 
-    # Keep every available close starting station. Fill the remaining
-    # places from the stations whose best route is nearest in length.
-    result = [rng.choice(close[station]) for station in close_stations]
-    remaining = [station for station in groups if station not in close_stations]
-    remaining.sort(key=lambda station: min(difference(route) for route in groups[station]))
-    for station in remaining[:count - len(result)]:
-        nearest = min(difference(route) for route in groups[station])
-        result.append(rng.choice([route for route in groups[station] if difference(route) == nearest]))
-    return result
+
+def least_used(routes, candidates) -> list:
+    """The candidates that were given least often, and of those the ones whose first station was used least.
+
+    A route is only given twice when every route was given once, and a
+    first station only twice when every station was a first station once.
+    The order of `candidates` is kept, so nothing here depends on chance.
+    """
+    route_uses = Counter(routes)
+    start_uses = Counter(route[0] for route in routes)
+
+    def uses(route):
+        return (route_uses[route], start_uses[route[0]])
+
+    fewest = min(uses(route) for route in candidates)
+    return [route for route in candidates if uses(route) == fewest]
 
 
 def routes_about_as_long(first, candidates, distances, count, rng) -> list:
