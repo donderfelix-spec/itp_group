@@ -580,8 +580,9 @@ Game.world = Game.world || {};
   // static part is drawn once into square tiles of TILE_PIXELS canvas pixels
   // (at the current zoom), and each frame only copies the tiles it needs.
   // Tiles sit on whole canvas pixels, so no seam shows between two of them.
-  // In a frame that needed no new tile, one tile just outside the picture is
-  // drawn ahead, so walking on seldom has to draw several tiles at once.
+  // In a frame that needed no new tile, one tile of the ring just outside the
+  // picture is drawn ahead: the one nearest to where the camera is heading.
+  // So walking on seldom has to draw a tile while the player waits.
   var TILE_PIXELS = 512;
   // At least this many tiles are kept; more when the canvas is large.
   var FEWEST_TILES_KEPT = 24;
@@ -591,6 +592,8 @@ Game.world = Game.world || {};
     scale: 0,
     kept: new Map(), // "column,row" -> canvas; the most recently used last
     drawn: 0, // how many tiles were drawn so far
+    lastOrigin: null, // where the map's corner was on the canvas last frame
+    heading: { x: 0, y: 0 }, // the way the camera moved last, in canvas pixels
     unavailable: false // true when this browser cannot make tiles
   };
 
@@ -643,6 +646,7 @@ Game.world = Game.world || {};
     // Where the map's corner lands on the canvas, rounded to a whole pixel.
     var originX = Math.round(camera.e);
     var originY = Math.round(camera.f);
+    noteHeading(originX, originY);
     var firstColumn = Math.floor(-originX / TILE_PIXELS);
     var lastColumn = Math.floor((ctx.canvas.width - originX - 1) / TILE_PIXELS);
     var firstRow = Math.floor(-originY / TILE_PIXELS);
@@ -656,7 +660,7 @@ Game.world = Game.world || {};
       }
     }
     if (tiles.drawn === tilesBefore) {
-      drawOneTileAhead(campus, scale, firstColumn - 1, lastColumn + 1, firstRow - 1, lastRow + 1);
+      drawOneTileAhead(campus, scale, ctx.canvas, originX, originY, firstColumn - 1, lastColumn + 1, firstRow - 1, lastRow + 1);
     }
     // Keep the tiles of the picture and of the ring around it, and as many
     // again of those seen last.
@@ -664,16 +668,41 @@ Game.world = Game.world || {};
     forgetOldTiles(Math.max(FEWEST_TILES_KEPT, ring * 2));
   }
 
-  // Draws the first missing tile of the ring around the picture, if any.
-  function drawOneTileAhead(campus, scale, firstColumn, lastColumn, firstRow, lastRow) {
+  // Remembers which way the camera moves. When the map's corner moves left
+  // on the canvas, the camera moves right. Standing still keeps the heading.
+  function noteHeading(originX, originY) {
+    var last = tiles.lastOrigin;
+    if (last && (last.x !== originX || last.y !== originY)) {
+      tiles.heading = { x: last.x - originX, y: last.y - originY };
+    }
+    tiles.lastOrigin = { x: originX, y: originY };
+  }
+
+  // Draws the missing tile of the ring around the picture that lies nearest
+  // to a point one tile ahead of the picture's middle, in the heading.
+  function drawOneTileAhead(campus, scale, canvas, originX, originY, firstColumn, lastColumn, firstRow, lastRow) {
+    var heading = tiles.heading;
+    var length = Math.sqrt(heading.x * heading.x + heading.y * heading.y) || 1;
+    // The aim, in canvas pixels counted from the map's corner.
+    var aimX = canvas.width / 2 - originX + heading.x / length * TILE_PIXELS;
+    var aimY = canvas.height / 2 - originY + heading.y / length * TILE_PIXELS;
+    var best = null;
     for (var row = firstRow; row <= lastRow; row++) {
       for (var column = firstColumn; column <= lastColumn; column++) {
         var onTheRing = row === firstRow || row === lastRow || column === firstColumn || column === lastColumn;
-        if (onTheRing && !tiles.kept.has(column + "," + row)) {
-          tiles.kept.set(column + "," + row, drawTile(campus, scale, column, row));
-          return;
+        if (!onTheRing || tiles.kept.has(column + "," + row)) {
+          continue;
+        }
+        var dx = (column + 0.5) * TILE_PIXELS - aimX;
+        var dy = (row + 0.5) * TILE_PIXELS - aimY;
+        var distance = dx * dx + dy * dy;
+        if (best === null || distance < best.distance) {
+          best = { column: column, row: row, distance: distance };
         }
       }
+    }
+    if (best) {
+      tiles.kept.set(best.column + "," + best.row, drawTile(campus, scale, best.column, best.row));
     }
   }
 

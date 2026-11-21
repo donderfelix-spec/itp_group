@@ -382,25 +382,20 @@ Game.world = Game.world || {};
     });
   }
 
-  // The Main Deck: light stone slabs laid in a running bond, each a little
-  // lighter or darker than the next.
+  // The Main Deck: large square stone slabs in a straight grid, each a
+  // little lighter or darker than the next, with a few fine speckles.
   art.floors.paving = function (ctx, area, room, campus) {
     var deck = campus && campus.colours ? campus.colours.deck : "#F3F0E9";
-    var slabLength = 24;
-    var slabHeight = 12;
-    var joint = "#E1DBCD";
-    // Every other row is shifted by half a slab.
-    var shiftOf = function (row) { return Math.abs(row % 2) * slabLength / 2; };
-    eachPiece(area, slabLength, slabHeight, shiftOf, function (x, y, row) {
-      var tone = noise(x, row);
-      ctx.fillStyle = tone < 0.5 ? darker(deck, tone * 0.05) : lighter(deck, (tone - 0.5) * 0.5);
-      ctx.fillRect(x, y, slabLength, slabHeight);
+    var slab = 24;
+    eachCell(area, 0, 0, slab, slab, function (x, y, column, row) {
+      var tone = noise(column, row);
+      ctx.fillStyle = tone < 0.5 ? darker(deck, tone * 0.04) : lighter(deck, (tone - 0.5) * 0.45);
+      ctx.fillRect(x, y, slab, slab);
     });
-    strokeAll(ctx, joint, 0.9, function () {
-      eachPiece(area, slabLength, slabHeight, shiftOf, function (x, y) {
-        ctx.moveTo(x, y + slabHeight);
-        ctx.lineTo(x, y);
-        ctx.lineTo(x + slabLength, y);
+    speckles(ctx, area, darker(deck, 0.12), 6, 0.3);
+    strokeAll(ctx, "#E3DDD0", 0.8, function () {
+      eachCell(area, 0, 0, slab, slab, function (x, y) {
+        ctx.rect(x, y, slab, slab);
       });
     });
   };
@@ -544,6 +539,21 @@ Game.world = Game.world || {};
     line(ctx, middleX, middleY - r, middleX + r * 0.5, middleY - r * 1.6, "#FFFFFF", 0.45);
   };
 
+  // Posters in blue, yellow and red on a white part of the wall.
+  art.decor.posters = function (ctx, item) {
+    box(ctx, item.x, item.y, item.w, item.h, 0.4, "#F7F6F2", 0.5);
+    var colours = ["#4C8FD6", "#F2C53D", "#E8574B"];
+    var gap = 1;
+    var width = (item.w - gap * 4) / 3;
+    colours.forEach(function (colour, index) {
+      var left = item.x + gap + index * (width + gap);
+      box(ctx, left, item.y + 1, width, item.h - 2, 0.3, colour, 0.4);
+      // A white shape and a line of writing on each poster.
+      circle(ctx, left + width / 2, item.y + item.h * 0.42, Math.min(width, item.h) * 0.2, "rgba(255, 255, 255, 0.85)", 0);
+      line(ctx, left + width * 0.25, item.y + item.h - 1.9, left + width * 0.75, item.y + item.h - 1.9, "#FFFFFF", 0.4);
+    });
+  };
+
   // A doormat with ribs, flat on the floor.
   art.decor.mat = function (ctx, item) {
     box(ctx, item.x, item.y, item.w, item.h, 1, "#5E6270", 0.6);
@@ -552,13 +562,13 @@ Game.world = Game.world || {};
     }
   };
 
-  // The light of a pendant lamp on the floor: a soft warm pool.
+  // The light of a pendant lamp on the floor: a soft, faint warm pool.
   art.decor["light-pool"] = function (ctx, item) {
     var x = item.x + item.w / 2;
     var y = item.y + item.h / 2;
     var radius = Math.min(item.w, item.h) / 2;
     var glow = ctx.createRadialGradient(x, y, 0, x, y, radius);
-    glow.addColorStop(0, "rgba(255, 246, 214, 0.55)");
+    glow.addColorStop(0, "rgba(255, 248, 222, 0.45)");
     glow.addColorStop(1, "rgba(255, 246, 214, 0)");
     ctx.fillStyle = glow;
     ctx.fillRect(item.x, item.y, item.w, item.h);

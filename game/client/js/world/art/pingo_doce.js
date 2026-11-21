@@ -235,12 +235,13 @@ Game.world = Game.world || {};
     var fruits = ["#E5483C", "#8CC63F", "#F39A2B"];
     var basketCount = 6;
     for (var i = 0; i < basketCount; i++) {
-      var angle = (i + 0.5) / basketCount * Math.PI * 2;
-      var basketX = x + Math.cos(angle) * radius * 0.6;
-      var basketY = y + Math.sin(angle) * radius * 0.6;
-      basket(ctx, basketX, basketY, radius * 0.27, fruits[i % fruits.length]);
+      // No basket straight below the middle: there the tree's pot shows.
+      var angle = i / basketCount * Math.PI * 2;
+      var basketX = x + Math.cos(angle) * radius * 0.68;
+      var basketY = y + Math.sin(angle) * radius * 0.68;
+      basket(ctx, basketX, basketY, radius * 0.24, fruits[i % fruits.length]);
     }
-    oliveTree(ctx, x, y, radius * 0.36);
+    oliveTree(ctx, x, y, radius);
   };
 
   function tiledBase(ctx, x, y, radius) {
@@ -270,18 +271,38 @@ Game.world = Game.world || {};
     });
   }
 
-  // Grey-green leaves around a little trunk.
-  function oliveTree(ctx, x, y, radius) {
-    var leaves = 7;
-    for (var i = 0; i < leaves; i++) {
-      var angle = i / leaves * Math.PI * 2;
-      util.circle(ctx, x + Math.cos(angle) * radius * 0.6, y + Math.sin(angle) * radius * 0.6, radius * 0.55, "#7E9A55", 0.6);
+  // The small olive tree in the middle of the stand, seen from the south:
+  // a pot, a trunk with branches going up, and above them a grey-green crown
+  // of leaves with one dark outline round it. `standRadius` is the stand's.
+  function oliveTree(ctx, x, y, standRadius) {
+    var crownX = x;
+    var crownY = y - standRadius * 0.2;
+    var crown = standRadius * 0.42;
+    var potY = y + standRadius * 0.5;
+    // Pot and trunk first: the crown covers the top of the trunk.
+    util.ellipse(ctx, x, potY, standRadius * 0.17, standRadius * 0.12, "#B8643A", 0.6);
+    util.line(ctx, x, potY, x, crownY + crown * 0.3, "#6B4A2E", 1.3);
+    util.line(ctx, x, crownY + crown * 0.6, x - crown * 0.55, crownY + crown * 0.2, "#6B4A2E", 0.8);
+    util.line(ctx, x, crownY + crown * 0.75, x + crown * 0.6, crownY + crown * 0.35, "#6B4A2E", 0.8);
+    // The crown: clumps of leaves. Their outlines are drawn first and thick,
+    // then all are filled, so only the outer edge of the crown stays dark.
+    var clumps = [[0, -0.45, 0.5], [-0.5, -0.1, 0.45], [0.5, -0.1, 0.45], [-0.3, 0.35, 0.42], [0.32, 0.38, 0.4], [0, 0, 0.5]];
+    clumps.forEach(function (clump) {
+      util.circle(ctx, crownX + clump[0] * crown, crownY + clump[1] * crown, clump[2] * crown, null, 1.4);
+    });
+    clumps.forEach(function (clump) {
+      util.circle(ctx, crownX + clump[0] * crown, crownY + clump[1] * crown, clump[2] * crown, "#8A9E78", 0);
+    });
+    // Small leaves: darker ones for depth, light silvery ones on top.
+    for (var i = 0; i < 14; i++) {
+      var angle = i * 2.4;
+      var distance = crown * (0.15 + 0.6 * util.noise(i, x));
+      var leafX = crownX + Math.cos(angle) * distance;
+      var leafY = crownY + Math.sin(angle) * distance;
+      util.ellipse(ctx, leafX, leafY, 0.9, 0.4, i % 2 === 0 ? "#6F8460" : "#C4D0B4", 0);
     }
-    util.circle(ctx, x, y, radius * 0.6, "#8FAA63", 0);
-    for (var j = 0; j < leaves; j++) {
-      var leafAngle = (j + 0.5) / leaves * Math.PI * 2;
-      util.ellipse(ctx, x + Math.cos(leafAngle) * radius * 0.55, y + Math.sin(leafAngle) * radius * 0.55, 0.9, 0.45, "#B9CB8E", 0);
-    }
+    // A branch showing through a gap in the leaves.
+    util.line(ctx, crownX - crown * 0.1, crownY + crown * 0.2, crownX - crown * 0.45, crownY - crown * 0.15, "#6B4A2E", 0.5);
   }
 
   // ---- The bakery and hot-food counter ---------------------------------
@@ -349,6 +370,49 @@ Game.world = Game.world || {};
       util.box(ctx, x + i * trayWidth + 1, y + 0.7, trayWidth - 2, h - 1.4, 0.8, foods[i % foods.length], 0);
     }
   }
+
+  // ---- Sign totems -----------------------------------------------------
+
+  // An upright digital sign on a small dark foot, seen from the front: a
+  // bright screen with a white line drawing. Its `icon` says which drawing:
+  // "basket" (on bright green) or "cup" (on light blue).
+  art.kinds.totem = function (ctx, totem) {
+    var cup = totem.icon === "cup";
+    util.shadowBelow(ctx, totem.x, totem.y + totem.h, totem.w, 1.2);
+    util.box(ctx, totem.x + 0.6, totem.y + totem.h - 1.8, totem.w - 1.2, 1.8, 0.5, "#2F2C38", 0.6);
+    util.box(ctx, totem.x, totem.y, totem.w, totem.h - 1.4, 0.8, OUTLINE, 0);
+    var screen = { x: totem.x + 0.6, y: totem.y + 0.6, w: totem.w - 1.2, h: totem.h - 2.6 };
+    util.box(ctx, screen.x, screen.y, screen.w, screen.h, 0.5, cup ? "#7CC7EC" : "#58C23A", 0);
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 0.4;
+    ctx.lineJoin = "round";
+    var middleX = screen.x + screen.w / 2;
+    var middleY = screen.y + screen.h / 2;
+    var size = Math.min(screen.w, screen.h) * 0.36;
+    ctx.beginPath();
+    if (cup) {
+      // A cup with a handle and a curl of steam.
+      ctx.rect(middleX - size, middleY - size * 0.2, size * 1.6, size * 1.2);
+      ctx.moveTo(middleX + size * 0.6, middleY + size * 0.1);
+      ctx.arc(middleX + size * 0.8, middleY + size * 0.4, size * 0.3, -Math.PI / 2, Math.PI / 2);
+      ctx.moveTo(middleX - size * 0.2, middleY - size * 0.5);
+      ctx.quadraticCurveTo(middleX + size * 0.2, middleY - size * 0.9, middleX - size * 0.1, middleY - size * 1.3);
+    } else {
+      // A shopping basket: the basket, a handle and two lines of mesh.
+      ctx.moveTo(middleX - size, middleY - size * 0.1);
+      ctx.lineTo(middleX + size, middleY - size * 0.1);
+      ctx.lineTo(middleX + size * 0.7, middleY + size);
+      ctx.lineTo(middleX - size * 0.7, middleY + size);
+      ctx.closePath();
+      ctx.moveTo(middleX - size * 0.6, middleY - size * 0.1);
+      ctx.arc(middleX, middleY - size * 0.1, size * 0.6, Math.PI, 0);
+      ctx.moveTo(middleX - size * 0.2, middleY - size * 0.1);
+      ctx.lineTo(middleX - size * 0.15, middleY + size);
+      ctx.moveTo(middleX + size * 0.2, middleY - size * 0.1);
+      ctx.lineTo(middleX + size * 0.15, middleY + size);
+    }
+    ctx.stroke();
+  };
 
   // ---- Decor -----------------------------------------------------------
 

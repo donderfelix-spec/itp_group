@@ -14,7 +14,9 @@
 //   "tiles"   a page that can make canvases: drawMap() draws the static part
 //             into tiles and copies them. Input (stdin): {"frames": [{scale,
 //             e, f, width, height}]}, one camera per frame. Output: {frames:
-//             [{copies: [{x, y}], newTiles}], warnings}.
+//             [{copies: [{x, y}], newTiles, drawnAt: [{x, y}]}], warnings};
+//             drawnAt is where each tile drawn in that frame lands on the
+//             canvas, in the order they were drawn.
 // Input (stdin) in both modes also has "campus": the map.
 
 const fs = require('fs');
@@ -61,13 +63,17 @@ page.window = page;
 
 // For "tiles": a document whose canvases have recording contexts.
 let newTiles = 0;
+let drawnAt = [];
+let camera = null; // the camera of the frame being drawn
 if (mode === 'tiles') {
   page.document = {
     createElement(name) {
       if (name !== 'canvas') throw new Error('only canvases are made here');
       newTiles += 1;
       const tile = { width: 0, height: 0 };
-      tile.getContext = () => recordingContext({ canvas: tile });
+      // draw.js moves a tile's drawing by minus its place from the map's corner.
+      const setTransform = (a, b, c, d, e, f) => drawnAt.push({ x: Math.round(camera.e) - e, y: Math.round(camera.f) - f });
+      tile.getContext = () => recordingContext({ canvas: tile, setTransform });
       return tile;
     },
   };
@@ -91,7 +97,8 @@ if (mode === 'direct') {
   });
   process.stdout.write(JSON.stringify({ texts, warnings, fills: [...fills], art }));
 } else if (mode === 'tiles') {
-  const frames = input.frames.map((camera) => {
+  const frames = input.frames.map((frameCamera) => {
+    camera = frameCamera;
     const copies = [];
     const screen = { width: camera.width, height: camera.height };
     let transform = { a: camera.scale, b: 0, c: 0, d: camera.scale, e: camera.e, f: camera.f };
@@ -102,8 +109,9 @@ if (mode === 'direct') {
       drawImage: (image, x, y) => copies.push({ x, y }),
     });
     newTiles = 0;
+    drawnAt = [];
     world.drawMap(ctx, input.campus);
-    return { copies, newTiles };
+    return { copies, newTiles, drawnAt };
   });
   process.stdout.write(JSON.stringify({ frames, warnings }));
 } else {

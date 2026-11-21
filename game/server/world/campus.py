@@ -100,6 +100,9 @@ def check_campus(campus) -> dict:
         _check_rectangle(solid, f"solids[{index}]", width, height)
         _check_whole_numbers(solid, f"solids[{index}]")
         _text(solid, "kind", f"solids[{index}]")
+        # Which drawing a solid shows, for kinds that have several (a sign
+        # totem with a basket or a cup): only drawn, optional.
+        _optional_art_name(solid, "icon", f"solids[{index}]")
         solid_id = _text(solid, "id", f"solids[{index}]")
         if solid_id in solid_ids:
             raise CampusError(f"solids[{index}] has the id \"{solid_id}\" of another solid.")

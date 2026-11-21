@@ -145,7 +145,7 @@ def test_the_deck_has_a_pattern_a_wall_face_and_faces_are_at_most_10_high():
 
 def test_pingo_doce_has_its_new_furniture():
     kinds = sorted(solid["kind"] for solid in NEW_SOLIDS)
-    assert kinds == ["fridge", "fridge", "fruit-stand", "hot-counter",
+    assert kinds == ["fridge", "fridge", "fruit-stand", "hot-counter", "totem", "totem",
                      "turnstile", "turnstile", "turnstile", "turnstile"]
     pingo = next(room for room in CAMPUS["rooms"] if room["id"] == "pingo-doce")
     for solid in NEW_SOLIDS:
@@ -226,6 +226,15 @@ def test_every_layer_is_accepted_by_the_server(layer):
     assert check_campus(broken(a_decor_entry(layer=layer)))
 
 
+def test_the_two_sign_totems_show_a_cup_and_a_basket():
+    totems = [solid for solid in NEW_SOLIDS if solid["kind"] == "totem"]
+    assert sorted(totem["icon"] for totem in totems) == ["basket", "cup"]
+
+
+def test_a_solid_without_an_icon_is_still_accepted():
+    assert check_campus(broken(lambda bad: bad["solids"][-1].pop("icon", None)))
+
+
 # Rejected: names of drawings
 
 @pytest.mark.parametrize("key", ROOM_STYLE_KEYS)
@@ -233,6 +242,13 @@ def test_every_layer_is_accepted_by_the_server(layer):
 def test_a_room_style_that_is_not_a_name_is_refused_and_named(key, name):
     with pytest.raises(CampusError, match=rf"\"{key}\" of rooms\[2\] must be a name"):
         check_campus(broken(lambda bad: bad["rooms"][2].update({key: name})))
+
+
+@pytest.mark.parametrize("icon", ["", "Coffee Cup", 3, None])
+def test_a_solid_icon_that_is_not_a_name_is_refused_and_named(icon):
+    totem = next(index for index, solid in enumerate(SOLIDS) if solid["kind"] == "totem")
+    with pytest.raises(CampusError, match=rf"\"icon\" of solids\[{totem}\] must be a name"):
+        check_campus(broken(lambda bad: bad["solids"][totem].update(icon=icon)))
 
 
 @pytest.mark.parametrize("key", ["deck_pattern", "deck_wall_face"])
@@ -447,3 +463,26 @@ def test_walking_across_the_whole_map_keeps_a_bounded_number_of_tiles():
     made_on_the_way_back = sum(frame["newTiles"] for frame in result[len(frames):])
     made_on_the_way_out = sum(frame["newTiles"] for frame in result[:len(frames)])
     assert made_on_the_way_back < made_on_the_way_out
+
+
+@needs_node
+def test_tiles_ahead_are_drawn_in_the_way_the_camera_moves_first():
+    # The camera moves right (the map's corner moves left on the canvas) for
+    # two frames, then stands still: the first tile drawn ahead lies on the
+    # right-hand side of the ring.
+    start = {"scale": 9.846, "e": -3456.0, "f": -2211.0, "width": 2560, "height": 1600}
+    moved = dict(start, e=start["e"] - 40)
+    frames = tiles_frames([start, moved, moved])
+    right_edge = max(copy_["x"] for copy_ in frames[2]["copies"]) + 512
+    [ahead] = frames[2]["drawnAt"]
+    assert ahead["x"] == right_edge
+
+
+@needs_node
+def test_tiles_ahead_follow_the_camera_moving_up_too():
+    start = {"scale": 9.846, "e": -3456.0, "f": -2211.0, "width": 2560, "height": 1600}
+    moved = dict(start, f=start["f"] + 40)  # the corner moves down: the camera moves up
+    frames = tiles_frames([start, moved, moved])
+    top_edge = min(copy_["y"] for copy_ in frames[2]["copies"]) - 512
+    [ahead] = frames[2]["drawnAt"]
+    assert ahead["y"] == top_edge
