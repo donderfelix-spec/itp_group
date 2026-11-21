@@ -1,0 +1,737 @@
+"""The detail of the campus map (M2-1.4): floor patterns, wall faces, decor and
+the new furniture of Pingo Doce.
+
+Patterns, faces and decor are only drawn by the browser, but the server
+checks them like the rest of the map file, so a broken entry is refused with
+a clear message (accepted, rejected and edge cases below). The rules for
+placing things are checked on the real map:
+
+- decor on layer "on" lies inside a solid, decor on layer "wall" touches a wall;
+- a new solid leaves no gap of 10 to 13 units to any other solid: a player is
+  10 wide and would just fit in, drawn over both (S-111);
+- the spawn still reaches every station, and the new solids change no
+  walking distance of the Duel (S-94).
+
+The drawing itself runs in Node (tests/draw_art_in_node.js) with the page's
+own draw.js and art files. Without Node those tests are skipped; CI has Node.
+"""
+
+import copy
+import json
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+from server.modes import minigames
+from server.world import paths
+from server.world.campus import CampusError, check_campus, load_campus
+from server.world.paths import station_distances
+
+CAMPUS = load_campus()
+SOLIDS = CAMPUS["solids"]
+TESTS = Path(__file__).resolve().parent
+DRAW_ART_IN_NODE = TESTS / "draw_art_in_node.js"
+
+NODE = shutil.which("node")
+needs_node = pytest.mark.skipif(NODE is None, reason="Node is needed to run the page's JavaScript")
+
+# The kinds of solids the map had before M2-1.4. Their counts are pinned by
+# test_campus.py; everything added since is of a new kind.
+OLD_KINDS = {
+    "wall", "glass", "pool", "tree", "hedge", "logo", "bench", "board", "counter", "machine",
+    "column", "round-table", "table", "table-row", "bookshelf", "shelf", "checkout",
+}
+# The walls between the corridor and the deck are new too (round 10), though
+# of an old kind.
+NEW_WALL_IDS = {"corridor-wall-1", "corridor-wall-2"}
+NEW_SOLIDS = [solid for solid in SOLIDS if solid["kind"] not in OLD_KINDS or solid["id"] in NEW_WALL_IDS]
+
+# Every solid of the map before M2-1.4 that this to-do moved or resized,
+# with its place on main.
+OLD_PLACES = {
+    "lecture-hall-bench-1": {"x": 40, "y": 60, "w": 170, "h": 9},
+    "lecture-hall-bench-2": {"x": 40, "y": 81, "w": 170, "h": 9},
+    "lecture-hall-bench-3": {"x": 40, "y": 102, "w": 170, "h": 9},
+    "lecture-hall-bench-4": {"x": 40, "y": 123, "w": 170, "h": 9},
+    "mon-cafe-counter": {"x": 268, "y": 30, "w": 92, "h": 14},
+    "mon-cafe-coffee-machine": {"x": 388, "y": 29, "w": 40, "h": 18},
+    "mon-cafe-column-1": {"x": 278, "y": 75, "w": 14, "h": 14},
+    "mon-cafe-column-2": {"x": 408, "y": 75, "w": 14, "h": 14},
+    "mon-cafe-column-3": {"x": 278, "y": 125, "w": 14, "h": 14},
+    "mon-cafe-column-4": {"x": 408, "y": 125, "w": 14, "h": 14},
+    "mon-cafe-table-1": {"x": 343, "y": 97, "w": 14, "h": 14},
+    "mon-cafe-table-2": {"x": 311, "y": 59, "w": 14, "h": 14},
+    "mon-cafe-table-3": {"x": 375, "y": 119, "w": 14, "h": 14},
+    "canteen-table-1": {"x": 492, "y": 66, "w": 24, "h": 24},
+    "canteen-table-2": {"x": 553, "y": 66, "w": 24, "h": 24},
+    "canteen-table-3": {"x": 614, "y": 80, "w": 24, "h": 24},
+    "canteen-table-4": {"x": 492, "y": 108, "w": 24, "h": 24},
+    "canteen-table-5": {"x": 553, "y": 108, "w": 24, "h": 24},
+    "ctt-table-row-1": {"x": 40, "y": 264, "w": 92, "h": 13},
+    "ctt-table-row-2": {"x": 40, "y": 296, "w": 92, "h": 13},
+    "ctt-table-row-3": {"x": 40, "y": 328, "w": 92, "h": 13},
+    "ctt-table-row-4": {"x": 40, "y": 360, "w": 92, "h": 13},
+    "ctt-table-row-5": {"x": 40, "y": 392, "w": 92, "h": 13},
+    "ctt-table-row-6": {"x": 40, "y": 424, "w": 92, "h": 13},
+    "ctt-table-row-7": {"x": 40, "y": 456, "w": 92, "h": 13},
+    "ctt-table-row-8": {"x": 40, "y": 488, "w": 92, "h": 13},
+    "pingo-doce-shelf-1": {"x": 466, "y": 440, "w": 16, "h": 56},
+    "pingo-doce-shelf-2": {"x": 516, "y": 440, "w": 16, "h": 56},
+    "pingo-doce-shelf-3": {"x": 566, "y": 440, "w": 16, "h": 56},
+    "pingo-doce-shelf-4": {"x": 616, "y": 440, "w": 16, "h": 56},
+    "pingo-doce-checkout": {"x": 456, "y": 528, "w": 56, "h": 13},
+}
+
+# The three round tables of Mon Café before M2-1.4 grew them.
+OLD_CAFE_TABLES = {key: value for key, value in OLD_PLACES.items() if key.startswith("mon-cafe-table")}
+
+
+# A gap a player (10 units wide) could just squeeze into (S-111).
+SQUEEZE_GAPS = range(10, 14)
+
+# The keys M2-1.4 added to the map.
+ROOM_STYLE_KEYS = ("pattern", "wall_face")
+MAP_STYLE_KEYS = ("deck_pattern", "deck_wall_face", "wall_face_height", "decor", "art_note")
+
+
+def broken(change):
+    """A copy of the real map with one thing changed by `change(copy)`."""
+    bad = copy.deepcopy(CAMPUS)
+    change(bad)
+    return bad
+
+
+def a_decor_entry(**changes):
+    """A change that replaces decor[0] with a good floor entry, changed by `changes`."""
+    entry = {"kind": "mat", "layer": "floor", "x": 300, "y": 200, "w": 20, "h": 8}
+    entry.update(changes)
+    return lambda bad: bad["decor"].__setitem__(0, entry)
+
+
+def without_new_things(campus):
+    """The map as it was before M2-1.4: no new keys and none of the new solids."""
+    old = copy.deepcopy(campus)
+    for key in MAP_STYLE_KEYS:
+        old.pop(key, None)
+    for room in old["rooms"]:
+        for key in ROOM_STYLE_KEYS:
+            room.pop(key, None)
+    old["solids"] = [solid for solid in old["solids"]
+                     if solid["kind"] in OLD_KINDS and solid["id"] not in NEW_WALL_IDS]
+    return old
+
+
+def lies_inside(inner, outer):
+    """The rectangle `inner` lies wholly inside `outer`; the edges may meet."""
+    return (outer["x"] <= inner["x"] and inner["x"] + inner["w"] <= outer["x"] + outer["w"]
+            and outer["y"] <= inner["y"] and inner["y"] + inner["h"] <= outer["y"] + outer["h"])
+
+
+def touches(first, second):
+    """The two rectangles overlap or meet at an edge."""
+    return (first["x"] <= second["x"] + second["w"] and second["x"] <= first["x"] + first["w"]
+            and first["y"] <= second["y"] + second["h"] and second["y"] <= first["y"] + first["h"])
+
+
+def gap_between(first, second, solids=()):
+    """The free space between two solids that face each other, or None.
+
+    Two solids face each other when they overlap along one axis (by more
+    than a point): then the gap is the distance along the other axis, 0 when
+    they touch. Solids that only lie diagonally to each other leave no lane
+    a player could get stuck in, and neither does a gap that a third solid of
+    `solids` fills completely.
+    """
+    left = max(first["x"], second["x"])
+    right = min(first["x"] + first["w"], second["x"] + second["w"])
+    top = max(first["y"], second["y"])
+    bottom = min(first["y"] + first["h"], second["y"] + second["h"])
+    if right > left and bottom > top:
+        return 0  # they overlap
+    if right > left:
+        between = {"x": left, "y": bottom, "w": right - left, "h": top - bottom}
+    elif bottom > top:
+        between = {"x": right, "y": top, "w": left - right, "h": bottom - top}
+    else:
+        return None
+    if any(lies_inside(between, third) for third in solids if third is not first and third is not second):
+        return None
+    return between["w"] if right <= left else between["h"]
+
+
+def run_node(mode, data):
+    finished = subprocess.run(
+        [NODE, str(DRAW_ART_IN_NODE), mode],
+        input=json.dumps(data),
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert finished.returncode == 0, finished.stderr
+    return json.loads(finished.stdout)
+
+
+# Accepted: the real map
+
+def test_every_room_names_a_floor_pattern_and_a_wall_face():
+    for room in CAMPUS["rooms"]:
+        assert room["pattern"] and room["wall_face"], room["id"]
+
+
+def test_the_deck_has_a_pattern_a_wall_face_and_faces_are_at_most_10_high():
+    assert CAMPUS["deck_pattern"] == "paving"
+    assert CAMPUS["deck_wall_face"] == "taupe-slats"
+    assert 0 < CAMPUS["wall_face_height"] <= 10
+
+
+def new_solids_in(room_id):
+    room = next(room for room in CAMPUS["rooms"] if room["id"] == room_id)
+    return [solid for solid in NEW_SOLIDS if lies_inside(solid, room)]
+
+
+def test_pingo_doce_has_its_new_furniture():
+    kinds = sorted(solid["kind"] for solid in new_solids_in("pingo-doce"))
+    assert kinds == ["fridge", "fridge", "fruit-stand", "hot-counter", "totem", "totem",
+                     "turnstile", "turnstile", "turnstile", "turnstile"]
+
+
+def test_mon_cafe_has_its_new_furniture_and_still_three_round_tables():
+    kinds = sorted(solid["kind"] for solid in new_solids_in("mon-cafe"))
+    assert kinds == ["grid-shelf", "high-table"]
+    tables = [solid for solid in SOLIDS if solid["kind"] == "round-table"]
+    # Grown from 14 to 30, so that a table with four chairs at the scale of
+    # the characters fits inside (round 9), and to 34 (round 10).
+    assert [(table["w"], table["h"]) for table in tables] == [(34, 34)] * 3
+
+
+def test_the_lecture_hall_has_a_lectern_on_the_stage():
+    [lectern] = new_solids_in("lecture-hall")
+    assert lectern["kind"] == "lectern"
+    board = next(solid for solid in SOLIDS if solid["id"] == "lecture-hall-board")
+    first_row = next(solid for solid in SOLIDS if solid["id"] == "lecture-hall-bench-1")
+    assert lectern["y"] + lectern["h"] < first_row["y"]  # in front of the rows
+    assert lectern["x"] + lectern["w"] < board["x"]  # beside the long table
+
+
+def test_the_ctt_has_a_central_aisle_between_its_two_halves_of_tables():
+    left = sorted((solid for solid in SOLIDS if solid["kind"] == "table-row"), key=lambda solid: solid["y"])
+    right = sorted((solid for solid in SOLIDS if solid["kind"] == "study-table"), key=lambda solid: solid["y"])
+    assert len(left) == len(right) == 8
+    for left_table, right_table in zip(left, right):
+        assert left_table["y"] == right_table["y"]
+        # Wide enough for two players side by side (round 9).
+        assert right_table["x"] - (left_table["x"] + left_table["w"]) >= 24
+        # tests/test_movement.py walks straight down at x 85 to 95 into the first row.
+        assert left_table["x"] <= 85 and left_table["x"] + left_table["w"] >= 95
+
+
+def test_the_ctt_has_pillars_along_its_outside_wall():
+    pillars = new_solids_in("ctt")
+    assert {solid["kind"] for solid in pillars} == {"study-table", "pillar"}
+    assert [(solid["w"], solid["h"]) for solid in pillars if solid["kind"] == "pillar"] == [(8, 8)] * 3
+
+
+def test_the_canteen_has_a_microwave_corner_and_its_other_fittings():
+    kinds = sorted(solid["kind"] for solid in new_solids_in("canteen"))
+    assert kinds == ["fridge", "microwave-counter", "recycling-bins", "tray-rack", "water-fountain"]
+
+
+def on_the_deck(solid):
+    """The solid lies in no room: on the deck or in its corridor."""
+    return not any(touches(solid, room) for room in CAMPUS["rooms"])
+
+
+def test_every_new_solid_lies_in_a_room_or_on_the_deck():
+    rooms = ["pingo-doce", "mon-cafe", "lecture-hall", "ctt", "canteen"]
+    on_deck = [solid for solid in NEW_SOLIDS if on_the_deck(solid)]
+    assert sum(len(new_solids_in(room)) for room in rooms) + len(on_deck) == len(NEW_SOLIDS)
+
+
+def test_the_deck_and_its_corridor_have_their_new_furniture():
+    kinds = sorted(solid["kind"] for solid in NEW_SOLIDS if on_the_deck(solid))
+    assert kinds == sorted(["wall", "wall", "staircase", "sofa", "sofa", "cube-divider", "cube-divider", "black-column",
+                            "deck-bench", "deck-bench", "deck-bench", "lamp-post", "lamp-post", "lamp-post",
+                            "lamp-post", "bike-rack", "surfboard-rack"])
+
+
+@pytest.mark.parametrize("door", [door for door in CAMPUS["doors"]], ids=lambda door: door["room"])
+def test_the_corridor_leaves_20_units_free_in_front_of_every_door(door):
+    # The strip in front of the door, on the deck's side, 20 units deep.
+    wall_line = door["y"] + door["h"] / 2
+    room = next(room for room in CAMPUS["rooms"] if room["id"] == door["room"])
+    room_is_below = room["y"] + room["h"] / 2 > wall_line
+    front = {"x": door["x"], "w": door["w"], "h": 20,
+             "y": wall_line - 3 - 20 if room_is_below else wall_line + 3}
+    for solid in SOLIDS:
+        overlaps = (solid["x"] < front["x"] + front["w"] and front["x"] < solid["x"] + solid["w"]
+                    and solid["y"] < front["y"] + front["h"] and front["y"] < solid["y"] + solid["h"])
+        assert not overlaps, (door["room"], solid["id"])
+
+
+def test_nothing_new_lies_beside_the_hedge_where_the_emergency_button_goes():
+    zone = {"x": 556, "y": 230, "w": 680 - 556, "h": 40}
+    for solid in NEW_SOLIDS:
+        assert not touches(solid, zone), solid["id"]
+    for item in CAMPUS["decor"]:
+        # The threshold of the wide opening in the corridor wall lies flat on
+        # the wall line (y 227-233) and may cross the zone's top edge.
+        if item["kind"].startswith("deck-door"):
+            assert item["y"] + item["h"] <= 233, item
+            continue
+        assert not touches(item, zone), item
+
+
+def test_every_decor_on_a_solid_lies_inside_a_solid():
+    on_solids = [item for item in CAMPUS["decor"] if item["layer"] == "on"]
+    assert on_solids
+    for item in on_solids:
+        assert any(lies_inside(item, solid) for solid in SOLIDS), item
+
+
+def test_every_decor_on_a_wall_touches_a_wall():
+    on_walls = [item for item in CAMPUS["decor"] if item["layer"] == "wall"]
+    assert on_walls
+    walls = [solid for solid in SOLIDS if solid["kind"] == "wall"]
+    for item in on_walls:
+        assert any(touches(item, wall) for wall in walls), item
+
+
+@pytest.mark.parametrize("solid", NEW_SOLIDS, ids=lambda solid: solid["id"])
+def test_a_new_solid_leaves_no_gap_a_player_could_just_squeeze_into(solid):
+    for other in SOLIDS:
+        if other is not solid:
+            assert gap_between(solid, other, SOLIDS) not in SQUEEZE_GAPS, (solid["id"], other["id"])
+
+
+@pytest.mark.parametrize("table_id", sorted(OLD_CAFE_TABLES))
+def test_a_grown_cafe_table_leaves_no_gap_a_player_could_just_squeeze_into(table_id):
+    table = next(solid for solid in SOLIDS if solid["id"] == table_id)
+    for other in SOLIDS:
+        if other is not table:
+            assert gap_between(table, other, SOLIDS) not in SQUEEZE_GAPS, (table_id, other["id"])
+
+
+@pytest.mark.parametrize("row", [solid for solid in SOLIDS if solid["kind"] == "table-row"], ids=lambda solid: solid["id"])
+def test_a_shortened_ctt_row_leaves_no_gap_a_player_could_just_squeeze_into(row):
+    for other in SOLIDS:
+        if other is not row:
+            assert gap_between(row, other, SOLIDS) not in SQUEEZE_GAPS, (row["id"], other["id"])
+
+
+def test_the_spawn_reaches_every_station():
+    grid = paths.Grid(SOLIDS, CAMPUS["width"], CAMPUS["height"])
+    spawn = grid.nearest_free_point(CAMPUS["spawn"]["x"], CAMPUS["spawn"]["y"], paths.GRID_STEP)
+    reached = grid.distances_from(spawn)
+    for station in CAMPUS["stations"]:
+        point = grid.nearest_free_point(station["x"], station["y"], CAMPUS["use_range"])
+        assert point in reached, station["id"]
+
+
+def as_before_this_to_do(campus):
+    """The map as it was on main before M2-1.4: nothing added, and every old
+    solid back in its old place."""
+    old = without_new_things(campus)
+    for solid in old["solids"]:
+        solid.update(OLD_PLACES.get(solid["id"], {}))
+    return old
+
+
+def without_the_new_solids_of_pingo_doce(campus):
+    changed = copy.deepcopy(campus)
+    pingo_ids = {solid["id"] for solid in new_solids_in("pingo-doce")}
+    changed["solids"] = [solid for solid in changed["solids"] if solid["id"] not in pingo_ids]
+    return changed
+
+
+def test_the_new_furniture_of_pingo_doce_changes_no_walking_distance_of_the_duel():
+    # Measured for this to-do: spawn to station 5 stays 262.5, 4 to 5 stays 1031.5.
+    stations = sorted(minigames.MINIGAMES)
+    before = station_distances(without_the_new_solids_of_pingo_doce(CAMPUS), stations)
+    after = station_distances(CAMPUS, stations)
+    assert after.keys() == before.keys()
+    for pair, distance in before.items():
+        # Only the order of adding up the steps may differ.
+        assert after[pair] == pytest.approx(distance, abs=0.001), pair
+
+
+def test_the_walking_distances_changed_only_a_little():
+    # Measured for this to-do, against the map before it (round 9, furniture
+    # at the scale of the characters):
+    # - every way to station 4 became 5 to 10 % shorter (the central aisle
+    #   of the CTT; spawn to 4: 783.1 -> 718.1);
+    # - the ways to station 3 became up to 3.2 % longer (the larger canteen
+    #   tables; 1 to 3: 800.7 -> 826.7); the others changed by less.
+    # - round 10 (tables 10-15 % larger again): 1 to 3 is now 3.8 % longer
+    #   than on main (800.7 -> 831.4).
+    # - round 10, the wall between corridor and deck: spawn to 2 is now 5.7 %
+    #   longer than on main (327.2 -> 346.0); 1 to 5 and 2 to 5 grew a
+    #   little, 4 to 5 too but it stays 5.4 % shorter than on main.
+    # The ways to station 4 may be up to 10 % shorter and never longer; no
+    # other way is shorter than on main or more than 6 % longer.
+    stations = sorted(minigames.MINIGAMES)
+    before = station_distances(as_before_this_to_do(CAMPUS), stations)
+    after = station_distances(CAMPUS, stations)
+    for pair, distance in before.items():
+        if 4 in pair:
+            assert distance * 0.9 <= after[pair] <= distance, pair
+        else:
+            assert distance - 0.001 <= after[pair] <= distance * 1.06, pair
+
+
+# Accepted: edge cases
+
+def test_an_old_map_without_any_of_the_new_keys_still_loads():
+    old = without_new_things(CAMPUS)
+    assert check_campus(old) == old
+
+
+def test_an_empty_list_of_decor_is_accepted():
+    assert check_campus(broken(lambda bad: bad.update(decor=[])))["decor"] == []
+
+
+@pytest.mark.parametrize("face_height", [10, 0.5, 8])
+def test_a_wall_face_up_to_10_high_is_accepted(face_height):
+    assert check_campus(broken(lambda bad: bad.update(wall_face_height=face_height)))
+
+
+def test_decor_may_sit_on_fractions_of_a_unit_and_at_the_edge_of_the_map():
+    # Unlike solids, decor is never walked against, so it need not sit on whole units.
+    assert check_campus(broken(a_decor_entry(x=0, y=0.5, w=12.25, h=3)))
+    assert check_campus(broken(a_decor_entry(x=660, y=648, w=20, h=20)))
+
+
+def test_a_text_of_exactly_40_characters_is_accepted():
+    assert check_campus(broken(a_decor_entry(kind="sign", text="X" * 40)))
+
+
+@pytest.mark.parametrize("layer", ["floor", "wall", "on"])
+def test_every_layer_is_accepted_by_the_server(layer):
+    # Where a "wall" or "on" entry lies is a rule tested on the real map above.
+    assert check_campus(broken(a_decor_entry(layer=layer)))
+
+
+def test_the_two_sign_totems_show_a_cup_and_a_basket():
+    totems = [solid for solid in NEW_SOLIDS if solid["kind"] == "totem"]
+    assert sorted(totem["icon"] for totem in totems) == ["basket", "cup"]
+
+
+def test_a_solid_without_an_icon_is_still_accepted():
+    assert check_campus(broken(lambda bad: bad["solids"][-1].pop("icon", None)))
+
+
+# Rejected: names of drawings
+
+@pytest.mark.parametrize("key", ROOM_STYLE_KEYS)
+@pytest.mark.parametrize("name", ["", "Wood Slats", "wood_slats", "-slats", 5, None, ["planks"], "a" * 41])
+def test_a_room_style_that_is_not_a_name_is_refused_and_named(key, name):
+    with pytest.raises(CampusError, match=rf"\"{key}\" of rooms\[2\] must be a name"):
+        check_campus(broken(lambda bad: bad["rooms"][2].update({key: name})))
+
+
+@pytest.mark.parametrize("icon", ["", "Coffee Cup", 3, None])
+def test_a_solid_icon_that_is_not_a_name_is_refused_and_named(icon):
+    totem = next(index for index, solid in enumerate(SOLIDS) if solid["kind"] == "totem")
+    with pytest.raises(CampusError, match=rf"\"icon\" of solids\[{totem}\] must be a name"):
+        check_campus(broken(lambda bad: bad["solids"][totem].update(icon=icon)))
+
+
+@pytest.mark.parametrize("key", ["deck_pattern", "deck_wall_face"])
+@pytest.mark.parametrize("name", ["", "Paving", 0, True])
+def test_a_deck_style_that_is_not_a_name_is_refused_and_named(key, name):
+    with pytest.raises(CampusError, match=rf"\"{key}\" of the map must be a name"):
+        check_campus(broken(lambda bad: bad.update({key: name})))
+
+
+@pytest.mark.parametrize("face_height", [0, -8, 10.5, 11, 100])
+def test_a_wall_face_height_outside_0_to_10_is_refused(face_height):
+    with pytest.raises(CampusError, match="wall_face_height"):
+        check_campus(broken(lambda bad: bad.update(wall_face_height=face_height)))
+
+
+@pytest.mark.parametrize("face_height", ["8", None, True, float("nan"), float("inf"), 10 ** 400])
+def test_a_wall_face_height_that_is_not_an_ordinary_number_is_refused(face_height):
+    with pytest.raises(CampusError, match="wall_face_height"):
+        check_campus(broken(lambda bad: bad.update(wall_face_height=face_height)))
+
+
+# Rejected: decor
+
+@pytest.mark.parametrize("decor", [{}, "mat", 5, None])
+def test_decor_that_is_not_a_list_is_refused(decor):
+    with pytest.raises(CampusError, match="\"decor\" of the map must be a list"):
+        check_campus(broken(lambda bad: bad.update(decor=decor)))
+
+
+@pytest.mark.parametrize("entry", [None, "mat", [300, 200, 20, 8]])
+def test_a_decor_entry_that_is_not_an_object_is_refused_and_named(entry):
+    with pytest.raises(CampusError, match=r"decor\[3\] must be an object"):
+        check_campus(broken(lambda bad: bad["decor"].__setitem__(3, entry)))
+
+
+@pytest.mark.parametrize("key", ["kind", "layer", "x", "y", "w", "h"])
+def test_a_decor_entry_without_a_required_key_is_refused_and_named(key):
+    with pytest.raises(CampusError, match=rf"decor\[1\] has no \"{key}\""):
+        check_campus(broken(lambda bad: bad["decor"][1].pop(key)))
+
+
+@pytest.mark.parametrize("change", [
+    {"w": 0}, {"h": -3}, {"x": -1}, {"y": 665}, {"x": 670}, {"x": "300"}, {"w": float("nan")}, {"y": 10 ** 400},
+])
+def test_a_decor_entry_with_a_broken_rectangle_is_refused_and_named(change):
+    with pytest.raises(CampusError, match=r"decor\[0\]"):
+        check_campus(broken(a_decor_entry(**change)))
+
+
+@pytest.mark.parametrize("layer", ["ceiling", "", "Floor", None, 1])
+def test_a_decor_entry_on_an_unknown_layer_is_refused(layer):
+    with pytest.raises(CampusError, match=r"\"layer\" of decor\[0\] must be \"floor\", \"wall\" or \"on\""):
+        check_campus(broken(a_decor_entry(layer=layer)))
+
+
+@pytest.mark.parametrize("kind", ["", "Coffee Machine", 7, None])
+def test_a_decor_entry_whose_kind_is_not_a_name_is_refused(kind):
+    with pytest.raises(CampusError, match=r"\"kind\" of decor\[0\] must be a name"):
+        check_campus(broken(a_decor_entry(kind=kind)))
+
+
+@pytest.mark.parametrize("key", ["colour_", "solid", "id", "color"])
+def test_a_decor_entry_with_an_unknown_key_is_refused_and_names_the_key(key):
+    with pytest.raises(CampusError, match=rf"decor\[0\] has the unknown key \"{key}\""):
+        check_campus(broken(a_decor_entry(**{key: "x"})))
+
+
+@pytest.mark.parametrize("words", ["", 5, None, ["SIGN"]])
+def test_a_decor_text_that_is_not_a_text_is_refused(words):
+    with pytest.raises(CampusError, match=r"\"text\" of decor\[0\] must be a text"):
+        check_campus(broken(a_decor_entry(text=words)))
+
+
+def test_a_decor_text_longer_than_40_characters_is_refused():
+    with pytest.raises(CampusError, match=r"\"text\" of decor\[0\] is longer than 40"):
+        check_campus(broken(a_decor_entry(text="X" * 41)))
+
+
+@pytest.mark.parametrize("colour", ["green", "#3E9B4", "#3E9B4FF", "3E9B4F", "#GG9B4F", 0x3E9B4F, None])
+def test_a_decor_colour_that_is_not_a_colour_is_refused(colour):
+    with pytest.raises(CampusError, match=r"\"colour\" of decor\[0\] must be a colour"):
+        check_campus(broken(a_decor_entry(colour=colour)))
+
+
+# Rejected: the placing rules catch what they are meant to catch
+
+def test_the_squeeze_rule_finds_the_old_gap_between_tree_3_and_the_hedge():
+    tree = next(solid for solid in SOLIDS if solid["id"] == "deck-tree-3")
+    old_hedge = {"x": 566, "y": 236, "w": 58, "h": 26}  # before S-111
+    assert gap_between(tree, old_hedge) == 10
+
+
+def test_solids_that_only_lie_diagonally_have_no_gap():
+    assert gap_between({"x": 0, "y": 0, "w": 10, "h": 10}, {"x": 21, "y": 22, "w": 5, "h": 5}) is None
+
+
+def test_a_gap_filled_by_a_third_solid_is_no_gap():
+    above = {"x": 0, "y": 0, "w": 10, "h": 10}
+    below = {"x": 0, "y": 22, "w": 10, "h": 10}
+    filler = {"x": -5, "y": 10, "w": 30, "h": 12}
+    assert gap_between(above, below) == 12
+    assert gap_between(above, below, [above, below, filler]) is None
+
+
+def test_a_sign_in_the_middle_of_a_room_touches_no_wall():
+    sign = {"x": 540, "y": 470, "w": 10, "h": 5}
+    walls = [solid for solid in SOLIDS if solid["kind"] == "wall"]
+    assert not any(touches(sign, wall) for wall in walls)
+
+
+def test_a_cup_beside_a_counter_lies_inside_no_solid():
+    cup = {"x": 600, "y": 540, "w": 4, "h": 4}  # half on the hot counter (y 545), half on the floor
+    assert not any(lies_inside(cup, solid) for solid in SOLIDS)
+
+
+# The drawing, with the page's own draw.js and art files
+
+@needs_node
+def test_every_drawing_the_map_names_is_there():
+    art = run_node("direct", {"campus": CAMPUS})["art"]
+    for room in CAMPUS["rooms"]:
+        assert room["pattern"] in art["floors"], room["id"]
+        assert room["wall_face"] in art["faces"], room["id"]
+    assert CAMPUS["deck_pattern"] in art["floors"]
+    assert CAMPUS["deck_wall_face"] in art["faces"]
+    for item in CAMPUS["decor"]:
+        assert item["kind"] in art["decor"], item
+    for kind in {solid["kind"] for solid in NEW_SOLIDS}:
+        assert kind in art["kinds"], kind
+    assert {"opening", "frame"} <= set(art["doors"])
+
+
+@needs_node
+def test_the_whole_map_draws_without_a_warning():
+    assert run_node("direct", {"campus": CAMPUS})["warnings"] == []
+
+
+@needs_node
+def test_room_names_are_still_the_only_texts_equal_to_a_room_name():
+    texts = [text["text"] for text in run_node("direct", {"campus": CAMPUS})["texts"]]
+    for room in CAMPUS["rooms"]:
+        assert texts.count(room["name"]) == 1, room["name"]
+    signs = [item["text"] for item in CAMPUS["decor"] if "text" in item]
+    assert "PINGO DOCE & GO" in texts
+    assert set(signs) <= set(texts)
+
+
+@needs_node
+def test_a_drawing_that_fails_falls_back_to_the_plain_one_with_one_warning():
+    # The art of the shelves throws: the four shelves are still drawn, in the
+    # plain green of draw.js, the rest of the map goes on, and there is one
+    # warning, not one per shelf.
+    plain = run_node("direct", {"campus": CAMPUS})
+    assert "#7DB55A" not in plain["fills"]
+    failing = run_node("direct", {"campus": CAMPUS, "failingKind": "shelf"})
+    assert "#7DB55A" in failing["fills"]
+    assert len(failing["warnings"]) == 1
+    assert [text["text"] for text in failing["texts"]].count("Main Deck") == 1
+    assert "PANTRY" in [text["text"] for text in failing["texts"]]
+
+
+def tiles_frames(frames):
+    return run_node("tiles", {"campus": CAMPUS, "frames": frames})["frames"]
+
+
+@needs_node
+def test_tiles_cover_the_canvas_and_sit_on_whole_pixels():
+    camera = {"scale": 9.846, "e": -3456.37, "f": -2211.81, "width": 2560, "height": 1600}
+    [frame] = tiles_frames([camera])
+    xs = sorted({copy_["x"] for copy_ in frame["copies"]})
+    ys = sorted({copy_["y"] for copy_ in frame["copies"]})
+    assert all(float(value).is_integer() for value in xs + ys)
+    assert xs[0] <= 0 and xs[-1] + 512 >= camera["width"]
+    assert ys[0] <= 0 and ys[-1] + 512 >= camera["height"]
+    # Neighbouring tiles meet exactly: no seam, no overlap.
+    assert all(right - left == 512 for left, right in zip(xs, xs[1:]))
+    assert all(lower - upper == 512 for upper, lower in zip(ys, ys[1:]))
+    assert len(frame["copies"]) == len(xs) * len(ys)
+
+
+@needs_node
+def test_tiles_are_drawn_once_and_again_only_for_a_new_zoom():
+    camera = {"scale": 9.846, "e": -3456.37, "f": -2211.81, "width": 2560, "height": 1600}
+    moved = dict(camera, e=camera["e"] - 3.4)  # the camera moved a little
+    zoomed = dict(camera, scale=7.5)  # the window was resized
+    first, again, after_moving, after_zooming = tiles_frames([camera, camera, moved, zoomed])
+    assert first["newTiles"] == len(first["copies"])
+    assert again["newTiles"] == 1  # nothing new is seen: one tile is drawn ahead
+    assert after_moving["newTiles"] <= 4  # at most one new column of tiles
+    # Every tile is drawn again at the new zoom (into the old canvases).
+    assert len(after_zooming["drawnAt"]) == len(after_zooming["copies"])
+
+
+@needs_node
+def test_standing_still_draws_the_ring_around_the_picture_one_tile_per_frame_and_then_nothing():
+    camera = {"scale": 9.846, "e": -3456.37, "f": -2211.81, "width": 2560, "height": 1600}
+    frames = tiles_frames([camera] * 60)
+    columns = len({copy_["x"] for copy_ in frames[0]["copies"]})
+    rows = len({copy_["y"] for copy_ in frames[0]["copies"]})
+    ring = (columns + 2) * (rows + 2) - columns * rows
+    later = [frame["newTiles"] for frame in frames[1:]]
+    assert max(later) == 1
+    assert sum(later) == ring
+    assert later[-5:] == [0, 0, 0, 0, 0]
+
+
+# The memory budget of draw.js for tile canvases: 64 MiB of 512 x 512 tiles.
+MOST_TILES = 64
+
+
+@needs_node
+def test_walking_across_the_whole_map_stays_within_the_memory_budget_for_tiles():
+    # Walking from the left of the map to the right and back, many more tiles
+    # are drawn than fit into the budget; the canvases are used again, so
+    # never more than the budget's worth of canvases is made.
+    frames = [{"scale": 9.846, "e": 1280 - x * 9.846, "f": 800 - 300 * 9.846, "width": 2560, "height": 1600}
+              for x in range(0, 680, 10)]
+    result = tiles_frames(frames + list(reversed(frames)) + frames)
+    canvases_made = sum(frame["newTiles"] for frame in result)
+    tiles_drawn = sum(len(frame["drawnAt"]) for frame in result)
+    assert tiles_drawn > MOST_TILES
+    assert canvases_made <= MOST_TILES
+
+
+@needs_node
+def test_a_new_zoom_draws_its_tiles_into_the_old_canvases():
+    camera = {"scale": 9.846, "e": -3456.0, "f": -2211.0, "width": 2560, "height": 1600}
+    zoomed = dict(camera, scale=9.0)
+    first, after_zooming = tiles_frames([camera, zoomed])
+    assert first["newTiles"] == len(first["copies"])
+    assert after_zooming["newTiles"] == max(0, len(after_zooming["copies"]) - len(first["copies"]))
+    assert len(after_zooming["drawnAt"]) == len(after_zooming["copies"])
+
+
+@needs_node
+def test_a_tile_drawn_half_ahead_that_comes_into_view_is_finished_not_drawn_again():
+    start = {"scale": 9.846, "e": -3456.0, "f": -2211.0, "width": 2560, "height": 1600}
+    nudged = dict(start, e=start["e"] - 40)  # no new tile: one is started ahead, on the right
+    walked_on = dict(start, e=start["e"] - 40 - 512)  # the ring's right column comes into view
+    frames = tiles_frames([start, nudged, walked_on])
+    [ahead] = frames[1]["drawnAt"]
+    # In the last frame that tile is copied where it belongs, one tile further left ...
+    shifted = {"x": ahead["x"] - 512, "y": ahead["y"]}
+    assert shifted in frames[2]["copies"]
+    # ... and it was finished, not started again: the frame starts only the
+    # other tiles of the new column.
+    started = frames[2]["drawnAt"]
+    assert shifted not in started
+    rows = len({copy_["y"] for copy_ in frames[2]["copies"]})
+    assert len(started) == rows - 1
+
+
+@needs_node
+def test_tiles_ahead_are_drawn_in_the_way_the_camera_moves_first():
+    # The camera moves right (the map's corner moves left on the canvas), not
+    # far enough to need a new tile: the tile started ahead in that frame
+    # lies on the right-hand side of the ring, and the next frame finishes it
+    # without starting another one.
+    start = {"scale": 9.846, "e": -3456.0, "f": -2211.0, "width": 2560, "height": 1600}
+    moved = dict(start, e=start["e"] - 40)
+    frames = tiles_frames([start, moved, moved])
+    right_edge = max(copy_["x"] for copy_ in frames[1]["copies"]) + 512
+    [ahead] = frames[1]["drawnAt"]
+    assert ahead["x"] == right_edge
+    assert frames[2]["drawnAt"] == []
+
+
+@needs_node
+def test_tiles_ahead_follow_the_camera_moving_up_too():
+    start = {"scale": 9.846, "e": -3456.0, "f": -2211.0, "width": 2560, "height": 1600}
+    moved = dict(start, f=start["f"] + 40)  # the corner moves down: the camera moves up
+    frames = tiles_frames([start, moved, moved])
+    top_edge = min(copy_["y"] for copy_ in frames[1]["copies"]) - 512
+    [ahead] = frames[1]["drawnAt"]
+    assert ahead["y"] == top_edge
+
+
+@needs_node
+def test_without_the_art_of_doors_a_door_is_still_drawn_plain():
+    # A door's opening that fails is drawn as before: a strip of the deck's colour.
+    result = run_node("direct", {"campus": CAMPUS, "failingDoor": True})
+    assert CAMPUS["colours"]["deck"] in result["fills"]
+    assert len(result["warnings"]) == 1
+
+
+@needs_node
+def test_a_tile_edge_through_a_glass_leaf_of_a_deck_door_still_draws_the_leaf():
+    # A zoom at which the first tile ends at x 330 exactly: the left leaf of
+    # the opening above the pool (x 326.5-338.5) is cut by that edge. Only
+    # that tile is on the canvas, and the doors of the rooms (whose leaves
+    # have the same glass colour) are taken out, so the glass colour can
+    # only come from the deck door's leaf.
+    campus = copy.deepcopy(CAMPUS)
+    campus["doors"] = []
+    scale = 512 / 330
+    camera = {"scale": scale, "e": 0, "f": 0, "width": 512, "height": 512}
+    [frame] = run_node("tiles", {"campus": campus, "frames": [camera]})["frames"]
+    assert len(frame["copies"]) == 1
+    assert "rgba(170, 216, 234, 0.7)" in frame["fills"]
