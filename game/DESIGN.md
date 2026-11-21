@@ -95,6 +95,7 @@ All characters are the same size and the same speed, they differ only in how the
 
 - Top left: name of the room you are standing in.
 - Top centre: progress bar of the group work.
+- Below the progress bar, only for the own Free Rider while he hides in Classic: “Hidden” (S-128).
 - Right: your own task list with the room, finished tasks crossed out.
 - Bottom right: large buttons “Use”, “Report” and, for the Free Rider, “Fail”. A button is grey as long as it would do nothing.
 - Messages appear briefly at the top centre, errors in coral. On the lobby screen they stand over the map, not over the panel; in a narrow window, where the panel is below the map and the page scrolls, they appear at the bottom centre instead, so they never cover the lobby code (S-113).
@@ -167,7 +168,7 @@ If someone leaves the round, that player counts as failed, and their open tasks 
 
 In all modes, players walk through each other, and nobody can block a door.
 
-**Hiding spots:** There are four marked places, shown on the map as dashed circles: in the aisle between the shelves in Pingo Doce, next to the bookshelf of the CTT Student Hall, in the corner of the Canteen and in the hedge on the Main Deck. Anyone who stands there is visible to others only from very close. Your own character becomes slightly transparent there, so that you notice that you are hidden. Everyone can hide, including the Free Rider.
+**Hiding spots:** There are four marked places, shown on the map as dashed circles: in the aisle between the shelves in Pingo Doce, next to the bookshelf of the CTT Student Hall, in the corner of the Canteen and in the hedge on the Main Deck. Everybody can walk into the hedge. Only the Free Rider hides, and only in Classic: a living Free Rider who stands in a hiding spot is visible to the living High Performers only within 35 map units; ghosts and the other Free Rider see him from anywhere. A meeting does not reveal him. A High Performer or a ghost in a hiding spot is visible like anywhere else, and in the lobby and in Duel nobody hides. The hidden Free Rider sees his own character half transparent and the word “Hidden” in the Classic panel, so that he notices that he is hidden; nobody else sees any of it (S-124 to S-131).
 
 If time allows: Sabotage “WiFi down”. The Free Rider locks all stations until someone restarts the router in the CTT Student Hall.
 
