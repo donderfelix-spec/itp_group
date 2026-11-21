@@ -84,8 +84,10 @@ OLD_PLACES = {
     "pingo-doce-checkout": {"x": 456, "y": 528, "w": 56, "h": 13},
 }
 
-# The three round tables of Mon Café before M2-1.4 grew them.
-OLD_CAFE_TABLES = {key: value for key, value in OLD_PLACES.items() if key.startswith("mon-cafe-table")}
+# The round tables of Mon Café that M2-1.4 grew and that are still on the
+# map: M2-1.19 took out mon-cafe-table-1, in front of the door (S-125).
+OLD_CAFE_TABLES = {key: value for key, value in OLD_PLACES.items()
+                   if key.startswith("mon-cafe-table") and any(solid["id"] == key for solid in SOLIDS)}
 
 
 # A gap a player (10 units wide) could just squeeze into (S-111).
@@ -194,17 +196,19 @@ def new_solids_in(room_id):
 
 def test_pingo_doce_has_its_new_furniture():
     kinds = sorted(solid["kind"] for solid in new_solids_in("pingo-doce"))
+    # Two turnstile posts on both sides of one wide lane since M2-1.19 (S-125).
     assert kinds == ["fridge", "fridge", "fruit-stand", "hot-counter", "totem", "totem",
-                     "turnstile", "turnstile", "turnstile", "turnstile"]
+                     "turnstile", "turnstile"]
 
 
-def test_mon_cafe_has_its_new_furniture_and_still_three_round_tables():
+def test_mon_cafe_has_its_new_furniture_and_two_round_tables():
     kinds = sorted(solid["kind"] for solid in new_solids_in("mon-cafe"))
     assert kinds == ["grid-shelf", "high-table"]
     tables = [solid for solid in SOLIDS if solid["kind"] == "round-table"]
     # Grown from 14 to 30, so that a table with four chairs at the scale of
-    # the characters fits inside (round 9), and to 34 (round 10).
-    assert [(table["w"], table["h"]) for table in tables] == [(34, 34)] * 3
+    # the characters fits inside (round 9), and to 34 (round 10). The table
+    # in front of the door was taken out in M2-1.19 (S-125).
+    assert [(table["w"], table["h"]) for table in tables] == [(34, 34)] * 2
 
 
 def test_the_lecture_hall_has_a_lectern_on_the_stage():
