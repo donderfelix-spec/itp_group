@@ -198,11 +198,9 @@ Game.world = Game.world || {};
     ctx.strokeStyle = OUTLINE;
     ctx.lineWidth = 0.5;
     ctx.strokeRect(item.x + 0.3, item.y + 0.3, item.w - 0.6, item.h - 0.6);
-    var leaves = ["#5FA86B", "#7DBE7A", "#4E9659"];
-    for (var x = item.x + 2; x < item.x + item.w - 1; x += 3.2) {
-      var colour = util.pick(leaves, x, item.y);
-      util.circle(ctx, x, item.y + item.h * 0.35, 1.5, colour, 0.35);
-      util.ellipse(ctx, x + 0.8, item.y + item.h * 0.68, 0.8, 1.6, colour, 0.3);
+    for (var x = item.x + 3; x < item.x + item.w - 2; x += 4.6) {
+      util.foliage(ctx, x, item.y + item.h * 0.4, 2.2, util.LEAVES, 4);
+      util.ellipse(ctx, x + 1, item.y + item.h * 0.78, 0.8, 1.4, "#4E9659", 0.3); // hanging leaves
     }
   };
 
@@ -279,7 +277,7 @@ Game.world = Game.world || {};
     var y = table.y + table.h / 2;
     var half = Math.min(table.w, table.h) / 2;
     var chairSize = half * 0.5;
-    var distance = half * 0.72;
+    var distance = half * 0.68;
     for (var i = 0; i < 4; i++) {
       var angle = i * Math.PI / 2; // right, below, left, above
       // The chair at this angle faces the middle: its back points outwards.
@@ -305,9 +303,10 @@ Game.world = Game.world || {};
       var along = (i + 0.5) * spacing;
       var stoolX = alongWall ? bar.x + depth + (bar.w - depth) / 2 : bar.x + along;
       var stoolY = alongWall ? bar.y + along : bar.y + depth + (bar.h - depth) / 2;
-      util.circle(ctx, stoolX, stoolY + 0.6, 2.1, "rgba(46, 42, 59, 0.14)", 0);
-      util.circle(ctx, stoolX, stoolY, 1.9, "#3A3646", 0.6);
-      util.circle(ctx, stoolX, stoolY, 1.1, "#5A5767", 0);
+      var stool = (alongWall ? bar.w : bar.h) * 0.23;
+      util.circle(ctx, stoolX, stoolY + 0.8, stool * 1.1, "rgba(46, 42, 59, 0.14)", 0);
+      util.circle(ctx, stoolX, stoolY, stool, "#3A3646", 0.6);
+      util.circle(ctx, stoolX, stoolY, stool * 0.55, "#5A5767", 0);
     }
     if (alongWall) {
       util.box(ctx, bar.x, bar.y, depth, bar.h, 0.8, WOOD, 0.9);
@@ -341,9 +340,8 @@ Game.world = Game.world || {};
       var h = upright ? length : shelf.h;
       var look = util.noise(x, y);
       if (look < 0.55) {
-        util.circle(ctx, x + w / 2, y + h / 2 + 0.6, Math.min(w, h) * 0.22, "#B8643A", 0.4); // a pot
-        util.circle(ctx, x + w / 2 - 0.8, y + h / 2 - 0.4, Math.min(w, h) * 0.26, "#5FA86B", 0.4); // leaves
-        util.circle(ctx, x + w / 2 + 0.9, y + h / 2 - 0.2, Math.min(w, h) * 0.2, "#7DBE7A", 0.4);
+        util.circle(ctx, x + w / 2, y + h / 2 + 0.8, Math.min(w, h) * 0.22, "#B8643A", 0.4); // a pot
+        util.foliage(ctx, x + w / 2, y + h / 2 - 0.4, Math.min(w, h) * 0.36, util.LEAVES, 5);
       } else {
         util.circle(ctx, x + w * 0.35, y + h / 2, Math.min(w, h) * 0.16, "#FFFFFF", 0.35); // two cups
         util.circle(ctx, x + w * 0.68, y + h / 2, Math.min(w, h) * 0.16, "#FFFFFF", 0.35);

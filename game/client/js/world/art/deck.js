@@ -70,7 +70,8 @@ Game.world = Game.world || {};
     ctx.lineCap = "butt";
   };
 
-  // A young tree: a gravel bed with a round crown of leaves.
+  // A young tree: a gravel bed, and above it a round crown of leaves with
+  // volume, its shadow falling on the paving.
   art.kinds.tree = function (ctx, bed) {
     util.box(ctx, bed.x, bed.y, bed.w, bed.h, 2, "#D9D2C2", 1);
     ctx.fillStyle = "#B8AE98";
@@ -79,33 +80,20 @@ Game.world = Game.world || {};
       var y = bed.y + 2 + util.noise(bed.y, bed.x + i * 1.7) * (bed.h - 4);
       ctx.fillRect(x, y, 0.8, 0.8);
     }
-    var middleX = bed.x + bed.w / 2;
-    var middleY = bed.y + bed.h / 2;
-    var radius = bed.w * 0.36;
-    util.ellipse(ctx, middleX + 1, middleY + 2.2, radius, radius * 0.8, "rgba(46, 42, 59, 0.16)", 0);
-    for (var leaf = 0; leaf < 6; leaf++) {
-      var angle = leaf / 6 * Math.PI * 2;
-      util.circle(ctx, middleX + Math.cos(angle) * radius * 0.45, middleY + Math.sin(angle) * radius * 0.45, radius * 0.58, "#5FA86B", 1);
-    }
-    util.circle(ctx, middleX, middleY, radius * 0.62, "#5FA86B", 0);
-    util.circle(ctx, middleX - radius * 0.25, middleY - radius * 0.3, radius * 0.32, "#7DBE7A", 0);
-    util.circle(ctx, middleX + radius * 0.3, middleY - radius * 0.05, radius * 0.18, "#7DBE7A", 0);
+    util.circle(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2 + 2, 2, "#7A5434", 0.6); // the trunk
+    util.foliage(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2 - 2, bed.w * 0.44, util.LEAVES, 7);
   };
 
-  // The hedge: a green block with a leafy, bumpy edge.
+  // The hedge: a row of leafy clumps with volume, inside its rectangle.
   art.kinds.hedge = function (ctx, hedge) {
-    var bump = 3;
-    util.shadowBelow(ctx, hedge.x + 2, hedge.y + hedge.h, hedge.w - 4, 1.6);
-    ctx.fillStyle = "#5FA86B";
-    ctx.strokeStyle = util.OUTLINE;
-    ctx.lineWidth = 1.4;
-    util.roundedPath(ctx, hedge.x, hedge.y, hedge.w, hedge.h, 7);
-    ctx.fill();
-    ctx.stroke();
-    for (var x = hedge.x + 5; x < hedge.x + hedge.w - 3; x += 6) {
-      util.circle(ctx, x, hedge.y + bump, 2.2, "#4E9659", 0);
-      util.circle(ctx, x + 3, hedge.y + hedge.h - bump, 2.2, "#4E9659", 0);
-      util.circle(ctx, x + 1.5, hedge.y + hedge.h / 2, 1.6, "#7DBE7A", 0);
+    util.box(ctx, hedge.x + 1, hedge.y + hedge.h * 0.35, hedge.w - 2, hedge.h * 0.6, 4, "#3F7F4E", 1.2);
+    var radius = hedge.h * 0.42;
+    var count = Math.max(2, Math.round((hedge.w - radius) / (radius * 1.3)));
+    var step = (hedge.w - 2 * radius) / (count - 1);
+    for (var i = 0; i < count; i++) {
+      var x = hedge.x + radius + i * step;
+      var y = hedge.y + hedge.h / 2 + (i % 2 === 0 ? -1 : 1);
+      util.foliage(ctx, x, y, radius, util.LEAVES, 5);
     }
   };
 
@@ -195,7 +183,7 @@ Game.world = Game.world || {};
 
   // ---- Fittings of the deck --------------------------------------------
 
-  // A wooden bench: slats on a dark frame.
+  // A wooden bench for two: slats on a dark frame.
   art.kinds["deck-bench"] = function (ctx, bench) {
     util.shadowBelow(ctx, bench.x + 1, bench.y + bench.h, bench.w - 2, 1.4);
     util.box(ctx, bench.x, bench.y, bench.w, bench.h, 1, "#C99662", 0.9);
@@ -348,8 +336,7 @@ Game.world = Game.world || {};
       ctx.rect(divider.x, divider.y, divider.w, cube);
     });
     var plantX = divider.x + size / 2;
-    util.circle(ctx, plantX, divider.y + cube / 2, cube * 0.3, "#5FA86B", 0.5);
-    util.circle(ctx, plantX + 1.2, divider.y + cube / 2 - 0.8, cube * 0.22, "#7DBE7A", 0.4);
+    util.foliage(ctx, plantX, divider.y + cube / 2 - 0.5, cube * 0.42, util.LEAVES, 5);
   };
 
   // A black square column.
@@ -373,5 +360,32 @@ Game.world = Game.world || {};
       util.line(ctx, stairs.x + 0.5, y + depth, stairs.x + stairs.w - 0.5, y + depth, "#B9BCC4", 0.5);
     }
     util.line(ctx, stairs.x + stairs.w - 1.6, stairs.y + 1, stairs.x + stairs.w - 1.6, stairs.y + stairs.h - 1, util.OUTLINE, 0.7);
+  };
+
+  // ---- The NOVA sign ---------------------------------------------------
+
+  // The word NOVA in heavy geometric capitals, set into the paving: dark
+  // letters with a light edge where the paving meets them, and below them a
+  // smaller line with the school's name.
+  art.kinds.logo = function (ctx, logo) {
+    var wordHeight = logo.h * 0.72;
+    var x = logo.x + logo.w / 2;
+    var wordY = logo.y + wordHeight / 2;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    var size = wordHeight * 1.32;
+    ctx.font = "900 " + size + "px system-ui, sans-serif";
+    if (typeof ctx.measureText === "function") {
+      var width = ctx.measureText("NOVA").width;
+      if (typeof width === "number" && width > logo.w) {
+        size = size * logo.w / width;
+        ctx.font = "900 " + size + "px system-ui, sans-serif";
+      }
+    }
+    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+    ctx.fillText("NOVA", x - 0.5, wordY - 0.6);
+    ctx.fillStyle = util.OUTLINE;
+    ctx.fillText("NOVA", x, wordY);
+    util.text(ctx, "School of Business & Economics", x, logo.y + logo.h * 0.88, logo.h * 0.16, util.OUTLINE, logo.w * 0.95);
   };
 })();

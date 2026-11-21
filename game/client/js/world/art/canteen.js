@@ -142,7 +142,7 @@ Game.world = Game.world || {};
   // square by at most 2 units) and, on some tables, trays with plates.
   art.kinds.table = function (ctx, table) {
     var inset = table.w * 0.17;
-    var chairSize = Math.min(table.w, table.h) * 0.22;
+    var chairSize = Math.min(table.w, table.h) * 0.28;
     var x = table.x + table.w / 2;
     var y = table.y + table.h / 2;
     var reach = table.w / 2 + 0.6 - chairSize / 2;

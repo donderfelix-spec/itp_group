@@ -99,10 +99,10 @@ Game.world = Game.world || {};
   // with its row of black chairs behind it: the students face the front.
   // Desk and chairs lie inside the solid; chairs overhang it by less than 2.
   art.kinds.bench = function (ctx, bench) {
-    var deskDepth = Math.min(4, bench.h * 0.45);
-    var chairSize = 4.2;
+    var deskDepth = Math.min(6, bench.h * 0.4);
+    var chairSize = 7.4;
     var steps = 12;
-    for (var x = bench.x + 6; x <= bench.x + bench.w - 5; x += 9.5) {
+    for (var x = bench.x + 9; x <= bench.x + bench.w - 8; x += 15) {
       var chairY = bench.y + deskDepth + bowAt((x - bench.x) / bench.w) + chairSize / 2 + 0.3;
       util.chair(ctx, x, chairY, chairSize, "#34313E", "down");
     }

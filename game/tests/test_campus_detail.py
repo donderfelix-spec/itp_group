@@ -164,10 +164,11 @@ def test_pingo_doce_has_its_new_furniture():
 
 def test_mon_cafe_has_its_new_furniture_and_still_three_round_tables():
     kinds = sorted(solid["kind"] for solid in new_solids_in("mon-cafe"))
-    assert kinds == ["grid-shelf", "grid-shelf", "high-table"]
+    assert kinds == ["grid-shelf", "high-table"]
     tables = [solid for solid in SOLIDS if solid["kind"] == "round-table"]
-    # Grown from 14 to 20, so that a table with four chairs fits inside.
-    assert [(table["w"], table["h"]) for table in tables] == [(20, 20)] * 3
+    # Grown from 14 to 30, so that a table with four chairs at the scale of
+    # the characters fits inside (round 9).
+    assert [(table["w"], table["h"]) for table in tables] == [(30, 30)] * 3
 
 
 def test_the_lecture_hall_has_a_lectern_on_the_stage():
@@ -317,23 +318,21 @@ def test_the_new_furniture_of_pingo_doce_changes_no_walking_distance_of_the_duel
 
 
 def test_the_walking_distances_changed_only_a_little():
-    # Measured for this to-do, against the map before it:
-    # - every way to station 4 became about 62 units shorter (the central
-    #   aisle of the CTT; spawn to 4: 783.1 -> 720.5);
-    # - every way to station 2 grew by 4.7 units (Mon Café's furniture);
-    # - the sofas and dividers along the corridor made the ways between the
-    #   doors of the top rooms up to 6.7 units longer (1 to 2: 598.4).
-    # Nothing may get more than 2.5 % longer (2 to 3 has both: +2.2 %),
-    # nothing but the ways to
-    # station 4 shorter.
+    # Measured for this to-do, against the map before it (round 9, furniture
+    # at the scale of the characters):
+    # - every way to station 4 became 5 to 10 % shorter (the central aisle
+    #   of the CTT; spawn to 4: 783.1 -> 718.1);
+    # - the ways to station 3 became up to 3.2 % longer (the larger canteen
+    #   tables; 1 to 3: 800.7 -> 826.7); the others changed by less.
+    # Nothing may get more than 4 % longer or more than 10 % shorter, and
+    # every way to station 4 must be shorter.
     stations = sorted(minigames.MINIGAMES)
     before = station_distances(as_before_this_to_do(CAMPUS), stations)
     after = station_distances(CAMPUS, stations)
     for pair, distance in before.items():
+        assert distance * 0.9 <= after[pair] <= distance * 1.04, pair
         if 4 in pair:
-            assert distance * 0.9 <= after[pair] <= distance * 1.025, pair
-        else:
-            assert distance - 0.001 <= after[pair] <= distance * 1.025, pair
+            assert after[pair] < distance, pair
 
 
 # Accepted: edge cases

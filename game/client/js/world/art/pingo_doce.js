@@ -284,25 +284,10 @@ Game.world = Game.world || {};
     util.line(ctx, x, potY, x, crownY + crown * 0.3, "#6B4A2E", 1.3);
     util.line(ctx, x, crownY + crown * 0.6, x - crown * 0.55, crownY + crown * 0.2, "#6B4A2E", 0.8);
     util.line(ctx, x, crownY + crown * 0.75, x + crown * 0.6, crownY + crown * 0.35, "#6B4A2E", 0.8);
-    // The crown: clumps of leaves. Their outlines are drawn first and thick,
-    // then all are filled, so only the outer edge of the crown stays dark.
-    var clumps = [[0, -0.45, 0.5], [-0.5, -0.1, 0.45], [0.5, -0.1, 0.45], [-0.3, 0.35, 0.42], [0.32, 0.38, 0.4], [0, 0, 0.5]];
-    clumps.forEach(function (clump) {
-      util.circle(ctx, crownX + clump[0] * crown, crownY + clump[1] * crown, clump[2] * crown, null, 1.4);
-    });
-    clumps.forEach(function (clump) {
-      util.circle(ctx, crownX + clump[0] * crown, crownY + clump[1] * crown, clump[2] * crown, "#8A9E78", 0);
-    });
-    // Small leaves: darker ones for depth, light silvery ones on top.
-    for (var i = 0; i < 14; i++) {
-      var angle = i * 2.4;
-      var distance = crown * (0.15 + 0.6 * util.noise(i, x));
-      var leafX = crownX + Math.cos(angle) * distance;
-      var leafY = crownY + Math.sin(angle) * distance;
-      util.ellipse(ctx, leafX, leafY, 0.9, 0.4, i % 2 === 0 ? "#6F8460" : "#C4D0B4", 0);
-    }
-    // A branch showing through a gap in the leaves.
-    util.line(ctx, crownX - crown * 0.1, crownY + crown * 0.2, crownX - crown * 0.45, crownY - crown * 0.15, "#6B4A2E", 0.5);
+    // The crown: grey-green olive leaves with volume, and a branch showing
+    // through a gap in them.
+    util.foliage(ctx, crownX, crownY, crown, util.OLIVE_LEAVES, 7);
+    util.line(ctx, crownX - crown * 0.1, crownY + crown * 0.25, crownX - crown * 0.5, crownY - crown * 0.1, "#6B4A2E", 0.6);
   }
 
   // ---- The bakery and hot-food counter ---------------------------------

@@ -197,7 +197,38 @@ Game.world = Game.world || {};
     }
   }
 
+  // Leaves with volume: a soft shadow on the ground, round clumps of leaves
+  // with one dark outline round all of them, a darker shadow side (lower
+  // right, away from the light), lighter highlights (upper left) and a few
+  // leaf marks. `colours` is {base, dark, light}; `clumps` how many clumps
+  // lie around the middle one.
+  function foliage(ctx, x, y, radius, colours, clumps) {
+    var count = clumps || 6;
+    var spots = [{ x: x, y: y, r: radius * 0.6 }];
+    for (var i = 0; i < count; i++) {
+      var angle = i / count * Math.PI * 2 + noise(x, y) * 0.8;
+      var reach = radius * (0.48 + 0.08 * noise(i, x));
+      spots.push({ x: x + Math.cos(angle) * reach, y: y + Math.sin(angle) * reach, r: radius * (0.46 + 0.08 * noise(y, i)) });
+    }
+    ellipse(ctx, x + radius * 0.2, y + radius * 0.7, radius * 1.05, radius * 0.5, "rgba(46, 42, 59, 0.16)", 0);
+    spots.forEach(function (spot) { circle(ctx, spot.x, spot.y, spot.r, null, Math.max(1, radius * 0.12)); });
+    spots.forEach(function (spot) { circle(ctx, spot.x, spot.y, spot.r, colours.dark, 0); });
+    spots.forEach(function (spot) { circle(ctx, spot.x - spot.r * 0.18, spot.y - spot.r * 0.2, spot.r * 0.78, colours.base, 0); });
+    spots.forEach(function (spot, index) {
+      if (spot.y <= y + radius * 0.1) {
+        circle(ctx, spot.x - spot.r * 0.35, spot.y - spot.r * 0.38, spot.r * 0.3, colours.light, 0);
+      }
+      ellipse(ctx, spot.x + spot.r * 0.25, spot.y + spot.r * 0.15, spot.r * 0.22, spot.r * 0.1, index % 2 ? colours.dark : colours.light, 0);
+    });
+  }
+
+  var LEAVES = { base: "#5FA86B", dark: "#3F7F4E", light: "#8FCB86" };
+  var OLIVE_LEAVES = { base: "#8A9E78", dark: "#667A57", light: "#C4D0B4" };
+
   art.util = {
+    foliage: foliage,
+    LEAVES: LEAVES,
+    OLIVE_LEAVES: OLIVE_LEAVES,
     OUTLINE: OUTLINE,
     mix: mix,
     lighter: lighter,

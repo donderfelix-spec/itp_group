@@ -27,11 +27,11 @@ Game.world = Game.world || {};
   // of the left half (`table-row`) and of the right half (`study-table`)
   // look the same.
   function studyTable(ctx, table) {
-    var chairSize = 4.2;
-    var top = table.y + 3;
-    var depth = table.h - 6;
+    var chairSize = 6.4;
+    var top = table.y + 4.4;
+    var depth = table.h - 8.8;
     var seats = [];
-    for (var x = table.x + 5; x <= table.x + table.w - 4; x += 9.5) {
+    for (var x = table.x + 6; x <= table.x + table.w - 5; x += 12) {
       seats.push(x);
     }
     seats.forEach(function (x, index) {
@@ -43,8 +43,8 @@ Game.world = Game.world || {};
     seats.forEach(function (x, index) {
       if (util.noise(index * 2.7, table.y) < 0.22) {
         var bagColour = util.pick(["#3A5A8C", "#C9493B", "#5E6270", "#E0A43A"], x, table.y);
-        util.box(ctx, x + 2.4, table.y + table.h - 3.4, 3, 2.6, 0.9, bagColour, 0.5);
-        util.line(ctx, x + 2.9, table.y + table.h - 3.2, x + 4.9, table.y + table.h - 3.2, util.darker(bagColour, 0.3), 0.4);
+        util.box(ctx, x + 3.4, table.y + table.h - 4.4, 4, 3.4, 1.1, bagColour, 0.5);
+        util.line(ctx, x + 4, table.y + table.h - 4.1, x + 6.8, table.y + table.h - 4.1, util.darker(bagColour, 0.3), 0.5);
       }
     });
     util.shadowBelow(ctx, table.x + 1, top + depth, table.w - 2, 0.8);
@@ -102,10 +102,8 @@ Game.world = Game.world || {};
     }
     var plantX = shelf.x + shelf.w - plantSpace / 2 - 0.5;
     var plantY = shelf.y + shelf.h / 2;
-    util.circle(ctx, plantX, plantY + 1, 2.4, "#B8643A", 0.6);
-    util.circle(ctx, plantX - 1.4, plantY - 0.6, 2.2, "#5FA86B", 0.6);
-    util.circle(ctx, plantX + 1.4, plantY - 0.8, 2, "#7DBE7A", 0.6);
-    util.circle(ctx, plantX, plantY - 2, 1.8, "#4E9659", 0.6);
+    util.circle(ctx, plantX, plantY + 1.4, 2.6, "#B8643A", 0.6);
+    util.foliage(ctx, plantX, plantY - 1, 3.6, util.LEAVES, 5);
   };
 
   // A white square pillar with a small black round sign saying "shh".
@@ -136,9 +134,7 @@ Game.world = Game.world || {};
     var radius = item.w / 2;
     for (var y = item.y + radius; y < item.y + item.h - radius; y += radius * 2.6) {
       var x = item.x + radius + (util.noise(y, 1) - 0.5) * 2;
-      util.circle(ctx, x + 0.8, y + 1.6, radius * 0.9, "rgba(46, 42, 59, 0.12)", 0);
-      util.circle(ctx, x, y, radius * 0.9, "#6DB65B", 0.8);
-      util.circle(ctx, x - radius * 0.3, y - radius * 0.3, radius * 0.35, "#8CCB7E", 0);
+      util.foliage(ctx, x, y, radius * 0.85, util.LEAVES, 6);
     }
   };
 
