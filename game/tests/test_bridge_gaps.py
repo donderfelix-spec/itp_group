@@ -24,7 +24,6 @@ import math
 import pytest
 
 from bridge_helpers import (
-    BRIDGED_STEP,
     EXACT,
     FELIX,
     FELIX_BAD_SECOND,
@@ -39,6 +38,7 @@ from bridge_helpers import (
     SERVER_STEP,
     SERVER_TICK,
     TICK,
+    UNEVEN_STEPS,
     Scenario,
     between,
     circling,
@@ -94,6 +94,9 @@ SCENARIOS = {
     "felix, two players": lambda: walk_right(looped(FELIX), until=WALK_UNTIL, other=SOMEBODY),
     "hold-ups, two players": lambda: walk_right(HOLD_UPS, until=WALK_UNTIL, other=SOMEBODY),
     "bad second, two players": lambda: walk_right(looped(FELIX_BAD_SECOND), until=WALK_UNTIL, other=SOMEBODY),
+    "felix, uneven ticks": lambda: walk_right(looped(FELIX), until=WALK_UNTIL, step_lengths=UNEVEN_STEPS),
+    "hold-ups, uneven ticks": lambda: walk_right(HOLD_UPS, until=WALK_UNTIL, step_lengths=UNEVEN_STEPS),
+    "bad second, uneven ticks": lambda: walk_right(looped(FELIX_BAD_SECOND), until=WALK_UNTIL, step_lengths=UNEVEN_STEPS),
     "felix, then a stop": lambda: walk_right(looped(FELIX), until=6500, release_at=4000),
     "long hold-up": lambda: walk_right(held(m30=1500), until=8500, release_at=6500),
 }
@@ -177,13 +180,33 @@ def test_with_felix_bunched_messages_the_speed_stays_between_80_and_100():
     assert max(drawn_speeds) <= 100, max(drawn_speeds)
 
 
-def test_with_felix_bunched_messages_steps_are_bridged_and_every_correction_is_small():
+def test_with_felix_bunched_messages_steps_are_bridged_and_none_needs_a_correction():
     numbers = played("felix")["bridge"]
     assert numbers["steps"] >= 10  # about one per 410 ms
     assert numbers["replaced"] >= numbers["steps"] - 1
-    assert numbers["largestCorrection"] < 1.5
-    assert numbers["largeCorrections"] == 0
+    # The bridge walks as far per step as the server did lately: its steps
+    # end where the server's do.
+    assert numbers["corrections"] == 0
     assert numbers["takenBack"] == 0
+
+
+@pytest.mark.parametrize("name", ["felix, uneven ticks", "hold-ups, uneven ticks", "bad second, uneven ticks"])
+def test_with_ticks_of_uneven_length_every_correction_is_small_and_the_walk_as_smooth(name):
+    # The server measures the time since its last tick; its steps are 6.0
+    # to 6.2 units long. The bridge walks the usual length, so a bridged
+    # step ends up to a fifth of a unit from the server's.
+    result = played(name)
+    numbers = result["bridge"]
+    assert numbers["steps"] >= 10
+    assert 0 < numbers["corrections"] <= numbers["replaced"]
+    assert 0.05 < numbers["largestCorrection"] < 1.5
+    assert numbers["largeCorrections"] == 0
+    frames = result["frames"]
+    assert frozen(frames, SETTLED) == []
+    assert way_back(frames, RIGHT) == 0
+    drawn_speeds = speeds(frames, SETTLED)
+    low, high = (80, 100) if name.startswith("felix") else (60, 120)
+    assert low <= min(drawn_speeds) and max(drawn_speeds) <= high, (min(drawn_speeds), max(drawn_speeds))
 
 
 def test_with_felix_bunched_messages_the_character_never_moves_backwards():
@@ -231,7 +254,8 @@ def test_during_the_long_hold_up_the_character_walks_at_the_servers_speed():
     end = hold_ups.arrival(LONG_HOLD_UP_MESSAGE) - 1
     assert end - start > 400
     drawn_speeds = speeds(frames, start, end)
-    assert all(speed == pytest.approx(BRIDGED_STEP / (TICK / 1000), rel=0.01) for speed in drawn_speeds)
+    # A bridged step is as long as the server's and is drawn over one tick of the browser.
+    assert all(speed == pytest.approx(SERVER_STEP / (TICK / 1000), rel=0.01) for speed in drawn_speeds)
 
 
 # ---- d. A hold-up longer than the bridge may cover ------------------------------------------
@@ -253,7 +277,7 @@ def test_in_a_hold_up_of_a_second_and_a_half_the_character_walks_on_ten_steps_th
     assert stood == [frame["t"] for frame in between(frames, stood[0], arrives)]
     known = long_one.known_place(arrives - 1)
     standing_at = place(between(frames, stood[0], arrives)[-1])
-    assert standing_at == pytest.approx((known[0] + 10 * BRIDGED_STEP, known[1]))
+    assert standing_at == pytest.approx((known[0] + 10 * SERVER_STEP, known[1]))
 
 
 def test_after_a_hold_up_longer_than_the_bridge_the_character_goes_on_without_going_back():

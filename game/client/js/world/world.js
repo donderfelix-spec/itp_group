@@ -538,6 +538,9 @@ Game.world = Game.world || {};
   // The last start delays measured, in ms, see rememberStartDelay() in
   // bridge.js. They describe the connection, so they outlive a lobby.
   var startDelays = [];
+  // How long the server's last ticks were, in seconds, read from its own
+  // steps, see rememberServerStep() in bridge.js.
+  var serverStepTimes = [];
   // What the ?debug panel shows, see newTally() in bridge.js.
   var bridgeTally = bridge ? bridge.newTally() : null;
 
@@ -560,6 +563,11 @@ Game.world = Game.world || {};
   // How far the drawn character is behind the keys, in ms.
   function currentInputLag() {
     return bridge.inputLag(startDelays, GLIDE_MILLISECONDS, TICK_MILLISECONDS);
+  }
+
+  // The time one step of the server covers, in seconds.
+  function serverStepSeconds() {
+    return bridge.stepSeconds(serverStepTimes, TICK_MILLISECONDS);
   }
 
   // reportDirection() tells every direction it sends: `before` and `after`
@@ -593,8 +601,8 @@ Game.world = Game.world || {};
     bridgeOwnGaps(player, ownWalk, now, bridgeTally);
     var previous = player.server;
     var isShownAtOnce = !previous || isFarApart(previous, x, y) || now < player.placedUntil;
-    var hasMoved = Boolean(previous) && bridge.differs(previous, { x: x, y: y });
-    noteOwnArrival(hasMoved && !isShownAtOnce, now);
+    var isAStep = Boolean(previous) && bridge.differs(previous, { x: x, y: y }) && !isShownAtOnce;
+    noteOwnArrival(isAStep ? { dx: x - previous.x, dy: y - previous.y } : null, now);
     if (isShownAtOnce) {
       // The first position, a respawn or the start of a round: nothing of
       // the walk before counts any more. Handled like for everybody.
@@ -610,14 +618,17 @@ Game.world = Game.world || {};
     }
   }
 
-  // Writes down that an own position arrived. If it is the first one of a
-  // walk that started from standing, the time since the key is one sample
-  // of the start delay.
-  function noteOwnArrival(isAStepOfAWalk, now) {
+  // Writes down that an own position arrived. `step` is how far the server
+  // walked the player since the position before, {dx, dy} in map units, or
+  // null when this is no step of a walk. If it is the first step of a walk
+  // that started from standing, the time since the key is one sample of
+  // the start delay.
+  function noteOwnArrival(step, now) {
     ownWalk.lastArrivalAt = now;
-    if (!isAStepOfAWalk) {
+    if (step === null) {
       return;
     }
+    serverStepTimes = bridge.rememberServerStep(serverStepTimes, step.dx, step.dy, TICK_MILLISECONDS);
     ownWalk.lastMoveArrivedAt = now;
     if (ownWalk.startedAt !== null) {
       startDelays = bridge.rememberStartDelay(startDelays, now - ownWalk.startedAt);
@@ -635,7 +646,7 @@ Game.world = Game.world || {};
   // The server's position (x, y) takes the place of the oldest waiting
   // bridged step. Where they differ, the bridge was wrong from there on.
   function replaceBridgedStep(player, walk, x, y, now, tally) {
-    var result = bridge.takeServerPosition(walk.waiting, x, y, campus, TICK_MILLISECONDS);
+    var result = bridge.takeServerPosition(walk.waiting, x, y, campus, serverStepSeconds());
     walk.waiting = result.waiting;
     tally.replaced += 1;
     if (result.size === "none") {
@@ -644,10 +655,10 @@ Game.world = Game.world || {};
     tally.corrections += 1;
     tally.largestCorrection = Math.max(tally.largestCorrection, result.distance);
     if (result.size === "small") {
-      // A tenth of a unit per step, because the server's ticks are a
-      // little longer than the bridge's. The glide is left alone: turned
-      // now, it would speed up or slow down for a moment. The next glide
-      // starts where the character is drawn and ends on the right place.
+      // The server's ticks are not all equally long. The glide is left
+      // alone: turned now by a fraction of a unit, it would speed up or
+      // slow down for a moment. The next glide starts where the character
+      // is drawn and ends on the right place.
       return;
     }
     // A wrong guess: the drawing turns towards the right place softly.
@@ -706,6 +717,7 @@ Game.world = Game.world || {};
       waitingSteps: walk.waiting.length,
       history: walk.history,
       inputLag: currentInputLag(),
+      stepSeconds: serverStepSeconds(),
       tickMilliseconds: TICK_MILLISECONDS
     };
   }
@@ -788,13 +800,14 @@ Game.world = Game.world || {};
 
   // What the bridge did since the page loaded or since the last reset, for
   // the walking diagnostic: the counts of newTally() in bridge.js, `on`
-  // (is the own character bridged?), `loaded` (did bridge.js load?) and
-  // `inputLagMs`.
+  // (is the own character bridged?), `loaded` (did bridge.js load?),
+  // `inputLagMs` and `serverStepMs` (the time one step of the server covers).
   function bridgeNumbers() {
     if (!bridge) {
       return { on: false, loaded: false };
     }
-    return Object.assign({ on: isBridging(), loaded: true, inputLagMs: currentInputLag() }, bridgeTally);
+    var measured = { inputLagMs: currentInputLag(), serverStepMs: serverStepSeconds() * 1000 };
+    return Object.assign({ on: isBridging(), loaded: true }, measured, bridgeTally);
   }
 
   function resetBridgeNumbers() {

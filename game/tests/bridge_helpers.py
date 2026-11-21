@@ -40,11 +40,12 @@ OTHER_CHARACTER = CHARACTERS[1]
 
 SERVER_TICK = 68.0  # ms between two ticks of the deployed server
 SERVER_STEP = 6.1  # map units the server moves a walking player per tick
-SERVER_SECONDS = SERVER_STEP / movement.PLAYER_SPEED  # the time the server measured for one tick
 WAY_UP = 20  # ms a key takes to the server
 WAY_DOWN = 25  # ms a message takes to the browser when it is not held up
 TICK = 1000 / 15  # the browser's tick: the length of a bridged step's glide, ms
-BRIDGED_STEP = 6.0  # map units of a bridged step
+# Ticks of a server that are not all equally long: the map units of each
+# step, used in a loop. Their median is SERVER_STEP.
+UNEVEN_STEPS = [6.1, 6.22, 6.02, 6.1, 6.18, 6.06, 6.1, 6.14, 6.0]
 
 # The server's first tick; the following ones come every SERVER_TICK.
 FIRST_TICK = 13.0
@@ -118,19 +119,22 @@ def direction_at(keys, time):
     return (dx, dy)
 
 
-def server_ticks(keys, until, start=SPAWN, stands_from=math.inf):
+def server_ticks(keys, until, start=SPAWN, stands_from=math.inf, step_lengths=(SERVER_STEP,)):
     """What the server computes: [(time, (x, y), moved)] for every tick up to `until`.
 
     A key reaches the server WAY_UP ms after it was pressed. From
     `stands_from` on the server keeps the player standing whatever the keys
-    say (a task was opened).
+    say (a task was opened). `step_lengths` are the map units a walking
+    player covers in each tick, used in a loop: the server measures the
+    time since its last tick, and not every tick is equally long.
     """
     place = start
     ticks = []
     time = FIRST_TICK
     while time <= until:
         dx, dy = (0, 0) if time >= stands_from else direction_at(keys, time - WAY_UP)
-        after = movement.step(place[0], place[1], dx, dy, SERVER_SECONDS, SOLIDS, WIDTH, HEIGHT)
+        seconds = step_lengths[len(ticks) % len(step_lengths)] / movement.PLAYER_SPEED
+        after = movement.step(place[0], place[1], dx, dy, seconds, SOLIDS, WIDTH, HEIGHT)
         ticks.append((time, after, after != place))
         place = after
         time += SERVER_TICK
@@ -155,18 +159,20 @@ class Scenario:
     start         where the own player stands at the beginning
     other         a function from the tick number to the place of a second player, or None
     stands_from   see server_ticks()
+    step_lengths  see server_ticks()
     silent_from   the server sends nothing from this time on (it is the test's
                   way to say that the server never walked what the keys asked)
     steps         more steps for the harness, each [name, time, ...]
     """
 
-    def __init__(self, keys, delays, until, start=SPAWN, other=None, stands_from=math.inf, silent_from=math.inf, steps=()):
+    def __init__(self, keys, delays, until, start=SPAWN, other=None, stands_from=math.inf, silent_from=math.inf,
+                 step_lengths=(SERVER_STEP,), steps=()):
         self.keys = sorted(keys)
         self.until = until
         self.start = start
         self.has_other = other is not None
         self.steps = list(steps)
-        self.ticks = server_ticks(self.keys, until, start, stands_from)
+        self.ticks = server_ticks(self.keys, until, start, stands_from, step_lengths)
         self.sent = self._messages(other, silent_from)
         self.messages = self._deliver(delays)
 

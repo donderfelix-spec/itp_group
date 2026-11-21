@@ -166,12 +166,13 @@ Game.world = Game.world || {};
   var TAKE_BACK_MILLISECONDS = 1000;
   // Less than this, in map units, is the same place: far below one pixel.
   var SAME_PLACE = 0.05;
-  // The bridge walks 6.0 units per step, the server about 6.1 (its ticks
-  // take a little longer than 1/15 s), so nearly every bridged step differs
-  // from the server's by a tenth of a unit. Up to this difference the
-  // bridge was right about the walk; a larger one is a wrong guess (the
-  // server stood, turned or met a wall).
+  // The server's ticks are not all equally long, so a bridged step can
+  // differ from the server's by a little. Up to this difference, in map
+  // units, the bridge was right about the walk; a larger one is a wrong
+  // guess (the server stood, turned or met a wall).
   var SMALL_CORRECTION = 1.5;
+  // How many of the server's last steps tell how long its ticks are.
+  var SERVER_STEPS_KEPT = 8;
   // A wrong guess is corrected within the time the glide has left, but
   // never faster than this, so it does not look like a jump.
   var SHORTEST_CORRECTION_MILLISECONDS = 50;
@@ -287,6 +288,53 @@ Game.world = Game.world || {};
     return startDelay + glideMilliseconds - tickMilliseconds;
   }
 
+  // ---- How long a tick of the server is -----------------------------------
+
+  // The server moves a player by its speed times the time it measured
+  // since its last tick. That is a little more than 1/15 s (on the deployed
+  // game 68 ms: 6.1 units per step instead of 6.0). A bridge that walked
+  // shorter steps than the server would leave the character a tenth of a
+  // unit further behind with every step. So it walks for as long per step
+  // as the server's own steps did lately.
+
+  // `samples` are the times of the server's last steps, in seconds. Returns
+  // a new list with the time of one more step, which moved the own player
+  // by (dx, dy) map units; only the newest few are kept.
+  //
+  // The time is read from the axis that moved further. A straight step
+  // covers speed x time on it; a diagonal step, also one that slides along
+  // a wall, covers that divided by the square root of 2. A tick is never
+  // shorter than `tickMilliseconds`, so the two cannot be mixed up: at
+  // least a full tick's way on an axis is a straight step, at least a
+  // diagonal tick's way a diagonal one. A shorter step was stopped by a
+  // wall and tells nothing: the list is returned as it is.
+  function rememberServerStep(samples, dx, dy, tickMilliseconds) {
+    var further = Math.max(Math.abs(dx), Math.abs(dy));
+    var straight = PLAYER_SPEED * (tickMilliseconds / 1000); // the way of a straight tick
+    var almost = 1e-6; // room for the last digits of a float
+    var seconds;
+    if (further >= straight - almost) {
+      seconds = further / PLAYER_SPEED;
+    } else if (further >= straight / Math.sqrt(2) - almost) {
+      seconds = (further * Math.sqrt(2)) / PLAYER_SPEED;
+    } else {
+      return samples;
+    }
+    return samples.concat([seconds]).slice(-SERVER_STEPS_KEPT);
+  }
+
+  // The time one step of the server covers, in seconds: the median of the
+  // samples, so one unusual tick does not count. Before the first sample
+  // it is one tick. Never shorter than a tick, never longer than the
+  // server's own cap.
+  function stepSeconds(samples, tickMilliseconds) {
+    var tickSeconds = tickMilliseconds / 1000;
+    if (samples.length === 0) {
+      return tickSeconds;
+    }
+    return Math.max(tickSeconds, Math.min(MAX_STEP_SECONDS, median(samples)));
+  }
+
   // ---- Would a bridged step be made? -------------------------------------
 
   // Decides whether the own character takes a bridged step, and to where.
@@ -305,7 +353,8 @@ Game.world = Game.world || {};
   //   waitingSteps      how many bridged steps wait for the server
   //   history           the direction history, see rememberDirection()
   //   inputLag          see inputLag(), in ms
-  //   tickMilliseconds  the length of one tick of the server
+  //   stepSeconds       see stepSeconds(): the time one step of the server covers
+  //   tickMilliseconds  how long the glide of one step lasts
   // Returns null, or the step {x, y, dx, dy, startAt, endAt}: the glide to
   // (x, y) starts at the end of the glide before, not at `now`, so the pace
   // stays even on every screen. (dx, dy) is the direction it walked.
@@ -322,7 +371,7 @@ Game.world = Game.world || {};
       return null;
     }
     var from = situation.from;
-    var place = oneTickOn(from, wanted, situation.campus, situation.tickMilliseconds);
+    var place = oneStepOn(from, wanted, situation.campus, situation.stepSeconds);
     if (place.x === from.x && place.y === from.y) {
       return null; // against a wall the character stands, like on the server
     }
@@ -336,10 +385,9 @@ Game.world = Game.world || {};
     };
   }
 
-  // Where a player at `from` {x, y} is after one tick in the direction
-  // `wanted` {dx, dy}, by the server's rule on the map `campus`.
-  function oneTickOn(from, wanted, campus, tickMilliseconds) {
-    var seconds = tickMilliseconds / 1000;
+  // Where a player at `from` {x, y} is after one step of `seconds` in the
+  // direction `wanted` {dx, dy}, by the server's rule on the map `campus`.
+  function oneStepOn(from, wanted, campus, seconds) {
     return step(from.x, from.y, wanted.dx, wanted.dy, seconds, campus.solids, campus.width, campus.height);
   }
 
@@ -394,7 +442,7 @@ Game.world = Game.world || {};
   //             see walkAgain()
   //   distance  how far the server's position is from the bridged step
   //   size      "none" (the same place), "small" or "large", see SMALL_CORRECTION
-  function takeServerPosition(waiting, x, y, campus, tickMilliseconds) {
+  function takeServerPosition(waiting, x, y, campus, seconds) {
     var oldest = waiting[0];
     var rest = waiting.slice(1);
     var server = { x: x, y: y };
@@ -405,7 +453,7 @@ Game.world = Game.world || {};
     var dy = y - oldest.y;
     var isLarge = Math.abs(dx) > SMALL_CORRECTION || Math.abs(dy) > SMALL_CORRECTION;
     return {
-      waiting: walkAgain(rest, server, campus, tickMilliseconds),
+      waiting: walkAgain(rest, server, campus, seconds),
       distance: Math.sqrt(dx * dx + dy * dy),
       size: isLarge ? "large" : "small"
     };
@@ -418,11 +466,11 @@ Game.world = Game.world || {};
   // not stopped by it (see step()), so the bridge would walk through. A
   // step that no longer moves is dropped: for a tick against a wall the
   // server sends no position either.
-  function walkAgain(steps, from, campus, tickMilliseconds) {
+  function walkAgain(steps, from, campus, seconds) {
     var again = [];
     var place = from;
     steps.forEach(function (one) {
-      var next = oneTickOn(place, one, campus, tickMilliseconds);
+      var next = oneStepOn(place, one, campus, seconds);
       if (next.x !== place.x || next.y !== place.y) {
         again.push({ x: next.x, y: next.y, dx: one.dx, dy: one.dy });
         place = next;
@@ -499,6 +547,8 @@ Game.world = Game.world || {};
     walkStart: walkStart,
     rememberStartDelay: rememberStartDelay,
     inputLag: inputLag,
+    rememberServerStep: rememberServerStep,
+    stepSeconds: stepSeconds,
     nextStep: nextStep,
     differs: differs,
     takeServerPosition: takeServerPosition,

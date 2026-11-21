@@ -542,7 +542,7 @@ window.Game = window.Game || {};
     if (!bridge.on) return [title, '  bridging: off'];
     return [
       title,
-      '  bridging: on, input lag ms: ' + shown(bridge.inputLagMs, 0),
+      '  bridging: on, input lag ms: ' + shown(bridge.inputLagMs, 0) + ', server step ms: ' + shown(bridge.serverStepMs),
       '  bridged steps: ' + bridge.steps + ', bridged ms: ' + shown(bridge.milliseconds, 0) +
         ', server positions in their place: ' + bridge.replaced,
       '  corrections: ' + bridge.corrections + ', largest units: ' + shown(bridge.largestCorrection, 2) +

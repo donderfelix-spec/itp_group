@@ -327,6 +327,66 @@ def test_the_input_lag_is_the_median_start_delay_plus_the_wait_in_the_queue(samp
     assert call("inputLag", samples, GLIDE, TICK) == pytest.approx(median + GLIDE - TICK)
 
 
+# ---- How long a tick of the server is ----------------------------------------------------
+
+SECONDS = 6.1 / 90  # a tick of the deployed server: 6.1 map units per step
+DIAGONAL = 6.1 / math.sqrt(2)  # what a diagonal step of that tick covers on each axis
+
+
+def remember(samples, dx, dy):
+    return call("rememberServerStep", samples, dx, dy, TICK)
+
+
+def test_before_a_step_of_the_server_was_seen_its_tick_counts_as_a_fifteenth_of_a_second():
+    assert call("stepSeconds", [], TICK) == pytest.approx(1 / 15)
+
+
+@pytest.mark.parametrize("dx, dy", [(6.1, 0), (-6.1, 0), (0, 6.1), (0, -6.1)])
+def test_a_straight_step_of_the_server_tells_how_long_its_tick_was(dx, dy):
+    assert remember([], dx, dy) == [pytest.approx(SECONDS)]
+
+
+@pytest.mark.parametrize("dx, dy", [(DIAGONAL, DIAGONAL), (-DIAGONAL, DIAGONAL), (DIAGONAL, -DIAGONAL)])
+def test_a_diagonal_step_tells_the_same_time(dx, dy):
+    assert remember([], dx, dy) == [pytest.approx(SECONDS)]
+
+
+@pytest.mark.parametrize("dx, dy", [(0, DIAGONAL), (-DIAGONAL, 0), (1.8, DIAGONAL)])
+def test_a_diagonal_step_that_slides_along_a_wall_tells_the_same_time(dx, dy):
+    # One axis is stopped by the wall, fully or in part; the other moves as far as in the open.
+    assert remember([], dx, dy) == [pytest.approx(SECONDS)]
+
+
+@pytest.mark.parametrize("dx, dy", [(0.4, 0), (0, -4.2), (3, 3), (0.06, 0.06)])
+def test_a_step_stopped_by_a_wall_tells_nothing(dx, dy):
+    assert remember([SECONDS], dx, dy) == [SECONDS]
+    assert remember([], dx, dy) == []
+
+
+def test_a_tick_of_exactly_a_fifteenth_of_a_second_is_read_right_on_both_kinds_of_step():
+    assert remember([], 6, 0) == [pytest.approx(1 / 15)]
+    assert remember([], 6 / math.sqrt(2), -6 / math.sqrt(2)) == [pytest.approx(1 / 15)]
+
+
+def test_only_the_last_eight_steps_of_the_server_are_kept():
+    samples = []
+    for number in range(10):
+        samples = remember(samples, 6 + number / 10, 0)
+    assert samples == [pytest.approx((6 + number / 10) / 90) for number in range(2, 10)]
+
+
+def test_the_time_of_a_step_is_the_median_of_the_servers_last_ticks():
+    assert call("stepSeconds", [SECONDS], TICK) == pytest.approx(SECONDS)
+    assert call("stepSeconds", [0.0678, 0.0683, 0.0675, 0.0678, 0.0689], TICK) == pytest.approx(0.0678)
+    # One long tick (the server hung for a moment) does not count.
+    assert call("stepSeconds", [0.0678, 0.0678, 0.1, 0.0678, 0.068], TICK) == pytest.approx(0.0678)
+
+
+def test_the_time_of_a_step_is_never_shorter_than_a_tick_and_never_longer_than_the_servers_cap():
+    assert call("stepSeconds", [0.05, 0.05, 0.05], TICK) == pytest.approx(1 / 15)
+    assert call("stepSeconds", [0.3, 0.3, 0.3], TICK) == movement.MAX_STEP_SECONDS
+
+
 # ---- Would a bridged step be made? ---------------------------------------------------
 
 HELD_RIGHT = [{"time": 0, **RIGHT}]  # the key "right", held since long ago
@@ -346,6 +406,7 @@ def situation(**changes):
         "waitingSteps": 0,
         "history": HELD_RIGHT,
         "inputLag": 120,
+        "stepSeconds": TICK / 1000,
         "tickMilliseconds": TICK,
     }
     base.update(changes)
@@ -373,6 +434,13 @@ def test_in_the_open_with_the_key_held_a_step_is_made():
     assert (step["x"], step["y"]) == pytest.approx(expected)
     assert step["x"] == pytest.approx(SPAWN[0] + STEP)
     assert (step["dx"], step["dy"]) == (1, 0)  # the direction it walked is kept with it
+
+
+def test_the_step_is_as_long_as_the_servers_steps_and_its_glide_lasts_one_tick():
+    step = next_step(stepSeconds=6.1 / 90)
+    assert step["x"] == pytest.approx(SPAWN[0] + 6.1)
+    assert step["endAt"] - step["startAt"] == pytest.approx(TICK)
+    assert (step["x"], step["y"]) == movement.step(*SPAWN, 1, 0, 6.1 / 90, SOLIDS, WIDTH, HEIGHT)
 
 
 def test_the_step_starts_at_the_end_of_the_glide_before_and_lasts_one_tick():
@@ -496,7 +564,7 @@ WAITING = [{"x": OPEN[0] + STEP * number, "y": OPEN[1], "dx": 1, "dy": 0} for nu
 
 
 def take(waiting, x, y):
-    return call("takeServerPosition", waiting, x, y, "real campus", TICK)
+    return call("takeServerPosition", waiting, x, y, "real campus", TICK / 1000)
 
 
 def places(steps):
@@ -518,7 +586,7 @@ def test_a_server_position_on_the_oldest_bridged_step_takes_its_place():
 
 
 def test_a_server_position_a_little_off_moves_the_steps_still_waiting_by_the_difference():
-    # The server walks 6.1 units per tick, the bridge 6.0.
+    # This tick of the server was a little longer than the others.
     result = take(WAITING, WAITING[0]["x"] + 0.1, OPEN[1])
     assert result["size"] == "small"
     assert result["distance"] == pytest.approx(0.1)
