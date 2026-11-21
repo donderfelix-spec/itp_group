@@ -181,6 +181,15 @@
     <section id="screen-lobby" class="screen screen-lobby" hidden>
       <div class="map-area">
         <canvas id="map" class="map" aria-label="Campus map"></canvas>
+        <!-- Where the own character is and, in a Duel or Solo round, its next
+             task (minigames/task_navigation.js). The only room display. -->
+        <div id="task-card" class="task-card" hidden>
+          <p class="task-card-place"><span class="task-card-pin" aria-hidden="true"></span><span id="task-card-here"></span></p>
+          <div id="task-card-task" class="task-card-task" aria-live="polite" hidden>
+            <span id="task-card-kicker" class="task-card-kicker"></span>
+            <span class="task-card-line"><span id="task-card-room" class="task-card-room"></span><span id="task-card-title" class="task-card-title"></span></span>
+          </div>
+        </div>
         <!-- Two parts, so that on a narrow map the hint can be two lines
              (style.css). On a wide map it is one line. -->
         <p class="hint"><span class="hint-part">Walk with WASD</span> <span class="hint-part">or the arrow keys</span></p>
@@ -231,10 +240,9 @@
           </div>
 
           <div id="duel-panel" class="duel-panel" hidden>
-            <h2 class="panel-heading">Duel</h2>
+            <h2 id="duel-heading" class="panel-heading">Duel</h2>
             <p id="duel-next" class="duel-next" role="status"></p>
             <p id="duel-clock" class="duel-clock" aria-label="Time left"></p>
-            <ul id="duel-players" class="duel-players"></ul>
           </div>
         </div>
 
@@ -306,6 +314,7 @@
   <script src="js/world/art/canteen.js"></script>
   <script src="js/world/art/ctt.js"></script>
   <script src="js/world/art/deck.js"></script>
+  <script src="js/world/art/stations.js"></script>
   <script src="js/classic/fail-button.js"></script>
   <script src="js/classic/hud-actions.js"></script>
   <script src="js/world/bridge.js"></script>
@@ -322,6 +331,8 @@
   <script src="js/minigames/shelve_books.js"></script>
   <script src="js/minigames/self_checkout.js"></script>
   <script src="js/minigames/duel.js"></script>
+  <script src="js/minigames/room_tasks.js"></script>
+  <script src="js/minigames/task_navigation.js"></script>
   <script src="js/classic/meeting.js"></script>
   <script src="js/classic/round.js"></script>
   <script src="js/lobby/statistics.js"></script>

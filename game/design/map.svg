@@ -6,7 +6,7 @@
       <path d="M24 0V24H0" fill="none" stroke="#E1DBCD" stroke-width="1.5"/>
     </pattern>
     <g id="tree">
-      <!-- A round leafy bush inside its solid of 28 x 28 (S-125). -->
+      <!-- A round leafy bush inside its solid of 28 x 28 (S-141). -->
       <circle r="14" fill="#43864D" stroke="#2E2A3B" stroke-width="2"/>
       <circle cx="-4" cy="-4" r="6" fill="#659C50"/>
     </g>

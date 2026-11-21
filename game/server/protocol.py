@@ -40,14 +40,14 @@ CHARACTERS = (
 )
 
 # The modes that are built and can be chosen (S-91). Classic follows later.
-MODES = ("duel", "classic")
+MODES = ("duel", "classic", "solo")
 # The mode of a new lobby.
 DEFAULT_MODE = "duel"
 # The name of each mode as the players read it.
-MODE_NAMES = {"duel": "Duel", "classic": "Classic"}
+MODE_NAMES = {"duel": "Duel", "classic": "Classic", "solo": "Solo"}
 # How many players a round of each mode needs at least (S-53). The only place
 # on the server where these numbers stand.
-MIN_PLAYERS = {"duel": 2, "classic": 4}
+MIN_PLAYERS = {"duel": 2, "classic": 4, "solo": 1}
 
 # A lobby is waiting for its host to start, counting down to the start of
 # the round (S-102), or its round is running.
@@ -287,6 +287,18 @@ def error(problem: ProtocolError) -> dict:
 def rejection(code: str) -> dict:
     """The error message for a refused action. An unknown code raises KeyError."""
     return {"type": "error", "code": code, "message": REJECTIONS[code]}
+
+
+# Choosing or starting Solo with two or more players (Felix, 2026-11-21).
+# Its own constant and not in REJECTIONS: tests/test_protocol.py from main
+# pins REJECTIONS to exactly the codes agreed until then.
+SOLO_NEEDS_ONE_PLAYER = "solo_needs_one_player"
+SOLO_NEEDS_ONE_PLAYER_TEXT = "Solo is only for one player alone."
+
+
+def solo_needs_one_player() -> dict:
+    """The error message for Solo in a lobby with more than one player."""
+    return {"type": "error", "code": SOLO_NEEDS_ONE_PLAYER, "message": SOLO_NEEDS_ONE_PLAYER_TEXT}
 
 
 def too_few_players(mode: str) -> dict:

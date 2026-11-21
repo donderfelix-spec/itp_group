@@ -1,4 +1,4 @@
-"""The walkways of the campus map of M2-1.19 (S-125), as plain checks on the map.
+"""The walkways of the campus map of M2-1.19 (S-141), as plain checks on the map.
 
 Felix chose this map from a preview: fewer pieces of furniture, so that the
 rooms have walkways for characters 39 units high. Three lecture rows with

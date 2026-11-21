@@ -59,7 +59,7 @@ def test_every_solid_has_a_kind_and_its_own_id(campus):
 
 @pytest.mark.parametrize("kind, count", [
     ("glass", 1), ("pool", 1), ("tree", 6), ("hedge", 1), ("logo", 1),
-    # M2-1.19 (S-125): three lecture rows, Mon Café without the table in
+    # M2-1.19 (S-141): three lecture rows, Mon Café without the table in
     # front of its door and the column under station 2, the canteen without
     # its top middle and bottom right tables.
     ("bench", 3), ("board", 1), ("counter", 2), ("machine", 1), ("column", 3),
@@ -99,7 +99,7 @@ def test_the_spawn_point_is_free(campus):
 def test_stations_and_the_button_are_not_solid(campus):
     # A player must be able to stand on them, so their centres are free.
     points = campus["stations"] + [campus["button"]]
-    assert len(campus["stations"]) == 6
+    assert len(campus["stations"]) == 12
     for point in points:
         assert is_free(point["x"], point["y"], campus["solids"], campus["width"], campus["height"]), point
 
@@ -178,7 +178,7 @@ def test_a_missing_room_is_refused(campus):
 
 
 def test_a_missing_station_is_refused(campus):
-    with pytest.raises(CampusError, match="6 stations"):
+    with pytest.raises(CampusError, match="12 stations"):
         check_campus(broken(campus, lambda bad: bad["stations"].pop()))
 
 
@@ -327,7 +327,7 @@ def test_the_map_says_how_close_a_station_must_be(campus):
 
 
 def test_every_station_has_its_own_id(campus):
-    assert sorted(station["id"] for station in campus["stations"]) == [1, 2, 3, 4, 5, 6]
+    assert sorted(station["id"] for station in campus["stations"]) == list(range(1, 13))
 
 
 def test_a_map_without_use_range_is_refused_and_names_it(campus):
