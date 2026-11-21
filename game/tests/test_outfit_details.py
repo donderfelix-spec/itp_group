@@ -65,7 +65,7 @@ MOTIFS = {
     "exchange_student": [("fill", CORAL, [7, 8]), ("fill", CORAL, [7, 8]),  # two patches ...
                          ("stroke", OUTLINE, [7, 8]), ("stroke", OUTLINE, [7, 8]),
                          ("stroke", WHITE, [18, 0])],  # ... with a white stroke on each
-    "surfer": [("stroke", WHITE, [18, 3]), ("stroke", WHITE, [18, 3])],  # two waves on the shorts
+    "surfer": [("stroke", WHITE, [24, 3]), ("stroke", WHITE, [24, 3])],  # two waves on the shorts
     "founder": [("fill", MINT, [6, 9]), ("stroke", OUTLINE, [6, 9])],  # diamond
     "overachiever": [("stroke", CREAM, [6, 5]), ("stroke", CREAM, [6, 5])],  # two check marks
     "latecomer": [("stroke", GOLD, [8, 5])],  # two gold stripes (one path)
@@ -229,6 +229,7 @@ def expected_middle(pose):
     return PORTRAIT_MIDDLE if pose == "portrait" else TURNED_MIDDLE
 
 
+# The Surfer's waves have a test of their own below.
 SYMMETRIC_MOTIFS = [character for character in protocol.CHARACTERS if character != "surfer"]
 
 
@@ -240,8 +241,6 @@ def test_the_motif_is_centred_on_the_torso(drawn, character):
         assert abs(found - expected_middle(pose)) < SAME, (character, pose, found)
 
 
-@pytest.mark.xfail(strict=True, reason="characters.js: the Surfer's waves reach from x = -12 to 6, "
-                                       "so their middle is 3 units left of the body's middle")
 def test_the_surfers_waves_are_centred_on_the_torso(drawn):
     for pose in EVERY_POSE:
         boxes = [d["body"] for d in motif(drawn["surfer"][pose], "surfer")]

@@ -817,8 +817,8 @@ Game.world = Game.world || {};
       stroke(ctx, "M-9 61 h3 M6 61 h3", "#FFFFFF", 1.3);
     },
     surfer: function (ctx) {
-      stroke(ctx, "M-12 74 q3 -3 6 0 t6 0 t6 0", "#FFFFFF", 1.8);
-      stroke(ctx, "M-12 78 q3 -3 6 0 t6 0 t6 0", "#FFFFFF", 1.3);
+      stroke(ctx, "M-12 74 q3 -3 6 0 t6 0 t6 0 t6 0", "#FFFFFF", 1.8);
+      stroke(ctx, "M-12 78 q3 -3 6 0 t6 0 t6 0 t6 0", "#FFFFFF", 1.3);
     },
     founder: function (ctx) {
       shape(ctx, "M0 42 L3 47 L0 51 L-3 47 Z", "#8EDCC5", 1);
