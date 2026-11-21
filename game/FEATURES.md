@@ -34,6 +34,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Display of the current room | M2 | Planned |
 | Nicer, more detailed map: every room furnished from photos of the campus, floor patterns, wall faces, doors, drawn from tiles (S-122) | M2 | Done |
 | Larger characters in a three-quarter view, facing only left or right; held objects stay in the same hand | M2 | Done |
+| A small personal motif on every outfit and a softer face (M2-1.18, S-124) | M2 | Done |
 | Walking animation: moving feet, head turned in the walking direction | M2 | Done |
 | Running animation: flight phase, small hop, pumping arms, legs fixed at the hips, steps tied to the distance covered | M2 | Done |
 | Hair, buns and headwear follow the head when it turns in the walking direction | M2 | Done |
