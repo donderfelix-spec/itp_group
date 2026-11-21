@@ -96,33 +96,55 @@ function testDirectTaskNavigator(navigation, campus) {
   expect(!('path' in direct), 'Live guidance must not calculate a route');
 
   function record() {
-    const calls = { translations: [], rotations: [], texts: [], lines: [], rectangles: [] };
+    const calls = { translations: [], rotations: [], texts: [], lines: [], rectangles: [], fills: [], strokes: [], alphas: [] };
+    const state = {};
     const ctx = new Proxy({
       translate: (x, y) => calls.translations.push([x, y]),
       rotate: (angle) => calls.rotations.push(angle),
       fillText: (text) => calls.texts.push(text),
       lineTo: (x, y) => calls.lines.push([x, y]),
       fillRect: (x, y, width, height) => calls.rectangles.push([x, y, width, height]),
+      fill: () => { calls.fills.push(state.fillStyle); calls.alphas.push(state.globalAlpha); },
+      stroke: () => calls.strokes.push([state.strokeStyle, state.lineWidth]),
       measureText: (text) => ({ width: text.length * 6 }),
       setLineDash: () => { throw new Error('The compass must not draw a trail'); }
-    }, { get: (object, key) => key in object ? object[key] : function () {} });
+    }, {
+      get: (object, key) => key in object ? object[key] : (key in state ? state[key] : function () {}),
+      set: (object, key, value) => { state[key] = value; return true; }
+    });
     return { ctx: ctx, calls: calls };
   }
+  // The new arrow (brief B, part 4): a shadow and the arrow, each one
+  // translated and turned; seven points each, no route line.
   const compass = record();
   navigation.drawArrow(compass.ctx, direct, position);
-  expect(compass.calls.translations.length === 1, 'Only one near-player arrow should be drawn');
-  expect(compass.calls.rotations[0] === expected, 'Rendered arrow points at a waypoint instead of the target');
-  const placed = compass.calls.translations[0];
-  expect(Math.abs(Math.hypot(placed[0] - position.x, placed[1] - position.y) - 21) < 1e-8,
-    'Compass must stay beside the player');
-  expect(compass.calls.lines.length === 3, 'Only arrow vertices may be drawn, no route line');
+  expect(compass.calls.translations.length === 2, 'Only one near-player arrow (and its shadow) should be drawn');
+  expect(compass.calls.rotations.length === 2 && compass.calls.rotations.every((angle) => angle === expected),
+    'Rendered arrow points at a waypoint instead of the target');
+  const [shadow, placed] = compass.calls.translations;
+  const bodyMiddle = { x: position.x, y: position.y - 14.5 };
+  expect(Math.abs(Math.hypot(placed[0] - bodyMiddle.x, placed[1] - bodyMiddle.y) - 24) < 1e-8,
+    'Compass must stay beside the player, outside the body');
+  expect(shadow[0] > placed[0] && shadow[1] > placed[1], 'The hard shadow lies down and to the right');
+  expect(compass.calls.lines.length === 12, 'Only arrow vertices may be drawn, no route line');
+  expect(JSON.stringify(compass.calls.fills) === JSON.stringify(['#2E2A3B', '#FFD23F']), 'A dark shadow, then a sun-yellow arrow');
+  expect(compass.calls.strokes.every(([colour, width]) => colour === '#2E2A3B' && width >= 1.5), 'A thick dark outline');
+  expect(compass.calls.alphas.every((alpha) => alpha === 1), 'Far from the station the arrow is fully visible');
 
+  // Near the station the arrow fades, and on arrival it is gone.
+  const toward = (distance) => ({ x: target.x - distance, y: target.y });
+  const fading = record();
+  navigation.drawArrow(fading.ctx, navigation.directGuidance(campus, toward(50), target.id), toward(50));
+  expect(fading.calls.alphas.length === 2 && fading.calls.alphas.every((alpha) => alpha > 0.3 && alpha < 0.7),
+    'Between 60 and 40 units the arrow fades out');
+  const gone = record();
+  navigation.drawArrow(gone.ctx, navigation.directGuidance(campus, toward(39), target.id), toward(39));
+  expect(gone.calls.translations.length === 0, 'Close to the station the glowing object is enough');
   const close = { x: target.x + 1, y: target.y };
   const arrived = navigation.directGuidance(campus, close, target.id);
   const nearby = record();
   navigation.drawArrow(nearby.ctx, arrived, close);
-  expect(arrived.arrived && nearby.calls.translations.length === 1, 'Arrow must remain visible inside the use range');
-  expect(nearby.calls.rotations[0] === Math.PI, 'Nearby compass must still point at the target centre');
+  expect(arrived.arrived && nearby.calls.translations.length === 0, 'No arrow on arrival');
   const exactlyThere = record();
   navigation.drawArrow(exactlyThere.ctx, navigation.directGuidance(campus, target, target.id), target);
   expect(exactlyThere.calls.translations.length === 0, 'A zero-length direction should hide the arrow');
@@ -240,14 +262,24 @@ async function testWorldTaskArrival(vm, worldSource, navigationSource, campus, r
   expect(drawnPosition.y !== serverPosition.y && paused === false, 'The test needs a queued drawing behind the server');
   const drawn = world.ownDrawnPosition(now);
   expect(drawnPosition.x === drawn.x && drawnPosition.y === drawn.y, 'Arrow must follow the drawn position');
-  expect(arrowPlaces.length === 1 && Math.abs(Math.hypot(arrowPlaces[0].x - drawn.x, arrowPlaces[0].y - drawn.y) - 21) < 1e-8,
+  expect(arrowPlaces.length === 0, 'No arrow once the server counts the player in range (arrival)');
+  // Far from the station the arrow stands beside the drawn character's body.
+  now += 66;
+  world.setPositions([{ name: 'Mara', x: target.x, y: target.y + 120 }]);
+  nextFrame(now);
+  const far = world.ownDrawnPosition(now);
+  expect(arrowPlaces.length === 2 && Math.abs(Math.hypot(arrowPlaces[1].x - far.x, arrowPlaces[1].y - (far.y - 14.5)) - 24) < 1e-8,
     'Arrow must be drawn beside the drawn character');
   world.setInputPaused(true);
   nextFrame(now + 1);
   expect(arrowPlaces.length === 0 && card.hidden, 'An open minigame must hide navigation');
   world.setInputPaused(false);
   nextFrame(now + 2);
-  expect(arrowPlaces.length === 1 && !card.hidden, 'Closing the minigame shows the navigation again');
+  expect(arrowPlaces.length === 2 && !card.hidden, 'Closing the minigame shows the navigation again');
+  // Back at the station for the checks below.
+  now += 66;
+  world.setPositions([{ name: 'Mara', x: target.x, y: target.y + 20 }]);
+  nextFrame(now);
   navigation.setTarget(null);
   expect(taskPart.hidden && !card.hidden, 'No navigator target hides the task at once, also when no frame follows; the room stays');
   nextFrame(now + 3);

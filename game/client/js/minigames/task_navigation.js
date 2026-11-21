@@ -195,22 +195,58 @@ window.Game = window.Game || {};
     return { route: route, isFree: isFree, segmentIsFree: segmentIsFree };
   }
 
-  function arrow(ctx, x, y, angle, size, colour) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
+  // ---- The arrow (DESIGN.md, section 1: the "sticker" look) ---------------
+
+  // An arrow pointing right, 13 map units long, around (0, 0): a short
+  // shaft and a wide head. A character is 39 units high.
+  const ARROW_POINTS = [[7, 0], [0, -5.5], [0, -2.2], [-6, -2.2], [-6, 2.2], [0, 2.2], [0, 5.5]];
+  const ARROW_OUTLINE = 1.6; // the thick dark outline, as on the buttons
+  const ARROW_SHADOW = 1.3; // the hard shadow, down and to the right
+  // Where the arrow stands: this far from the middle of the character's
+  // body, which is 14.5 units above its position (feet 5 below it, 39 high).
+  const ARROW_DISTANCE = 24;
+  const BODY_MIDDLE_ABOVE_POSITION = 14.5;
+  // Close to the station its pulsing object is enough: the arrow fades out
+  // between these distances (in map units) and is gone on arrival.
+  const FADE_FROM = 60;
+  const FADE_TO = 40;
+
+  function arrowPath(ctx) {
     ctx.beginPath();
-    ctx.moveTo(size, 0);
-    ctx.lineTo(-size * 0.7, -size * 0.65);
-    ctx.lineTo(-size * 0.35, 0);
-    ctx.lineTo(-size * 0.7, size * 0.65);
+    ARROW_POINTS.forEach(([x, y], index) => (index === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
     ctx.closePath();
-    ctx.fillStyle = colour;
-    ctx.strokeStyle = DARK;
-    ctx.lineWidth = size / 6;
+  }
+
+  // One arrow at (x, y) turned by `angle`: first its dark shadow, moved
+  // down and right on the screen, then the yellow arrow with its outline.
+  function arrow(ctx, x, y, angle, alpha) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.lineJoin = 'round';
+    ctx.save();
+    ctx.translate(x + ARROW_SHADOW, y + ARROW_SHADOW);
+    ctx.rotate(angle);
+    arrowPath(ctx);
+    ctx.fillStyle = DARK;
     ctx.fill();
+    ctx.lineWidth = ARROW_OUTLINE;
+    ctx.strokeStyle = DARK;
     ctx.stroke();
     ctx.restore();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    arrowPath(ctx);
+    ctx.fillStyle = YELLOW;
+    ctx.fill();
+    ctx.lineWidth = ARROW_OUTLINE;
+    ctx.strokeStyle = DARK;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 1 far away, 0 near the station, in between it fades.
+  function arrowAlpha(distance) {
+    return Math.max(0, Math.min(1, (distance - FADE_TO) / (FADE_FROM - FADE_TO)));
   }
 
   // The live compass uses only the player's own position and destination.
@@ -230,15 +266,18 @@ window.Game = window.Game || {};
     };
   }
 
-  // Called in map coordinates, before the characters are drawn. The small
-  // arrow stays next to the character and always points at the station.
+  // Called in map coordinates, before the characters are drawn. The arrow
+  // stands beside the character's body and points straight at the station
+  // (also through a wall). No arrow on arrival or exactly on the station.
   function drawArrow(ctx, guidance, position) {
-    if (!guidance) return;
+    if (!guidance || guidance.arrived) return;
     const dx = guidance.target.x - position.x;
     const dy = guidance.target.y - position.y;
-    if (dx === 0 && dy === 0) return; // no direction exactly at the centre
+    const alpha = arrowAlpha(Math.hypot(dx, dy));
+    if ((dx === 0 && dy === 0) || alpha === 0) return;
     const angle = Math.atan2(dy, dx);
-    arrow(ctx, position.x + Math.cos(angle) * 21, position.y + Math.sin(angle) * 21, angle, 5.8, YELLOW);
+    const middleY = position.y - BODY_MIDDLE_ABOVE_POSITION;
+    arrow(ctx, position.x + Math.cos(angle) * ARROW_DISTANCE, middleY + Math.sin(angle) * ARROW_DISTANCE, angle, alpha);
   }
 
   // ---- The card at the top left -----------------------------------------
