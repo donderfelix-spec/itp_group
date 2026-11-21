@@ -142,7 +142,9 @@ page.Game = {
     drawMap: () => {},
     drawStationGlow: () => {},
     chooseLabels: (labels) => ({ shown: labels || [], hidden: new Set() }),
-    drawCharacter: () => {},
+    drawCharacter: (ctx, id, x, y) => {
+      if (current) current.drawn = { x: x, y: y - 5 + 39 / 2 };
+    },
   },
   net: {
     on(type, handler) {

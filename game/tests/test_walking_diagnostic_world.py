@@ -123,8 +123,9 @@ def first_arrival(messages):
     return messages[0][1]
 
 
-def camera(frame):
-    return (frame["camera"]["x"], frame["camera"]["y"])
+def drawn_player(frame):
+    point = frame.get("drawn") or frame["camera"]
+    return (point["x"], point["y"])
 
 
 def place(asked):
@@ -145,9 +146,9 @@ def test_asked_before_a_frame_the_own_position_is_what_that_frame_draws(delays):
     assert all(frame["asked"] == [None] for frame in early)
     # From then on the camera looks at the own character, so it is where the frame drew it.
     for frame in frames[len(early):]:
-        assert math.dist(place(frame["asked"][0]), camera(frame)) < EXACT, frame["t"]
+        assert math.dist(place(frame["asked"][0]), drawn_player(frame)) < EXACT, frame["t"]
     # The walk was drawn: the test did not compare a character that stood.
-    assert camera(frames[-1])[0] == pytest.approx(SPAWN[0] + STEP * (SIX_SECONDS - 1))
+    assert drawn_player(frames[-1])[0] == pytest.approx(SPAWN[0] + STEP * (SIX_SECONDS - 1))
 
 
 def test_without_a_position_the_own_position_is_null():
@@ -165,7 +166,7 @@ def test_asked_for_a_later_time_it_is_where_a_frame_at_that_time_draws():
     late = [(a, b) for a, b in zip(frames, frames[3:]) if a["t"] > end]
     assert len(late) > 50
     for asked_in, drawn_in in late:
-        assert math.dist(place(asked_in["asked"][0]), camera(drawn_in)) < EXACT
+        assert math.dist(place(asked_in["asked"][0]), drawn_player(drawn_in)) < EXACT
 
 
 # ---- ownDrawnPosition: a queued position a jump away ----------------------------
@@ -207,16 +208,16 @@ def test_a_queued_position_a_jump_away_is_drawn_at_its_place_and_asked_before_th
     # Right before the position arrives, the character is drawn where the glide before ended.
     before = [frame for frame in frames if 1500 < frame["t"] < arrives_at]
     assert len(before) > 20
-    assert all(math.dist(camera(frame), glide_ends) < EXACT for frame in before)
+    assert all(math.dist(drawn_player(frame), glide_ends) < EXACT for frame in before)
     # The first frame after it draws the character at the new place at once: a jump, not a glide.
     after = [frame for frame in frames if frame["t"] >= arrives_at]
     assert len(after) > 20
-    assert math.dist(camera(after[0]), queued) < EXACT
+    assert math.dist(drawn_player(after[0]), queued) < EXACT
     # Asked before each frame, also before the one that takes the position
     # out of the queue, the answer is what that frame drew.
     for frame in frames:
         if frame["t"] >= first_arrival(steps):
-            assert math.dist(place(frame["asked"][0]), camera(frame)) < EXACT, frame["t"]
+            assert math.dist(place(frame["asked"][0]), drawn_player(frame)) < EXACT, frame["t"]
 
 
 def test_asking_about_a_queued_jump_leaves_every_frame_as_it_was():
@@ -238,11 +239,11 @@ def test_a_queued_position_just_inside_the_jump_distance_glides_and_is_followed_
 
     after = [frame for frame in frames if frame["t"] >= arrives_at]
     # It glides: the first frames are drawn on the way, and the last one at the new place.
-    assert glide_ends[0] < camera(after[0])[0] < glide_ends[0] + 15
-    assert glide_ends[0] < camera(after[1])[0] < near[0]
-    assert math.dist(camera(after[-1]), near) < EXACT
+    assert glide_ends[0] < drawn_player(after[0])[0] < glide_ends[0] + 15
+    assert glide_ends[0] < drawn_player(after[1])[0] < near[0]
+    assert math.dist(drawn_player(after[-1]), near) < EXACT
     for frame in after:
-        assert math.dist(place(frame["asked"][0]), camera(frame)) < EXACT, frame["t"]
+        assert math.dist(place(frame["asked"][0]), drawn_player(frame)) < EXACT, frame["t"]
 
 
 # ---- ownDrawnPosition: asking changes nothing --------------------------------
@@ -282,7 +283,7 @@ def really_drawn(frames, key_at):
     speeds = []
     for before, frame in zip(frames, frames[1:]):
         if frame["t"] - key_at >= WALK_SETTLE_MS:
-            speeds.append(math.dist(camera(before), camera(frame)) / ((frame["t"] - before["t"]) / 1000))
+            speeds.append(math.dist(drawn_player(before), drawn_player(frame)) / ((frame["t"] - before["t"]) / 1000))
     return speeds
 
 
@@ -336,7 +337,7 @@ def test_the_start_delay_of_the_diagnostic_runs_from_the_key_to_the_first_frame_
     steps, key_at, end = key_then_walk([0])
     result = run_world(with_frames(steps, until=end), debug=True)
     frames = result["frames"]
-    first_moved = next(b["t"] for a, b in zip(frames, frames[1:]) if math.dist(camera(a), camera(b)) >= 0.01)
+    first_moved = next(b["t"] for a, b in zip(frames, frames[1:]) if math.dist(drawn_player(a), drawn_player(b)) >= 0.01)
 
     assert result["numbers"]["startDelay"]["count"] == 1
     assert result["numbers"]["startDelay"]["median"] == pytest.approx(first_moved - key_at)
@@ -450,3 +451,27 @@ def test_the_diagnostic_sees_a_zero_shorter_than_a_frame_as_two_walks():
     frames = result["frames"]
     judged = [f for f in frames[1:] if f["t"] - key_at >= WALK_SETTLE_MS and not turn_at + 3 <= f["t"] < turn_at + 3 + WALK_SETTLE_MS]
     assert numbers["walking"]["frames"] == len(judged)
+
+
+def test_camera_stays_inside_map_while_the_player_keeps_moving():
+    messages, end = six_second_walk(next(iter(DELIVERIES.values())))
+    frames = run_world(with_frames(messages, until=end + 500), ask=[0])["frames"]
+    drawn = [frame for frame in frames if frame.get("drawn")]
+    assert drawn[-1]["drawn"]["x"] > drawn[-1]["camera"]["x"]
+    assert all(130 <= frame["camera"]["x"] <= 550 for frame in drawn)
+
+
+@pytest.mark.parametrize("x,y,expected", [
+    (5, 5, (130, 81.25)),
+    (675, 5, (550, 81.25)),
+    (5, 663, (130, 586.75)),
+    (675, 663, (550, 586.75)),
+])
+def test_camera_clamps_at_each_campus_corner_without_moving_the_player(x, y, expected):
+    # The harness uses 800 x 500 pixels: a 260 x 162.5 map-unit view.
+    steps = [["positions", 0, [{"name": OWN, "x": x, "y": y}]]]
+    frames = run_world(with_frames(steps, until=200), ask=[0])["frames"]
+    assert frames[-1]["camera"]["x"] == pytest.approx(expected[0])
+    assert frames[-1]["camera"]["y"] == pytest.approx(expected[1])
+    assert drawn_player(frames[-1]) == pytest.approx((x, y))
+    assert place(frames[-1]["asked"][0]) == pytest.approx((x, y))

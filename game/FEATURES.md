@@ -131,3 +131,5 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Distinct room floor patterns and tree foliage details | M2 | In progress |
 | Camera follows the player and stays inside map bounds | M2 | In progress |
 | Four hiding circles, a walkable hedge and server-side visibility filtering | M3 | In progress |
+
+Campus branch verification (2026-11-21): complete suite 3,221 passed, additional unknown-ID regression passed, dependency audit clear, and hiding played with two browser guests. Status stays In progress until the team merges this branch into main.

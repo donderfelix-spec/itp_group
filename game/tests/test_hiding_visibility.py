@@ -109,7 +109,7 @@ def test_outbound_position_messages_are_filtered_per_recipient(campus, monkeypat
             mark_told=lambda name: None,
         )
         lobby = SimpleNamespace(walkers=walkers)
-        monkeypatch.setattr(main.app.state, "campus", campus)
+        main.app.state.campus = campus
         monkeypatch.setattr(main.app.state.sessions, "connection_of", connections.get)
 
         async def capture(name, connection, lobby, message):
@@ -120,6 +120,10 @@ def test_outbound_position_messages_are_filtered_per_recipient(campus, monkeypat
         main.tell_positions(lobby)
         await asyncio.gather(*list(main.background_sends))
 
-    asyncio.run(exercise())
+    original_campus = main.app.state.campus
+    try:
+        asyncio.run(exercise())
+    finally:
+        main.app.state.campus = original_campus
     assert [p["name"] for p in captured["far"]["players"]] == ["far"]
     assert [p["name"] for p in captured["hidden"]["players"]] == ["far", "hidden"]

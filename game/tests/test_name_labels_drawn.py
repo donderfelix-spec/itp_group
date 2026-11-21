@@ -252,3 +252,16 @@ def test_after_the_world_stops_nobody_counts_as_hidden_before():
 @needs_node
 def test_a_world_with_nobody_writes_no_name():
     assert drawn([["start"], ["own", "Me"], frame(), frame(16)]) == [[], []]
+
+
+@needs_node
+def test_a_player_omitted_from_a_full_visibility_snapshot_loses_their_name_immediately():
+    initial = {"Me": (300, 300), "Ann": (350, 300)}
+    frames = drawn([
+        ["start"], ["own", "Me"], players("Me", "Ann"), positions(initial), frame(),
+        ["snapshot", positions({"Me": (300, 300)})[1]], frame(),
+        ["snapshot", positions(initial)[1]], frame(),
+    ])
+    assert sorted(names(frames[0])) == ["Ann", "Me"]
+    assert names(frames[1]) == ["Me"]
+    assert sorted(names(frames[2])) == ["Ann", "Me"]

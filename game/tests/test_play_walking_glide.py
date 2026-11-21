@@ -24,6 +24,8 @@ Without Node the tests are skipped; CI has Node.
 
 import contextlib
 import json
+from world_tracking import with_tracked_player
+
 import math
 import re
 import shutil
@@ -82,7 +84,7 @@ PLAYERS = [
 def run_world(messages, until, start_of_round=None, usable=None, own="Mara", players=None):
     """Play `messages` [(t, [{name, x, y}, ...])] into world.js and draw frames until `until` ms.
 
-    Returns one dict per frame: {t, camera, glow, useButtonOn, characters}.
+    Returns one dict per frame: {t, tracked_position, glow, useButtonOn, characters}.
     """
     events = [(t, 0, ["positions", t, players]) for t, players in messages]
     if start_of_round is not None:
@@ -102,7 +104,7 @@ def run_world(messages, until, start_of_round=None, usable=None, own="Mara", pla
         check=False,
     )
     assert finished.returncode == 0, finished.stderr
-    return json.loads(finished.stdout)
+    return with_tracked_player(json.loads(finished.stdout), program["players"], own)
 
 
 def drawn(frame, name):
@@ -140,26 +142,26 @@ def moves_per_frame(frames, position_of, start, end):
     return moves
 
 
-def camera(frame):
-    return (frame["camera"]["x"], frame["camera"]["y"])
+def tracked_position(frame):
+    return (frame["tracked"]["x"], frame["tracked"]["y"])
 
 
 # ---- The own character and the camera ----------------------------------
 
 
 @needs_node
-def test_the_camera_moves_in_every_frame_while_the_messages_come_on_time():
+def test_the_player_moves_in_every_frame_while_the_messages_come_on_time():
     ticks = 30
     places = [[place] for place in walk_right("Mara", ticks)]
     frames = run_world(on_time(places), until=ticks * TICK)
 
     # From the second message on, until the last one has arrived.
-    moves = moves_per_frame(frames, camera, TICK + FRAME, ticks * TICK)
+    moves = moves_per_frame(frames, tracked_position, TICK + FRAME, ticks * TICK)
     assert min(moves) > STANDING_STILL, moves
 
 
 @needs_node
-def test_the_camera_moves_in_every_frame_when_every_third_message_is_40_ms_late():
+def test_the_player_moves_in_every_frame_when_every_third_message_is_40_ms_late():
     # This is the stutter of M2-1.12: with a glide of one tick (67 ms) the
     # camera stood still for about 40 ms before each late message.
     ticks = 30
@@ -167,7 +169,7 @@ def test_the_camera_moves_in_every_frame_when_every_third_message_is_40_ms_late(
     messages = on_time(places, late=lambda k: 40 if k % 3 == 2 else 0)
     frames = run_world(messages, until=ticks * TICK)
 
-    moves = moves_per_frame(frames, camera, TICK + FRAME, ticks * TICK)
+    moves = moves_per_frame(frames, tracked_position, TICK + FRAME, ticks * TICK)
     assert min(moves) > STANDING_STILL, moves
 
 
@@ -179,13 +181,13 @@ def test_two_messages_that_arrive_together_make_no_jump():
     messages = on_time(places, late=lambda k: TICK if k in (8, 17, 25) else 0)
     frames = run_world(messages, until=ticks * TICK + 300)
 
-    moves = moves_per_frame(frames, camera, TICK + FRAME, ticks * TICK + 300)
+    moves = moves_per_frame(frames, tracked_position, TICK + FRAME, ticks * TICK + 300)
     normal = STEP / TICK * FRAME  # 1.5 units per frame
     # Never a jump: the camera catches up over several frames, at most about
     # twice the normal speed, never a whole step (6 units) in one frame.
     assert max(moves) < 2.5 * normal, max(moves)
     # And it really arrives at the last position.
-    assert math.dist(camera(frames[-1]), (places[-1][0]["x"], places[-1][0]["y"])) < EXACT
+    assert math.dist(tracked_position(frames[-1]), (places[-1][0]["x"], places[-1][0]["y"])) < EXACT
 
 
 @needs_node
@@ -199,12 +201,12 @@ def test_a_stop_ends_exactly_on_the_last_server_position_and_the_feet_stand_stil
     frames = run_world(messages, until=last_at + 1000)
 
     after_glide = [frame for frame in frames if frame["t"] >= last_at + GLIDE]
-    assert all(math.dist(camera(frame), last) < EXACT for frame in after_glide)
-    # The own character is drawn where the camera looks.
-    assert all(abs(drawn(frame, "Mara")["x"] - frame["camera"]["x"]) < EXACT for frame in frames)
+    assert all(math.dist(tracked_position(frame), last) < EXACT for frame in after_glide)
+    # The tracked position is the actual own character drawing.
+    assert all(abs(drawn(frame, "Mara")["x"] - frame["tracked"]["x"]) < EXACT for frame in frames)
     # Before the glide is over it is still on the way, never past the end.
     on_the_way = [frame for frame in frames if last_at <= frame["t"] < last_at + GLIDE]
-    assert on_the_way and all(frame["camera"]["x"] < last[0] for frame in on_the_way)
+    assert on_the_way and all(frame["tracked"]["x"] < last[0] for frame in on_the_way)
     # The feet: still once the steps have faded.
     feet_still = [drawn(frame, "Mara") for frame in frames if frame["t"] >= last_at + GLIDE + STRIDE_FADES]
     assert feet_still and all(mara["stride"] == 0 and mara["walkPhase"] is None for mara in feet_still)
@@ -224,11 +226,11 @@ def test_a_stop_while_another_player_walks_eases_onto_the_last_position_without_
     frames = run_world(messages, until=messages[-1][0])
 
     after = [frame for frame in frames if frame["t"] >= last_step_at]
-    xs = [frame["camera"]["x"] for frame in after]
+    xs = [frame["tracked"]["x"] for frame in after]
     # Always closer, never past the place the server says.
     assert all(a <= b + EXACT for a, b in zip(xs, xs[1:])), xs
     assert all(x <= last[0] + EXACT for x in xs)
-    left_after = lambda ms: last[0] - next(frame["camera"]["x"] for frame in after if frame["t"] >= last_step_at + ms)
+    left_after = lambda ms: last[0] - next(frame["tracked"]["x"] for frame in after if frame["t"] >= last_step_at + ms)
     # About 2 units are left after one glide, half a unit after 200 ms,
     # less than a pixel (a fifth of a unit) after 300 ms.
     assert left_after(GLIDE) < 2.5
@@ -255,7 +257,7 @@ def test_another_walking_character_also_moves_in_every_frame_when_messages_are_l
     moves = moves_per_frame(frames, tiago_drawn, TICK + 40 + FRAME, ticks * TICK)
     assert min(moves) > STANDING_STILL, moves
     # Mara stood still the whole time: her camera never moved.
-    assert all(math.dist(camera(frame), SPAWN) < EXACT for frame in frames)
+    assert all(math.dist(tracked_position(frame), SPAWN) < EXACT for frame in frames)
 
 
 # ---- The start of a round ----------------------------------------------
@@ -287,7 +289,7 @@ def test_the_start_of_a_round_puts_far_and_near_characters_on_the_spawn_in_one_f
             assert abs(character["x"] - SPAWN[0]) < EXACT, (name, frame["t"], character["x"])
             assert character["mirrored"] is False
             assert character["stride"] == 0 and character["walkPhase"] is None
-    assert math.dist(camera(after[0]), SPAWN) < EXACT
+    assert math.dist(tracked_position(after[0]), SPAWN) < EXACT
 
 
 # ---- Stations ----------------------------------------------------------
@@ -314,7 +316,7 @@ def test_a_station_glows_from_the_server_position_while_the_drawn_character_stil
         server_says = in_range(server_place(frame))
         assert (frame["glow"] == station["id"]) == server_says, frame["t"]
         assert frame["useButtonOn"] == server_says, frame["t"]
-        if server_says and not in_range(camera(frame)):
+        if server_says and not in_range(tracked_position(frame)):
             glowing_while_drawn_outside += 1
     # The drawn character lags behind, and the glow did not wait for it.
     assert glowing_while_drawn_outside > 0
@@ -380,10 +382,10 @@ def test_a_walk_from_the_real_server_is_drawn_without_a_jump_and_ends_on_its_las
     frames = run_world(received, until=received[-1][0] + 500, own=name,
                        players=[{"name": name, "character": "student"}])
 
-    moves = moves_per_frame(frames, camera, 0, received[-1][0] + 500)
+    moves = moves_per_frame(frames, tracked_position, 0, received[-1][0] + 500)
     # Never a whole step in one frame, however the messages came.
     assert max(moves) < STEP, max(moves)
-    assert math.dist(camera(frames[-1]), (last["x"], last["y"])) < EXACT
+    assert math.dist(tracked_position(frames[-1]), (last["x"], last["y"])) < EXACT
     # The server walked one straight line to the right, in real steps.
     xs = [next(p for p in players if p["name"] == name)["x"] for _, players in received]
     assert all(0 <= b - a <= 9.11 for a, b in zip(xs, xs[1:])), xs

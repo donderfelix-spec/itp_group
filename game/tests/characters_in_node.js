@@ -275,33 +275,23 @@ function box(points) {
 }
 
 function report(look, drawings, mirrored) {
-  // The body box: a fill in the body colour that is 42 units high from
-  // y = 38 to 80 where it was drawn. (The Founder's hood behind the head
-  // has the body colour too.)
-  const isBodyBox = (d) => {
-    if (d.op !== 'fill' || d.colour !== look.colour) return false;
-    const [, top, , bottom] = box(d.points.map((p) => apply(inverse(d.matrix), p)));
-    return Math.abs(top - 38) < 1e-6 && Math.abs(bottom - 80) < 1e-6;
-  };
-  const bodyIndex = drawings.findIndex(isBodyBox);
-  const firstArm = drawings.findIndex((d, i) => i > bodyIndex && d.op === 'stroke' && d.colour === OUTLINE && Math.abs(d.width - 10.5) < 1e-9);
-  const toBody = inverse(drawings[bodyIndex].matrix);
-  // drawCharacter at (0, 0) with size 112: design y = canvas y + 44.
-  const toDesign = ([x, y]) => [mirrored ? -x : x, y + 44];
-  return drawings.map((d, i) => ({
+  // The mascot renderer uses 104 design units per requested height.
+  const toDesign = ([x, y]) => [mirrored ? -x * 104 / 112 : x * 104 / 112, y * 104 / 112 + 48];
+  return drawings.map((d) => ({
     op: d.op,
     colour: d.colour,
-    width: Math.round(d.width * 1000) / 1000,
-    text: d.text,
-    part: i <= bodyIndex + 1 ? 'before' : i < firstArm ? 'clothes' : 'after',
+    width: d.width,
     design: box(d.points.map(toDesign)),
-    body: box(d.points.map((p) => apply(toBody, p))),
-    screenMiddleX: Math.round(((box(d.points)[0] + box(d.points)[2]) / 2) * 1000) / 1000,
+    local: box(d.points.map((p) => apply(inverse(d.matrix), p))),
+    matrix: d.matrix,
   }));
 }
 
-const result = {};
-world.characters.forEach((look) => {
+const result = Object.create(null);
+const looks = process.argv.includes('--unknown')
+  ? ['missing', 'toString', '__proto__'].map((id) => ({id: id}))
+  : world.characters;
+looks.forEach((look) => {
   result[look.id] = {};
   Object.entries(POSES).forEach(([name, pose]) => {
     const drawings = [];

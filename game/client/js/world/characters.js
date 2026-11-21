@@ -203,6 +203,7 @@ Game.world = Game.world || {};
       return;
     }
     var character = characters.find(function (entry) { return entry.id === characterId; });
+    var designId = character ? character.id : "consultant";
     var colour = character ? character.colour : "#9296A0";
     // Lobby previews omit stride and keep their neutral pose.
     var pose = stride && typeof stride === "object" ? stride : null;
@@ -212,12 +213,13 @@ Game.world = Game.world || {};
       motion = { time: motion && motion.time || 0, walking: hasPhase && strength > 0, facing: motion && motion.facing || "side" };
       stride = hasPhase ? Math.sin(pose.walkPhase * Math.PI * 2) * strength : 0;
     }
-    var profile = movement[characterId] || movement.consultant;
+    var profile = movement[designId];
     var time = motion && Number.isFinite(motion.time) ? motion.time : 0;
     var walking = motion ? motion.walking === true : !!stride;
     var facing = motion ? motion.facing : "front";
     var rawStep = Number.isFinite(stride) ? Math.max(-1, Math.min(1, stride)) : 0;
     var step = (pose ? rawStep : (motion ? (walking ? Math.sin(time / profile.cadence) : 0) : rawStep)) * profile.swing;
+    var pace = pose ? strength : (walking ? 1 : 0);
     var idle = motion && !walking ? Math.sin(time / 900) : 0;
     ctx.save();
     ctx.translate(x, y);
@@ -232,21 +234,21 @@ Game.world = Game.world || {};
     ctx.fill();
     ctx.save();
     ctx.translate(0, 77);
-    ctx.rotate(walking ? profile.lean + step * 0.018 : idle * 0.018);
+    ctx.rotate(walking ? profile.lean * pace + step * 0.018 : idle * 0.018);
     ctx.translate(0, -77);
     // Opposite limbs swing together, pivoting from the hips and shoulders.
     drawLeg(ctx, -10, step);
     drawLeg(ctx, 10, -step);
     drawArm(ctx, -23, -step, colour);
     drawArm(ctx, 23, step, colour);
-    shape(ctx, bodies[characterId] || bodies.consultant, colour);
+    shape(ctx, bodies[designId], colour);
     box(ctx, -5, 43, 10, 11, 2, "#9BACA9");
 
     ctx.save();
     ctx.translate(0, 47);
     ctx.rotate(step * 0.065 + idle * 0.035);
     ctx.translate(0, -47);
-    var head = heads[characterId] || heads.consultant;
+    var head = heads[designId];
     box(ctx, head.x, head.y, head.w, head.h, head.r, head.fill);
     if (facing === "back") {
       // A casing seam and a colour-coded backpack identify the rear view.

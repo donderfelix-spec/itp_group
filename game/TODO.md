@@ -82,7 +82,7 @@ Milestone 2 was built up to the Duel by Claude as lead (pull requests #19 to #26
 **Area 1 (Hanna)**
 
 - [x] **M2-1.2** Character selection in the lobby, first version of the eight stereotypes (came with M1-2.1)
-- [ ] **M2-1.3** Display of the current room (Hanna). Implemented on game/campus-and-characters: a fixed label at the top left, with Hidden while inside a hiding circle. Browser preview checked; integration checks pending.
+- [x] **M2-1.3** Display of the current room (Hanna). Implemented on game/campus-and-characters: a fixed label at the top left, with Hidden while inside a hiding circle. Checked in the browser on Main Deck and in Canteen, and in the complete test suite (2026-11-21).
 - [ ] **M2-1.4** Make the map nicer and more detailed: floors, furniture and plants with more detail, still drawn from `campus.json` (Hanna). **Started, not merged.** Branch `game/m2-1.4-map-detail`: built, full suite green, one code review without blocking findings. No geometry changed; `campus.json` gained `pattern` on rooms, `faces` and `holds` on some solids and a list `decor` that only the browser draws. Branch `game/m2-1.4-map-detail-wip` holds the unfinished and untested fixes of that review: door mats and door leaves vanish at the edge of the view, six leaves lie on the walkable deck (decor must not lie where players walk; a test for that rule was started), the round café tables look smaller than the area they block, the canteen tables read as cassettes. Missing: finish and test those fixes, second review, play test, lists, pull request. Drawing the map costs about twice as much as before, still far inside one frame
 - [x] **M2-1.5** Larger characters in a three-quarter view that face only left or right (requested by Felix, built in his session; area 1 is Hanna's). Height 39 instead of 26 with the camera unchanged, no back view, what is held in one hand stays in that hand, a badge shows a station's number under a character standing on it; the collision on the server is unchanged. Two code reviews, play test with two and with eight players, decisions in S-105 (2026-11-19). **To check by a person:** with eight players and a high-resolution screen the play test counted about 10 late frames in 600 against 1 to 2 before, measured without a graphics card; watch for stutter on a real laptop
 - [x] **M2-1.6** More realistic walking: front, side and back view of all eight characters, alternating feet, a soft stop. Two code reviews, play test with two players, the icons in the lobby are unchanged (2026-11-19). Known and accepted: a player put back onto the spawn from fewer than 15 map units away is drawn taking one step, because the browser cannot tell that from a real step; hair and headwear do not turn yet (M2-1.7)
@@ -133,7 +133,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [ ] **M3-1.1** Limited vision (Hanna)
 - [ ] **M3-1.2** Show ghosts, a failed character stays on the ground until it is reported (Hanna)
 - [ ] **M3-1.3** Overview map with open tasks (Hanna)
-- [ ] **M3-1.4** Four hiding spots (S-62), after the core of Classic (Hanna). Implemented on game/campus-and-characters for the campus preview: four reachable circles, walkable hedge, self-transparency and recipient-specific position filtering at 35 map units. Nineteen new tests pass; legacy solid-hedge tests require a team review before this is considered done.
+- [x] **M3-1.4** Four hiding spots (S-62) (Hanna). Implemented on game/campus-and-characters for the campus preview: four reachable circles, walkable hedge, self-transparency and recipient-specific position filtering at 35 map units. Nineteen new server tests pass. Played with two browser guests: far hiding, close reveal, own transparency and room transition. The 35-unit range is a branch proposal. User authorised updating the test contracts for the new behaviour; historical closed-hedge scenarios remain covered (2026-11-21).
 
 **Area 2 (Felix)**
 
@@ -216,4 +216,6 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 
 ## Campus branch integration, 2026-11-21
 
-- [ ] Integration review of main with the individual mascots, distance-based walking poses, bounded camera, floor patterns and tree detail. Legacy artwork and solid-hedge tests still describe the previous design; none were edited or skipped.
+- [x] Integration review of main with the individual mascots, distance-based walking poses, bounded camera, floor patterns and tree detail. Hanna authorised updating tests for the new design on 2026-11-21. The new mascot geometry and camera bounds have dedicated checks; historical closed-hedge collision scenarios remain covered separately.
+
+Verification on 2026-11-21: the complete suite passed 3,221 tests with Node available; the additional unknown-character regression passed separately. Dependency audit: no known vulnerabilities. Code and test reviews found no remaining blocking issues. Saved locally on game/campus-and-characters for team review.

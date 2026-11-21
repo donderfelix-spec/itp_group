@@ -15,6 +15,8 @@ every character is drawn. Without Node the tests are skipped; CI has Node.
 """
 
 import json
+from world_tracking import with_tracked_player
+
 import math
 import shutil
 import subprocess
@@ -73,7 +75,7 @@ def run_world(messages, until, players, own, start_of_round=None, usable=None, p
     `players` are the names in the lobby; each gets its own character.
     `paused` (from, to): no frames in between, as in a hidden tab.
     `steps`: more steps of the lobby page, each a list [name, t, ...] (see the harness).
-    Returns one dict per frame: {t, camera, glow, useButtonOn, characters}.
+    Returns one dict per frame: {t, tracked_position, glow, useButtonOn, characters}.
     """
     events = [(t, 0, ["positions", t, places]) for t, places in messages]
     if start_of_round is not None:
@@ -96,7 +98,7 @@ def run_world(messages, until, players, own, start_of_round=None, usable=None, p
         check=False,
     )
     assert finished.returncode == 0, finished.stderr
-    return json.loads(finished.stdout)
+    return with_tracked_player(json.loads(finished.stdout), program["players"], own)
 
 
 def delivered(places_per_message, tick, extra_delay):
@@ -128,8 +130,8 @@ def walk(name, messages, start, direction, step):
             for k in range(messages)]
 
 
-def camera(frame):
-    return (frame["camera"]["x"], frame["camera"]["y"])
+def tracked_position(frame):
+    return (frame["tracked"]["x"], frame["tracked"]["y"])
 
 
 def drawn(frame, character):
@@ -156,14 +158,14 @@ def frames_between(frames, start, end=math.inf):
 
 
 @needs_node
-def test_with_felix_bunched_messages_the_camera_never_stalls_after_the_first_three_seconds():
+def test_with_felix_bunched_messages_the_player_never_stalls_after_the_first_three_seconds():
     count = 160  # 160 x 68.2 ms: almost 11 s of walking
     places = [[place] for place in walk("Mara", count, SPAWN, (1, 0), FELIX_STEP)]
     messages = felix(places)
     frames = run_world(messages, until=messages[-1][0], players=["Mara"], own="Mara")
 
     normal = FELIX_STEP / FELIX_TICK * FRAME  # about 1.5 units per frame
-    moves = moves_per_frame(frames, camera, 3000)
+    moves = moves_per_frame(frames, tracked_position, 3000)
     assert len(moves) > 400
     # Never standing still, never slower than half the normal speed.
     assert min(moves) >= normal / 2, min(moves)
@@ -172,17 +174,17 @@ def test_with_felix_bunched_messages_the_camera_never_stalls_after_the_first_thr
 
 
 @needs_node
-def test_with_felix_bunched_messages_the_camera_never_moves_backwards():
+def test_with_felix_bunched_messages_the_player_never_moves_backwards():
     count = 100
     places = [[place] for place in walk("Mara", count, SPAWN, (1, 0), FELIX_STEP)]
     messages = felix(places)
     frames = run_world(messages, until=messages[-1][0] + 500, players=["Mara"], own="Mara")
 
-    xs = [frame["camera"]["x"] for frame in frames]
+    xs = [frame["tracked"]["x"] for frame in frames]
     assert all(a <= b + EXACT for a, b in zip(xs, xs[1:]))
-    # The drawn character is where the camera looks, from the first position on.
+    # Track the drawn character directly; camera clamping is checked in the harness.
     shown = frames_between(frames, messages[0][0])
-    assert all(abs(drawn(frame, MARA)["x"] - frame["camera"]["x"]) < EXACT for frame in shown)
+    assert all(abs(drawn(frame, MARA)["x"] - frame["tracked"]["x"]) < EXACT for frame in shown)
 
 
 @needs_node
@@ -206,14 +208,14 @@ def test_eight_players_walking_with_bunched_messages_all_move_in_every_frame():
 
 
 @needs_node
-def test_with_messages_on_time_the_camera_moves_the_same_distance_in_every_frame():
+def test_with_messages_on_time_the_player_moves_the_same_distance_in_every_frame():
     count = 60
     places = [[place] for place in walk("Mara", count, SPAWN, (1, 0), 6)]
     messages = on_time(places)
     frames = run_world(messages, until=messages[-1][0], players=["Mara"], own="Mara")
 
     # After the start: the first step is drawn over one whole delay (110 ms).
-    moves = moves_per_frame(frames, camera, messages[1][0] + 110 + FRAME)
+    moves = moves_per_frame(frames, tracked_position, messages[1][0] + 110 + FRAME)
     normal = 6 / TICK * FRAME
     assert all(abs(move - normal) <= 0.1 * normal for move in moves), (min(moves), max(moves))
 
@@ -232,12 +234,12 @@ def test_a_walk_starts_in_the_first_frame_after_the_first_step_and_never_goes_ba
     frames = run_world(messages, until=messages[-1][0] + 500, players=["Mara"], own="Mara")
 
     before = frames_between(frames, 0, first_step_at - EXACT)
-    assert all(math.dist(camera(frame), SPAWN) < EXACT for frame in before)
+    assert all(math.dist(tracked_position(frame), SPAWN) < EXACT for frame in before)
     first_after = frames_between(frames, first_step_at)[0]
     assert first_after["t"] - first_step_at < FRAME
     # No added wait: the camera has already left the spawn in this frame.
-    assert first_after["camera"]["x"] > SPAWN[0] + 0.01
-    xs = [frame["camera"]["x"] for frame in frames]
+    assert first_after["tracked"]["x"] > SPAWN[0] + 0.01
+    xs = [frame["tracked"]["x"] for frame in frames]
     assert all(a <= b + EXACT for a, b in zip(xs, xs[1:]))
 
 
@@ -251,12 +253,12 @@ def test_a_stop_reaches_the_last_server_position_exactly_in_time_without_oversho
     frames = run_world(messages, until=last_at + 1500, players=["Mara"], own="Mara")
 
     # Never past the last server position.
-    assert all(frame["camera"]["x"] <= last[0] + EXACT for frame in frames)
+    assert all(frame["tracked"]["x"] <= last[0] + EXACT for frame in frames)
     # There at the latest the longest delay plus one tick after the last message.
-    reached = [frame for frame in frames if math.dist(camera(frame), last) < EXACT]
+    reached = [frame for frame in frames if math.dist(tracked_position(frame), last) < EXACT]
     assert reached and reached[0]["t"] <= last_at + LONGEST_DELAY + TICK
     # And from then on it stays there.
-    assert all(math.dist(camera(frame), last) < EXACT for frame in frames_between(frames, reached[0]["t"]))
+    assert all(math.dist(tracked_position(frame), last) < EXACT for frame in frames_between(frames, reached[0]["t"]))
     # The feet stop once the steps have faded.
     still = [drawn(frame, MARA) for frame in frames_between(frames, reached[0]["t"] + STRIDE_FADES + FRAME)]
     assert still and all(c["stride"] == 0 and c["walkPhase"] is None for c in still)
@@ -272,7 +274,7 @@ def test_without_messages_for_two_seconds_nothing_moves():
     frames = run_world(placed, until=2000, players=["Mara", "Tiago"], own="Mara")
 
     for frame in frames:
-        assert math.dist(camera(frame), SPAWN) < EXACT
+        assert math.dist(tracked_position(frame), SPAWN) < EXACT
         assert drawn(frame, TIAGO)["x"] == 400
         assert all(c["stride"] == 0 and c["walkPhase"] is None for c in frame["characters"])
 
@@ -287,7 +289,7 @@ def test_after_a_walk_and_two_seconds_without_messages_nothing_moves():
 
     settled = frames_between(frames, last_at + LONGEST_DELAY + TICK + STRIDE_FADES)
     assert len(settled) > 90
-    assert all(camera(frame) == camera(settled[0]) for frame in settled)
+    assert all(tracked_position(frame) == tracked_position(settled[0]) for frame in settled)
     assert all(drawn(frame, MARA)["stride"] == 0 for frame in settled)
 
 
@@ -319,7 +321,7 @@ def test_the_station_glow_follows_the_newest_server_position_while_the_drawing_i
         server_says = in_range(newest_server_place(frame))
         assert (frame["glow"] == station["id"]) == server_says, frame["t"]
         assert frame["useButtonOn"] == server_says, frame["t"]
-        if server_says and not in_range(camera(frame)):
+        if server_says and not in_range(tracked_position(frame)):
             glowing_while_drawn_outside += 1
     # The drawing is behind, and the glow did not wait for it.
     assert glowing_while_drawn_outside > 0
@@ -339,11 +341,11 @@ def test_a_respawn_far_away_is_drawn_in_the_next_frame_without_waiting_for_the_q
     frames = run_world(messages, until=respawn_at + 500, players=["Mara"], own="Mara")
 
     before = frames_between(frames, 0, respawn_at - EXACT)
-    assert math.dist(camera(before[-1]), (places[-1][0]["x"], places[-1][0]["y"])) > 1  # still behind
+    assert math.dist(tracked_position(before[-1]), (places[-1][0]["x"], places[-1][0]["y"])) > 1  # still behind
     after = frames_between(frames, respawn_at)
     assert after[0]["t"] - respawn_at < FRAME
     for frame in after:
-        assert math.dist(camera(frame), respawn) < EXACT
+        assert math.dist(tracked_position(frame), respawn) < EXACT
         mara = drawn(frame, MARA)
         assert mara["stride"] == 0 and mara["walkPhase"] is None and mara["mirrored"] is False
 
@@ -376,7 +378,7 @@ def test_the_start_of_a_round_puts_a_nearby_character_on_the_spawn_in_one_frame(
             assert abs(c["x"] - SPAWN[0]) < EXACT
             assert c["mirrored"] is False
             assert c["stride"] == 0 and c["walkPhase"] is None
-    assert math.dist(camera(after[0]), SPAWN) < EXACT
+    assert math.dist(tracked_position(after[0]), SPAWN) < EXACT
 
 
 # ---- Bursts and hold-ups -------------------------------------------------------
@@ -386,11 +388,11 @@ def assert_stops_on_time(frames, messages, last):
     """The camera never goes past `last` nor backwards, and is on `last` at most
     the longest delay plus one tick after the last message, and stays there."""
     last_at = messages[-1][0]
-    xs = [frame["camera"]["x"] for frame in frames_between(frames, messages[0][0])]
+    xs = [frame["tracked"]["x"] for frame in frames_between(frames, messages[0][0])]
     assert all(a <= b + EXACT for a, b in zip(xs, xs[1:]))
     assert all(x <= last[0] + EXACT for x in xs)
     on_time_frames = frames_between(frames, last_at + LONGEST_DELAY + TICK)
-    assert on_time_frames and all(math.dist(camera(frame), last) < EXACT for frame in on_time_frames)
+    assert on_time_frames and all(math.dist(tracked_position(frame), last) < EXACT for frame in on_time_frames)
 
 
 # After a gap the queue catches up at most this many times faster than the
@@ -405,17 +407,17 @@ def too_fast_frames(frames, step, start=0):
     FASTEST_PACE times one `step` per server tick."""
     fastest = FASTEST_PACE * step / TICK * FRAME * (1 + 1e-9)
     return [frame for before, frame in zip(frames, frames[1:])
-            if frame["t"] >= start and math.dist(camera(before), camera(frame)) > fastest]
+            if frame["t"] >= start and math.dist(tracked_position(before), tracked_position(frame)) > fastest]
 
 
 def assert_ends_on(frames, messages, last, within):
     """The camera never goes backwards nor past `last`, and is on `last` at
     most `within` ms after the last message, and stays there."""
-    xs = [frame["camera"]["x"] for frame in frames_between(frames, messages[0][0])]
+    xs = [frame["tracked"]["x"] for frame in frames_between(frames, messages[0][0])]
     assert all(a <= b + EXACT for a, b in zip(xs, xs[1:]))
     assert all(x <= last[0] + EXACT for x in xs)
     ended = frames_between(frames, messages[-1][0] + within)
-    assert ended and all(math.dist(camera(frame), last) < EXACT for frame in ended)
+    assert ended and all(math.dist(tracked_position(frame), last) < EXACT for frame in ended)
 
 
 @needs_node
@@ -454,7 +456,7 @@ def test_a_hold_up_and_all_held_messages_at_once_snap_at_once(held):
     assert too_fast_frames(frames, 6, start=messages[1][0]) == [first_after]
     # The whole burst snaps, not only its first part: soon at most one step behind.
     soon = frames_between(frames, burst_at + LONGEST_DELAY + TICK)[0]
-    assert places[-1][0]["x"] - soon["camera"]["x"] <= 6 + EXACT
+    assert places[-1][0]["x"] - soon["tracked"]["x"] <= 6 + EXACT
     assert_ends_on(frames, messages, (places[-1][0]["x"], places[-1][0]["y"]),
                    within=LONGEST_DELAY + LONGEST_CATCH_UP)
 
@@ -491,14 +493,14 @@ def test_with_felix_messages_and_a_long_gap_every_three_seconds_the_drawing_stop
         # The stop: at most the part of the gap the delay could not cover, plus one frame.
         around = frames_between(frames, gap_start, gap_end + FRAME)
         still = sum(1 for before, frame in zip(around, around[1:])
-                    if math.dist(camera(before), camera(frame)) < EXACT)
+                    if math.dist(tracked_position(before), tracked_position(frame)) < EXACT)
         assert still * FRAME <= gap_end - gap_start - delay + FRAME, (gap_start, still)
         # Then it goes on at once at least at half the normal speed: no slow
         # first step over the whole delay. (The frame in which it starts again
         # moves only part of a frame.)
         normal = FELIX_STEP / FELIX_TICK * FRAME
         after = frames_between(frames, gap_end, min(gap_end + 1000, arrivals[-1]))
-        moves = [math.dist(camera(before), camera(frame)) for before, frame in zip(after, after[1:])]
+        moves = [math.dist(tracked_position(before), tracked_position(frame)) for before, frame in zip(after, after[1:])]
         started = next(i for i, move in enumerate(moves) if move > EXACT)
         assert all(move >= normal / 2 for move in moves[started + 1:]), (gap_end, min(moves[started + 1:]))
         # 1 s after the gap the drawing is back to at most one delay plus one
@@ -507,7 +509,7 @@ def test_with_felix_messages_and_a_long_gap_every_three_seconds_the_drawing_stop
         # catch-up runs out.) From 1.5 s on it stays within that, until the next gap.
         def behind(frame):
             newest = [p for t, p in messages if t <= frame["t"]][-1][0]
-            return newest["x"] - frame["camera"]["x"]
+            return newest["x"] - frame["tracked"]["x"]
 
         allowed = FELIX_STEP * (delay + TICK) / FELIX_TICK + EXACT
         one_second_after = frames_between(frames, gap_end + 1000)[0]
@@ -529,7 +531,7 @@ def test_after_frames_paused_for_five_seconds_the_drawing_is_not_seconds_behind(
     resumed = frames_between(frames, paused[1])[0]
     newest = [p for t, p in messages if t <= resumed["t"]][-1][0]
     # At most one longest delay plus one tick of walking behind the newest position.
-    assert newest["x"] - resumed["camera"]["x"] <= FELIX_STEP * (LONGEST_DELAY + TICK) / FELIX_TICK
+    assert newest["x"] - resumed["tracked"]["x"] <= FELIX_STEP * (LONGEST_DELAY + TICK) / FELIX_TICK
     assert_stops_on_time(frames, messages, (places[-1][0]["x"], places[-1][0]["y"]))
 
 
@@ -552,12 +554,12 @@ def test_a_long_gap_before_stop_does_not_slow_the_drawing_after_start():
     frames = run_world(messages, until=messages[-1][0] + 500, players=["Mara"], own="Mara", steps=steps)
 
     # The old gap is forgotten: the smallest delay, the same distance in every frame.
-    moves = moves_per_frame(frames, camera, first_at + TICK + 110 + FRAME, messages[-1][0])
+    moves = moves_per_frame(frames, tracked_position, first_at + TICK + 110 + FRAME, messages[-1][0])
     normal = 6 / TICK * FRAME
     assert all(abs(move - normal) <= 0.1 * normal for move in moves), (min(moves), max(moves))
     last = (after[-1]["x"], after[-1]["y"])
     there = frames_between(frames, messages[-1][0] + 110 + FRAME)
-    assert there and all(math.dist(camera(frame), last) < EXACT for frame in there)
+    assert there and all(math.dist(tracked_position(frame), last) < EXACT for frame in there)
 
 
 @needs_node
@@ -590,10 +592,10 @@ def test_a_standing_player_starts_at_once_while_another_player_walks():
     frames = run_world(messages, until=messages[-1][0], players=["Mara", "Tiago"], own="Mara")
 
     standing = frames_between(frames, 0, first_step_at - EXACT)
-    assert all(math.dist(camera(frame), SPAWN) < EXACT for frame in standing)
+    assert all(math.dist(tracked_position(frame), SPAWN) < EXACT for frame in standing)
     first_after = frames_between(frames, first_step_at)[0]
     assert first_after["t"] - first_step_at < FRAME
-    assert first_after["camera"]["x"] > SPAWN[0] + 0.01
+    assert first_after["tracked"]["x"] > SPAWN[0] + 0.01
 
 
 @needs_node
@@ -613,12 +615,12 @@ def test_a_burst_while_walking_left_keeps_the_character_facing_left_and_walking(
     assert all(drawn(frame, MARA)["mirrored"] is True for frame in shown)
     # Whenever the character moves, also through the burst, its feet move.
     # (During the hold-up before a burst it may really stand for a moment.)
-    moving = [frame for before, frame in zip(shown, shown[1:]) if math.dist(camera(before), camera(frame)) > EXACT]
+    moving = [frame for before, frame in zip(shown, shown[1:]) if math.dist(tracked_position(before), tracked_position(frame)) > EXACT]
     merged_glide = [frame for frame in moving if frame["t"] > messages[bursts[0] + 4][0]]
     assert moving and merged_glide
     assert all(drawn(frame, MARA)["stride"] > 0 for frame in moving)
     # After the stop: still facing left, and the feet fade to still.
-    reached_at = next(frame["t"] for frame in frames if math.dist(camera(frame), last) < EXACT)
+    reached_at = next(frame["t"] for frame in frames if math.dist(tracked_position(frame), last) < EXACT)
     stopped = frames_between(frames, reached_at)
     assert all(drawn(frame, MARA)["mirrored"] is True for frame in stopped)
     still = frames_between(frames, reached_at + STRIDE_FADES + FRAME)
@@ -640,8 +642,8 @@ def test_after_the_start_of_a_round_the_same_place_as_before_still_ends_the_draw
     frames = run_world(messages, until=again_at + 600, players=["Mara"], own="Mara", start_of_round=round_at)
 
     waiting = frames_between(frames, round_at + FRAME, again_at - EXACT)
-    assert waiting and all(camera(frame)[0] < last[0] - 1 for frame in waiting)  # stopped short
+    assert waiting and all(tracked_position(frame)[0] < last[0] - 1 for frame in waiting)  # stopped short
     ended = frames_between(frames, again_at + LONGEST_DELAY + TICK)
-    assert ended and all(math.dist(camera(frame), last) < EXACT for frame in ended)
-    xs = [frame["camera"]["x"] for frame in frames_between(frames, messages[0][0])]
+    assert ended and all(math.dist(tracked_position(frame), last) < EXACT for frame in ended)
+    xs = [frame["tracked"]["x"] for frame in frames_between(frames, messages[0][0])]
     assert all(x <= last[0] + EXACT for x in xs)

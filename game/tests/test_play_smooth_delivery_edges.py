@@ -25,7 +25,7 @@ from test_play_smooth_delivery import (
     STRIDE_FADES,
     TICK,
     TIAGO,
-    camera,
+    tracked_position,
     delivered,
     drawn,
     felix,
@@ -75,11 +75,11 @@ def test_a_stop_while_another_player_walks_ends_exactly_on_the_last_position_and
     last = (mara[-1]["x"], mara[-1]["y"])
     frames = run_world(messages, until=messages[-1][0] + 300, players=["Mara", "Tiago"], own="Mara")
 
-    assert all(frame["camera"]["x"] <= last[0] + EXACT for frame in frames)
-    reached = [frame for frame in frames if math.dist(camera(frame), last) < EXACT]
+    assert all(frame["tracked"]["x"] <= last[0] + EXACT for frame in frames)
+    reached = [frame for frame in frames if math.dist(tracked_position(frame), last) < EXACT]
     assert reached and reached[0]["t"] <= last_change_at + LONGEST_DELAY + TICK
     # No slow creep towards it: exactly there from then on, while the same place keeps arriving.
-    assert all(math.dist(camera(frame), last) < EXACT for frame in frames_between(frames, reached[0]["t"]))
+    assert all(math.dist(tracked_position(frame), last) < EXACT for frame in frames_between(frames, reached[0]["t"]))
     still = frames_between(frames, reached[0]["t"] + STRIDE_FADES + FRAME)
     assert still and all(drawn(frame, MARA)["stride"] == 0 and drawn(frame, MARA)["walkPhase"] is None for frame in still)
     # Tiago, seen by Mara, still walks in every frame after the first second.
@@ -101,7 +101,7 @@ def test_quick_turnarounds_with_bunched_messages_stay_on_the_server_path_and_end
     last = (places[-1][0]["x"], places[-1][0]["y"])
     frames = run_world(messages, until=messages[-1][0] + 600, players=["Mara"], own="Mara")
 
-    drawn_xs = [frame["camera"]["x"] for frame in frames]
+    drawn_xs = [frame["tracked"]["x"] for frame in frames]
     # Never past a turning point: the drawing stays inside the way the server walked.
     assert min(server_xs) - EXACT <= min(drawn_xs) and max(drawn_xs) <= max(server_xs) + EXACT
     # No extra back and forth: at most as many turns as the server made.
@@ -109,7 +109,7 @@ def test_quick_turnarounds_with_bunched_messages_stay_on_the_server_path_and_end
     # Never a jump: at most two steps in one frame.
     assert all(abs(b - a) <= 2 * FELIX_STEP for a, b in zip(drawn_xs, drawn_xs[1:]))
     ended = frames_between(frames, messages[-1][0] + LONGEST_DELAY + TICK)
-    assert ended and all(math.dist(camera(frame), last) < EXACT for frame in ended)
+    assert ended and all(math.dist(tracked_position(frame), last) < EXACT for frame in ended)
 
 
 @needs_node
@@ -131,16 +131,16 @@ def test_walking_through_the_start_of_a_round_draws_the_first_place_of_the_round
 
     after = frames_between(frames, first_at)
     assert after[0]["t"] - first_at < FRAME
-    assert math.dist(camera(after[0]), (mara_after[0]["x"], mara_after[0]["y"])) < EXACT
+    assert math.dist(tracked_position(after[0]), (mara_after[0]["x"], mara_after[0]["y"])) < EXACT
     assert math.dist(place_of(drawn(after[0], TIAGO)), (tiago_after[0]["x"], tiago_after[0]["y"])) < EXACT
     # From there on they only walk on, never back towards the places before the round.
-    mara_xs = [frame["camera"]["x"] for frame in after]
+    mara_xs = [frame["tracked"]["x"] for frame in after]
     tiago_ys = [drawn(frame, TIAGO)["middleY"] for frame in after]
     assert all(a <= b + EXACT for a, b in zip(mara_xs, mara_xs[1:]))
     assert all(a <= b + EXACT for a, b in zip(tiago_ys, tiago_ys[1:]))
     assert all(drawn(frame, MARA)["mirrored"] is False for frame in after)
     ended = frames_between(frames, messages[-1][0] + LONGEST_DELAY + TICK)
-    assert ended and all(math.dist(camera(frame), (mara_after[-1]["x"], mara_after[-1]["y"])) < EXACT for frame in ended)
+    assert ended and all(math.dist(tracked_position(frame), (mara_after[-1]["x"], mara_after[-1]["y"])) < EXACT for frame in ended)
 
 
 @needs_node
@@ -165,7 +165,7 @@ def test_a_frozen_page_that_gets_five_seconds_of_messages_at_once_is_not_seconds
         assert newest["x"] - drawn(frame, TIAGO)["x"] <= behind_at_most + EXACT
     xs = [drawn(frame, TIAGO)["x"] for frame in frames]
     assert all(a <= b + EXACT for a, b in zip(xs, xs[1:]))  # never back
-    assert all(math.dist(camera(frame), SPAWN) < EXACT for frame in frames)
+    assert all(math.dist(tracked_position(frame), SPAWN) < EXACT for frame in frames)
     ended = frames_between(frames, messages[-1][0] + LONGEST_DELAY + TICK)
     assert ended and all(drawn(frame, TIAGO)["x"] == tiago[-1]["x"] for frame in ended)
 
@@ -188,8 +188,8 @@ def test_joining_again_while_walking_draws_the_own_player_at_once_where_the_serv
 
     back = frames_between(frames, back_at)
     assert back[0]["t"] - back_at < FRAME
-    assert math.dist(camera(back[0]), SPAWN) < EXACT
+    assert math.dist(tracked_position(back[0]), SPAWN) < EXACT
     # Nothing of the walk before leaving is drawn after joining again.
-    assert all(frame["camera"]["x"] >= SPAWN[0] - EXACT for frame in frames_between(frames, start_at))
+    assert all(frame["tracked"]["x"] >= SPAWN[0] - EXACT for frame in frames_between(frames, start_at))
     ended = frames_between(frames, messages[-1][0] + LONGEST_DELAY + TICK)
-    assert ended and all(math.dist(camera(frame), (after[-1]["x"], after[-1]["y"])) < EXACT for frame in ended)
+    assert ended and all(math.dist(tracked_position(frame), (after[-1]["x"], after[-1]["y"])) < EXACT for frame in ended)

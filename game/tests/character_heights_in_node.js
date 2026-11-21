@@ -42,7 +42,7 @@ function highestPoint(drawings) {
   let highest = Infinity;
   drawings.forEach((drawing) => {
     drawing.points.forEach(([, y]) => {
-      highest = Math.min(highest, y + 44 - drawing.width / 2);
+      highest = Math.min(highest, (y - drawing.width / 2) * 104 / 112 + 48);
     });
   });
   return highest;

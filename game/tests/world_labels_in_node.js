@@ -116,16 +116,28 @@ FILES.forEach((file) => {
 async function run() {
   const world = page.Game.world;
   const frames = [];
+  const positions = new Map();
   for (const [kind, value] of input.steps) {
     if (kind === 'start') {
+      positions.clear();
       world.start(canvas, () => {});
       // Lets the stand-in fetch hand over the map.
       await new Promise((resolve) => setImmediate(resolve));
     } else if (kind === 'own') {
       world.setOwnName(value);
     } else if (kind === 'players') {
+      const names = new Set(value.map((entry) => entry.name));
+      for (const name of positions.keys()) {
+        if (!names.has(name)) positions.delete(name);
+      }
       world.setPlayers(value);
     } else if (kind === 'positions') {
+      // Existing label scenarios describe deltas. The server sends full snapshots.
+      for (const entry of value) positions.set(entry.name, entry);
+      world.setPositions(Array.from(positions.values()));
+    } else if (kind === 'snapshot') {
+      positions.clear();
+      for (const entry of value) positions.set(entry.name, entry);
       world.setPositions(value);
     } else if (kind === 'frame') {
       clock += value;
