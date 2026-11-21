@@ -271,6 +271,13 @@ def test_a_grown_cafe_table_leaves_no_gap_a_player_could_just_squeeze_into(table
             assert gap_between(table, other, SOLIDS) not in SQUEEZE_GAPS, (table_id, other["id"])
 
 
+@pytest.mark.parametrize("row", [solid for solid in SOLIDS if solid["kind"] == "table-row"], ids=lambda solid: solid["id"])
+def test_a_shortened_ctt_row_leaves_no_gap_a_player_could_just_squeeze_into(row):
+    for other in SOLIDS:
+        if other is not row:
+            assert gap_between(row, other, SOLIDS) not in SQUEEZE_GAPS, (row["id"], other["id"])
+
+
 def test_the_spawn_reaches_every_station():
     grid = paths.Grid(SOLIDS, CAMPUS["width"], CAMPUS["height"])
     spawn = grid.nearest_free_point(CAMPUS["spawn"]["x"], CAMPUS["spawn"]["y"], paths.GRID_STEP)
@@ -573,7 +580,8 @@ def test_tiles_are_drawn_once_and_again_only_for_a_new_zoom():
     assert first["newTiles"] == len(first["copies"])
     assert again["newTiles"] == 1  # nothing new is seen: one tile is drawn ahead
     assert after_moving["newTiles"] <= 4  # at most one new column of tiles
-    assert after_zooming["newTiles"] == len(after_zooming["copies"])
+    # Every tile is drawn again at the new zoom (into the old canvases).
+    assert len(after_zooming["drawnAt"]) == len(after_zooming["copies"])
 
 
 @needs_node
@@ -589,16 +597,50 @@ def test_standing_still_draws_the_ring_around_the_picture_one_tile_per_frame_and
     assert later[-5:] == [0, 0, 0, 0, 0]
 
 
+# The memory budget of draw.js for tile canvases: 64 MiB of 512 x 512 tiles.
+MOST_TILES = 64
+
+
 @needs_node
-def test_walking_across_the_whole_map_keeps_a_bounded_number_of_tiles():
-    # Every tile made is kept or forgotten; walking far must not make the
-    # stand-in page create a tile for every frame again and again.
+def test_walking_across_the_whole_map_stays_within_the_memory_budget_for_tiles():
+    # Walking from the left of the map to the right and back, many more tiles
+    # are drawn than fit into the budget; the canvases are used again, so
+    # never more than the budget's worth of canvases is made.
     frames = [{"scale": 9.846, "e": 1280 - x * 9.846, "f": 800 - 300 * 9.846, "width": 2560, "height": 1600}
-              for x in range(0, 680, 20)]
-    result = tiles_frames(frames + list(reversed(frames)))
-    made_on_the_way_back = sum(frame["newTiles"] for frame in result[len(frames):])
-    made_on_the_way_out = sum(frame["newTiles"] for frame in result[:len(frames)])
-    assert made_on_the_way_back < made_on_the_way_out
+              for x in range(0, 680, 10)]
+    result = tiles_frames(frames + list(reversed(frames)) + frames)
+    canvases_made = sum(frame["newTiles"] for frame in result)
+    tiles_drawn = sum(len(frame["drawnAt"]) for frame in result)
+    assert tiles_drawn > MOST_TILES
+    assert canvases_made <= MOST_TILES
+
+
+@needs_node
+def test_a_new_zoom_draws_its_tiles_into_the_old_canvases():
+    camera = {"scale": 9.846, "e": -3456.0, "f": -2211.0, "width": 2560, "height": 1600}
+    zoomed = dict(camera, scale=9.0)
+    first, after_zooming = tiles_frames([camera, zoomed])
+    assert first["newTiles"] == len(first["copies"])
+    assert after_zooming["newTiles"] == max(0, len(after_zooming["copies"]) - len(first["copies"]))
+    assert len(after_zooming["drawnAt"]) == len(after_zooming["copies"])
+
+
+@needs_node
+def test_a_tile_drawn_half_ahead_that_comes_into_view_is_finished_not_drawn_again():
+    start = {"scale": 9.846, "e": -3456.0, "f": -2211.0, "width": 2560, "height": 1600}
+    nudged = dict(start, e=start["e"] - 40)  # no new tile: one is started ahead, on the right
+    walked_on = dict(start, e=start["e"] - 40 - 512)  # the ring's right column comes into view
+    frames = tiles_frames([start, nudged, walked_on])
+    [ahead] = frames[1]["drawnAt"]
+    # In the last frame that tile is copied where it belongs, one tile further left ...
+    shifted = {"x": ahead["x"] - 512, "y": ahead["y"]}
+    assert shifted in frames[2]["copies"]
+    # ... and it was finished, not started again: the frame starts only the
+    # other tiles of the new column.
+    started = frames[2]["drawnAt"]
+    assert shifted not in started
+    rows = len({copy_["y"] for copy_ in frames[2]["copies"]})
+    assert len(started) == rows - 1
 
 
 @needs_node

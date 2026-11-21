@@ -646,15 +646,22 @@ Game.world = Game.world || {};
   // seldom has to draw a tile while the player waits, and no frame draws
   // more than half a tile ahead.
   var TILE_PIXELS = 512;
-  // At least this many tiles are kept; more when the canvas is large.
-  var FEWEST_TILES_KEPT = 24;
+  // How much memory the canvases of the tiles may take, kept and spare
+  // together: 64 tiles of 512 x 512 pixels at 4 bytes are 64 MiB. Some
+  // browsers (Safari on iOS) refuse canvases beyond a total limit. Only a
+  // very large canvas, whose picture and ring need more tiles, goes beyond.
+  var TILE_BYTES = TILE_PIXELS * TILE_PIXELS * 4;
+  var TILE_MEMORY_BUDGET = 64 * 1024 * 1024;
+  var MOST_TILES = Math.floor(TILE_MEMORY_BUDGET / TILE_BYTES);
+  // Of those, this many are spare canvases of forgotten tiles, ready to be
+  // drawn into: making a new canvas costs more than drawing into an old one.
+  var SPARE_TILES = 8;
 
   var tiles = {
     campus: null, // the map and the zoom the tiles were drawn for
     scale: 0,
     kept: new Map(), // "column,row" -> canvas; the most recently used last
     spare: [], // canvases of forgotten tiles, to draw new tiles into
-    drawn: 0, // how many tiles were started so far
     work: 0, // how many halves of tiles were drawn so far
     pending: null, // a tile drawn ahead whose upper half is still missing
     lastOrigin: null, // where the map's corner was on the canvas last frame
@@ -704,11 +711,7 @@ Game.world = Game.world || {};
     var camera = ctx.getTransform();
     var scale = camera.a;
     if (tiles.campus !== campus || tiles.scale !== scale) {
-      tiles.kept.clear(); // a new map or a new zoom: every tile is out of date
-      tiles.spare = [];
-      tiles.pending = null;
-      tiles.campus = campus;
-      tiles.scale = scale;
+      startAgain(campus, scale);
     }
     // Where the map's corner lands on the canvas, rounded to a whole pixel.
     var originX = Math.round(camera.e);
@@ -733,9 +736,28 @@ Game.world = Game.world || {};
       drawOneTileAhead(campus, scale, ctx.canvas, originX, originY, firstColumn - 1, lastColumn + 1, firstRow - 1, lastRow + 1);
     }
     // Keep the tiles of the picture and of the ring around it, and as many
-    // again of those seen last.
+    // again of those seen last, as far as the memory budget allows.
     var ring = (lastColumn - firstColumn + 3) * (lastRow - firstRow + 3);
-    forgetOldTiles(Math.max(FEWEST_TILES_KEPT, ring * 2));
+    forgetOldTiles(Math.max(ring, Math.min(ring * 2, MOST_TILES - SPARE_TILES)));
+  }
+
+  // A new map or a new zoom: every tile is out of date. Their canvases are
+  // all the same size, so they become spares for the new tiles (within the
+  // budget) instead of being made again. The heading is forgotten too: the
+  // corner of the map moves on the canvas when the zoom changes.
+  function startAgain(campus, scale) {
+    var canvases = tiles.spare.slice();
+    tiles.kept.forEach(function (canvas) { canvases.push(canvas); });
+    if (tiles.pending) {
+      canvases.push(tiles.pending.canvas);
+    }
+    tiles.spare = canvases.slice(0, MOST_TILES);
+    // (More spares than SPARE_TILES are fine here: the new tiles use them up.)
+    tiles.kept.clear();
+    tiles.pending = null;
+    tiles.lastOrigin = null;
+    tiles.campus = campus;
+    tiles.scale = scale;
   }
 
   // Remembers which way the camera moves. When the map's corner moves left
@@ -794,7 +816,6 @@ Game.world = Game.world || {};
   // Starts a tile: makes (or reuses) its canvas and draws the lower half of
   // the layers. Returns what finishTile() needs.
   function startTile(campus, scale, column, row) {
-    tiles.drawn += 1;
     tiles.work += 1;
     // A canvas of a forgotten tile is used again: making a new one costs more
     // than drawing into an old one. The lawn drawn first covers it all.
@@ -827,9 +848,9 @@ Game.world = Game.world || {};
   }
 
   // Keeps only the `count` tiles used most recently, so walking across the
-  // whole map does not fill the memory.
-  var SPARE_TILES = 8;
-
+  // whole map does not fill the memory. A forgotten tile's canvas becomes a
+  // spare, up to SPARE_TILES of them; spares beyond that (left over from a
+  // new zoom) are let go once the kept tiles and spares exceed the budget.
   function forgetOldTiles(count) {
     while (tiles.kept.size > count) {
       var oldest = tiles.kept.keys().next().value;
@@ -837,6 +858,10 @@ Game.world = Game.world || {};
         tiles.spare.push(tiles.kept.get(oldest));
       }
       tiles.kept.delete(oldest);
+    }
+    var budget = Math.max(MOST_TILES, count + SPARE_TILES);
+    while (tiles.spare.length > SPARE_TILES && tiles.kept.size + tiles.spare.length > budget) {
+      tiles.spare.pop();
     }
   }
 

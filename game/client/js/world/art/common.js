@@ -539,11 +539,6 @@ Game.world = Game.world || {};
     slats(ctx, band, "#C99662", 2.2);
   });
 
-  // Lecture Hall: light bamboo slats.
-  addFace("bamboo-slats", function (ctx, band) {
-    slats(ctx, band, "#E2BD7C", 1.6);
-  });
-
   // Square tiles, `size` units, with light joints.
   function tiledFace(ctx, band, colour, size, joint) {
     ctx.fillStyle = colour;
@@ -583,23 +578,6 @@ Game.world = Game.world || {};
     ctx.fillRect(band.x, band.y, band.w, 1);
     ctx.fillStyle = "#B9BCC4";
     ctx.fillRect(band.x, band.y + band.h - 1.6, band.w, 1.6);
-  });
-
-  // The deck side of the buildings: a light facade with a row of windows.
-  addFace("facade", function (ctx, band) {
-    ctx.fillStyle = "#EEE7DA";
-    ctx.fillRect(band.x, band.y, band.w, band.h);
-    ctx.fillStyle = "rgba(46, 42, 59, 0.15)";
-    ctx.fillRect(band.x, band.y, band.w, 1);
-    var every = 14;
-    var windowWidth = 10;
-    var start = Math.floor(band.x / every) * every;
-    for (var x = start; x < band.x + band.w; x += every) {
-      var left = x + (every - windowWidth) / 2;
-      box(ctx, left, band.y + 1.8, windowWidth, band.h - 3.4, 0.4, "#A9D3E6", 0.6);
-      line(ctx, left + windowWidth / 2, band.y + 1.8, left + windowWidth / 2, band.y + band.h - 1.6, OUTLINE, 0.4);
-      line(ctx, left + 1.5, band.y + band.h - 2.4, left + 3.5, band.y + 2.6, "#FFFFFF", 0.5);
-    }
   });
 
   // ---- Doors -----------------------------------------------------------
@@ -658,25 +636,6 @@ Game.world = Game.world || {};
       var size = item.h * 0.6;
       text(ctx, item.text, item.x + item.w / 2, item.y + item.h / 2 + 0.2, size, "#FFFFFF", item.w - 1.6);
     }
-  };
-
-  // An upright digital sign: a bright screen with a white line drawing of
-  // an apple on it.
-  art.decor.screen = function (ctx, item) {
-    box(ctx, item.x, item.y, item.w, item.h, 0.6, OUTLINE, 0);
-    box(ctx, item.x + 0.6, item.y + 0.6, item.w - 1.2, item.h - 1.2, 0.4, item.colour || "#7CC7EC", 0);
-    var middleX = item.x + item.w / 2;
-    var middleY = item.y + item.h / 2 + 0.2;
-    var r = Math.min(item.w, item.h) * 0.24;
-    ctx.strokeStyle = "#FFFFFF";
-    ctx.lineWidth = 0.45;
-    ctx.beginPath();
-    ctx.arc(middleX - r * 0.35, middleY, r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(middleX + r * 0.35, middleY, r, 0, Math.PI * 2);
-    ctx.stroke();
-    line(ctx, middleX, middleY - r, middleX + r * 0.5, middleY - r * 1.6, "#FFFFFF", 0.45);
   };
 
   // Posters in blue, yellow and red on a white part of the wall.
