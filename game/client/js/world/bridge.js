@@ -171,11 +171,11 @@ Game.world = Game.world || {};
   // units, the bridge was right about the walk; a larger one is a wrong
   // guess (the server stood, turned or met a wall).
   var SMALL_CORRECTION = 1.5;
-  // How many of the server's last steps tell how long its ticks are.
-  var SERVER_STEPS_KEPT = 8;
   // A wrong guess is corrected within the time the glide has left, but
   // never faster than this, so it does not look like a jump.
   var SHORTEST_CORRECTION_MILLISECONDS = 50;
+  // How many of the server's last steps tell how long its ticks are.
+  var SERVER_STEPS_KEPT = 8;
 
   // The input lag before it was measured, and the limits of one sample.
   var START_DELAY_BEFORE_MEASURED = 100;

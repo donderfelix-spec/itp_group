@@ -3,7 +3,10 @@
 //
 // The browser decides nothing here (AGENTS.md, rule 1). The keyboard only
 // tells the server where the player wants to go, and every position that is
-// drawn, also the own one, comes from the server.
+// drawn, also the own one, comes from the server. (While the server's
+// positions are held up, the own character walks on for a moment by the
+// server's own rule and then takes the server's positions, see "Bridging
+// the gaps" below.)
 
 "use strict";
 
