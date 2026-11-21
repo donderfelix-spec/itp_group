@@ -63,13 +63,24 @@ Game.classicMeeting = Game.classicMeeting || {};
       Game.world.removeBloodSheet(message.reported_sheet_id);
     }
     screen.hidden = false;
+    holdTheCharacter(message.phase !== "result");
     updateInput();
     updateVoting();
     updateVoteResult();
     draw();
   }
 
+  // During discussion and vote the own character stands still, like while a
+  // minigame is open (Game.world.setInputPaused, S-121). It walks again once
+  // the result is shown or the meeting is gone, unless a minigame is open.
+  function holdTheCharacter(hold) {
+    if (!Game.world || typeof Game.world.setInputPaused !== "function") return;
+    if (!hold && Game.minigames && typeof Game.minigames.isOpen === "function" && Game.minigames.isOpen()) return;
+    Game.world.setInputPaused(hold);
+  }
+
   function hide() {
+    if (state !== null) holdTheCharacter(false);
     state = null;
     pendingVoteTarget = null;
     voteListSignature = "";

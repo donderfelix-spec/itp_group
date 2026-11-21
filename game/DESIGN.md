@@ -22,6 +22,8 @@ Everything without a note is required by Monday. “If time allows” means: onl
 
 Every room has its own floor colour, so you know at once where you are: Lecture Hall wood-coloured, Mon Café light with a wooden counter, Canteen mint, CTT blue, Pingo Doce light green.
 
+**Detail (M2-1.4, S-122):** furniture is sized for the characters (a chair about as wide as a body, a table one can sit at); every room is drawn as densely as the genre's best-known top-down party game, in our own style: each floor has a low-contrast pattern (planks, concrete, mint tiles, speckled terrazzo, small tiles with grey diamonds, large paving slabs), every horizontal wall shows its face, a band 8 units high below it in the room's style (a white wall with a bamboo panel, sage tiles, wooden slats with signs, the taupe slatted façade of the corridor), doors are openings with frames and open glass leaves, and furniture is drawn as what it is, with dark outlines. Floors and fittings stay quieter than stations, rings, players and name labels. Shop names are plain text in the game's lettering, never a copied logo.
+
 **Font:** The system font of the device, with headings in bold. No font has to be downloaded, which saves one dependency.
 
 **Buttons and cards:** Rounded, with a dark outline and a hard shadow to the bottom right, like stickers. The most important button on each screen is yellow, all others are cream.
@@ -35,12 +37,13 @@ Every room has its own floor colour, so you know at once where you are: Lecture 
 The map is based on the real campus in Carcavelos: light buildings, a large paved deck in the middle, a shallow reflecting pool, young trees in gravel beds and the beach at the bottom.
 
 - Lecture Hall, Mon Café and Canteen are at the top. On the left, the CTT Student Hall stretches a long way down, and Pingo Doce is at the bottom right. The Main Deck lies between them.
-- **Lecture Hall:** wooden floor, long white rows of benches, the board at the front.
-- **Mon Café:** counter with a coffee machine, small tables and four columns like in the atrium.
-- **Canteen:** serving counter and square tables.
-- **CTT Student Hall:** tall and narrow, with eight rows of tables standing crosswise and the bookshelf at the end.
-- **Pingo Doce:** four shelves and the self-checkout.
-- **Main Deck:** reflecting pool, six trees, a hedge and the large NOVA logo. The red button for the emergency meeting stands to the right of the hedge and appears 45 seconds after a round starts. The sixth station is at the bottom, at the exit to the beach. You have to walk around all of these, and that is how players lose sight of each other.
+- **Lecture Hall:** a tiered wooden floor with step edges, four deep, slightly curved rows of white desks with black chairs facing the front, in two pairs, carpeted side aisles, a white front wall with two whiteboards and a clock, a long table with a projector, a lectern on the stage, a bamboo slatted wall with a dark panel.
+- **Mon Café:** the sign "MON Café" (the O a coffee bean) on a white panel framed in wood, a sage-tiled back wall with two menu screens, a black counter on steel with sink, toaster oven, register and pastry case, a chrome espresso machine with cups and two grinders, four columns like in the atrium, three wooden tables with grey-green chairs, a high table with bar stools at the window, a black grid divider with plants, a concrete floor.
+- **Canteen:** a steel serving line with a glass guard and seven dishes, a tray rail with trays, cutlery and a register, a menu board and a pass-through to the kitchen, five square tables with chairs and trays, a microwave corner, recycling bins, a water fountain, a drinks fridge, a tray return.
+- **CTT Student Hall:** tall and narrow, with a central aisle between eight rows of long white tables (green and a few black chairs, laptops, books, bags), white pillars with "shh" signs, "Please remain silent" on the wall, windows on both long sides with trees outside, a glass double door and the bookshelf at the end.
+- **Pingo Doce:** a floor of small tiles with grey diamonds and a tiled border, a wooden slat wall with signs (GREENS, PINGO DOCE & GO, READY MEALS) and posters, turnstiles and two sign totems at the entrance, four full shelves (CANDY, DRINKS, PIZZA, PANTRY), fridges along both side walls, the self-checkout with baskets, a round fruit stand, wider than a character, with an olive tree, a hot-food and bakery counter with a coffee corner.
+- **Corridor:** the strip of the deck in front of the top rooms is the building's common area: terrazzo floor, the taupe slatted façade with "ACADEMIC HALL", round ceiling lights, grid-cube dividers with plants, two sofas, a black column and a staircase at the left end. A wall with glass doors separates it from the Main Deck: one opening above the pool and a wide one on the right.
+- **Main Deck:** large paving slabs, the reflecting pool with a stone edge, six trees in gravel beds, a planted bed with a stone border, shrubs and flowers where the hedge stands, the NOVA sign in dark navy with its O as a ring above a bar, benches, lamp posts, a bike rack and a surfboard rack by the exit to the beach; on the sand towels and surfboards big enough for a character. The red button for the emergency meeting stands to the right of the hedge and appears 45 seconds after a round starts. The sixth station is at the bottom, at the exit to the beach. You have to walk around all of these, and that is how players lose sight of each other.
 - At the bottom, a glass front closes off the deck. You can see the beach and the sea, but you cannot go out.
 - Every room has exactly one door to the deck and one task station (yellow dot). The stations are in the corners of the map, so that you really have to walk in Duel.
 - You only ever see the section around your own character, about one room in size. The camera follows the character.
@@ -66,7 +69,7 @@ All characters are the same size and the same speed, they differ only in how the
 | The Library Local | Purple hoodie | large headphones, stack of books in front of the body | “Shhh.” |
 
 - Each character exists only once per lobby, so that players can be told apart. For this reason there are at most eight players in a lobby. The name is also shown above the character. Name labels never cover each other: where two would overlap, only one is drawn, and the player's own name always wins. Of two other players the name of the character drawn on top is shown; a name that was hidden needs 4 map units of free space to the names that win against it before it comes back, so names do not flicker at the edge. All players start on the one spawn point, so there a player sees only the own name until the others walk away (S-117).
-- When walking, the character bobs slightly and looks left or right in the walking direction (mirrored); walking up or down keeps the side it last faced (S-105).
+- A moving character runs: between its steps both feet are briefly off the ground and the back foot kicks up, the body hops a little and leans slightly forward, and free hands are held higher and pump against the legs (a hand holding something pumps less). The legs turn around fixed hip points under the body. The steps follow the distance covered, about 5 steps per second. The character looks left or right in the running direction (mirrored); running up or down keeps the side it last faced (S-105, S-118).
 - Failed players are half transparent and only visible to other ghosts.
 - Where someone was failed, a crumpled sheet of paper with a red “F” stays on the ground until someone reports it.
 
@@ -127,6 +130,10 @@ Pressing a key that would do nothing at that moment has no effect and also shows
 | Esc | Close the minigame or the map |
 
 Every action also works with a mouse click on the button.
+
+**Walking diagnostic.** Opened with `?debug` at the end of the address, the page shows a small panel in the top left corner with numbers about the connection and the drawing while walking (S-120), and the buttons “Copy”, “Reset” and “Hide”. It is a tool for the team, not part of the game: without `?debug` it does not exist.
+
+**Walking through hold-ups.** When the connection holds the server's positions up while the player walks, the own character walks on by itself for at most about 700 ms with the same movement and wall rule as the server, and the server's positions take over when they arrive (S-121). The server still decides: the character always ends where the server says, and a station can be used when the server's position is in range. `?bridge=off` at the end of the address switches this off, to compare.
 
 ## 5. Classic mode
 
