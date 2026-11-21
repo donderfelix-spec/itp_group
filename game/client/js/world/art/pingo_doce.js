@@ -53,18 +53,19 @@ Game.world = Game.world || {};
     }
   }
 
-  // Familiar drink colours, with original plain labels rather than logos.
+  // Generic drinks with plain labels: no brand names and no brand colours,
+  // because only the campus's own shops are named on the map (DESIGN.md).
   function drink(ctx, x, y, w, h, variant) {
-    var colours = ["#A42F2C", "#245DAD", "#F59729", "#428B46"];
-    var labels = ["COLA", "PEPSI", "FANTA", "SPRITE"];
+    var colours = ["#A42F2C", "#B8732E", "#E8762F", "#B89A22"];
+    var labels = ["COLA", "ICE TEA", "ORANGE", "LEMON"];
     var i = variant % 6;
     if (i >= 4) {
       // A slim energy can and a sparkling-water can, without copied logos.
-      var can = i === 4 ? "#282C32" : "#D6E9EF";
+      var can = i === 4 ? "#6A4A9C" : "#D6E9EF";
       util.box(ctx, x + w * 0.25, y + 0.5, w * 0.5, h - 0.9, 0.7, can, 0.4);
       util.ellipse(ctx, x + w / 2, y + 0.7, w * 0.24, 0.45, "#B9C0C5", 0.2);
       util.line(ctx, x + w * 0.44, y + 0.7, x + w * 0.55, y + 0.7, "#5A6268", 0.3);
-      util.text(ctx, i === 4 ? "MONSTER" : "WATER", x + w / 2, y + h * 0.57, 1, i === 4 ? "#B0DD52" : "#488AAB", w * 0.46);
+      util.text(ctx, i === 4 ? "ENERGY" : "WATER", x + w / 2, y + h * 0.57, 1, i === 4 ? "#FFE08A" : "#488AAB", w * 0.46);
       util.line(ctx, x + w * 0.31, y + 1.6, x + w * 0.31, y + h - 1.2, "rgba(255,255,255,0.45)", 0.3);
       return;
     }
