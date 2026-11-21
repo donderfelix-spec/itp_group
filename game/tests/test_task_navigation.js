@@ -1,5 +1,5 @@
-// The task navigator (client/js/minigames/task_navigation.js) and its hooks
-// in world.js and draw.js. Run with: node game/tests/test_task_navigation.js
+// The task navigator (client/js/minigames/task_navigation.js) and its hook
+// in world.js; which stations pulse is in test_station_objects.js. Run with: node game/tests/test_task_navigation.js
 // (pytest does it in tests/test_node_harnesses_area4.py). The runner at the
 // end loads the real files; no browser, server or package is needed.
 function testTaskNavigation(navigation, campus) {
@@ -74,38 +74,6 @@ function testTaskNavigation(navigation, campus) {
     expect(tiny.segmentIsFree(around.path[index - 1], around.path[index]), 'Small-map route cuts a corner');
   }
   return { assertions: checked, targets: destinations.length, routes: destinations.length * (destinations.length + 1) + 1 };
-}
-
-
-// drawMap draws exactly the stations it is given (world.js gives the ones
-// the player may use now) and never one of another player's task.
-// All non-station map details remain independently drawn by the real renderer.
-function testTaskStationVisibility(drawMap) {
-  const stations = [{ id: 1, room: 'lecture-hall', x: 30, y: 40 },
-    { id: 7, room: 'lecture-hall', x: 80, y: 40 }];
-  const map = { width: 100, height: 100, colours: {}, stations: stations };
-  let checked = 0;
-  // Where the yellow circles of the stations are drawn.
-  function drawn(shown) {
-    const circles = [];
-    const ctx = new Proxy({ arc: function (x, y) { circles.push([x, y]); } }, {
-      get: function (target, key) { return key in target ? target[key] : function () {}; }
-    });
-    drawMap(ctx, map, null, false, shown); // no emergency button
-    return JSON.stringify(circles);
-  }
-  function expect(condition, message) {
-    if (!condition) throw new Error(message);
-    checked += 1;
-  }
-  expect(drawn([7]) === '[[80,40]]', 'Only the assigned new station may be drawn');
-  expect(drawn([1]) === '[[30,40]]', 'Only the assigned original station may be drawn');
-  // Classic: several usable stations are all drawn, never none (brief A).
-  expect(drawn([1, 7]) === '[[30,40],[80,40]]', 'Every usable station must be drawn');
-  for (const absent of [undefined, null, 7, 999, '7', [], [999], ['7']]) {
-    expect(drawn(absent) === '[]', 'No assignment must show no task markers');
-  }
-  return { assertions: checked };
 }
 
 
@@ -283,7 +251,7 @@ async function testWorldTaskArrival(vm, worldSource, navigationSource, campus) {
   for (const usable of [[], null]) {
     world.setUsableStations(usable);
     nextFrame(now + 4);
-    expect(!Array.isArray(shownStations) || shownStations.length === 0, 'Without usable stations no marker is drawn');
+    expect(JSON.stringify(shownStations) === '[]', 'Without usable stations nothing pulses');
   }
   world.setUsableStations([]);
   glowingStation = null;
@@ -309,7 +277,6 @@ if (require.main === module) {
   const campus = JSON.parse(fs.readFileSync(path.join(client, 'js', 'world', 'campus.json'), 'utf8'));
   const navigationSource = fs.readFileSync(path.join(client, 'js', 'minigames', 'task_navigation.js'), 'utf8');
   const worldSource = fs.readFileSync(path.join(client, 'js', 'world', 'world.js'), 'utf8');
-  const drawSource = fs.readFileSync(path.join(client, 'js', 'world', 'draw.js'), 'utf8');
 
   // The real task_navigation.js and draw.js, each in a page of its own.
   function load(sources) {
@@ -320,12 +287,10 @@ if (require.main === module) {
     return page.Game;
   }
   const navigation = load([navigationSource]).taskNavigation;
-  const drawMap = load([drawSource]).world.drawMap;
 
   (async () => {
     const results = [
       testTaskNavigation(navigation, campus),
-      testTaskStationVisibility(drawMap),
       testDirectTaskNavigator(navigation, campus),
       await testWorldTaskArrival(vm, worldSource, navigationSource, campus),
     ];

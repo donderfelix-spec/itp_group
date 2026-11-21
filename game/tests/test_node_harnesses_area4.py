@@ -9,6 +9,7 @@ the browser and throws on the first check that fails:
 - test_task_navigation.js: the task arrow and card, and which stations
   world.js and draw.js show
 - test_minigame_done_close.js: the × of the minigame window in its "Done" state
+- test_station_objects.js: the objects at the stations and their pulsing outline
 
 Without Node the tests are skipped; CI has Node. When Node ends with an
 error, the test fails and shows what Node printed.
@@ -27,6 +28,7 @@ HARNESSES = [
     "test_client_roster.js",
     "test_task_navigation.js",
     "test_minigame_done_close.js",
+    "test_station_objects.js",
 ]
 
 pytestmark = pytest.mark.skipif(NODE is None, reason="Node is needed to run the page's JavaScript")

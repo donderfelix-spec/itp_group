@@ -992,9 +992,9 @@ Game.world = Game.world || {};
     return null;
   }
 
-  // Which stations count as targets. Only these are drawn and glow. Only
-  // `null` means all of them (and draws none). An array or a Set is the list of
-  // ids. Anything else (nothing at all, a number, a text, an object) is a
+  // Which stations count as targets: only these pulse and glow. Only
+  // `null` means all of them (but none pulses, see stationsThatPulse). An
+  // array or a Set is the list of ids. Anything else (nothing at all, a number, a text, an object) is a
   // mistake of the caller and means no station: a mistake must never open
   // every station.
   function setUsableStations(ids) {
@@ -1005,6 +1005,13 @@ Game.world = Game.world || {};
     } else {
       usableStations = [];
     }
+  }
+
+  // The stations whose object pulses on the map: the usable ones. For "E Use"
+  // `null` means every station counts (main's rule, see stationInRange), but
+  // it also means no round has told this player a station yet: nothing pulses.
+  function stationsThatPulse() {
+    return Array.isArray(usableStations) ? usableStations : [];
   }
 
   // `handler(stationId)` is called when the player opens a station. Another
@@ -1647,7 +1654,7 @@ Game.world = Game.world || {};
       return;
     }
     var view = aimCamera(cameraCentre(now));
-    Game.world.drawMap(ctx, campus, view, emergencyIsUnlocked(), usableStations);
+    Game.world.drawMap(ctx, campus, view, emergencyIsUnlocked(), stationsThatPulse(), now);
     drawBloodSheets();
     var idInRange = stationInRange();
     if (idInRange !== null) {
