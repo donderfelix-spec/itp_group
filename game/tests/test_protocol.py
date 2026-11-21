@@ -121,8 +121,18 @@ VALID_MESSAGES = [
     {"type": "leave_lobby"},
     {"type": "choose_character", "character": "surfer"},
     {"type": "move", "dx": 1, "dy": -1},
+    {"type": "choose_mode", "mode": "duel"},
+    {"type": "start_game"},
+    {"type": "open_station", "station": 3},
+    {"type": "close_station"},
+    {"type": "finish_station"},
+    {"type": "get_profile"},
+    {"type": "get_leaderboard"},
 ]
-MESSAGES_WITHOUT_FIELDS = ["guest", "log_out", "create_lobby", "leave_lobby"]
+MESSAGES_WITHOUT_FIELDS = [
+    "guest", "log_out", "create_lobby", "leave_lobby", "start_game", "close_station", "finish_station",
+    "get_profile", "get_leaderboard",
+]
 
 
 # Accepted
@@ -288,11 +298,20 @@ def test_lobby_state_lists_code_host_and_players_in_order():
         "code": "ABCD",
         "host": "Mara",
         "players": [{"name": "Mara", "character": "surfer"}, {"name": "Tom", "character": None}],
+        "mode": "duel",
+        "phase": "lobby",
     }
 
 
 def test_lobby_state_with_no_players_has_an_empty_list():
-    assert protocol.lobby_state("ABCD", "Mara", []) == {"type": "lobby_state", "code": "ABCD", "host": "Mara", "players": []}
+    assert protocol.lobby_state("ABCD", "Mara", []) == {
+        "type": "lobby_state",
+        "code": "ABCD",
+        "host": "Mara",
+        "players": [],
+        "mode": "duel",
+        "phase": "lobby",
+    }
 
 
 def test_left_lobby_has_only_its_type():
@@ -342,6 +361,19 @@ REJECTION_TEXTS = {
     "not_in_lobby": "You are not in a lobby.",
     "already_in_lobby": "Leave your lobby first.",
     "character_taken": "That character is taken.",
+    "not_host": "Only the host can do that.",
+    "round_running": "This round has already started.",
+    "not_in_round": "No round is running.",
+    "no_station": "That station does not exist.",
+    "too_far": "You are too far away.",
+    "station_not_needed": "You do not need that station.",
+    "task_open": "Close your current task first.",
+    "no_task_open": "You have no task open.",
+    "too_fast": "That was too fast. Try again.",
+    "task_failed": "Something went wrong. Try again.",
+    "guest_no_statistics": "Guests have no statistics. Sign up to keep yours.",
+    "statistics_unavailable": "Statistics are unavailable right now.",
+    "too_many_attempts": "Too many attempts. Try again in a minute.",
 }
 
 
@@ -412,3 +444,131 @@ def test_already_signed_in_has_its_own_text():
         "code": "already_signed_in",
         "message": "Log out first.",
     }
+
+
+# Choosing the mode and starting the round (M2-2.1, S-91)
+
+BAD_MODE = ("bad_mode", "That mode does not exist.")
+
+
+def test_duel_is_the_only_mode_that_is_built():
+    assert protocol.MODES == ("duel",)
+    assert protocol.DEFAULT_MODE in protocol.MODES
+
+
+def test_choose_mode_with_duel_is_accepted():
+    message = {"type": "choose_mode", "mode": "duel"}
+    assert parse_client_message(json.dumps(message)) == message
+
+
+def test_start_game_is_accepted_without_fields():
+    assert parse_client_message('{"type": "start_game"}') == {"type": "start_game"}
+
+
+# "classic" exists in the design but is not built yet, so it is refused like any unknown mode.
+@pytest.mark.parametrize(
+    "mode",
+    ["classic", "deadline", "", "Duel", "DUEL", "duel ", None, 1, True, ["duel"], {"mode": "duel"}],
+)
+def test_modes_that_are_not_built_or_malformed_are_rejected(mode):
+    assert rejected({"type": "choose_mode", "mode": mode}) == BAD_MODE
+
+
+def test_choose_mode_without_a_mode_is_rejected():
+    assert rejected_code('{"type": "choose_mode"}') == "missing_field"
+
+
+def test_start_game_with_a_mode_is_rejected():
+    assert rejected_code('{"type": "start_game", "mode": "duel"}') == "unknown_field"
+
+
+def test_lobby_state_carries_the_given_mode_and_phase():
+    state = protocol.lobby_state("ABCD", "Mara", [("Mara", "surfer")], "duel", "round")
+    assert state["mode"] == "duel"
+    assert state["phase"] == "round"
+
+
+def test_too_few_players_names_the_mode_and_its_minimum():
+    assert protocol.too_few_players("duel") == {
+        "type": "error",
+        "code": "too_few_players",
+        "message": "Duel needs at least 2 players.",
+    }
+
+
+def test_too_few_players_fits_classic_without_new_code():
+    assert protocol.too_few_players("classic")["message"] == "Classic needs at least 4 players."
+
+
+def test_every_mode_that_is_built_has_a_name_and_a_minimum():
+    for mode in protocol.MODES:
+        assert protocol.MODE_NAMES[mode]
+        assert 2 <= protocol.MIN_PLAYERS[mode] <= len(protocol.CHARACTERS)
+
+
+def test_too_few_players_with_an_unknown_mode_raises_key_error():
+    with pytest.raises(KeyError):
+        protocol.too_few_players("chess")
+
+
+# The tasks at the stations (M2-4.1, S-93)
+
+BAD_STATION_TEXT = "That station does not exist."
+
+
+@pytest.mark.parametrize("station", [1, 2, 3, 4, 5, 6])
+def test_every_station_on_the_map_can_be_named(station):
+    message = {"type": "open_station", "station": station}
+    assert parse_client_message(json.dumps(message)) == message
+
+
+def test_an_accepted_station_is_a_real_int():
+    checked = parse_client_message('{"type": "open_station", "station": 3}')
+    assert type(checked["station"]) is int
+
+
+@pytest.mark.parametrize(
+    "station",
+    [0, 7, -1, 100, 1.0, 1.5, "1", "one", True, False, None, [1], {"id": 1}, 10**30],
+    ids=repr,
+)
+def test_anything_that_is_not_a_station_number_is_rejected(station):
+    with pytest.raises(ProtocolError) as caught:
+        parse_client_message(json.dumps({"type": "open_station", "station": station}))
+    assert caught.value.code == "bad_station"
+    assert caught.value.message == BAD_STATION_TEXT
+
+
+@pytest.mark.parametrize("raw_station", ["1e0", "1.0", "NaN", "Infinity"])
+def test_a_station_written_as_a_decimal_number_is_rejected(raw_station):
+    assert rejected_code('{"type": "open_station", "station": ' + raw_station + "}") == "bad_station"
+
+
+def test_open_station_without_a_station_is_incomplete():
+    assert rejected_code('{"type": "open_station"}') == "missing_field"
+
+
+@pytest.mark.parametrize("message_type", ["close_station", "finish_station"])
+def test_closing_and_finishing_name_no_station(message_type):
+    assert rejected_code(json.dumps({"type": message_type, "station": 3})) == "unknown_field"
+
+
+def test_station_opened_carries_station_title_and_content():
+    content = {"kind": "placeholder"}
+    assert protocol.station_opened(3, "Build the tray", content) == {
+        "type": "station_opened",
+        "station": 3,
+        "title": "Build the tray",
+        "content": {"kind": "placeholder"},
+    }
+
+
+def test_station_closed_and_station_done_carry_only_the_station():
+    assert protocol.station_closed(3) == {"type": "station_closed", "station": 3}
+    assert protocol.station_done(3) == {"type": "station_done", "station": 3}
+
+
+def test_the_station_numbers_follow_the_map():
+    from server.world.campus import STATION_COUNT, load_campus
+
+    assert len(load_campus()["stations"]) == STATION_COUNT == 6

@@ -50,21 +50,23 @@ The map is based on the real campus in Carcavelos: light buildings, a large pave
 
 ![Characters](design/characters.svg)
 
-All characters are the same size and the same speed, they differ only in how they look (S-06). Each one has a body colour, a hairstyle or headwear and an object in the hand, by which you can recognise the character even when it is small. The faces are the same for all of them (S-07).
+The sketch shows the portraits from the front, as used in the lobby list; on the map the characters are drawn in a three-quarter view facing only left or right (S-105).
+
+All characters are the same size and the same speed, they differ only in how they look (S-06). Each one has a body colour, a hairstyle or headwear and an object in the hand, by which you can recognise the character even when it is small. The faces are the same for all of them (S-07). What a character wears on the upper body (tie, vest, straps, lanyard, necklace, print, hoodie strings, collar, buttons) sits in the middle of the torso, also in the three-quarter view and while walking; only the face and the head turn (S-115).
 
 | Character | Colour | How to recognise the character | Line in the lobby |
 |---|---|---|---|
 | The Consultant | Dark blue suit | red tie, briefcase | “Let’s take this offline.” |
 | The Finance Bro | Light blue shirt | quilted vest, phone with a price chart | “What’s the upside?” |
-| The Exchange Student | Pink | yellow bucket hat, travel backpack, wheeled suitcase with stickers, lanyard | “Is this graded?” |
+| The Exchange Student | Pink | yellow bucket hat, travel backpack with its straps over the shoulders, lanyard | “Is this graded?” |
 | The Surfer | Turquoise | long blond hair, shell necklace, surfboard printed on the shirt | “Waves were good, sorry.” |
 | The Founder | Black hoodie | hood up, laptop covered in stickers | “We should pivot.” |
-| The Overachiever | Green cardigan | glasses, hair bun, folder with tabs and “A+” | “I already started.” |
-| The Latecomer | Orange jacket | messy hair, coffee cup, drops of sweat | “Did I miss anything?” |
+| The Overachiever | Green cardigan | glasses, hair bun, folder with “A+” | “I already started.” |
+| The Latecomer | Orange jacket | messy hair, coffee cup | “Did I miss anything?” |
 | The Library Local | Purple hoodie | large headphones, stack of books in front of the body | “Shhh.” |
 
-- Each character exists only once per lobby, so that players can be told apart. For this reason there are at most eight players in a lobby. The name is also shown above the character.
-- When walking, the character bobs slightly and looks in the walking direction (mirrored).
+- Each character exists only once per lobby, so that players can be told apart. For this reason there are at most eight players in a lobby. The name is also shown above the character. Name labels never cover each other: where two would overlap, only one is drawn, and the player's own name always wins. Of two other players the name of the character drawn on top is shown; a name that was hidden needs 4 map units of free space to the names that win against it before it comes back, so names do not flicker at the edge. All players start on the one spawn point, so there a player sees only the own name until the others walk away (S-117).
+- A moving character runs: between its steps both feet are briefly off the ground and the back foot kicks up, the body hops a little and leans slightly forward, and free hands are held higher and pump against the legs (a hand holding something pumps less). The legs turn around fixed hip points under the body. The steps follow the distance covered, about 5 steps per second. The character looks left or right in the running direction (mirrored); running up or down keeps the side it last faced (S-105, S-118).
 - Failed players are half transparent and only visible to other ghosts.
 - Where someone was failed, a crumpled sheet of paper with a red “F” stays on the ground until someone reports it.
 
@@ -73,9 +75,9 @@ All characters are the same size and the same speed, they differ only in how the
 | No. | Screen | Content |
 |---|---|---|
 | 1 | Start | Logo, “Log in”, “Sign up”, “Play as guest” |
-| 2 | Sign up / Log in | Username, password, error message directly at the field. When signing up, the rules stand below the fields from the start: “3–16 letters or numbers” and “8–64 characters” |
-| 3 | Home | “Create lobby” (yellow), “Join with code”, own profile, “Leaderboard”. If time allows: friends list with status |
-| 4 | Lobby | Code in large letters for reading aloud, player list with characters, character selection. Characters taken by other players are greyed out. Until “Start game” exists, everyone in the lobby already walks on the map, with the lobby shown next to it. The host chooses the mode. At the bottom right is the yellow button “Start game”, which only the host sees. It is grey as long as too few players are there, and below it there is then a text such as “Classic needs 2 more players”. All others see “Waiting for the host” in that place |
+| 2 | Sign up / Log in | Username, password, error message directly at the field. When signing up, the rules stand below the fields from the start: “3–16 letters or numbers” and “8–64 characters”. A button with an eye in each password field shows or hides what was typed (“Show password” / “Hide password” for screen readers); the password is hidden again whenever the form is left |
+| 3 | Home | At the top of the card “Signed in as” and the player's name. “Create lobby” (yellow), “Join with code”, own profile, “Leaderboard”. Profile and leaderboard are two round icons at the top right of the screen (a person and a trophy), not buttons in the card. If time allows: friends list with status |
+| 4 | Lobby | Code in large letters for reading aloud, player list with characters, character selection. The panel next to the map has the headings “Lobby code”, “Players”, “Mode” and “Character”. Until the map has been downloaded, “Loading the campus…” stands in the middle of the map. Characters taken by other players are greyed out. Until “Start game” exists, everyone in the lobby already walks on the map, with the lobby shown next to it. The host chooses the mode: “Duel” or “Classic”. A mode that is not built yet is greyed out with “Coming with the next milestone”; everyone sees the chosen mode. At the bottom right is the yellow button “Start game”, which only the host sees. It is grey as long as too few players are there, and below it there is then a text such as “Classic needs 2 more players”. All others see “Waiting for the host” in that place. When the host presses “Start game”, the round does not begin at once: everybody sees “Round starts in” and a large number over the map that counts 5, 4, 3, 2, 1, and then the round starts. During this countdown everybody can still walk, but the characters, the mode and the start button are switched off, and nobody can join. A ranking that is still open stays readable; the countdown is then one slim line at the top edge of the map (“Round starts in 3”), above the ranking, and never covers it. If so many players leave during the countdown that too few are left for the mode, the countdown ends without a round and the lobby is open again. While a round is running, the panel shows “Round running” instead of the character selection and the start button |
 | 5 | Role reveal | Three seconds: “You are a High Performer” or “You are the Free Rider” in coral |
 | 6 | Game | Map with displays, see below |
 | 7 | Minigame | Window on top of the map, closes with Esc |
@@ -83,8 +85,8 @@ All characters are the same size and the same speed, they differ only in how the
 | 9 | Vote result | Who received how many votes, the character drifts out to sea, and whether it was a Free Rider |
 | 10 | End | Who won, who was a Free Rider, “Back to lobby” |
 | 11 | Duel ranking | Placement with times |
-| 12 | Profile | Rounds and wins per mode, best Duel time |
-| 13 | Leaderboard | All accounts by wins. If time allows: filter “Friends” |
+| 12 | Profile | Rounds and wins per mode, best Duel time. Opened with “Profile” on the Home screen, only for an account: “Signed in as” and the name at the top, then one row per mode with “Rounds” and “Wins”, below it “Best Duel time” written like in the Duel ranking (“1:12.4”), or “–” as long as there is none, and “Back”. A guest gets the message “Guests have no statistics. Sign up to keep yours.” instead |
+| 13 | Leaderboard | All accounts by wins. Opened with “Leaderboard” on the Home screen, also for a guest: the best 20 accounts with “Place”, “Player”, “Wins” and “Best Duel time”, ordered by wins, then by the better Duel time, then by name; the own row is yellow. Before the first round it says “No rounds played yet.”. “Back” leads to the Home screen. If time allows: filter “Friends” |
 
 **Displays in the game**
 
@@ -92,7 +94,7 @@ All characters are the same size and the same speed, they differ only in how the
 - Top centre: progress bar of the group work.
 - Right: your own task list with the room, finished tasks crossed out.
 - Bottom right: large buttons “Use”, “Report” and, for the Free Rider, “Fail”. A button is grey as long as it would do nothing.
-- Messages appear briefly at the top centre, errors in coral.
+- Messages appear briefly at the top centre, errors in coral. On the lobby screen they stand over the map, not over the panel; in a narrow window, where the panel is below the map and the page scrolls, they appear at the bottom centre instead, so they never cover the lobby code (S-113).
 
 **How you notice that a key does something**
 
@@ -125,6 +127,8 @@ Pressing a key that would do nothing at that moment has no effect and also shows
 | Esc | Close the minigame or the map |
 
 Every action also works with a mouse click on the button.
+
+**Walking diagnostic.** Opened with `?debug` at the end of the address, the page shows a small panel in the top left corner with numbers about the connection and the drawing while walking (S-120), and the buttons “Copy”, “Reset” and “Hide”. It is a tool for the team, not part of the game: without `?debug` it does not exist.
 
 ## 5. Classic mode
 
@@ -173,6 +177,13 @@ If time allows: Sabotage “WiFi down”. The Free Rider locks all stations unti
 
 The win and the time go into the statistics (S-40).
 
+**What a player sees in Duel**
+
+- In the panel on the right, in place of the character selection: “Next: Build the tray (Canteen)” with the title of the minigame and the room, below it the clock counting down from 3:00, and the list of all players with their progress, for example “Mara 1/3”. A player who has finished all three sees “Finished in 1:12.4. Waiting for the others.” instead of the next station.
+- Only the next station glows and opens. The other stations stay drawn but do nothing.
+- When the round is over, the ranking appears over the map for everybody: heading “Duel ranking”, one row per player with place, name and time (“1:12.4”), or “2/3” for a player who did not finish, and the button “Back to lobby”. If the three minutes ran out, the line “Time is up.” stands above the rows. The lobby is open again at that moment, so the host can start the next round.
+- A player who leaves during the round is taken out of the list and the ranking. The round goes on for the others, also for a single player.
+
 ## 7. Deadline mode (if time allows)
 
 2 to 8 players. Everyone plays together, there is no Free Rider. The group has 5 minutes to finish three tasks per player. Every 45 seconds a random disruption comes. If the progress bar is full before the time runs out, everyone wins.
@@ -192,6 +203,8 @@ Every room has its fixed minigame, it does not change. But the content is shuffl
 
 After a mistake, only the wrong piece is reset, never the whole minigame.
 
+A minigame opens with E or the button “E Use” at its station, only while a round is running. While it is open the character stands still. The close button and Esc close it without counting; it can be opened again and then has new content. When it is solved, the window shows “Done” in green for a moment and closes. A station whose minigame is not built yet shows “This task is still being built.” and a button “Finish task”.
+
 | No. | Room | Title | Task | Done when | After a mistake |
 |---|---|---|---|---|---|
 | 1 | Lecture Hall | Sort the slides | Put five shuffled slides (Title, Agenda, Analysis, Results, Q&A) into the right order by dragging | all five are in the right place | the slide in the wrong place shakes and jumps back |
@@ -202,6 +215,14 @@ After a mistake, only the wrong piece is reset, never the whole minigame.
 | 6 | Glass front to the beach on the Main Deck | Catch the wave (if time allows) | A surfboard lies on the water, a wave runs through the picture from left to right. Click exactly when the wave is under the board | three waves have been caught | a wrong click only costs this attempt, the hits stay |
 
 Minigame 6 is the only one with timing instead of sorting, selecting or calculating. It comes first of the “If time allows” minigames. As soon as it is built, everyone in Classic gets four of six tasks, and in Duel three of six stations are drawn.
+
+**Sentences and names in the minigames**
+
+- **Build the tray:** “Put the four dishes from the order slip on the tray.” The six dishes are Soup, Bacalhau, Rice, Salad, Pastel de nata and Fruit. The areas are labelled “Order slip”, “Counter” and “Tray”.
+- **Brew the order:** “Press the buttons in the order of the recipe.” The slip is headed “Order”. A second press of the button that was just accepted is ignored, so a double click is not shown as a mistake.
+- **Sort the slides:** “Drag the slides into the right order.” Five numbered places stand above the pile. A slide dropped on its right place stays there; on a wrong or filled place it shakes and jumps back; released outside the window it returns without counting.
+- **Shelve the books:** “Click the books onto the shelf, lowest number first.” The numbers are six different numbers from 100 to 999.
+- **Self-checkout:** “Scan products until the total is exactly the target amount.” The six products are Water, Bread, Cheese, Apples, Coffee and Chocolate, with prices from €0.50 to €4.00. The display shows “Target” and “Total”, the rows are labelled “Belt” and “Bagging area”. The target is never the price of a single product, so there are always at least two clicks.
 
 About the drinks in minigame 2: Bica (Cup, Espresso), Abatanado (Cup, Espresso, Hot water), Meia de leite (Cup, Espresso, Milk), Galão (Glass, Espresso, Milk), Cappuccino (Cup, Espresso, Milk, Foam).
 
@@ -219,11 +240,13 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Username or password too short or with characters that are not allowed | “Usernames are 3–16 letters or numbers.” / “Passwords need at least 8 characters.” |
 | Wrong password | “Wrong username or password.” |
 | Lobby code does not exist | “No lobby with that code.” |
-| Lobby is full or round is already running | “This lobby is full.” / “This round has already started.” |
+| After 5 wrong log-ins or 10 wrong lobby codes within a minute on one connection | “Too many attempts. Try again in a minute.” |
+| Lobby is full, or its countdown or round is already running | “This lobby is full.” / “This round has already started.” |
 | Too few players for the mode | “Classic needs at least 4 players.” |
-| Connection lost | “Connection lost. Reconnecting…” |
+| Connection lost | “Connection lost. Reconnecting…” After the player signs in again, the page joins the lobby it was in by itself and puts the code into the join field. If that lobby is gone, full or in its countdown or round, the usual text appears at the code field (S-109). |
 | Database not reachable | “Accounts are unavailable right now. You can still play as a guest.” |
 | Host has left the lobby | “The host left. Mara is the new host.” |
+| The same account logged in somewhere else, so this browser was signed out | “You were signed in somewhere else.” (shown by the browser on the Start screen) |
 | Password too long | “Passwords can have at most 64 characters.” |
 | Password with a character that cannot be stored | “Passwords cannot contain that character.” |
 | Lobby code is not four letters | “Lobby codes are 4 letters.” |
@@ -232,6 +255,26 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Signing up, logging in or entering as a guest while signed in | “Log out first.” |
 | Action that needs a lobby | “You are not in a lobby.” |
 | Creating or joining a lobby while in one | “Leave your lobby first.” |
+| Choosing the mode or starting the round without being the host | “Only the host can do that.” |
+| Choosing a mode that does not exist or is not built yet (only when someone bypasses the page) | “That mode does not exist.” |
+| Starting Duel with fewer than 2 players | “Duel needs at least 2 players.” |
+| Choosing the mode, choosing a character or starting the round during the countdown or while a round is running | “This round has already started.” |
+| Opening, closing or finishing a task while no round is running | “No round is running.” |
+| Opening a station that does not exist or is not in use (only when someone bypasses the page) | “That station does not exist.” |
+| Opening a station from too far away | “You are too far away.” |
+| Opening a station that is not on your list or that you have already finished | “You do not need that station.” |
+| Opening a station while a task is open | “Close your current task first.” |
+| Closing or finishing while no task is open | “You have no task open.” |
+| Reporting a task as done faster than it can be played | “That was too fast. Try again.” |
+| The server fails while opening, closing or finishing a task | “Something went wrong. Try again.” |
+| A guest asks for a profile | “Guests have no statistics. Sign up to keep yours.” |
+| Profile or leaderboard while the database is not reachable | “Statistics are unavailable right now.” |
+| A minigame gets content from the server that it cannot show | “This task could not be loaded.” (shown inside the minigame window) |
+| A message that is not text, is not a JSON object or is longer than 2048 bytes (only when someone bypasses the page) | “Messages must be text.” / “That message could not be read.” / “That message is too long.” |
+| A message with a type the server does not know (only when someone bypasses the page) | “The server does not know that action.” |
+| A message with a field the server does not expect, or without a field it needs (only when someone bypasses the page) | “That message has a field the server does not expect.” / “That message is incomplete.” |
+| Choosing a character that does not exist (only when someone bypasses the page) | “That character does not exist.” |
+| A walking direction that is not -1, 0 or 1 (only when someone bypasses the page) | “That move could not be read.” |
 
 ## 10. What is deliberately not included
 
@@ -240,3 +283,8 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 - No sound, unless time allows.
 - No phone controls, unless time allows (S-14).
 - No email addresses and no “forgot password” (S-38).
+- No return into a running round after a lost connection: the player signs in again and waits on Home until the round is over (S-109).
+
+## Campus branch preview, 2026-11-21
+
+The individual campus mascots use their own head shapes and student accessories. The map camera follows the own player without extending past the campus edges. A fixed top-left label names the current room, or Main Deck, and adds Hidden inside a hiding circle. Room floors have wood, tile or carpet seams. Trees have highlights within their existing footprint. The hedge is walkable. Hiding activates automatically inside any marked circle: the own figure is half transparent and hidden players are only revealed within 35 map units. The reveal distance is a branch proposal recorded in DECISIONS.md.

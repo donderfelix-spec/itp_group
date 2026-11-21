@@ -27,12 +27,20 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Character-specific walk cycles, animated accessories, idle poses, blinking and directional views | M1 | In progress |
 | Walls and furniture stop the character | M1 | Done |
 | Camera follows your own character | M1 | Done |
-| See other players with their names above the character | M1 | Done |
-| Stations for tasks on the map | M2 | Planned |
-| Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E, R, Q) | M2 | Planned |
+| See other players with their names above the character; where name labels would cover each other only one is shown, the own name first (S-117) | M1 | Done |
+| Stations for tasks on the map | M2 | Done |
+| Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E done; R and Q come with Classic) | M2 | In progress |
 | Choose a character from the list of stereotypes | M2 | Done |
 | Eight individual campus mascots with distinct silhouettes and student accessories | M2 | In progress |
-| Display of the current room | M2 | Planned |
+| Display of the current room | M2 | In progress |
+| Nicer, more detailed map: floors, furniture and plants | M2 | In progress |
+| Larger characters in a three-quarter view, facing only left or right; held objects stay in the same hand | M2 | Done |
+| Walking animation: moving feet, head turned in the walking direction | M2 | Done |
+| Running animation: flight phase, small hop, pumping arms, legs fixed at the hips, steps tied to the distance covered | M2 | Done |
+| Hair, buns and headwear follow the head when it turns in the walking direction | M2 | Done |
+| Touch-ups of the characters: no suitcase, larger hat, headphones on the ear, clothes in the middle of the torso when turned | M2 | Done |
+| Smooth walking over the internet: characters and the camera keep moving when position messages come late or bunched (gaps up to 250 ms) | M2 | Done |
+| Walking diagnostic for the team: with `?debug` in the address a panel measures the connection and the drawing while walking and copies the numbers as text | M2 | Done |
 | Limited view: You only see what is nearby and not behind a wall | M3 | Planned |
 | Show failed players as ghosts | M3 | Planned |
 | Four hiding spots in which you are visible only from close by | M3 | Planned |
@@ -49,10 +57,11 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Create an account with username and password, log in, log out | M1 | Done |
 | Play as a guest, without statistics and friends | M1 | Done |
 | Clear message when a name is taken, the password is wrong or the database is not reachable | M1 | Done |
-| Show or hide the password with an eye icon | M1 | Planned |
-| Limit on log-in attempts and lobby-code guessing | M1 | Planned |
-| Statistics per account: rounds and wins per mode, best Duel time | M2 | Planned |
-| Leaderboard of all accounts | M2 | Planned |
+| Show or hide the password with an eye icon | M1 | Done |
+| A player who is signed out because the account logged in somewhere else is told why | M1 | Done |
+| Limit on log-in attempts and lobby-code guessing | M1 | Done |
+| Statistics per account: rounds and wins per mode, best Duel time | M2 | Done |
+| Leaderboard of all accounts | M2 | Done |
 | Add friends by username, accept or decline a request | M4 | Planned |
 | See friends with the status “online” and “in a round” | M4 | Planned |
 | Invite friends to your own lobby | M4 | Planned |
@@ -61,10 +70,12 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Join a lobby by code | M1 | Done |
 | Player list in the lobby, the creator is the host | M1 | Done |
 | Continuously synchronise the positions of all players, with smoothed movement of the others | M1 | Done |
-| Host chooses mode and settings and starts the round | M2 | Planned |
-| After the round back to the lobby, new round without a new code | M2 | Planned |
-| If someone leaves the game, the round continues, and the host changes if needed | M2 | Planned |
-| Players who were disconnected for a short time come back into their round | M3 | Planned |
+| Host chooses the mode and starts the round (settings: M4) | M2 | Done |
+| Countdown of 5 seconds before every round, counted by the server | M2 | Done |
+| After the round back to the lobby, new round without a new code | M2 | Done |
+| If someone leaves the game, the round continues, and the host changes if needed | M2 | Done |
+| A player who lost the connection in a lobby is put back into it after signing in again, without typing the code (S-109) | M3 | Done |
+| Players who were disconnected for a short time come back into their running round | M4 | Later |
 | Each client gets only the information that its player is allowed to know | M3 | Planned |
 | Game reachable at a public URL, deployed automatically from `main` | M0 | Done |
 | Several lobbies at the same time | M1 | Done |
@@ -94,15 +105,16 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 
 | Feature | Milestone | Status |
 |---|---|---|
-| Frame for minigames: open at a station, close, report “done” | M2 | Planned |
-| Canteen: put four of six dishes from the order slip onto the tray | M2 | Planned |
-| Mon Café: prepare a drink by recipe at the coffee machine | M2 | Planned |
-| Lecture Hall: put slides into the right order | M2 | Planned |
-| CTT Student Hall: sort books by number onto the shelf | M2 | Planned |
-| Pingo Doce: scan products until exactly the target amount comes out | M2 | Planned |
-| Duel: three stations per player, own random route with a walking distance of equal length | M2 | Planned |
-| Duel: progress of the opponents as 1/3 at the edge | M2 | Planned |
-| Duel: leaderboard with times at the end | M2 | Planned |
+| Frame for minigames: open at a station, close, report “done” | M2 | Done |
+| All minigames playable in narrow and low windows, from 320 px wide | M2 | Done |
+| Canteen: put four of six dishes from the order slip onto the tray | M2 | Done |
+| Mon Café: prepare a drink by recipe at the coffee machine | M2 | Done |
+| Lecture Hall: put slides into the right order | M2 | Done |
+| CTT Student Hall: sort books by number onto the shelf | M2 | Done |
+| Pingo Doce: scan products until exactly the target amount comes out | M2 | Done |
+| Duel: three stations per player, own random route with a walking distance of equal length | M2 | Done |
+| Duel: progress of the opponents as 1/3 at the edge | M2 | Done |
+| Duel: leaderboard with times at the end | M2 | Done |
 | Beach exit: “Catch the wave”, click at the right moment (first “If time allows” minigame) | M4 | Planned |
 | Canteen: stop the microwave at the right moment | M4 | Planned |
 | Lecture Hall: record attendance by QR code | M4 | Planned |
@@ -111,3 +123,11 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Deadline mode: shared clock, progress bar, random disruptions | M4 | Planned |
 | Duel variants: best of 3, knockout rounds | M4 | Later |
 
+
+## Campus branch preview
+
+| Feature | Milestone | Status |
+|---|---|---|
+| Distinct room floor patterns and tree foliage details | M2 | In progress |
+| Camera follows the player and stays inside map bounds | M2 | In progress |
+| Four hiding circles, a walkable hedge and server-side visibility filtering | M3 | In progress |

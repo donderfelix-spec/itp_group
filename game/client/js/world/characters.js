@@ -17,7 +17,13 @@ Game.world = Game.world || {};
   ];
 
 
+  var paths = new Map();
+
   function shape(ctx, path, fill) {
+    if (!paths.has(path)) {
+      paths.set(path, new Path2D(path));
+    }
+    path = paths.get(path);
     ctx.fillStyle = fill;
     ctx.strokeStyle = OUTLINE;
     ctx.lineWidth = 4;
@@ -27,7 +33,12 @@ Game.world = Game.world || {};
 
   function box(ctx, x, y, width, height, radius, fill) {
     ctx.beginPath();
-    ctx.roundRect(x, y, width, height, radius);
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + width, y, x + width, y + height, radius);
+    ctx.arcTo(x + width, y + height, x, y + height, radius);
+    ctx.arcTo(x, y + height, x, y, radius);
+    ctx.arcTo(x, y, x + width, y, radius);
+    ctx.closePath();
     ctx.fillStyle = fill;
     ctx.strokeStyle = OUTLINE;
     ctx.lineWidth = 4;
@@ -37,14 +48,14 @@ Game.world = Game.world || {};
 
   // Paths are constructed once, rather than parsed on every animation frame.
   var bodies = {
-    consultant: new Path2D("M-17 51 L17 51 L19 80 L-19 80 Z"),
-    finance_bro: new Path2D("M-22 51 L22 51 L16 80 L-16 80 Z"),
-    exchange_student: new Path2D("M-15 49 Q-27 62 -21 81 L21 81 Q27 62 15 49 Z"),
-    surfer: new Path2D("M-12 48 L12 48 L15 80 L-15 80 Z"),
-    founder: new Path2D("M-18 49 Q-29 57 -25 78 Q0 89 25 78 Q29 57 18 49 Z"),
-    overachiever: new Path2D("M-12 50 L12 50 L25 81 L-25 81 Z"),
-    latecomer: new Path2D("M-18 51 L17 51 L22 78 L-13 83 Z"),
-    library_local: new Path2D("M-17 52 L17 52 L20 81 L-20 81 Z")
+    consultant: "M-17 51 L17 51 L19 80 L-19 80 Z",
+    finance_bro: "M-22 51 L22 51 L16 80 L-16 80 Z",
+    exchange_student: "M-15 49 Q-27 62 -21 81 L21 81 Q27 62 15 49 Z",
+    surfer: "M-12 48 L12 48 L15 80 L-15 80 Z",
+    founder: "M-18 49 Q-29 57 -25 78 Q0 89 25 78 Q29 57 18 49 Z",
+    overachiever: "M-12 50 L12 50 L25 81 L-25 81 Z",
+    latecomer: "M-18 51 L17 51 L22 78 L-13 83 Z",
+    library_local: "M-17 52 L17 52 L20 81 L-20 81 Z"
   };
   // Head dimensions and materials make the characters readable in silhouette.
   var heads = {
@@ -57,9 +68,9 @@ Game.world = Game.world || {};
     latecomer: { x: -19, y: 10, w: 38, h: 36, r: 5, fill: "#F4EFE3" },
     library_local: { x: -23, y: 8, w: 46, h: 38, r: 2, fill: "#BDA5E4" }
   };
-  var crown = new Path2D("M-22 6 L-24 -3 L-10 1 L0 -7 L10 1 L24 -3 L22 6 Z");
-  var tie = new Path2D("M-1 53 L7 53 L5 59 L9 70 L3 76 L-2 70 L1 59 Z");
-  var hat = new Path2D("M-23 18 L-17 4 Q0 -5 17 4 L22 18 Z");
+  var crown = "M-22 6 L-24 -3 L-10 1 L0 -7 L10 1 L24 -3 L22 6 Z";
+  var tie = "M-1 53 L7 53 L5 59 L9 70 L3 76 L-2 70 L1 59 Z";
+  var hat = "M-23 18 L-17 4 Q0 -5 17 4 L22 18 Z";
 
   // Cadence, swing and lean are cosmetic; server movement speed stays the same.
   var movement = {
@@ -194,16 +205,21 @@ Game.world = Game.world || {};
     var character = characters.find(function (entry) { return entry.id === characterId; });
     var colour = character ? character.colour : "#9296A0";
     // Lobby previews omit stride and keep their neutral pose.
+    var pose = stride && typeof stride === "object" ? stride : null;
+    if (pose) {
+      motion = { time: motion && motion.time || 0, walking: pose.walkPhase != null && pose.stride > 0, facing: motion && motion.facing || "side" };
+      stride = pose.walkPhase === null ? 0 : Math.sin(pose.walkPhase * Math.PI * 2) * pose.stride;
+    }
     var profile = movement[characterId] || movement.consultant;
     var time = motion && Number.isFinite(motion.time) ? motion.time : 0;
     var walking = motion ? motion.walking === true : !!stride;
     var facing = motion ? motion.facing : "front";
     var rawStep = Number.isFinite(stride) ? Math.max(-1, Math.min(1, stride)) : 0;
-    var step = (motion ? (walking ? Math.sin(time / profile.cadence) : 0) : rawStep) * profile.swing;
+    var step = (pose ? rawStep : (motion ? (walking ? Math.sin(time / profile.cadence) : 0) : rawStep)) * profile.swing;
     var idle = motion && !walking ? Math.sin(time / 900) : 0;
     ctx.save();
     ctx.translate(x, y);
-    ctx.scale(size / 104, size / 104);
+    ctx.scale(pose && pose.mirrored ? -size / 104 : size / 104, size / 104);
     ctx.translate(0, -48);
     ctx.lineJoin = "round";
     ctx.lineCap = "round";

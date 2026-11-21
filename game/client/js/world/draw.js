@@ -190,9 +190,11 @@ Game.world = Game.world || {};
       line(ctx, 0, y, campus.width, y, PAVING_LINE, 1.5);
     }
     ctx.restore();
-    // "Main Deck" is written where the sketch has it: at the spawn point.
-    if (campus.spawn) {
-      text(ctx, "Main Deck", campus.spawn.x, campus.spawn.y, 13);
+    // The deck's name has its own place in the map file, away from the spawn
+    // point, so players who appear there do not stand on it.
+    var label = campus.deck_label;
+    if (label && label.name) {
+      text(ctx, label.name, label.x, label.y, 13);
     }
   }
 
@@ -201,6 +203,17 @@ Game.world = Game.world || {};
     for (var i = 0; i < rooms.length; i++) {
       ctx.fillStyle = rooms[i].floor;
       ctx.fillRect(rooms[i].x, rooms[i].y, rooms[i].w, rooms[i].h);
+      var room = rooms[i];
+      var spacing = room.pattern === "planks" ? 10 : 20;
+      var seam = room.pattern === "carpet" ? "rgba(46,42,59,0.035)" : "rgba(46,42,59,0.10)";
+      for (var y = room.y + spacing; y < room.y + room.h; y += spacing) {
+        line(ctx, room.x, y, room.x + room.w, y, seam, 0.6);
+      }
+      if (room.pattern !== "planks") {
+        for (var x = room.x + spacing; x < room.x + room.w; x += spacing) {
+          line(ctx, x, room.y, x, room.y + room.h, seam, 0.6);
+        }
+      }
     }
   }
 
@@ -213,30 +226,18 @@ Game.world = Game.world || {};
     }
   }
 
-  function doorOf(campus, room) {
-    var doors = list(campus.doors);
-    for (var i = 0; i < doors.length; i++) {
-      if (doors[i].room === room.id) {
-        return doors[i];
-      }
-    }
-    return null;
-  }
-
-  // The name stands in the middle of the room's width, a little inside the
-  // wall that has the door: there it is the first thing seen when walking in,
-  // and in every room of the sketch that strip is free of furniture.
+  // Each room's name stands at its `label` from the map file: the middle of
+  // the text, placed by hand where the sketch has it.
   function drawRoomNames(ctx, campus) {
-    var distanceFromWall = 18;
     var rooms = list(campus.rooms);
     for (var i = 0; i < rooms.length; i++) {
       var room = rooms[i];
-      var door = doorOf(campus, room);
-      var doorIsAtTheTop = door && door.y + door.h / 2 < room.y + room.h / 2;
-      var y = doorIsAtTheTop ? room.y + distanceFromWall : room.y + room.h - distanceFromWall;
+      if (!room.label) {
+        continue;
+      }
       // A long name gets smaller letters in a narrow room.
       var size = room.name.length * 8 > room.w ? 12 : 13;
-      text(ctx, room.name, room.x + room.w / 2, y, size);
+      text(ctx, room.name, room.label.x, room.label.y, size);
     }
   }
 
@@ -292,7 +293,11 @@ Game.world = Game.world || {};
   // A young tree: a square gravel bed with the green crown in the middle.
   function drawTree(ctx, bed) {
     box(ctx, bed, 3, "#D9D2C2", 2);
-    circle(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2, bed.w * 0.32, GREEN, 2);
+    var x = bed.x + bed.w / 2;
+    var y = bed.y + bed.h / 2;
+    circle(ctx, x, y, bed.w * 0.32, GREEN, 2);
+    circle(ctx, x - bed.w * 0.10, y - bed.h * 0.10, bed.w * 0.13, "#91BA75", 0);
+    circle(ctx, x + bed.w * 0.12, y + bed.h * 0.08, bed.w * 0.11, "#4E824D", 0);
   }
 
   // The letters N, O, V, A as thick lines, each in a quarter of the logo's
@@ -391,6 +396,39 @@ Game.world = Game.world || {};
     }
   }
 
+  // How long one pulse of the glowing border takes, in milliseconds
+  // (DESIGN.md, section 4: "pulses slowly").
+  var PULSE_MILLISECONDS = 1400;
+
+  // The border around the station the player can use right now: a yellow
+  // ring that grows and shrinks a little. `now` is the time of the frame in
+  // milliseconds; nothing is remembered between two frames.
+  function drawStationGlow(ctx, station, now) {
+    if (!ctx || !station) {
+      return;
+    }
+    // Swings between 0 and 1 and back, once per pulse.
+    var pulse = 0.5 - 0.5 * Math.cos(now / PULSE_MILLISECONDS * Math.PI * 2);
+    var radius = station.r + 3.5 + pulse * 2;
+    ctx.save();
+    // A soft, see-through yellow halo that gets stronger with the pulse.
+    ctx.globalAlpha = 0.25 + 0.4 * pulse;
+    circle(ctx, station.x, station.y, radius, null, 0);
+    ctx.strokeStyle = YELLOW;
+    ctx.lineWidth = 7 + 3 * pulse;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    // The ring itself: yellow on a slightly thicker dark ring, so it has an
+    // outline and shows on every floor colour.
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 4.4;
+    ctx.stroke();
+    ctx.strokeStyle = YELLOW;
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // ---- The whole map ---------------------------------------------------
 
   // Draws the map in map units. `view` ({x, y, w, h}, optional) is the part
@@ -415,5 +453,65 @@ Game.world = Game.world || {};
     ctx.restore();
   }
 
+  // ---- Which name labels are drawn (S-117) -------------------------------
+
+  // A label that was hidden in the previous frame comes back only when it is
+  // this many map units clear of every chosen label, on every side. Without
+  // this margin a label at the very edge would appear and vanish from one
+  // frame to the next.
+  var LABEL_COME_BACK_MARGIN = 4;
+
+  // True when the two labels cover each other. Labels that only touch at an
+  // edge do not. `margin` makes `a` that much larger on every side.
+  function labelsOverlap(a, b, margin) {
+    var apartSideways = Math.abs(a.x - b.x) >= (a.width + b.width) / 2 + margin;
+    var apartUpAndDown = Math.abs(a.y - b.y) >= (a.height + b.height) / 2 + margin;
+    return !apartSideways && !apartUpAndDown;
+  }
+
+  // The order in which the labels are decided: the own label first, then the
+  // others, the character drawn later (on top) first.
+  function decidingOrder(labels) {
+    var onTopFirst = labels.slice().reverse();
+    var own = onTopFirst.filter(function (label) { return label.own; });
+    var others = onTopFirst.filter(function (label) { return !label.own; });
+    return own.concat(others);
+  }
+
+  // Decides which name labels are drawn, so that no two drawn labels cover
+  // each other. A label never moves: it is drawn above its own head or not at
+  // all.
+  //
+  // `labels` is in drawing order (first drawn first). Each label is
+  // {name, x, y, width, height, own}: x and y are its middle, and width and
+  // height the whole space it covers on the map, outline included.
+  // `hiddenBefore` is a Set of the names hidden in the previous frame; a name
+  // not in it, also a player not seen before, needs no margin.
+  //
+  // Returns {shown: the labels to draw, hidden: a Set of the names hidden now}.
+  // The own label is always shown. Every other label is shown when it is clear
+  // of the labels chosen before it; one that was hidden needs the margin. The
+  // margin only delays a name coming back: it never lets the label of a
+  // lower character beat one drawn on top, because the lower one is decided
+  // later.
+  function chooseLabels(labels, hiddenBefore) {
+    var wasHidden = hiddenBefore || new Set();
+    var shown = [];
+    var hidden = new Set();
+    decidingOrder(labels || []).forEach(function (label) {
+      var margin = wasHidden.has(label.name) ? LABEL_COME_BACK_MARGIN : 0;
+      var covers = function (chosen) { return labelsOverlap(label, chosen, margin); };
+      if (label.own || !shown.some(covers)) {
+        shown.push(label);
+      } else {
+        hidden.add(label.name);
+      }
+    });
+    return { shown: shown, hidden: hidden };
+  }
+
+  Game.world.roomAt = roomAt;
   Game.world.drawMap = drawMap;
+  Game.world.drawStationGlow = drawStationGlow;
+  Game.world.chooseLabels = chooseLabels;
 })();

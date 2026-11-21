@@ -633,3 +633,29 @@ def test_the_tick_loop_stops_with_the_server():
         pass
     # Leaving the block stopped the server. Reaching this line means the loop
     # was cancelled cleanly: otherwise the block above would hang or raise.
+
+
+# The start of a round puts everybody back on the spawn (M2-2.1)
+
+
+def test_after_the_start_everybody_stands_on_the_spawn(connect):
+    mara, tiago, code = mara_and_tiago_at_the_spawn(connect)
+    move(tiago, 1, 0)
+    wait_for_positions(mara, lambda positions: positions["Tiago"]["x"] > SPAWN_X + 20)
+    move(tiago, 0, 0)
+    wait_until_quiet(tiago)
+
+    started, earlier = answer_of_type(mara, {"type": "start_game"}, "lobby_state")
+    assert started["phase"] == "round"
+    both_at_the_spawn = lambda positions: positions == {"Mara": AT_THE_SPAWN, "Tiago": AT_THE_SPAWN}
+    wait_for_positions(mara, both_at_the_spawn)
+    wait_for_positions(tiago, both_at_the_spawn)
+
+
+def test_walking_goes_on_during_the_round(connect):
+    mara, tiago, code = mara_and_tiago_at_the_spawn(connect)
+    answer_of_type(mara, {"type": "start_game"}, "lobby_state")
+    move(tiago, 0, 1)
+    tiago_went_down = lambda positions: positions["Tiago"]["y"] > SPAWN_Y
+    wait_for_positions(mara, tiago_went_down)
+    wait_for_positions(tiago, tiago_went_down)

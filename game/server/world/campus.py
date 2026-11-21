@@ -57,6 +57,8 @@ def check_campus(campus) -> dict:
         _check_rectangle(room, f"rooms[{index}]", width, height)
         for key in ("id", "name", "floor"):
             _text(room, key, f"rooms[{index}]")
+        _check_room_label(room, f"rooms[{index}]")
+    _check_deck_label(_entry(campus, "deck_label", "the map"), rooms, width, height)
 
     deck = _list(campus, "deck")
     if len(deck) < 3:
@@ -77,6 +79,8 @@ def check_campus(campus) -> dict:
         _check_rectangle(solid, f"solids[{index}]", width, height)
         _check_whole_numbers(solid, f"solids[{index}]")
         _text(solid, "kind", f"solids[{index}]")
+        if "walkable" in solid and not isinstance(solid["walkable"], bool):
+            raise CampusError(f"walkable of solids[{index}] must be a boolean.")
         solid_id = _text(solid, "id", f"solids[{index}]")
         if solid_id in solid_ids:
             raise CampusError(f"solids[{index}] has the id \"{solid_id}\" of another solid.")
@@ -89,15 +93,30 @@ def check_campus(campus) -> dict:
     stations = _list(campus, "stations")
     if len(stations) != STATION_COUNT:
         raise CampusError(f"The map needs exactly {STATION_COUNT} stations, found {len(stations)}.")
+    station_ids = set()
     for index, station in enumerate(stations):
         _check_point(station, f"stations[{index}]", width, height)
         station_id = _entry(station, "id", f"stations[{index}]")
         if isinstance(station_id, bool) or not isinstance(station_id, int):
             raise CampusError(f"\"id\" of stations[{index}] must be a whole number.")
+        if station_id in station_ids:
+            raise CampusError(f"stations[{index}] has the id {station_id} of another station.")
+        station_ids.add(station_id)
+
+    # How close the centre of a player must be to the centre of a station to
+    # use it (server/world/stations.py).
+    if _number(campus, "use_range", "the map") <= 0:
+        raise CampusError("\"use_range\" of the map must be above 0.")
 
     _check_point(_entry(campus, "button", "the map"), "button", width, height)
+    if "hide_reveal_range" in campus and _number(campus, "hide_reveal_range", "the map") <= 0:
+        raise CampusError("hide_reveal_range must be above 0.")
     for index, spot in enumerate(_list(campus, "hiding_spots")):
         _check_point(spot, f"hiding_spots[{index}]", width, height)
+        if _number(spot, "r", f"hiding_spots[{index}]") <= 0:
+            raise CampusError("A hiding radius must be above 0.")
+        if not is_free(spot["x"], spot["y"], solids, width, height):
+            raise CampusError("A hiding spot must have a walkable centre.")
     for index, band in enumerate(_list(campus, "bands")):
         _check_rectangle(band, f"bands[{index}]", width, height)
 
@@ -138,6 +157,39 @@ def _check_point(point, where, map_width, map_height):
     y = _number(point, "y", where)
     if not (0 <= x <= map_width and 0 <= y <= map_height):
         raise CampusError(f"{where} lies outside the map.")
+
+
+def _check_room_label(room, where):
+    """A room's name is drawn at its `label`, a point inside the room.
+
+    Labels are only drawn: nothing on the server walks or collides with them.
+    A point exactly on the room's edge still counts as inside:
+    `_is_in_room` counts the edge as inside, like `roomAt()` in draw.js.
+    """
+    label = _entry(room, "label", where)
+    label_where = f"the label of {where}"
+    if not isinstance(label, dict):
+        raise CampusError(f"{label_where} must be an object with x and y.")
+    x = _number(label, "x", label_where)
+    y = _number(label, "y", label_where)
+    if not _is_in_room(x, y, room):
+        raise CampusError(f"{label_where} lies outside its room.")
+
+
+def _check_deck_label(label, rooms, map_width, map_height):
+    """The deck's name: a text, drawn at a point on the map but in no room."""
+    if not isinstance(label, dict):
+        raise CampusError("deck_label must be an object with name, x and y.")
+    _text(label, "name", "deck_label")
+    _check_point(label, "deck_label", map_width, map_height)
+    for room in rooms:
+        if _is_in_room(label["x"], label["y"], room):
+            raise CampusError(f"deck_label lies inside the room \"{room['id']}\", not on the deck.")
+
+
+def _is_in_room(x, y, room):
+    """True if the point lies in the room's rectangle or on its edge."""
+    return room["x"] <= x <= room["x"] + room["w"] and room["y"] <= y <= room["y"] + room["h"]
 
 
 def _entry(container, key, where):

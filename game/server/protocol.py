@@ -12,6 +12,8 @@ area, so it is a team decision (see WORKFLOW.md, step 4).
 import json
 import re
 
+from server.world.campus import STATION_COUNT
+
 PROTOCOL_VERSION = 1
 MAX_MESSAGE_BYTES = 2048
 
@@ -35,6 +37,22 @@ CHARACTERS = (
     "library_local",
 )
 
+# The modes that are built and can be chosen (S-91). Classic follows later.
+MODES = ("duel",)
+# The mode of a new lobby.
+DEFAULT_MODE = "duel"
+# The name of each mode as the players read it.
+MODE_NAMES = {"duel": "Duel", "classic": "Classic"}
+# How many players a round of each mode needs at least (S-53). The only place
+# on the server where these numbers stand.
+MIN_PLAYERS = {"duel": 2, "classic": 4}
+
+# A lobby is waiting for its host to start, counting down to the start of
+# the round (S-102), or its round is running.
+PHASE_LOBBY = "lobby"
+PHASE_COUNTDOWN = "countdown"
+PHASE_ROUND = "round"
+
 # Fixed texts for actions the server refuses because of the state of the game
 # (not because the message was malformed). Build the message with `rejection`.
 REJECTIONS = {
@@ -48,6 +66,22 @@ REJECTIONS = {
     "not_in_lobby": "You are not in a lobby.",
     "already_in_lobby": "Leave your lobby first.",
     "character_taken": "That character is taken.",
+    "not_host": "Only the host can do that.",
+    "round_running": "This round has already started.",
+    # Guessing passwords or lobby codes (M1-2.6).
+    "too_many_attempts": "Too many attempts. Try again in a minute.",
+    # The tasks at the stations (S-93).
+    "not_in_round": "No round is running.",
+    "no_station": "That station does not exist.",
+    "too_far": "You are too far away.",
+    "station_not_needed": "You do not need that station.",
+    "task_open": "Close your current task first.",
+    "no_task_open": "You have no task open.",
+    "too_fast": "That was too fast. Try again.",
+    "task_failed": "Something went wrong. Try again.",
+    # Statistics (S-40).
+    "guest_no_statistics": "Guests have no statistics. Sign up to keep yours.",
+    "statistics_unavailable": "Statistics are unavailable right now.",
 }
 
 
@@ -118,12 +152,32 @@ def _check_character(value):
     return value
 
 
+def _check_mode(value):
+    # A mode that is not built yet ("classic") is refused like one that does
+    # not exist, so no round without rules can start (S-91).
+    if not isinstance(value, str) or value not in MODES:
+        raise ProtocolError("bad_mode", "That mode does not exist.")
+    return value
+
+
 def _check_step(value):
     """One direction of a move: -1, 0 or 1."""
     # `type(value) is int` and not isinstance: True and False count as ints in
     # Python, and 1.0 == 1, so a looser check would let them through.
     if type(value) is not int or value not in (-1, 0, 1):
         raise ProtocolError("bad_move", "That move could not be read.")
+    return value
+
+
+def _check_station(value):
+    """The id of a station on the map: 1 to STATION_COUNT.
+
+    Whether that station is in use and whether the player may open it is a
+    question for the rules (`server/modes/tasks.py`), not for this check.
+    """
+    # `type(value) is int` for the same reason as in `_check_step`.
+    if type(value) is not int or not 1 <= value <= STATION_COUNT:
+        raise ProtocolError("bad_station", "That station does not exist.")
     return value
 
 
@@ -138,7 +192,16 @@ CLIENT_MESSAGES = {
     "join_lobby": {"code": _check_lobby_code},
     "leave_lobby": {},
     "choose_character": {"character": _check_character},
+    "choose_mode": {"mode": _check_mode},
+    "start_game": {},
     "move": {"dx": _check_step, "dy": _check_step},
+    "open_station": {"station": _check_station},
+    "close_station": {},
+    "finish_station": {},
+    # Statistics (S-40). Neither carries a name: the profile is always the
+    # one of the account the connection is signed in with.
+    "get_profile": {},
+    "get_leaderboard": {},
 }
 
 
@@ -185,6 +248,15 @@ def rejection(code: str) -> dict:
     return {"type": "error", "code": code, "message": REJECTIONS[code]}
 
 
+def too_few_players(mode: str) -> dict:
+    """The error message for a start with too few players.
+
+    Its text depends on the mode, so it cannot be a fixed text in REJECTIONS.
+    """
+    text = f"{MODE_NAMES[mode]} needs at least {MIN_PLAYERS[mode]} players."
+    return {"type": "error", "code": "too_few_players", "message": text}
+
+
 def signed_in(name: str, guest: bool) -> dict:
     return {"type": "signed_in", "name": name, "guest": guest}
 
@@ -193,13 +265,31 @@ def signed_out() -> dict:
     return {"type": "signed_out"}
 
 
-def lobby_state(code: str, host: str, players) -> dict:
+def lobby_state(code: str, host: str, players, mode: str = DEFAULT_MODE, phase: str = PHASE_LOBBY) -> dict:
     """`players` is a list of (name, character) pairs, in the order they joined.
 
-    Every player has a character from the moment they join (S-75).
+    Every player has a character from the moment they join (S-75). Without
+    `mode` and `phase` this is the state of a new lobby (S-91).
     """
     listed = [{"name": name, "character": character} for name, character in players]
-    return {"type": "lobby_state", "code": code, "host": host, "players": listed}
+    return {
+        "type": "lobby_state",
+        "code": code,
+        "host": host,
+        "players": listed,
+        "mode": mode,
+        "phase": phase,
+    }
+
+
+def countdown(seconds: int) -> dict:
+    """Sent to everybody in the lobby when the host has started the countdown (S-102).
+
+    `seconds` is how long it is until the round starts. The browser counts
+    its display down from it; the round itself starts only with the lobby's
+    state in phase "round".
+    """
+    return {"type": "countdown", "seconds": seconds}
 
 
 def left_lobby() -> dict:
@@ -213,6 +303,83 @@ def positions(players) -> dict:
     """
     listed = [{"name": name, "x": round(x, 1), "y": round(y, 1)} for name, x, y in players]
     return {"type": "positions", "players": listed}
+
+
+def station_opened(station: int, title: str, content: dict) -> dict:
+    """Sent only to the player who opened the station (S-93).
+
+    `content` is what the station's minigame drew for this opening. The title
+    comes along so the browser can show it for any minigame.
+    """
+    return {"type": "station_opened", "station": station, "title": title, "content": content}
+
+
+def station_closed(station: int) -> dict:
+    """The player's task is closed and did not count."""
+    return {"type": "station_closed", "station": station}
+
+
+def station_done(station: int) -> dict:
+    """The player's task counted: the station is finished for this round."""
+    return {"type": "station_done", "station": station}
+
+
+def duel_state(next_station, done: int, total: int, seconds=None) -> dict:
+    """Sent only to the player it is about (S-94): nobody learns another player's route.
+
+    `next_station` is None once the player has finished. Only then the
+    message carries "seconds", the player's time.
+    """
+    message = {"type": "duel_state", "next_station": next_station, "done": done, "total": total}
+    if seconds is not None:
+        message["seconds"] = seconds
+    return message
+
+
+def duel_progress(players, total: int, seconds_left: int) -> dict:
+    """`players` is a list of (name, done) pairs in joining order. Sent to everybody."""
+    listed = [{"name": name, "done": done} for name, done in players]
+    return {"type": "duel_progress", "players": listed, "total": total, "seconds_left": seconds_left}
+
+
+def duel_result(ranking, time_up: bool) -> dict:
+    """`ranking` is the list of rows from `Duel.ranking`, best first. Sent to everybody."""
+    listed = [
+        {"place": row["place"], "name": row["name"], "seconds": row["seconds"], "done": row["done"]}
+        for row in ranking
+    ]
+    return {"type": "duel_result", "ranking": listed, "time_up": time_up}
+
+
+def profile(name: str, modes, best_duel_seconds) -> dict:
+    """Sent only to the account it is about (S-40).
+
+    `modes` is a list of (mode, rounds, wins) triples. The title of each
+    mode comes along, so the browser can show a mode it does not know yet.
+    """
+    listed = [
+        {"mode": mode, "title": MODE_NAMES[mode], "rounds": rounds, "wins": wins}
+        for mode, rounds, wins in modes
+    ]
+    return {"type": "profile", "name": name, "modes": listed, "best_duel_seconds": best_duel_seconds}
+
+
+def leaderboard(rows) -> dict:
+    """`rows` is the list from `statistics.leaderboard_rows`, best first.
+
+    Each field is copied by name, so nothing else that is known about an
+    account can end up in the message.
+    """
+    listed = [
+        {
+            "place": row["place"],
+            "name": row["name"],
+            "wins": row["wins"],
+            "best_duel_seconds": row["best_seconds"],
+        }
+        for row in rows
+    ]
+    return {"type": "leaderboard", "players": listed}
 
 
 def notice(message: str) -> dict:

@@ -1,5 +1,5 @@
-// The world on the canvas: the drawing loop, the camera, the keyboard and the
-// smoothing of the players' movement.
+// The world on the canvas: the drawing loop, the camera, the keyboard, the
+// smoothing of the players' movement and the task stations a player can use.
 //
 // The browser decides nothing here (AGENTS.md, rule 1). The keyboard only
 // tells the server where the player wants to go, and every position that is
@@ -25,24 +25,87 @@ Game.world = Game.world || {};
   // After a failed download of the map, try again after this time.
   var RETRY_MILLISECONDS = 2000;
 
-  // Height of a drawn character, in map units. Its body is then about as
-  // wide as the 10 units the server counts for a player (S-86).
-  var CHARACTER_HEIGHT = 26;
+  // Height of a drawn character, in map units: one size for all. With it a
+  // character is about as tall as a door is wide (40) and stands clearly
+  // above a table (24). Only the drawing is this big: the server still
+  // counts a player as a square of 10 by 10 units (S-86), which is about
+  // as wide as the drawn body and legs.
+  var CHARACTER_HEIGHT = 39;
   // The server's position is the middle of that 10 x 10 square. The feet are
   // drawn at its lower edge, so a character stands in front of a wall the
   // way it collides with it.
   var FEET_BELOW_POSITION = 5;
 
-  // The server sends positions about 15 times per second (S-72). A character
-  // glides to each new position within one such interval.
-  var GLIDE_MILLISECONDS = 1000 / 15;
+  // The server sends positions once per tick, 15 times per second (S-72).
+  var TICK_MILLISECONDS = 1000 / 15;
+  // Over the internet the messages often arrive bunched: one is held back
+  // and comes together with the next. A character can only be drawn
+  // smoothly up to the last position that has arrived, so the positions
+  // are not drawn when they arrive. They wait in a short queue per player
+  // and are played back at the server's pace, one tick each, a little later
+  // (M2-1.14). How much later is the playback delay: the largest gap
+  // between two messages lately, plus a margin, see playbackDelay().
+  //
+  // The smallest playback delay. With messages on time the characters are
+  // drawn this far behind their arrival, so a message up to about 40 ms
+  // late still changes nothing. It is also how long the glide of a
+  // position lasts that is not played from the queue.
+  var GLIDE_MILLISECONDS = 110;
+  // The largest playback delay. A gap longer than this (Felix measured
+  // 300 to 500 ms about every 3 s) still makes the character stop for a
+  // moment; a larger delay would cover it, but the own character would then
+  // always be drawn 330 to 450 ms behind the keys.
+  var LONGEST_DELAY_MILLISECONDS = 250;
+  // After a gap the queue catches up at most this many times faster than
+  // the server's pace, so a character never rushes or jumps.
+  var FASTEST_PACE = 1.5;
+  var FASTEST_GLIDE_MILLISECONDS = TICK_MILLISECONDS / FASTEST_PACE;
+  // A queue reaching further than the delay plus this would take too long
+  // to catch up at FASTEST_PACE (after a hold-up of about a second or
+  // more): the character then snaps to the newest position instead.
+  var LONGEST_CATCH_UP_MILLISECONDS = 600;
+  // Added to the largest gap, so the next message is there a moment before
+  // the character has reached the position before it.
+  var DELAY_MARGIN_MILLISECONDS = 15;
+  // Only the gaps of this last stretch of time count: when the connection
+  // gets better, the delay shrinks again.
+  var GAP_MEMORY_MILLISECONDS = 3000;
+  // A longer gap is no hold-up: the server sends nothing while everybody
+  // stands, so it does not count.
+  var PAUSE_MILLISECONDS = 400;
   // A longer way than this in one message is a respawn: jump, do not glide.
   var JUMP_DISTANCE = 60;
-  // How long after its last step a character still counts as walking. Longer
-  // than one interval, so the bobbing does not flicker between two messages.
-  var STILL_WALKING_MILLISECONDS = 160;
-  var BOB_HEIGHT = 1.2; // map units
-  var BOB_MILLISECONDS = 280; // one step up and down
+  // A real step is at most 9 map units on an axis: the server moves a player
+  // by at most 0.1 seconds x 90 units per second in one go. A larger change
+  // is the server putting the player somewhere else (the spawn at the start
+  // of a round): not a step, so the character neither walks nor turns.
+  var LONGEST_STEP = 15;
+  // The feet take full steps while the character glides. With the first
+  // step the steps grow to full size within this time; when no further step
+  // arrives they shrink to nothing within the second time, so the feet are
+  // put down softly instead of snapping to the ground.
+  var STRIDE_GROWS_MILLISECONDS = GLIDE_MILLISECONDS;
+  var STRIDE_FADES_MILLISECONDS = 150;
+  // One cycle of the run is two steps: left foot, right foot. It runs on
+  // the way the drawn character covers, not on the time. So the feet keep
+  // pace with the ground on every screen, however often messages arrive and
+  // however long a glide takes, and they stop when the character stops,
+  // also against a wall. One cycle takes this many map units: 18 per step,
+  // 5 steps per second at 90 units per second. It belongs to how far the
+  // feet move in characters.js (FOOT_TRAVEL, GROUND_FRACTION): together
+  // they decide how much a foot slides on the ground.
+  var WALK_CYCLE_LENGTH = 36;
+  // A change of position smaller than this, in map units, is not a step: it
+  // neither turns the character nor moves its feet. A real step is about 6
+  // units (90 units per second, 15 messages per second, S-86).
+  var SMALLEST_STEP = 1;
+  // Free room between the top of a standing character and its name, in map
+  // units. A running character rises on every step, by at most BODY_BOB in
+  // characters.js: 3 of its 112 design units, which is 1.05 map units at
+  // CHARACTER_HEIGHT. This room must be at least that rise, so a head never
+  // touches its name. The name is placed from the position, not from the
+  // drawing, so it stays still while the body bobs.
+  var HEAD_ROOM_BELOW_NAME = 1.5;
 
   // Which keys walk where. `event.code` names the place of a key on the
   // keyboard, so WASD also sits right on a keyboard with another layout.
@@ -52,6 +115,11 @@ Game.world = Game.world || {};
     KeyA: "left", ArrowLeft: "left",
     KeyD: "right", ArrowRight: "right"
   };
+
+  // The key that uses a station, and the text on its button (DESIGN.md,
+  // section 4).
+  var USE_KEY_CODE = "KeyE"; // `event.code` of the key in the E position
+  var USE_BUTTON_TEXT = "E Use";
 
   // ---- State -----------------------------------------------------------
 
@@ -67,6 +135,16 @@ Game.world = Game.world || {};
   var players = new Map(); // name -> player record, see newPlayer()
   var pressedKeys = {}; // event.code -> true while the key is held down
   var sentDirection = { dx: 0, dy: 0 }; // what the server heard last
+  // When the player started to walk: the time at which the direction last
+  // changed from (0, 0) to something else. Only the walking diagnostic reads it.
+  var walkingSince = null;
+  var usableStations = null; // ids of the stations that count, null = all
+  var useHandler = null; // called with the id of the station that is opened
+  var useButton = null; // the button "E Use", while the world runs
+  var inputPaused = false; // true while a minigame is open, see setInputPaused()
+  // When the positions messages of the last GAP_MEMORY_MILLISECONDS arrived,
+  // oldest first. One list for the world: every message lists all players.
+  var arrivalTimes = [];
 
   // ---- Players and smoothing -------------------------------------------
 
@@ -78,8 +156,30 @@ Game.world = Game.world || {};
       // first position has arrived; until then the player is not drawn.
       from: null,
       to: null,
-      arrivedAt: 0, // when `to` arrived, in milliseconds
-      lastStepAt: -Infinity, // when the position last changed
+      arrivedAt: 0, // when the glide to `to` started, in milliseconds
+      glideMilliseconds: GLIDE_MILLISECONDS, // how long that glide lasts
+      // The newest position the server sent. The drawing is behind it.
+      server: null,
+      // Positions waiting to be drawn, oldest first:
+      // [{x, y, startAt, endAt}], see schedulePosition().
+      queue: [],
+      // When the last scheduled position is reached; null when there is none.
+      queueEndsAt: null,
+      snappedAt: -Infinity, // when snapTo() last put it on the newest position
+      lastStepAt: -Infinity, // when the character last took a step
+      stepMilliseconds: GLIDE_MILLISECONDS, // how long the glide of that step lasts
+      strideAtLastStep: 0, // how big its steps were at that moment, 0 to 1
+      // How far the drawn character had walked, in map units, when the
+      // current glide started (see walkedDistance()) ...
+      walkedBeforeGlide: 0,
+      // ... and how far it had walked when it started to walk; the walking
+      // cycle starts there.
+      walkedWhenItStarted: 0,
+      // Until this time the next position is a placement by the server and
+      // not a step, see startOfRound().
+      placedUntil: -Infinity,
+      // Which side the character faces. It only ever faces left or right,
+      // keeps the side after it stopped, and faces right until it has moved.
       facingLeft: false,
       facing: "front"
     };
@@ -106,7 +206,7 @@ Game.world = Game.world || {};
     if (!player.to) {
       return null;
     }
-    var progress = (now - player.arrivedAt) / GLIDE_MILLISECONDS;
+    var progress = (now - player.arrivedAt) / player.glideMilliseconds;
     progress = Math.max(0, Math.min(1, progress));
     return {
       x: player.from.x + (player.to.x - player.from.x) * progress,
@@ -118,31 +218,301 @@ Game.world = Game.world || {};
   // character is drawn right now, so it never jumps, also when messages
   // arrive early or late.
   function moveTo(player, x, y, now) {
+    // Counted before the glide changes: the way up to this moment.
+    var walked = walkedDistance(player, now);
     var start = drawnPosition(player, now) || { x: x, y: y };
     var isJump = Math.abs(x - start.x) > JUMP_DISTANCE || Math.abs(y - start.y) > JUMP_DISTANCE;
-    if (isJump) {
+    var isPlacement = now < player.placedUntil;
+    player.placedUntil = -Infinity; // it counts for one position only
+    if (isJump || isPlacement) {
       start = { x: x, y: y };
     }
-    var hasStepped = player.to && (player.to.x !== x || player.to.y !== y);
-    if (hasStepped && !isJump) {
-      player.lastStepAt = now;
+    if (player.to) {
       var dx = x - player.to.x;
       var dy = y - player.to.y;
-      player.facing = Math.abs(dy) > Math.abs(dx) ? (dy < 0 ? "back" : "front") : "side";
-      // Horizontal mirroring still chooses which side of the sprite is shown.
-      if (x < player.to.x) {
-        player.facingLeft = true;
-      } else if (x > player.to.x) {
-        player.facingLeft = false;
+      if (isJump || isPlacement || isLongerThanAStep(dx, dy)) {
+        standStill(player);
+      } else {
+        takeStep(player, dx, dy, now);
       }
     }
     player.from = start;
     player.to = { x: x, y: y };
     player.arrivedAt = now;
+    player.walkedBeforeGlide = walked;
+  }
+
+  // How far the drawn character has walked up to the time `now`, in map
+  // units: the way of all earlier glides and the part of the current glide
+  // covered so far. A jump or a placement starts its glide where it ends,
+  // so it adds nothing. Like drawnPosition() it only depends on the time,
+  // so it is the same however often the screen is redrawn, and it does not
+  // depend on how long a glide takes.
+  function walkedDistance(player, now) {
+    var position = drawnPosition(player, now);
+    if (!position) {
+      return 0;
+    }
+    var dx = position.x - player.from.x;
+    var dy = position.y - player.from.y;
+    return player.walkedBeforeGlide + Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // Further apart than a walk can go in one message: a jump.
+  function isFarApart(place, x, y) {
+    return Math.abs(x - place.x) > JUMP_DISTANCE || Math.abs(y - place.y) > JUMP_DISTANCE;
+  }
+
+  // Starts the glide to (x, y) at `startAt`; it lasts `milliseconds`.
+  function startGlide(player, x, y, startAt, milliseconds) {
+    moveTo(player, x, y, startAt);
+    // Set only after moveTo: moveTo still needs the length of the glide
+    // before, to find where the character is drawn at `startAt`.
+    player.glideMilliseconds = milliseconds;
+    if (player.lastStepAt === startAt) {
+      // moveTo took a step: the feet move until this glide is over, see stride().
+      player.stepMilliseconds = milliseconds;
+    }
+  }
+
+  // Looks at the way between the last two positions from the server, (dx, dy),
+  // and remembers that the character walks and which side it faces.
+  // The same position again, or a tiny change, is not a step and changes
+  // nothing: so a character pressing against a wall does not twitch.
+  function takeStep(player, dx, dy, now) {
+    var stepsSideways = Math.abs(dx) >= SMALLEST_STEP;
+    var stepsUpOrDown = Math.abs(dy) >= SMALLEST_STEP;
+    if (!stepsSideways && !stepsUpOrDown) {
+      return;
+    }
+    player.facing = stepsUpOrDown && (!stepsSideways || Math.abs(dy) > Math.abs(dx))
+      ? (dy < 0 ? "back" : "front") : "side";
+    if (!isWalking(player, now)) {
+      player.walkedWhenItStarted = walkedDistance(player, now);
+    }
+    // Remember how big the steps are right now: they grow on from there.
+    player.strideAtLastStep = stride(player, now);
+    player.lastStepAt = now;
+    // Only the sideways part of a step turns the character, so a diagonal
+    // takes the side of its sideways part. Walking straight up or down
+    // keeps the side the character faced and still moves its feet.
+    if (stepsSideways) {
+      player.facingLeft = dx < 0;
+    }
+  }
+
+  function isLongerThanAStep(dx, dy) {
+    return Math.abs(dx) > LONGEST_STEP || Math.abs(dy) > LONGEST_STEP;
+  }
+
+  // The server put the player somewhere else. That is not a step: the
+  // character stands there and faces right, like everybody else who was
+  // put there and like a character that has not moved yet.
+  function standStill(player) {
+    player.lastStepAt = -Infinity;
+    player.strideAtLastStep = 0;
+    player.facingLeft = false;
+    player.facing = "front";
+  }
+
+  // A round starts: the server puts everybody on the spawn. From far away
+  // that shows as a jump, but a player who stood on the spawn or next to
+  // it would keep the side it faced, or be drawn taking a step there. So
+  // the lobby page says when a round starts: every character then stands
+  // and faces right, and its next position, if it comes within a moment,
+  // is a placement and not a step. Positions still come only from the
+  // server; this decides nothing about them.
+  var PLACEMENT_MILLISECONDS = 1000;
+
+  function startOfRound() {
+    var now = performance.now();
+    players.forEach(function (player) {
+      standStill(player);
+      player.placedUntil = now + PLACEMENT_MILLISECONDS;
+      // The positions still waiting in the queue are from before the round.
+      // Played now, the first of them would count as the placement, and
+      // the real placement would then be drawn as a step.
+      emptyQueue(player);
+    });
+  }
+
+  // How big the steps of the player are at the time `now`, from 0 (it
+  // stands) to 1 (full steps). After a step they grow to full size; once the
+  // glide of that step is over and no new step has come, they fade away.
+  // It only depends on the time, like drawnPosition(), so it looks the same
+  // on every screen, however often that screen is redrawn.
+  function stride(player, now) {
+    // Never below 0: the time of a frame can lie a moment before the time
+    // at which the step started.
+    var sinceStep = Math.max(0, now - player.lastStepAt);
+    var grown = Math.min(1, player.strideAtLastStep + sinceStep / STRIDE_GROWS_MILLISECONDS);
+    // The glides of the queue last from 44 to 250 ms. The fade waits
+    // for the end of the glide of this step: the feet neither stop while
+    // the character still moves nor walk on after it stopped.
+    var faded = (sinceStep - player.stepMilliseconds) / STRIDE_FADES_MILLISECONDS;
+    faded = Math.max(0, Math.min(1, faded));
+    // Slow at the start and at the end (the curve 3t² - 2t³). A message that
+    // is a little late then hardly shrinks the steps before it arrives.
+    var easedFade = faded * faded * (3 - 2 * faded);
+    return grown * (1 - easedFade);
   }
 
   function isWalking(player, now) {
-    return now - player.lastStepAt < STILL_WALKING_MILLISECONDS;
+    return stride(player, now) > 0;
+  }
+
+  // How far the player is in its running cycle, from 0 to 1, or null when
+  // it stands. It starts at 0, the moment the left foot lands (see
+  // runningMoment() in characters.js), and moves on only while the drawn
+  // character moves.
+  function walkPhase(player, now) {
+    if (!isWalking(player, now)) {
+      return null;
+    }
+    var walked = Math.max(0, walkedDistance(player, now) - player.walkedWhenItStarted);
+    return (walked / WALK_CYCLE_LENGTH) % 1;
+  }
+
+  // ---- Playing the positions back at the server's pace (M2-1.14) -------
+
+  function clamp(value, lowest, highest) {
+    return Math.max(lowest, Math.min(highest, value));
+  }
+
+  // Writes down that a positions message arrived at `now`, and forgets the
+  // arrivals that are too old to count.
+  function rememberArrival(now) {
+    arrivalTimes.push(now);
+    while (arrivalTimes[0] < now - GAP_MEMORY_MILLISECONDS) {
+      arrivalTimes.shift();
+    }
+  }
+
+  // How long a new position waits before it is drawn: one largest gap
+  // between two messages lately, plus a margin. Then the next message has
+  // usually arrived before the character has reached the position before.
+  function playbackDelay() {
+    var largestGap = 0;
+    for (var i = 1; i < arrivalTimes.length; i++) {
+      var gap = arrivalTimes[i] - arrivalTimes[i - 1];
+      if (gap <= PAUSE_MILLISECONDS && gap > largestGap) {
+        largestGap = gap;
+      }
+    }
+    return clamp(largestGap + DELAY_MARGIN_MILLISECONDS, GLIDE_MILLISECONDS, LONGEST_DELAY_MILLISECONDS);
+  }
+
+  function emptyQueue(player) {
+    player.queue = [];
+    player.queueEndsAt = null;
+  }
+
+  // Takes one new position of `player`, arrived at `now`.
+  function receivePosition(player, x, y, now, delay) {
+    // Positions whose time has come are drawn first, so the queue stays
+    // short also while no frames are drawn (a hidden tab).
+    playQueue(player, now);
+    var previous = player.server;
+    player.server = { x: x, y: y };
+    var isPlacement = now < player.placedUntil;
+    if (!previous || isFarApart(previous, x, y) || isPlacement) {
+      // The first position, a respawn or the start of a round: shown at
+      // once, without waiting behind the queue. moveTo() puts it there.
+      // (moveTo() measures a jump from the drawn place, which is a little
+      // behind; a jump just over JUMP_DISTANCE may then glide instead.)
+      emptyQueue(player);
+      startGlide(player, x, y, now, GLIDE_MILLISECONDS);
+      return;
+    }
+    // While anybody walks, the server sends every player's position on
+    // every tick. The place where the drawing will end anyway adds nothing
+    // to draw; queued, it would only make this player's next real step
+    // wait behind it.
+    var drawingEnds = drawingEndsAt(player);
+    if (drawingEnds && drawingEnds.x === x && drawingEnds.y === y) {
+      return;
+    }
+    schedulePosition(player, x, y, now, delay);
+  }
+
+  // Where the drawing of the player will stand once its queue is played:
+  // the target of the last queued entry, or else the current glide's.
+  // Not player.server: startOfRound() can empty the queue before the
+  // drawing got there.
+  function drawingEndsAt(player) {
+    if (player.queue.length > 0) {
+      return player.queue[player.queue.length - 1];
+    }
+    return player.to;
+  }
+
+  // Puts the position into the player's queue with the time its glide
+  // starts and ends. The glides follow each other, one tick each, so the
+  // character walks at the server's pace however the messages arrive.
+  function schedulePosition(player, x, y, now, delay) {
+    var lastEnd = player.queueEndsAt;
+    var startAt = now;
+    var endAt;
+    if (lastEnd === null || now - lastEnd >= PAUSE_MILLISECONDS) {
+      // A start after standing: one delay behind this arrival, so the
+      // next messages are there before the character needs them.
+      endAt = now + delay;
+    } else if (lastEnd + TICK_MILLISECONDS < now) {
+      // The queue ran dry while walking (a gap longer than the delay): the
+      // character has stood already, so it goes on at once at the normal
+      // pace instead of taking one slow step over the whole delay.
+      endAt = now + TICK_MILLISECONDS;
+    } else {
+      // Follow on from the end of the queue. Every glide takes at least
+      // FASTEST_GLIDE_MILLISECONDS, so catching up is at most 1.5 times
+      // the normal speed, never a jump.
+      startAt = Math.max(lastEnd, now);
+      endAt = Math.max(lastEnd + nextSpacing(lastEnd, now, delay), startAt + FASTEST_GLIDE_MILLISECONDS);
+    }
+    // Within half a tick of a snap is the same burst: snap too, so its rest does not queue up again.
+    var isSameBurst = now - player.snappedAt < TICK_MILLISECONDS / 2;
+    if (isSameBurst || endAt - now > delay + LONGEST_CATCH_UP_MILLISECONDS) {
+      snapTo(player, x, y, now);
+      return;
+    }
+    player.queue.push({ x: x, y: y, startAt: startAt, endAt: endAt });
+    player.queueEndsAt = endAt;
+  }
+
+  // After a long hold-up: forget the queue and show the newest position at
+  // once. moveTo() still decides the step and the facing; its glide then
+  // starts where it ends, so the character stands there in the next frame.
+  function snapTo(player, x, y, now) {
+    emptyQueue(player);
+    startGlide(player, x, y, now, GLIDE_MILLISECONDS);
+    player.from = player.to;
+    player.snappedAt = now;
+  }
+
+  // How long the next glide in the queue lasts: one tick, a little longer
+  // while the queue is shorter than the delay (so it fills up again) and a
+  // little shorter while it is longer (so the drawing catches up). `lead` is
+  // how far ahead of this arrival the queue reaches with one more tick.
+  function nextSpacing(lastEnd, now, delay) {
+    var lead = lastEnd + TICK_MILLISECONDS - now;
+    var factor = clamp(1 + 0.3 * (delay - lead) / delay, 1 / FASTEST_PACE, 1.25);
+    return TICK_MILLISECONDS * factor;
+  }
+
+  // Starts the glides of the queued positions whose time has come. Each one
+  // starts at its own startAt, not at `now`: a late frame then draws the
+  // character exactly where it would have been.
+  function playQueue(player, now) {
+    while (player.queue.length > 0 && player.queue[0].startAt <= now) {
+      var entry = player.queue.shift();
+      startGlide(player, entry.x, entry.y, entry.startAt, entry.endAt - entry.startAt);
+    }
+  }
+
+  function playAllQueues(now) {
+    players.forEach(function (player) {
+      playQueue(player, now);
+    });
   }
 
   // ---- What the lobby page tells the world -----------------------------
@@ -168,7 +538,9 @@ Game.world = Game.world || {};
     });
   }
 
-  // Positions from the server, in map units: [{name, x, y}].
+  // Positions from the server, in map units: [{name, x, y}]. They are not
+  // drawn at once but queued and played back a little later, see
+  // receivePosition().
   // Ignored while the world is stopped: a message that arrives late, after
   // the player left a lobby, must not bring the players of that lobby back.
   function setPositions(list) {
@@ -176,11 +548,176 @@ Game.world = Game.world || {};
       return;
     }
     var now = performance.now();
-    (Array.isArray(list) ? list : []).forEach(function (entry) {
-      if (entry && isName(entry.name) && isNumber(entry.x) && isNumber(entry.y)) {
-        moveTo(playerNamed(entry.name), entry.x, entry.y, now);
+    rememberArrival(now);
+    var delay = playbackDelay();
+    var present = new Set((Array.isArray(list) ? list : []).filter(function (entry) {
+      return entry && isName(entry.name) && isNumber(entry.x) && isNumber(entry.y);
+    }).map(function (entry) { return entry.name; }));
+    players.forEach(function (player) {
+      player.visible = present.has(player.name);
+      if (!player.visible) {
+        player.from = null;
+        player.to = null;
+        player.queue = [];
+        player.queueEndsAt = null;
       }
     });
+    (Array.isArray(list) ? list : []).forEach(function (entry) {
+      if (entry && isName(entry.name) && isNumber(entry.x) && isNumber(entry.y)) {
+        receivePosition(playerNamed(entry.name), entry.x, entry.y, now, delay);
+      }
+    });
+  }
+
+  // ---- Stations: which one is in range, and opening it -----------------
+
+  // The id of the station a player at (x, y) can use, or null: the closest
+  // station whose centre is at most `useRange` away. Exactly at the range
+  // still counts, and an exact tie goes to the smaller id. `usableIds` is an
+  // array of the ids that count at all, or null for all stations.
+  //
+  // The server has the very same rule in server/world/stations.py, function
+  // station_in_range. Change both together.
+  function nearestStationInRange(x, y, stations, useRange, usableIds) {
+    var bestId = null;
+    var bestDistance = null;
+    for (var i = 0; i < stations.length; i++) {
+      var station = stations[i];
+      if (usableIds !== null && usableIds.indexOf(station.id) === -1) {
+        continue;
+      }
+      var distance = squaredDistance(x, y, station);
+      // Written as "not at most" so that a broken position (not a number)
+      // is in range of nothing: every comparison with it is false.
+      if (!(distance <= useRange * useRange)) {
+        continue;
+      }
+      if (isBetter(distance, station.id, bestDistance, bestId)) {
+        bestId = station.id;
+        bestDistance = distance;
+      }
+    }
+    return bestId;
+  }
+
+  // Squared distances are compared instead of real ones: no square root is
+  // needed, and JavaScript and Python then calculate exactly the same numbers.
+  function squaredDistance(x, y, station) {
+    var dx = station.x - x;
+    var dy = station.y - y;
+    return dx * dx + dy * dy;
+  }
+
+  // Is this station closer than the best one so far, or as close with a
+  // smaller id?
+  function isBetter(distance, stationId, bestDistance, bestId) {
+    if (bestId === null) {
+      return true;
+    }
+    if (distance !== bestDistance) {
+      return distance < bestDistance;
+    }
+    return stationId < bestId;
+  }
+
+  // The id of the station the own player can use right now, or null. It
+  // counts from the position the server sent last, not from where the
+  // character is drawn (a little behind), so what glows is what the server
+  // will accept.
+  function stationInRange() {
+    var own = ownName !== null && players.has(ownName) ? players.get(ownName).server : null;
+    if (!running || !campus || !own || !Array.isArray(campus.stations)) {
+      return null;
+    }
+    return nearestStationInRange(own.x, own.y, campus.stations, campus.use_range, usableStations);
+  }
+
+  function stationWithId(id) {
+    var stations = campus.stations;
+    for (var i = 0; i < stations.length; i++) {
+      if (stations[i].id === id) {
+        return stations[i];
+      }
+    }
+    return null;
+  }
+
+  // Which stations count as targets. The others are still drawn but never
+  // glow. Only `null` means all of them. An array or a Set is the list of
+  // ids. Anything else (nothing at all, a number, a text, an object) is a
+  // mistake of the caller and means no station: a mistake must never open
+  // every station.
+  function setUsableStations(ids) {
+    if (ids === null) {
+      usableStations = null;
+    } else if (Array.isArray(ids) || ids instanceof Set) {
+      usableStations = Array.from(ids);
+    } else {
+      usableStations = [];
+    }
+  }
+
+  // `handler(stationId)` is called when the player opens a station. Another
+  // area sets it (the minigames); it stays set when the world stops.
+  function setUseHandler(handler) {
+    useHandler = typeof handler === "function" ? handler : null;
+  }
+
+  // Opens the station in range: with the key E or a click on the button.
+  // Without a station in range or without a handler nothing happens, and
+  // there is no message either (DESIGN.md, section 4).
+  function useStationInRange() {
+    var id = stationInRange();
+    if (id !== null && useHandler && !inputPaused) {
+      useHandler(id);
+    }
+  }
+
+  // The button "E Use" at the bottom right of the map. It is made here and
+  // not in index.html, so it only exists while the world runs.
+  function addUseButton() {
+    if (useButton) {
+      return; // never two buttons
+    }
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "button use-button";
+    button.textContent = USE_BUTTON_TEXT;
+    button.disabled = true; // grey until a station is in range
+    button.addEventListener("click", onUseButtonClick);
+    canvas.parentNode.appendChild(button);
+    useButton = button; // remembered only once it is on the page
+  }
+
+  // A clicked button keeps the keyboard focus. Space and Enter would then
+  // "click" it again (and again while held), so the focus is taken off
+  // before the station opens.
+  function onUseButtonClick() {
+    useButton.blur();
+    useStationInRange();
+  }
+
+  function removeUseButton() {
+    if (useButton) {
+      useButton.remove();
+      useButton = null;
+    }
+  }
+
+  // Grey and switched off while it would do nothing, yellow otherwise. The
+  // stylesheet gives the two looks.
+  function updateUseButton(idInRange) {
+    var shouldBeDisabled = idInRange === null || inputPaused;
+    if (!useButton || useButton.disabled === shouldBeDisabled) {
+      return;
+    }
+    // Some browsers swallow key events while a switched-off button has the
+    // focus. A lost release of a walk key would leave the player walking,
+    // so the focus goes first.
+    if (shouldBeDisabled && document.activeElement === useButton) {
+      useButton.blur();
+    }
+    useButton.disabled = shouldBeDisabled;
   }
 
   // ---- Keyboard --------------------------------------------------------
@@ -212,6 +749,9 @@ Game.world = Game.world || {};
     if (dx === sentDirection.dx && dy === sentDirection.dy) {
       return;
     }
+    if (sentDirection.dx === 0 && sentDirection.dy === 0) {
+      walkingSince = performance.now(); // a new walk; turning keeps the old time
+    }
     sentDirection = { dx: dx, dy: dy };
     if (typeof sendMove === "function") {
       sendMove(dx, dy);
@@ -224,15 +764,40 @@ Game.world = Game.world || {};
     return event.key === "Meta";
   }
 
+  // `event.code` names the place of the key on the keyboard, like the walk
+  // keys do: this is the key in the E position (next to W), whatever letter
+  // the layout writes with it. Caps Lock and Shift do not change the code.
+  function isUseKey(event) {
+    return event.code === USE_KEY_CODE;
+  }
+
   function onKeyDown(event) {
     if (isMetaKey(event)) {
       releaseAllKeys();
       return;
     }
-    var isWalkKey = Object.prototype.hasOwnProperty.call(KEY_DIRECTIONS, event.code);
     // With Ctrl, Alt or Cmd held, the key is a shortcut of the browser.
     var isShortcut = event.ctrlKey || event.altKey || event.metaKey;
-    if (!isWalkKey || isShortcut || isTyping(event)) {
+    if (isShortcut || isTyping(event)) {
+      return;
+    }
+    if (inputPaused) {
+      // A minigame is open: the keys do nothing on the map, but the arrow
+      // keys must not scroll the page behind the window either.
+      if (event.code.indexOf("Arrow") === 0) {
+        event.preventDefault();
+      }
+      return;
+    }
+    if (isUseKey(event)) {
+      // A key that is held down reports itself again and again: only the
+      // first press opens the station.
+      if (!event.repeat) {
+        useStationInRange();
+      }
+      return;
+    }
+    if (!Object.prototype.hasOwnProperty.call(KEY_DIRECTIONS, event.code)) {
       return;
     }
     if (event.code.indexOf("Arrow") === 0) {
@@ -261,6 +826,17 @@ Game.world = Game.world || {};
   function releaseAllKeys() {
     pressedKeys = {};
     reportDirection();
+  }
+
+  // While a minigame is open, the keys belong to it: the walk keys and E do
+  // nothing and the button "E Use" is switched off (the next frame greys it).
+  // Keys that are held count as released, so the server hears (0, 0) once
+  // and the player does not walk on when the minigame closes.
+  function setInputPaused(paused) {
+    inputPaused = paused === true;
+    if (inputPaused) {
+      releaseAllKeys();
+    }
   }
 
   function onVisibilityChange() {
@@ -315,6 +891,11 @@ Game.world = Game.world || {};
     var scale = Math.max(canvas.width, canvas.height) / VIEW_SIZE;
     var viewWidth = canvas.width / scale;
     var viewHeight = canvas.height / scale;
+    // Keep the view inside the campus at its edges.
+    centre = {
+      x: Math.max(viewWidth / 2, Math.min(campus.width - viewWidth / 2, centre.x)),
+      y: Math.max(viewHeight / 2, Math.min(campus.height - viewHeight / 2, centre.y))
+    };
     ctx.setTransform(scale, 0, 0, scale, canvas.width / 2 - centre.x * scale, canvas.height / 2 - centre.y * scale);
     return { x: centre.x - viewWidth / 2, y: centre.y - viewHeight / 2, w: viewWidth, h: viewHeight };
   }
@@ -325,7 +906,11 @@ Game.world = Game.world || {};
   var NAME_TEXT_SIZE = 5.5;
   var LABEL_HEIGHT = 8;
   var LABEL_OUTLINE = 0.7;
-  var LABEL_GAP = 1; // free space between two labels above each other
+
+  // The names whose labels were hidden in the previous frame, because they
+  // would have covered another label. Game.world.chooseLabels() needs them
+  // so that a hidden name does not flicker back at the edge.
+  var hiddenNames = new Set();
 
   // In the drawing order the own character counts as standing this many map
   // units further down. Everyone starts on the same spawn point; this way a
@@ -341,7 +926,7 @@ Game.world = Game.world || {};
     var visible = [];
     players.forEach(function (player) {
       var position = drawnPosition(player, now);
-      if (position) {
+      if (position && player.visible !== false) {
         visible.push({ player: player, x: position.x, y: position.y });
       }
     });
@@ -360,22 +945,77 @@ Game.world = Game.world || {};
     return y + FEET_BELOW_POSITION - CHARACTER_HEIGHT / 2;
   }
 
+  // The pose passed to drawCharacter(). One object, filled in again for
+  // every character, so that drawing makes no new object per frame.
+  var pose = { mirrored: false, walkPhase: null, stride: 0 };
+  var animation = { time: 0, facing: "front" };
+
+  // Every player is drawn by the same rule, from the positions the server
+  // sent: the turned view, mirrored when the character faces left.
   function drawPlayer(entry, now) {
-    var bob = 0;
-    var walking = isWalking(entry.player, now);
-    var stride = walking ? Math.sin(now / BOB_MILLISECONDS * Math.PI) : 0;
-    if (walking) {
-      bob = Math.abs(Math.sin(now / BOB_MILLISECONDS * Math.PI)) * BOB_HEIGHT;
+    var player = entry.player;
+    pose.mirrored = player.facingLeft;
+    animation.time = now;
+    animation.facing = player.facing;
+    pose.walkPhase = walkPhase(player, now);
+    pose.stride = stride(player, now);
+    if (!canDrawCharacter(player.character)) {
+      drawStandIn(entry.x, entry.y);
+      return;
     }
+    var camera = ctx.getTransform();
     ctx.save();
-    ctx.translate(entry.x, figureMiddleY(entry.y) - bob);
-    if (entry.player.facingLeft) {
-      ctx.scale(-1, 1); // mirrored: the character looks to the left
+    try {
+      if (player.name === ownName && inHidingSpot(entry.x, entry.y)) {
+        ctx.globalAlpha = 0.5;
+      }
+      Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose, animation);
+      ctx.restore();
+    } catch (problem) {
+      // The drawing may have stopped inside one of its own save() calls.
+      // restore() then undoes only that last one, so the camera and full
+      // opacity are set again by hand: the stand-in, the names and every
+      // later player must land in their place.
+      ctx.restore();
+      ctx.setTransform(camera);
+      ctx.globalAlpha = 1;
+      // Not tried again: it would fail on every frame (M1-1.11).
+      brokenCharacters.add(player.character);
+      warnOnce("The character \"" + player.character + "\" could not be drawn; it is shown as a circle.", problem);
+      drawStandIn(entry.x, entry.y);
     }
-    Game.world.drawCharacter(ctx, entry.player.character, 0, 0, CHARACTER_HEIGHT, stride, {
-      time: now, walking: walking, facing: entry.player.facing
-    });
-    ctx.restore();
+  }
+
+  // ---- Stand-in when a character cannot be drawn (M1-1.11) -------------
+
+  // If characters.js did not load, or its drawing fails for a character,
+  // that player is drawn as a plain circle instead. The map keeps working
+  // and every player stays visible.
+  var STAND_IN_RADIUS = 7;
+  var brokenCharacters = new Set(); // characters whose drawing failed once
+  var hasWarned = false; // one warning in total, not one per frame
+
+  function canDrawCharacter(characterId) {
+    if (typeof Game.world.drawCharacter !== "function") {
+      warnOnce("characters.js is missing; players are shown as circles.");
+      return false;
+    }
+    return !brokenCharacters.has(characterId);
+  }
+
+  function warnOnce(text, problem) {
+    if (!hasWarned) {
+      hasWarned = true;
+      console.warn(text, problem || "");
+    }
+  }
+
+  // A circle in the outline colour where the body of the character would be.
+  function drawStandIn(x, y) {
+    ctx.beginPath();
+    ctx.arc(x, figureMiddleY(y), STAND_IN_RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = OUTLINE;
+    ctx.fill();
   }
 
   function useNameFont() {
@@ -385,53 +1025,31 @@ Game.world = Game.world || {};
   }
 
   // The label of one player where it belongs: centred directly above the
-  // head. `x` and `y` are the middle of the label.
+  // head. `x` and `y` are the middle of the label; `width` and `height` are
+  // the whole space it covers, the dark outline included.
   function labelAboveHead(entry) {
-    var headTop = figureMiddleY(entry.y) - CHARACTER_HEIGHT / 2 - BOB_HEIGHT;
+    var headTop = figureMiddleY(entry.y) - CHARACTER_HEIGHT / 2 - HEAD_ROOM_BELOW_NAME;
+    var height = LABEL_HEIGHT + 2 * LABEL_OUTLINE;
     return {
       name: entry.player.name,
       x: entry.x,
-      y: headTop - LABEL_OUTLINE - LABEL_HEIGHT / 2,
-      width: ctx.measureText(entry.player.name).width + 6
+      y: headTop - height / 2,
+      width: ctx.measureText(entry.player.name).width + 6 + 2 * LABEL_OUTLINE,
+      height: height,
+      own: isOwn(entry.player)
     };
-  }
-
-  function labelsOverlap(a, b) {
-    var besideEachOther = Math.abs(a.x - b.x) >= (a.width + b.width) / 2 + 2 * LABEL_OUTLINE;
-    var aboveEachOther = Math.abs(a.y - b.y) >= LABEL_HEIGHT + 2 * LABEL_OUTLINE;
-    return !besideEachOther && !aboveEachOther;
-  }
-
-  // Decides where every label goes, so that no label covers another one.
-  // The labels are placed one after the other, the own one first: it always
-  // stays directly above the own head. A label that would cover one already
-  // placed moves up, one label height at a time, until its place is free.
-  // Nothing is remembered between frames, so a label is back above its
-  // figure as soon as the figures stand apart.
-  function placeLabels(visible) {
-    var ownFirst = visible.filter(function (entry) { return isOwn(entry.player); })
-      .concat(visible.filter(function (entry) { return !isOwn(entry.player); }));
-    var placed = [];
-    ownFirst.forEach(function (entry) {
-      var label = labelAboveHead(entry);
-      var isCovered = function (other) { return labelsOverlap(label, other); };
-      while (placed.some(isCovered)) {
-        label.y -= LABEL_HEIGHT + 2 * LABEL_OUTLINE + LABEL_GAP;
-      }
-      placed.push(label);
-    });
-    return placed;
   }
 
   // One name: dark letters on a light pill.
   function drawLabel(label) {
     // A line with round ends, as thick as the pill is high, is a pill. Drawn
     // twice: a slightly thicker dark one below gives the cream one its
-    // outline, so the pill shows on every floor.
+    // outline, so the pill shows on every floor. The round ends stick out
+    // half the thickness beyond the two points of the line.
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(label.x - label.width / 2 + LABEL_HEIGHT / 2, label.y);
-    ctx.lineTo(label.x + label.width / 2 - LABEL_HEIGHT / 2, label.y);
+    ctx.moveTo(label.x - label.width / 2 + label.height / 2, label.y);
+    ctx.lineTo(label.x + label.width / 2 - label.height / 2, label.y);
     ctx.lineWidth = LABEL_HEIGHT + 2 * LABEL_OUTLINE;
     ctx.strokeStyle = OUTLINE;
     ctx.stroke();
@@ -449,13 +1067,20 @@ Game.world = Game.world || {};
       drawPlayer(entry, now);
     });
     // All names after all characters, so no name is hidden behind a head.
+    // Where labels would cover each other, only one of them is drawn; a
+    // label never moves away from its own head (S-117).
     useNameFont();
-    placeLabels(visible).forEach(drawLabel);
+    var choice = Game.world.chooseLabels(visible.map(labelAboveHead), hiddenNames);
+    hiddenNames = choice.hidden;
+    choice.shown.forEach(drawLabel);
   }
 
   // ---- The loop --------------------------------------------------------
 
   function drawFrame(now) {
+    // Before anything is drawn: the camera, the names and the characters
+    // must all use the same positions.
+    playAllQueues(now);
     fitCanvasToItsBox();
     if (canvas.width === 0 || canvas.height === 0) {
       return; // the canvas is hidden
@@ -469,7 +1094,47 @@ Game.world = Game.world || {};
     }
     var view = aimCamera(cameraCentre(now));
     Game.world.drawMap(ctx, campus, view);
+    var idInRange = stationInRange();
+    if (idInRange !== null) {
+      Game.world.drawStationGlow(ctx, stationWithId(idInRange), now);
+    }
+    updateUseButton(idInRange);
     drawPlayers(now);
+    drawLocation(now);
+  }
+
+  function inHidingSpot(x, y) {
+    return (campus.hiding_spots || []).some(function (spot) {
+      return Math.hypot(x - spot.x, y - spot.y) <= spot.r;
+    });
+  }
+
+  // Draw in canvas pixels so the room name stays in place as the camera moves.
+  function drawLocation(now) {
+    if (typeof Game.world.roomAt !== "function") {
+      return;
+    }
+    var position = cameraCentre(now);
+    var room = Game.world.roomAt(campus, position.x, position.y);
+    var label = room ? room.name : "Main Deck";
+    if (inHidingSpot(position.x, position.y)) {
+      label += " · Hidden";
+    }
+    var density = window.devicePixelRatio || 1;
+    ctx.save();
+    ctx.setTransform(density, 0, 0, density, 0, 0);
+    ctx.font = "bold 14px system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    var width = ctx.measureText(label).width + 24;
+    ctx.fillStyle = "#F4EFE3";
+    ctx.fillRect(12, 12, width, 32);
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(12, 12, width, 32);
+    ctx.fillStyle = OUTLINE;
+    ctx.fillText(label, 24, 28);
+    ctx.restore();
   }
 
   // The browser calls this before every repaint of the screen, and not at
@@ -533,6 +1198,8 @@ Game.world = Game.world || {};
     if (running || !ctx) {
       return;
     }
+    // The button comes first: if it cannot be made, nothing has started yet.
+    addUseButton();
     running = true;
     // A retry may still wait from an earlier start: begin afresh.
     window.clearTimeout(retryTimer);
@@ -541,7 +1208,10 @@ Game.world = Game.world || {};
     frameRequest = window.requestAnimationFrame(onFrame);
   }
 
-  // Stops the loop and the keyboard and forgets players and pressed keys.
+  // Stops the loop and the keyboard, takes the button "E Use" away and
+  // forgets players (with their queued positions), the arrival times of
+  // the messages, hidden name labels, pressed keys and which stations were
+  // usable.
   // Nothing is sent: whoever stops the world has left the lobby already.
   function stop() {
     if (running) {
@@ -549,11 +1219,54 @@ Game.world = Game.world || {};
       window.clearTimeout(retryTimer);
       stopListeningToKeyboard();
     }
+    removeUseButton();
     running = false;
+    usableStations = null; // the next lobby starts with all stations again
     players.clear();
+    arrivalTimes = [];
+    hiddenNames = new Set(); // in the next lobby nobody counts as hidden before
     pressedKeys = {};
     sentDirection = { dx: 0, dy: 0 };
     sendMove = null;
+  }
+
+  // ---- Read-only views for the walking diagnostic (diagnostic.js) ------
+
+  // Where the frame at the time `now` draws the own character: {x, y}, or
+  // null. It changes nothing, so it may be asked at any time, any number of
+  // times.
+  function ownDrawnPosition(now) {
+    var own = ownName !== null && players.has(ownName) ? players.get(ownName) : null;
+    if (!own) {
+      return null;
+    }
+    // The diagnostic's frame callback runs before drawFrame(), which starts
+    // the queued glides whose time has come (playQueue). Follow them here
+    // without starting them: `glide` is the glide the frame will draw.
+    var glide = own;
+    for (var i = 0; i < own.queue.length && own.queue[i].startAt <= now; i++) {
+      var entry = own.queue[i];
+      // As in moveTo(): the glide starts where the character is drawn at
+      // that moment, or at its end when that is a jump away.
+      // moveTo()'s placement rule (placedUntil) needs no mirror here: a queued
+      // entry is never a placement, because startOfRound() empties the queue
+      // and a position inside the placement window is shown at once, without
+      // the queue.
+      var start = drawnPosition(glide, entry.startAt) || entry;
+      if (isFarApart(start, entry.x, entry.y)) {
+        start = entry;
+      }
+      glide = { from: start, to: entry, arrivedAt: entry.startAt, glideMilliseconds: entry.endAt - entry.startAt };
+    }
+    return drawnPosition(glide, now);
+  }
+
+  // The direction the server heard last, as a copy so it cannot be changed,
+  // and `since`: when this walk started (the clock of performance.now()),
+  // or null while the direction is (0, 0).
+  function walkingDirection() {
+    var isMoving = sentDirection.dx !== 0 || sentDirection.dy !== 0;
+    return { dx: sentDirection.dx, dy: sentDirection.dy, since: isMoving ? walkingSince : null };
   }
 
   Game.world.start = start;
@@ -561,4 +1274,12 @@ Game.world = Game.world || {};
   Game.world.setOwnName = setOwnName;
   Game.world.setPlayers = setPlayers;
   Game.world.setPositions = setPositions;
+  Game.world.startOfRound = startOfRound;
+  Game.world.setUsableStations = setUsableStations;
+  Game.world.setUseHandler = setUseHandler;
+  Game.world.stationInRange = stationInRange;
+  Game.world.setInputPaused = setInputPaused;
+  Game.world.nearestStationInRange = nearestStationInRange;
+  Game.world.ownDrawnPosition = ownDrawnPosition;
+  Game.world.walkingDirection = walkingDirection;
 })();

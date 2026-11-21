@@ -1,8 +1,9 @@
-// The panel next to the map: lobby code, player list, character selection.
+// The panel next to the map: lobby code, player list, mode, character
+// selection and the start button.
 //
 // It draws what the last `lobby_state` message of the server says and nothing
-// else. Clicking a character only asks the server; the panel changes when the
-// server answers.
+// else. Clicking a character, a mode or "Start game" only asks the server; the
+// panel changes when the server answers.
 
 window.Game = window.Game || {};
 
@@ -12,27 +13,29 @@ window.Game = window.Game || {};
   const DOT_RADIUS = 15; // the plain dot drawn when there is no character drawing
   const DOT_COLOUR = '#8A8494';
 
-  // Used only while the drawing code of the map (Game.world) is missing.
-  // Names from DESIGN.md, section 3, in the order of protocol.CHARACTERS.
-  const FALLBACK_CHARACTERS = [
-    { id: 'consultant', name: 'The Consultant' },
-    { id: 'finance_bro', name: 'The Finance Bro' },
-    { id: 'exchange_student', name: 'The Exchange Student' },
-    { id: 'surfer', name: 'The Surfer' },
-    { id: 'founder', name: 'The Founder' },
-    { id: 'overachiever', name: 'The Overachiever' },
-    { id: 'latecomer', name: 'The Latecomer' },
-    { id: 'library_local', name: 'The Library Local' },
+  // The modes the host sees, from DESIGN.md, section 4. `minPlayers` is only
+  // for the hint under the start button: the server checks it again (S-53).
+  const MODES = [
+    { id: 'duel', name: 'Duel', minPlayers: 2, isBuilt: true },
+    { id: 'classic', name: 'Classic', minPlayers: 4, isBuilt: false },
   ];
 
   const codeElement = document.getElementById('lobby-code');
   const playerList = document.getElementById('lobby-players');
   const characterGrid = document.getElementById('lobby-characters');
+  const modeGrid = document.getElementById('lobby-modes');
+  const startButton = document.getElementById('lobby-start');
   const characterButtons = {}; // character id -> its button
+  const modeButtons = {}; // mode id -> its button
   let ownName = null;
 
   function setup() {
     allCharacters().forEach(addCharacterButton);
+    MODES.forEach(addModeButton);
+    startButton.addEventListener('click', () => {
+      // `ask` ignores further clicks until the server has answered (S-89).
+      Game.net.ask({ type: 'start_game' });
+    });
     document.getElementById('lobby-leave').addEventListener('click', () => {
       Game.net.ask({ type: 'leave_lobby' });
     });
@@ -42,9 +45,13 @@ window.Game = window.Game || {};
     ownName = name;
   }
 
+  // The one list of characters in the browser is in world/characters.js,
+  // which the page loads before this file. It must match protocol.CHARACTERS
+  // on the server; tests/test_character_list.py checks that. If the list is
+  // missing, the lobby shows no characters instead of crashing.
   function allCharacters() {
     const fromWorld = Game.world && Game.world.characters;
-    return Array.isArray(fromWorld) && fromWorld.length > 0 ? fromWorld : FALLBACK_CHARACTERS;
+    return Array.isArray(fromWorld) ? fromWorld : [];
   }
 
   function findCharacter(characterId) {
@@ -110,8 +117,9 @@ window.Game = window.Game || {};
     characterGrid.appendChild(button);
   }
 
-  // The lobby line is shown only on the player's own card (see style.css),
-  // so the eight cards stay small. On the others it is a tooltip.
+  // The lobby line is seen only on the player's own card. On the others it is
+  // hidden but keeps its room, so no card changes its size when the choice
+  // changes (see style.css); there it is a tooltip.
   function makeCharacterText(character) {
     const text = makeText('span', 'character-text', '');
     text.appendChild(makeText('span', 'character-name', character.name));
@@ -123,7 +131,7 @@ window.Game = window.Game || {};
     return text;
   }
 
-  function showCharacters(players) {
+  function showCharacters(players, isOpen) {
     const own = players.find((player) => player.name === ownName);
     const takenByOthers = players
       .filter((player) => player.name !== ownName)
@@ -135,10 +143,85 @@ window.Game = window.Game || {};
       const isTaken = takenByOthers.includes(characterId);
       button.classList.toggle('character-own', isOwn);
       button.setAttribute('aria-pressed', String(isOwn));
-      // The server rejects a taken character anyway (S-81); switching the
-      // button off only saves the player the error.
-      button.disabled = isTaken;
+      // The server rejects a taken character anyway (S-81), and every
+      // character during the countdown (S-102); switching the button off
+      // only saves the player the error.
+      button.disabled = isTaken || !isOpen;
     });
+  }
+
+  // ---- Mode ----
+
+  // Built once, like the character buttons. A mode that is not built yet
+  // stays switched off for good and says when it comes.
+  function addModeButton(mode) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'mode';
+    button.appendChild(makeText('span', 'mode-name', mode.name));
+    if (!mode.isBuilt) {
+      button.appendChild(makeText('span', 'mode-note', 'Coming with the next milestone'));
+    }
+    button.addEventListener('click', () => {
+      Game.net.ask({ type: 'choose_mode', mode: mode.id });
+    });
+    modeButtons[mode.id] = button;
+    modeGrid.appendChild(button);
+  }
+
+  function findMode(modeId) {
+    return MODES.find((mode) => mode.id === modeId);
+  }
+
+  // A mode the page does not know is shown by its id, so the player still
+  // sees what the server says.
+  function modeName(modeId) {
+    const mode = findMode(modeId);
+    return mode ? mode.name : modeId;
+  }
+
+  // The host gets the buttons, everybody else only the text.
+  function showMode(modeId, isHost, isOpen) {
+    modeGrid.hidden = !isHost;
+    const modeText = document.getElementById('lobby-mode-text');
+    modeText.hidden = isHost;
+    modeText.textContent = modeName(modeId);
+
+    MODES.forEach((mode) => {
+      const button = modeButtons[mode.id];
+      const isChosen = mode.id === modeId;
+      button.classList.toggle('mode-own', isChosen);
+      button.setAttribute('aria-pressed', String(isChosen));
+      // The server refuses these anyway (S-91); switching the button off
+      // only saves the host the error.
+      button.disabled = !mode.isBuilt || !isOpen;
+    });
+  }
+
+  // ---- Start button ----
+
+  // Switched off while too few players are there, and during the countdown:
+  // the host has pressed it already (S-102).
+  function showStartButton(state, isOpen) {
+    const missing = playersMissing(state.mode, state.players.length);
+    startButton.disabled = missing > 0 || !isOpen;
+    const hint = document.getElementById('lobby-start-hint');
+    hint.textContent = missing > 0 ? startHint(state.mode, missing) : '';
+    hint.hidden = missing === 0;
+  }
+
+  // How many players are missing for a round of this mode. 0 for a mode the
+  // page does not know: then the server alone decides.
+  function playersMissing(modeId, playerCount) {
+    const mode = findMode(modeId);
+    if (!mode) return 0;
+    return Math.max(0, mode.minPlayers - playerCount);
+  }
+
+  // For example "Duel needs 1 more player" or "Classic needs 2 more players".
+  function startHint(modeId, missing) {
+    const players = missing === 1 ? 'player' : 'players';
+    return modeName(modeId) + ' needs ' + missing + ' more ' + players;
   }
 
   // ---- Player list ----
@@ -175,10 +258,20 @@ window.Game = window.Game || {};
   function show(state) {
     codeElement.textContent = state.code;
     showPlayers(state);
-    showCharacters(state.players);
     const isHost = state.host === ownName;
-    document.getElementById('lobby-host-area').hidden = !isHost;
-    document.getElementById('lobby-waiting').hidden = isHost;
+    const isRunning = state.phase === 'round';
+    // Open: neither the countdown nor a round is running. Only then the
+    // characters, the mode and the start button can be used.
+    const isOpen = state.phase === 'lobby';
+    showCharacters(state.players, isOpen);
+    showMode(state.mode, isHost, isOpen);
+    showStartButton(state, isOpen);
+    // During a round "Round running" stands where the character selection
+    // and the start button (or "Waiting for the host") were.
+    document.getElementById('lobby-character-area').hidden = isRunning;
+    document.getElementById('lobby-round').hidden = !isRunning;
+    document.getElementById('lobby-host-area').hidden = !isHost || isRunning;
+    document.getElementById('lobby-waiting').hidden = isHost || isRunning;
   }
 
   Game.lobby = { setup: setup, setOwnName: setOwnName, show: show };
