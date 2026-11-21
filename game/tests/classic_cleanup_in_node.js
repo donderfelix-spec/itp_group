@@ -18,8 +18,11 @@
 //   ["call", part, name]   calls Game[part][name]() directly; world.start
 //                          gets the map canvas and a sender of moves
 //   ["look"]               writes down what the page shows now
-// Output (stdout): JSON {looks: [...], sent: [...], errors: [...]}, where
-// every look has the fields listed in look() below.
+//   ["lookAtDrawing"]      writes down the characters of the last frame and
+//                          whether "Hidden" is shown (output `drawings`)
+// Output (stdout): JSON {looks: [...], sent: [...], errors: [...], drawings: [...]}, where
+// every look has the fields listed in look() below. `drawings` holds what
+// each "lookAtDrawing" saw, for test_classic_hiding_hint.py (M3-1.4).
 
 const fs = require('fs');
 const path = require('path');
@@ -46,12 +49,15 @@ let clock = 0;
 // ---- A canvas context that writes down every text it draws ------------
 
 function newContext() {
-  const state = { fillStyle: '#000000', texts: [] };
+  const state = { fillStyle: '#000000', globalAlpha: 1, texts: [] };
+  const saved = []; // what save() kept of the transparency, for restore()
   const doesNothing = () => undefined;
   const methods = {
     fillText(text) { state.texts.push({ text: String(text), colour: state.fillStyle }); },
     measureText(text) { return { width: String(text).length * 7 }; },
     getTransform() { return {}; },
+    save() { saved.push(state.globalAlpha); },
+    restore() { if (saved.length) state.globalAlpha = saved.pop(); },
   };
   return new Proxy(state, {
     get(target, key) {
@@ -212,6 +218,8 @@ const minigames = {
 
 // The map drawing of draw.js: only the red button is written down.
 let emergencyButtonDrawn = null;
+// The characters drawn in the last frame: {character, x, alpha}.
+let charactersDrawn = [];
 
 const page = {
   console: {
@@ -257,7 +265,7 @@ page.Game = {
     characters: [],
     drawMap(ctx, map, view, emergencyVisible) { emergencyButtonDrawn = emergencyVisible === true; },
     drawStationGlow() {},
-    drawCharacter() {},
+    drawCharacter(ctx, character, x) { charactersDrawn.push({ character: character, x: x, alpha: ctx.globalAlpha }); },
     chooseLabels: (labels) => ({ shown: labels, hidden: new Set() }),
   },
 };
@@ -293,6 +301,7 @@ function runFrame() {
   if (!frame) return;
   const context = element('map').getContext();
   context.texts = [];
+  charactersDrawn = [];
   try {
     frame(clock);
   } catch (problem) {
@@ -330,6 +339,7 @@ function look() {
 }
 
 const looks = [];
+const drawings = [];
 
 const STEPS = {
   receive(message) {
@@ -370,6 +380,15 @@ const STEPS = {
   look() {
     looks.push(look());
   },
+  // The characters the last frame drew, with their transparency, and
+  // whether the text "Hidden" is shown (M3-1.4).
+  lookAtDrawing() {
+    drawings.push({
+      charactersDrawn: charactersDrawn,
+      hiddenHintShown: everyElementBelow(element('classic-progress'))
+        .some((found) => found.id === 'classic-hidden-hint' && !found.hidden),
+    });
+  },
 };
 
 // The map file arrives through a promise: let it land before the steps run
@@ -384,7 +403,7 @@ async function main() {
     STEPS[name](...values);
     await settle();
   }
-  process.stdout.write(JSON.stringify({ looks: looks, sent: sent, errors: errors }));
+  process.stdout.write(JSON.stringify({ looks: looks, sent: sent, errors: errors, drawings: drawings }));
 }
 
 main();
