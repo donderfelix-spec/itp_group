@@ -94,7 +94,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie | M3 | Playable with known defects (no Skip yet, M3-3.12) |
 | Result of the vote: character drifts out to sea, display whether it was a Free Rider | M3 | Playable with known defects (text only, no drifting yet, M3-3.5) |
 | Ghosts keep doing their tasks, but they do not talk and do not vote | M3 | Playable with known defects (M3-3.9) |
-| Check the win conditions and show the end screen that reveals the roles | M3 | Playable with known defects (M3-3.11, M3-3.14) |
+| Check the win conditions and show the end screen that reveals the roles | M3 | Playable with known defects (M3-3.11) |
 | Free Riders can only fake tasks | M3 | Planned (M3-3.17) |
 | Sabotage “WiFi down”: tasks locked until someone restarts the router | M4 | Planned |
 | Sabotage “Fire alarm”: Two players have to stand at two places in time, otherwise the Free Riders win | M4 | Planned |
