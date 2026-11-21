@@ -111,14 +111,30 @@ def gap_between(first, second):
 def test_the_lecture_hall_has_three_rows_of_the_same_size():
     rows = solids_of_kind("bench")
     assert [(row["x"], row["y"], row["w"], row["h"]) for row in rows] == [
-        (48, 56, 154, 18), (48, 91, 154, 18), (48, 126, 154, 18)]
+        (48, 58, 154, 18), (48, 92, 154, 18), (48, 126, 154, 18)]
 
 
-def test_the_circle_of_station_1_lies_clear_of_the_first_lecture_row():
-    # A drawing around every station must not sit on the desks (review of M2-1.19).
+def test_station_1_and_its_outline_lie_clear_of_the_first_lecture_row():
+    # A drawing around every station must not sit on the desks: the circle
+    # ends at y 56 and its drawn outline at about 57.25, the row starts at 58.
     station = next(station for station in CAMPUS["stations"] if station["id"] == 1)
     first_row = solids_of_kind("bench")[0]
-    assert station["y"] + station["r"] <= first_row["y"]
+    assert station["y"] + station["r"] + 2 <= first_row["y"]
+
+
+def test_a_player_walks_from_station_7_to_station_1_in_front_of_the_first_row():
+    # The band between the lectern and the first row stays as wide as on main,
+    # so the way between the two stations of the Lecture Hall is not longer.
+    room = room_called("lecture-hall")
+    lectern = solid_called("lecture-hall-lectern")
+    first_row = solids_of_kind("bench")[0]
+    y = (lectern["y"] + lectern["h"] + first_row["y"]) / 2
+    start_x = room["x"] + 3 + PLAYER_HALF_SIZE  # touching the left wall
+    end = walk(start_x, y, 1, 0, 3)
+    assert end == (room["x"] + room["w"] - 3 - PLAYER_HALF_SIZE, y)
+    for station_id in (7, 1):
+        station = next(station for station in CAMPUS["stations"] if station["id"] == station_id)
+        assert abs(station["y"] - y) <= CAMPUS["use_range"]
 
 
 def test_a_player_walks_from_wall_to_wall_between_every_two_lecture_rows():
