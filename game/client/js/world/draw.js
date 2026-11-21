@@ -520,6 +520,13 @@ Game.world = Game.world || {};
       var runsLeftToRight = wall.kind === "wall" && wall.w > wall.h;
       var band = { x: wall.x, y: wall.y + wall.h, w: wall.w, h: height };
       if (runsLeftToRight && reaches(band, area) && isInside(wall.x + wall.w / 2, wall.y + wall.h + 0.5)) {
+        // Only the part of a long wall that this area shows. Faces line their
+        // slats and windows up on the map, not on the band, so the parts of
+        // one face drawn in two tiles meet without a seam.
+        var left = Math.max(band.x, area.x - DRAWING_OVERHANG);
+        var right = Math.min(band.x + band.w, area.x + area.w + DRAWING_OVERHANG);
+        band.x = left;
+        band.w = right - left;
         // A face stays in its band, but for its shadow on the floor below.
         ctx.save();
         ctx.beginPath();

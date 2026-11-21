@@ -123,6 +123,16 @@ Game.world = Game.world || {};
     ctx.stroke();
   }
 
+  // Many lines in one colour, stroked at once: much quicker than one stroke
+  // per line. `addLines(ctx)` adds them with moveTo/lineTo or rect.
+  function strokeAll(ctx, colour, lineWidth, addLines) {
+    ctx.beginPath();
+    addLines(ctx);
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  }
+
   // Bold text with its middle at (x, y), made smaller when it would be wider
   // than `maxWidth`.
   function text(ctx, words, x, y, size, colour, maxWidth) {
@@ -198,6 +208,7 @@ Game.world = Game.world || {};
     circle: circle,
     ellipse: ellipse,
     line: line,
+    strokeAll: strokeAll,
     text: text,
     eachCell: eachCell,
     shadowBelow: shadowBelow,
@@ -245,10 +256,12 @@ Game.world = Game.world || {};
       ctx.fillStyle = tone < 0.5 ? darker(floor, 0.02 + tone * 0.05) : lighter(floor, (tone - 0.5) * 0.3);
       ctx.fillRect(x, y, plankLength, plankHeight);
     });
-    var joint = darker(floor, 0.16);
-    eachPiece(area, plankLength, plankHeight, shiftOf, function (x, y) {
-      line(ctx, x, y, x, y + plankHeight, joint, 0.5);
-      line(ctx, x, y, x + plankLength, y, joint, 0.5);
+    strokeAll(ctx, darker(floor, 0.16), 0.5, function () {
+      eachPiece(area, plankLength, plankHeight, shiftOf, function (x, y) {
+        ctx.moveTo(x, y + plankHeight);
+        ctx.lineTo(x, y);
+        ctx.lineTo(x + plankLength, y);
+      });
     });
   };
 
@@ -260,10 +273,10 @@ Game.world = Game.world || {};
       ctx.fillStyle = mix(floor, "#C9C6C0", 0.22 + noise(column, row) * 0.12);
       ctx.fillRect(x, y, slab, slab);
     });
-    eachCell(area, 0, 0, slab, slab, function (x, y) {
-      ctx.strokeStyle = mix(floor, "#B8B3AA", 0.45);
-      ctx.lineWidth = 0.5;
-      ctx.strokeRect(x, y, slab, slab);
+    strokeAll(ctx, mix(floor, "#B8B3AA", 0.45), 0.5, function () {
+      eachCell(area, 0, 0, slab, slab, function (x, y) {
+        ctx.rect(x, y, slab, slab);
+      });
     });
     speckles(ctx, area, mix(floor, "#9C978F", 0.5), 5, 0.35);
   };
@@ -284,16 +297,16 @@ Game.world = Game.world || {};
   art.floors["mint-tiles"] = function (ctx, area, room) {
     var floor = room ? room.floor : "#D7EDDF";
     var tile = 10;
+    ctx.fillStyle = darker(floor, 0.035);
     eachCell(area, 0, 0, tile, tile, function (x, y, column, row) {
       if ((column + row) % 2 === 0) {
-        ctx.fillStyle = darker(floor, 0.035);
         ctx.fillRect(x, y, tile, tile);
       }
     });
-    eachCell(area, 0, 0, tile, tile, function (x, y) {
-      ctx.strokeStyle = lighter(floor, 0.4);
-      ctx.lineWidth = 0.5;
-      ctx.strokeRect(x, y, tile, tile);
+    strokeAll(ctx, lighter(floor, 0.4), 0.5, function () {
+      eachCell(area, 0, 0, tile, tile, function (x, y) {
+        ctx.rect(x, y, tile, tile);
+      });
     });
   };
 
@@ -314,22 +327,22 @@ Game.world = Game.world || {};
     ctx.fillStyle = base;
     ctx.fillRect(area.x, area.y, area.w, area.h);
     // The joints of the small tiles.
-    ctx.strokeStyle = darker(base, 0.07);
-    ctx.lineWidth = 0.35;
-    eachCell(area, 0, 0, tile, tile, function (x, y) {
-      ctx.strokeRect(x, y, tile, tile);
+    strokeAll(ctx, darker(base, 0.07), 0.35, function () {
+      eachCell(area, 0, 0, tile, tile, function (x, y) {
+        ctx.rect(x, y, tile, tile);
+      });
     });
     // A grey diamond on every fourth crossing of the joints.
-    ctx.fillStyle = mix(base, "#8E978F", 0.38);
+    ctx.beginPath();
     eachCell(area, 0, 0, diamondEvery, diamondEvery, function (x, y) {
-      ctx.beginPath();
       ctx.moveTo(x, y - tile / 2 - 0.6);
       ctx.lineTo(x + tile / 2 + 0.6, y);
       ctx.lineTo(x, y + tile / 2 + 0.6);
       ctx.lineTo(x - tile / 2 - 0.6, y);
       ctx.closePath();
-      ctx.fill();
     });
+    ctx.fillStyle = mix(base, "#8E978F", 0.38);
+    ctx.fill();
     if (room) {
       tileBorder(ctx, room, floor);
     }
@@ -348,19 +361,25 @@ Game.world = Game.world || {};
     ctx.fillStyle = mix(floor, "#9AA897", 0.35);
     ctx.fill("evenodd");
     ctx.restore();
-    ctx.strokeStyle = mix(floor, "#7F8C7D", 0.55);
-    ctx.lineWidth = 0.6;
-    ctx.strokeRect(outer.x + band, outer.y + band, outer.w - 2 * band, outer.h - 2 * band);
+    var joint = mix(floor, "#7F8C7D", 0.55);
+    strokeAll(ctx, joint, 0.6, function () {
+      ctx.rect(outer.x + band, outer.y + band, outer.w - 2 * band, outer.h - 2 * band);
+    });
     // Small square tiles in the band, as joints every few units.
-    ctx.lineWidth = 0.35;
-    for (var x = outer.x + 3.5; x < outer.x + outer.w; x += 3.5) {
-      line(ctx, x, outer.y, x, outer.y + band, ctx.strokeStyle, 0.35);
-      line(ctx, x, outer.y + outer.h - band, x, outer.y + outer.h, ctx.strokeStyle, 0.35);
-    }
-    for (var y = outer.y + 3.5; y < outer.y + outer.h; y += 3.5) {
-      line(ctx, outer.x, y, outer.x + band, y, ctx.strokeStyle, 0.35);
-      line(ctx, outer.x + outer.w - band, y, outer.x + outer.w, y, ctx.strokeStyle, 0.35);
-    }
+    strokeAll(ctx, joint, 0.35, function () {
+      for (var x = outer.x + 3.5; x < outer.x + outer.w; x += 3.5) {
+        ctx.moveTo(x, outer.y);
+        ctx.lineTo(x, outer.y + band);
+        ctx.moveTo(x, outer.y + outer.h - band);
+        ctx.lineTo(x, outer.y + outer.h);
+      }
+      for (var y = outer.y + 3.5; y < outer.y + outer.h; y += 3.5) {
+        ctx.moveTo(outer.x, y);
+        ctx.lineTo(outer.x + band, y);
+        ctx.moveTo(outer.x + outer.w - band, y);
+        ctx.lineTo(outer.x + outer.w, y);
+      }
+    });
   }
 
   // The Main Deck: light stone slabs laid in a running bond, each a little
@@ -377,9 +396,12 @@ Game.world = Game.world || {};
       ctx.fillStyle = tone < 0.5 ? darker(deck, tone * 0.05) : lighter(deck, (tone - 0.5) * 0.5);
       ctx.fillRect(x, y, slabLength, slabHeight);
     });
-    eachPiece(area, slabLength, slabHeight, shiftOf, function (x, y) {
-      line(ctx, x, y, x, y + slabHeight, joint, 0.9);
-      line(ctx, x, y, x + slabLength, y, joint, 0.9);
+    strokeAll(ctx, joint, 0.9, function () {
+      eachPiece(area, slabLength, slabHeight, shiftOf, function (x, y) {
+        ctx.moveTo(x, y + slabHeight);
+        ctx.lineTo(x, y);
+        ctx.lineTo(x + slabLength, y);
+      });
     });
   };
 
@@ -406,11 +428,18 @@ Game.world = Game.world || {};
     ctx.fillStyle = colour;
     ctx.fillRect(band.x, band.y, band.w, band.h);
     var start = Math.floor(band.x / gap) * gap;
+    var light = lighter(colour, 0.12);
+    var dark = darker(colour, 0.06);
     for (var x = start; x < band.x + band.w; x += gap) {
-      ctx.fillStyle = noise(x, 3) < 0.5 ? lighter(colour, 0.12) : darker(colour, 0.06);
+      ctx.fillStyle = noise(x, 3) < 0.5 ? light : dark;
       ctx.fillRect(x + 0.4, band.y, gap - 0.8, band.h);
-      line(ctx, x, band.y, x, band.y + band.h, darker(colour, 0.35), 0.35);
     }
+    strokeAll(ctx, darker(colour, 0.35), 0.35, function () {
+      for (var groove = start; groove < band.x + band.w; groove += gap) {
+        ctx.moveTo(groove, band.y);
+        ctx.lineTo(groove, band.y + band.h);
+      }
+    });
     // The wall's top casts a little shadow onto its own face.
     ctx.fillStyle = "rgba(46, 42, 59, 0.18)";
     ctx.fillRect(band.x, band.y, band.w, 1);
@@ -430,14 +459,16 @@ Game.world = Game.world || {};
   function tiledFace(ctx, band, colour, size, joint) {
     ctx.fillStyle = colour;
     ctx.fillRect(band.x, band.y, band.w, band.h);
+    ctx.fillStyle = darker(colour, 0.05);
     eachCell(band, 0, band.y, size, size, function (x, y, column, row) {
-      ctx.fillStyle = noise(column, row) < 0.3 ? darker(colour, 0.05) : colour;
-      ctx.fillRect(x, y, size, size);
+      if (noise(column, row) < 0.3) {
+        ctx.fillRect(x, y, size, size);
+      }
     });
-    eachCell(band, 0, band.y, size, size, function (x, y) {
-      ctx.strokeStyle = joint;
-      ctx.lineWidth = 0.4;
-      ctx.strokeRect(x, y, size, size);
+    strokeAll(ctx, joint, 0.4, function () {
+      eachCell(band, 0, band.y, size, size, function (x, y) {
+        ctx.rect(x, y, size, size);
+      });
     });
     ctx.fillStyle = "rgba(46, 42, 59, 0.15)";
     ctx.fillRect(band.x, band.y, band.w, 1);
