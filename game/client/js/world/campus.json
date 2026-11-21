@@ -151,7 +151,7 @@
     {"id": "corridor-column",         "kind": "black-column",  "x": 455, "y": 173, "w": 10, "h": 10},
     {"id": "corridor-divider-2",      "kind": "cube-divider",  "x": 610, "y": 173, "w": 40, "h": 8},
     {"id": "deck-bench-1",               "kind": "deck-bench",  "x": 229, "y": 298, "w": 40, "h": 10},
-    {"id": "deck-bench-2",               "kind": "deck-bench",  "x": 445, "y": 316, "w": 40, "h": 10},
+    {"id": "deck-bench-2",               "kind": "deck-bench",  "x": 444, "y": 316, "w": 36, "h": 10},
     {"id": "deck-bench-3",               "kind": "deck-bench",  "x": 236, "y": 518, "w": 40, "h": 10},
     {"id": "deck-lamp-1",             "kind": "lamp-post",     "x": 280, "y": 245, "w": 4,  "h": 4},
     {"id": "deck-lamp-2",             "kind": "lamp-post",     "x": 446, "y": 245, "w": 4,  "h": 4},
