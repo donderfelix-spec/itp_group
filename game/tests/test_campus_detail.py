@@ -366,11 +366,11 @@ def test_the_walking_distances_changed_only_a_little():
     #   tables; 1 to 3: 800.7 -> 826.7); the others changed by less.
     # - round 10 (tables 10-15 % larger again): 1 to 3 is now 3.8 % longer
     #   than on main (800.7 -> 831.4).
-    # - round 10, the wall between corridor and deck: the ways from the
-    #   spawn to station 2 and from 2 and 4 to 5 are longer, spawn to 2 by
-    #   5.7 % (327.2 -> 346.0).
-    # The ways to station 4 may be up to 10 % shorter and never longer; all
-    # other ways stay between 2 % shorter and 6 % longer.
+    # - round 10, the wall between corridor and deck: spawn to 2 is now 5.7 %
+    #   longer than on main (327.2 -> 346.0); 1 to 5 and 2 to 5 grew a
+    #   little, 4 to 5 too but it stays 5.4 % shorter than on main.
+    # The ways to station 4 may be up to 10 % shorter and never longer; no
+    # other way is shorter than on main or more than 6 % longer.
     stations = sorted(minigames.MINIGAMES)
     before = station_distances(as_before_this_to_do(CAMPUS), stations)
     after = station_distances(CAMPUS, stations)
@@ -378,7 +378,7 @@ def test_the_walking_distances_changed_only_a_little():
         if 4 in pair:
             assert distance * 0.9 <= after[pair] <= distance, pair
         else:
-            assert distance * 0.98 <= after[pair] <= distance * 1.06, pair
+            assert distance - 0.001 <= after[pair] <= distance * 1.06, pair
 
 
 # Accepted: edge cases
@@ -719,3 +719,19 @@ def test_without_the_art_of_doors_a_door_is_still_drawn_plain():
     result = run_node("direct", {"campus": CAMPUS, "failingDoor": True})
     assert CAMPUS["colours"]["deck"] in result["fills"]
     assert len(result["warnings"]) == 1
+
+
+@needs_node
+def test_a_tile_edge_through_a_glass_leaf_of_a_deck_door_still_draws_the_leaf():
+    # A zoom at which the first tile ends at x 330 exactly: the left leaf of
+    # the opening above the pool (x 326.5-338.5) is cut by that edge. Only
+    # that tile is on the canvas, and the doors of the rooms (whose leaves
+    # have the same glass colour) are taken out, so the glass colour can
+    # only come from the deck door's leaf.
+    campus = copy.deepcopy(CAMPUS)
+    campus["doors"] = []
+    scale = 512 / 330
+    camera = {"scale": scale, "e": 0, "f": 0, "width": 512, "height": 512}
+    [frame] = run_node("tiles", {"campus": campus, "frames": [camera]})["frames"]
+    assert len(frame["copies"]) == 1
+    assert "rgba(170, 216, 234, 0.7)" in frame["fills"]

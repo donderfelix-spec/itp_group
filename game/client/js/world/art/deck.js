@@ -489,4 +489,9 @@ Game.world = Game.world || {};
   art.decor["deck-door-one-leaf"] = function (ctx, item) {
     deckDoor(ctx, item, 1);
   };
+
+  // The leaves stand 13.5 units beside the opening and the posts reach 8
+  // below it, past DRAWING_OVERHANG of draw.js.
+  art.decor["deck-door"].reach = 14;
+  art.decor["deck-door-one-leaf"].reach = 14;
 })();

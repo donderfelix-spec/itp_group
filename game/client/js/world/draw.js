@@ -591,17 +591,22 @@ Game.world = Game.world || {};
   // Decor is only drawn: fittings the browser shows and the server ignores
   // (signs, mats, a coffee machine on a counter). Each entry has a `layer`:
   // "floor" lies flat on the floor, "wall" hangs on a wall or its face, "on"
-  // stands on a solid. A kind without a drawing is left out.
+  // stands on a solid. A kind without a drawing is left out. A drawing that
+  // reaches further past its entry's rectangle than DRAWING_OVERHANG says so
+  // in its `reach` (in map units), so that a tile of the map next to it
+  // still draws the part that falls into it.
   function drawDecor(ctx, campus, area, layer) {
     var decor = list(campus.decor);
     for (var i = 0; i < decor.length; i++) {
       var item = decor[i];
-      if (item.layer !== layer || !reaches(item, area)) {
+      if (item.layer !== layer) {
         continue;
       }
       var room = roomAt(campus, item.x + item.w / 2, item.y + item.h / 2);
       var drawing = artFor("decor", room, item.kind);
-      if (drawing) {
+      var reach = drawing && typeof drawing.reach === "number" ? drawing.reach : 0;
+      var space = { x: item.x - reach, y: item.y - reach, w: item.w + 2 * reach, h: item.h + 2 * reach };
+      if (drawing && reaches(space, area)) {
         drawWithArt(ctx, drawing, item, room, campus);
       }
     }

@@ -15,7 +15,7 @@
 //   "tiles"   a page that can make canvases: drawMap() draws the static part
 //             into tiles and copies them. Input (stdin): {"frames": [{scale,
 //             e, f, width, height}]}, one camera per frame. Output: {frames:
-//             [{copies: [{x, y}], newTiles, drawnAt: [{x, y}]}], warnings};
+//             [{copies: [{x, y}], newTiles, drawnAt: [{x, y}], fills}], warnings};
 //             drawnAt is where each tile drawn in that frame lands on the
 //             canvas, in the order they were drawn.
 // Input (stdin) in both modes also has "campus": the map.
@@ -114,8 +114,9 @@ if (mode === 'direct') {
     });
     newTiles = 0;
     drawnAt = [];
+    fills.clear();
     world.drawMap(ctx, input.campus);
-    return { copies, newTiles, drawnAt };
+    return { copies, newTiles, drawnAt, fills: [...fills] };
   });
   process.stdout.write(JSON.stringify({ frames, warnings }));
 } else {
