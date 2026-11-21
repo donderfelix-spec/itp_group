@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 668" font-family="system-ui, sans-serif">
-  <title>Group Project – campus map draft 2</title>
+  <title>Group Project – campus map draft 3</title>
   <defs>
     <pattern id="paving" width="24" height="24" patternUnits="userSpaceOnUse">
       <rect width="24" height="24" fill="#F3F0E9"/>
@@ -33,7 +33,7 @@
     <path d="M343 502 L358 474 L373 502" stroke-linejoin="miter"/>
   </g>
   <text x="365" y="353" text-anchor="middle" font-size="13" font-weight="700" fill="#2E2A3B">Main Deck</text>
-  <text x="300" y="556" text-anchor="middle" font-size="11" fill="#2E2A3B">view of the beach</text>
+  <text x="230" y="556" text-anchor="middle" font-size="11" fill="#2E2A3B">view of the beach</text>
 
   <!-- glass front to the beach -->
   <rect x="166" y="561" width="268" height="10" rx="2" fill="#8FD0EC" stroke="#2E2A3B" stroke-width="2"/>
@@ -55,9 +55,9 @@
   <rect x="388" y="29" width="40" height="18" rx="3" fill="#5E6472" stroke="#2E2A3B" stroke-width="2.5"/><circle cx="400" cy="38" r="3" fill="#F2695C"/><circle cx="416" cy="38" r="3" fill="#FFD23F"/>
   <use href="#col" x="285" y="82"/><use href="#col" x="415" y="82"/>
   <use href="#col" x="285" y="132"/><use href="#col" x="415" y="132"/>
-  <circle cx="350" cy="104" r="7" fill="#D9A85F" stroke="#2E2A3B" stroke-width="2"/>
-  <circle cx="318" cy="66" r="7" fill="#D9A85F" stroke="#2E2A3B" stroke-width="2"/>
-  <circle cx="382" cy="126" r="7" fill="#D9A85F" stroke="#2E2A3B" stroke-width="2"/>
+  <circle cx="350" cy="104" r="10" fill="#D9A85F" stroke="#2E2A3B" stroke-width="2"/>
+  <circle cx="318" cy="70" r="10" fill="#D9A85F" stroke="#2E2A3B" stroke-width="2"/>
+  <circle cx="382" cy="126" r="10" fill="#D9A85F" stroke="#2E2A3B" stroke-width="2"/>
   <text x="350" y="155" text-anchor="middle" font-size="13" font-weight="700" fill="#2E2A3B">Mon Café</text>
 
   <!-- Canteen -->
@@ -73,10 +73,10 @@
   <rect x="20" y="230" width="140" height="330" fill="#D6E4F4" stroke="#2E2A3B" stroke-width="4"/>
   <text x="90" y="254" text-anchor="middle" font-size="12" font-weight="700" fill="#2E2A3B">CTT Student Hall</text>
   <g fill="#8DB4E8" stroke="#2E2A3B" stroke-width="2">
-    <rect x="40" y="264" width="92" height="13" rx="3"/><rect x="40" y="296" width="92" height="13" rx="3"/>
-    <rect x="40" y="328" width="92" height="13" rx="3"/><rect x="40" y="360" width="92" height="13" rx="3"/>
-    <rect x="40" y="392" width="92" height="13" rx="3"/><rect x="40" y="424" width="92" height="13" rx="3"/>
-    <rect x="40" y="456" width="92" height="13" rx="3"/><rect x="40" y="488" width="92" height="13" rx="3"/>
+    <rect x="37" y="264" width="59" height="13" rx="3"/><rect x="37" y="296" width="59" height="13" rx="3"/>
+    <rect x="37" y="328" width="59" height="13" rx="3"/><rect x="37" y="360" width="59" height="13" rx="3"/>
+    <rect x="37" y="392" width="59" height="13" rx="3"/><rect x="37" y="424" width="59" height="13" rx="3"/>
+    <rect x="37" y="456" width="59" height="13" rx="3"/><rect x="37" y="488" width="59" height="13" rx="3"/>
   </g>
   <rect x="34" y="540" width="112" height="9" rx="2" fill="#5C7FB8"/>
 
@@ -88,6 +88,55 @@
   </g>
   <rect x="456" y="528" width="56" height="13" rx="3" fill="#2E2A3B"/>
   <text x="614" y="424" text-anchor="middle" font-size="13" font-weight="700" fill="#2E2A3B">Pingo Doce</text>
+
+  <!-- Furniture added in M2-1.4 (S-122): the browser draws each in detail; here only the space it blocks -->
+  <g fill="#E9E3D6" stroke="#2E2A3B" stroke-width="1.5">
+    <rect x="38" y="37" width="8" height="7" rx="1.5"><title>lectern</title></rect>
+    <rect x="253" y="52" width="10" height="96" rx="1.5"><title>high-table</title></rect>
+    <rect x="282" y="89" width="6" height="36" rx="1.5"><title>grid-shelf</title></rect>
+    <rect x="439" y="94" width="8" height="26" rx="1.5"><title>grid-shelf</title></rect>
+    <rect x="473" y="158" width="60" height="9" rx="1.5"><title>microwave-counter</title></rect>
+    <rect x="473" y="23" width="12" height="24" rx="1.5"><title>fridge</title></rect>
+    <rect x="473" y="95" width="8" height="8" rx="1.5"><title>water-fountain</title></rect>
+    <rect x="649" y="108" width="8" height="30" rx="1.5"><title>tray-rack</title></rect>
+    <rect x="473" y="140" width="10" height="18" rx="1.5"><title>recycling-bins</title></rect>
+    <rect x="110" y="264" width="33" height="13" rx="1.5"><title>study-table</title></rect>
+    <rect x="110" y="296" width="33" height="13" rx="1.5"><title>study-table</title></rect>
+    <rect x="110" y="328" width="33" height="13" rx="1.5"><title>study-table</title></rect>
+    <rect x="110" y="360" width="33" height="13" rx="1.5"><title>study-table</title></rect>
+    <rect x="110" y="392" width="33" height="13" rx="1.5"><title>study-table</title></rect>
+    <rect x="110" y="424" width="33" height="13" rx="1.5"><title>study-table</title></rect>
+    <rect x="110" y="456" width="33" height="13" rx="1.5"><title>study-table</title></rect>
+    <rect x="110" y="488" width="33" height="13" rx="1.5"><title>study-table</title></rect>
+    <rect x="23" y="283" width="8" height="8" rx="1.5"><title>pillar</title></rect>
+    <rect x="23" y="379" width="8" height="8" rx="1.5"><title>pillar</title></rect>
+    <rect x="23" y="475" width="8" height="8" rx="1.5"><title>pillar</title></rect>
+    <rect x="511" y="417" width="4" height="9" rx="1.5"><title>turnstile</title></rect>
+    <rect x="529" y="417" width="4" height="9" rx="1.5"><title>turnstile</title></rect>
+    <rect x="547" y="417" width="4" height="9" rx="1.5"><title>turnstile</title></rect>
+    <rect x="565" y="417" width="4" height="9" rx="1.5"><title>turnstile</title></rect>
+    <rect x="443" y="403" width="8" height="117" rx="1.5"><title>fridge</title></rect>
+    <rect x="649" y="436" width="8" height="109" rx="1.5"><title>fridge</title></rect>
+    <rect x="587" y="510" width="26" height="26" rx="1.5"><title>fruit-stand</title></rect>
+    <rect x="590" y="545" width="67" height="12" rx="1.5"><title>hot-counter</title></rect>
+    <rect x="490" y="417" width="6" height="9" rx="1.5"><title>totem</title></rect>
+    <rect x="512" y="528" width="6" height="9" rx="1.5"><title>totem</title></rect>
+    <rect x="37" y="173" width="28" height="40" rx="1.5"><title>staircase</title></rect>
+    <rect x="175" y="173" width="36" height="10" rx="1.5"><title>sofa</title></rect>
+    <rect x="292" y="173" width="28" height="8" rx="1.5"><title>cube-divider</title></rect>
+    <rect x="252" y="173" width="36" height="10" rx="1.5"><title>sofa</title></rect>
+    <rect x="455" y="173" width="10" height="10" rx="1.5"><title>black-column</title></rect>
+    <rect x="610" y="173" width="40" height="8" rx="1.5"><title>cube-divider</title></rect>
+    <rect x="236" y="300" width="30" height="6" rx="1.5"><title>deck-bench</title></rect>
+    <rect x="445" y="316" width="30" height="6" rx="1.5"><title>deck-bench</title></rect>
+    <rect x="240" y="520" width="30" height="6" rx="1.5"><title>deck-bench</title></rect>
+    <rect x="280" y="245" width="4" height="4" rx="1.5"><title>lamp-post</title></rect>
+    <rect x="446" y="245" width="4" height="4" rx="1.5"><title>lamp-post</title></rect>
+    <rect x="180" y="500" width="4" height="4" rx="1.5"><title>lamp-post</title></rect>
+    <rect x="418" y="525" width="4" height="4" rx="1.5"><title>lamp-post</title></rect>
+    <rect x="163" y="320" width="8" height="30" rx="1.5"><title>bike-rack</title></rect>
+    <rect x="330" y="545" width="26" height="16" rx="1.5"><title>surfboard-rack</title></rect>
+  </g>
 
   <!-- doors -->
   <g fill="#F3F0E9">
