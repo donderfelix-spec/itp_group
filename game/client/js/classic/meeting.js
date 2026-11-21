@@ -24,6 +24,8 @@ Game.classicMeeting = Game.classicMeeting || {};
   var pendingVoteTarget = null;
   var resultCloseTimer = null;
   var noEjectionShown = false;
+  // The vote for nobody: the same value as SKIP_VOTE in server/protocol.py.
+  var SKIP_VOTE = "";
 
   function setup() {
     screen = document.getElementById("classic-meeting");
@@ -145,12 +147,24 @@ Game.classicMeeting = Game.classicMeeting || {};
         button.addEventListener("click", function () { castVote(playerId); });
         votePlayers.append(button);
       });
+      votePlayers.append(skipButton());
     }
     var hasVoted = state.voted.includes(ownName) || pendingVoteTarget !== null;
     Array.from(votePlayers.children).forEach(function (button) {
       button.disabled = !state.living.includes(ownName) || hasVoted;
     });
     if (state.voted.includes(ownName)) pendingVoteTarget = null;
+  }
+
+  // "Skip" is a vote like the others: secret and final (DESIGN.md 5.6).
+  function skipButton() {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "classic-vote-player classic-vote-skip";
+    button.dataset.targetId = SKIP_VOTE;
+    button.textContent = "Skip";
+    button.addEventListener("click", function () { castVote(SKIP_VOTE); });
+    return button;
   }
 
   function castVote(targetId) {

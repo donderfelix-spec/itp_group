@@ -1194,6 +1194,7 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
         lobby.meeting = classic_meeting.cast_vote(
             lobby.meeting, name, message["target_id"]
         )
+        lobby.meeting = classic_meeting.end_voting_if_everyone_voted(lobby.meeting, now)
     except ValueError:
         await websocket.send_json(protocol.rejection("vote_rejected"))
     sync_classic_after_meeting(lobby)
