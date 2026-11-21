@@ -435,7 +435,8 @@ Game.world = Game.world || {};
     ctx.lineCap = "butt";
   }
 
-  // A young tree: a square gravel bed with the green crown in the middle.
+  // A tree, drawn plain when art/deck.js is missing: a light square the size
+  // of its solid with a round green crown in the middle.
   function drawTree(ctx, bed) {
     box(ctx, bed, 3, "#D9D2C2", 2);
     circle(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2, bed.w * 0.32, GREEN, 2);
