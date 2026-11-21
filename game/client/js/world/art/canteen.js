@@ -155,31 +155,12 @@ Game.world = Game.world || {};
     var top = { x: table.x + inset, y: table.y + inset, w: table.w - 2 * inset, h: table.h - 2 * inset };
     util.shadowBelow(ctx, top.x, top.y + top.h, top.w, 0.8);
     util.box(ctx, top.x, top.y, top.w, top.h, 1.4, "#F4EBDA", 1);
-    var variant = Number(table.id.slice(-1));
-    lunchGuest(ctx, x - reachX, y, chairSize, variant);
-    if (variant % 2) lunchGuest(ctx, x + reachX, y, chairSize, variant + 1);
     tray(ctx, top.x + 1.2, top.y + 1.4, top.w * 0.55, top.h * 0.36, true);
-    if (variant % 2) {
+    // A second tray on the tables whose number is odd, so they do not all look the same.
+    if (Number(table.id.slice(-1)) % 2 === 1) {
       tray(ctx, top.x + top.w * 0.4, top.y + top.h * 0.56, top.w * 0.55, top.h * 0.36, true);
     }
   };
-
-  // Seated decorative diners stay inside the existing chair footprints.
-  function lunchGuest(ctx, x, y, size, variant) {
-    var skin = ["#E7B88E", "#9B6145", "#D99E75"][variant % 3];
-    var hair = ["#49372C", "#28262C", "#B68245"][variant % 3];
-    var shirt = ["#C47755", "#537FAD", "#8C769E", "#579077"][variant % 4];
-    util.box(ctx, x - size * 0.32, y, size * 0.64, size * 0.43, 0.7, shirt, 0.4);
-    util.circle(ctx, x, y - size * 0.14, size * 0.33, hair, 0.35);
-    util.ellipse(ctx, x, y - size * 0.06, size * 0.25, size * 0.25, skin, 0);
-    util.ellipse(ctx, x - size * 0.04, y - size * 0.3, size * 0.27, size * 0.12, hair, 0);
-    [-0.09, 0.09].forEach(function (eye) {
-      util.circle(ctx, x + size * eye, y - size * 0.06, 0.16, OUTLINE, 0);
-    });
-    util.line(ctx, x - size * 0.28, y + size * 0.15, x - size * 0.4, y - size * 0.04, skin, 0.7);
-    util.line(ctx, x + size * 0.28, y + size * 0.15, x + size * 0.4, y - size * 0.04, skin, 0.7);
-    util.line(ctx, x + size * 0.4, y, x + size * 0.4, y - size * 0.24, "#AEB8C3", 0.35);
-  }
 
   // ---- The microwave corner and other fittings -------------------------
 

@@ -184,7 +184,7 @@ def test_no_column_stands_under_the_badge_of_station_2():
     assert sorted(solids_overlapping(around)) == ["mon-cafe-coffee-machine", "mon-cafe-wall-right"]
 
 
-def test_mon_cafe_has_two_tables_with_guests_and_three_columns():
+def test_mon_cafe_has_two_tables_and_three_columns():
     room = room_called("mon-cafe")
     assert [solid["id"] for solid in solids_of_kind("round-table")] == ["mon-cafe-table-2", "mon-cafe-table-3"]
     assert len([solid for solid in solids_of_kind("column") if lies_in(solid, room)]) == 3
