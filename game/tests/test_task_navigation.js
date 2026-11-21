@@ -114,28 +114,28 @@ function testDirectTaskNavigator(navigation, campus) {
     });
     return { ctx: ctx, calls: calls };
   }
-  // The new arrow (brief B, part 4): a shadow and the arrow, each one
-  // translated and turned; seven points each, no route line.
+  // The arrow (brief D, part 1): one plain triangle, translated and turned
+  // once; three points, no route line, no shadow (Felix removed it).
   const compass = record();
   navigation.drawArrow(compass.ctx, direct, position);
-  expect(compass.calls.translations.length === 2, 'Only one near-player arrow (and its shadow) should be drawn');
-  expect(compass.calls.rotations.length === 2 && compass.calls.rotations.every((angle) => angle === expected),
+  expect(compass.calls.translations.length === 1, 'Only one near-player arrow should be drawn');
+  expect(compass.calls.rotations.length === 1 && compass.calls.rotations[0] === expected,
     'Rendered arrow points at a waypoint instead of the target');
-  const [shadow, placed] = compass.calls.translations;
+  const [placed] = compass.calls.translations;
   const bodyMiddle = { x: position.x, y: position.y - 14.5 };
   expect(Math.abs(Math.hypot(placed[0] - bodyMiddle.x, placed[1] - bodyMiddle.y) - 24) < 1e-8,
     'Compass must stay beside the player, outside the body');
-  expect(shadow[0] > placed[0] && shadow[1] > placed[1], 'The hard shadow lies down and to the right');
-  expect(compass.calls.lines.length === 12, 'Only arrow vertices may be drawn, no route line');
-  expect(JSON.stringify(compass.calls.fills) === JSON.stringify(['#2E2A3B', '#FFD23F']), 'A dark shadow, then a sun-yellow arrow');
-  expect(compass.calls.strokes.every(([colour, width]) => colour === '#2E2A3B' && width >= 1.5), 'A thick dark outline');
+  expect(compass.calls.lines.length === 2, 'Only the three corners of the triangle may be drawn, no route line');
+  expect(JSON.stringify(compass.calls.fills) === JSON.stringify(['#FFD23F']), 'One sun-yellow triangle, nothing else filled');
+  expect(compass.calls.strokes.length === 1 && compass.calls.strokes.every(([colour, width]) => colour === '#2E2A3B' && width >= 1.4 && width <= 1.8),
+    'A thick dark outline');
   expect(compass.calls.alphas.every((alpha) => alpha === 1), 'Far from the station the arrow is fully visible');
 
   // Near the station the arrow fades, and on arrival it is gone.
   const toward = (distance) => ({ x: target.x - distance, y: target.y });
   const fading = record();
   navigation.drawArrow(fading.ctx, navigation.directGuidance(campus, toward(50), target.id), toward(50));
-  expect(fading.calls.alphas.length === 2 && fading.calls.alphas.every((alpha) => alpha > 0.3 && alpha < 0.7),
+  expect(fading.calls.alphas.length === 1 && fading.calls.alphas.every((alpha) => alpha > 0.3 && alpha < 0.7),
     'Between 60 and 40 units the arrow fades out');
   const gone = record();
   navigation.drawArrow(gone.ctx, navigation.directGuidance(campus, toward(39), target.id), toward(39));
@@ -268,14 +268,14 @@ async function testWorldTaskArrival(vm, worldSource, navigationSource, campus, r
   world.setPositions([{ name: 'Mara', x: target.x, y: target.y + 120 }]);
   nextFrame(now);
   const far = world.ownDrawnPosition(now);
-  expect(arrowPlaces.length === 2 && Math.abs(Math.hypot(arrowPlaces[1].x - far.x, arrowPlaces[1].y - (far.y - 14.5)) - 24) < 1e-8,
+  expect(arrowPlaces.length === 1 && Math.abs(Math.hypot(arrowPlaces[0].x - far.x, arrowPlaces[0].y - (far.y - 14.5)) - 24) < 1e-8,
     'Arrow must be drawn beside the drawn character');
   world.setInputPaused(true);
   nextFrame(now + 1);
   expect(arrowPlaces.length === 0 && card.hidden, 'An open minigame must hide navigation');
   world.setInputPaused(false);
   nextFrame(now + 2);
-  expect(arrowPlaces.length === 2 && !card.hidden, 'Closing the minigame shows the navigation again');
+  expect(arrowPlaces.length === 1 && !card.hidden, 'Closing the minigame shows the navigation again');
   // Back at the station for the checks below.
   now += 66;
   world.setPositions([{ name: 'Mara', x: target.x, y: target.y + 20 }]);

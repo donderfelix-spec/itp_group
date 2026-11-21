@@ -195,13 +195,12 @@ window.Game = window.Game || {};
     return { route: route, isFree: isFree, segmentIsFree: segmentIsFree };
   }
 
-  // ---- The arrow (DESIGN.md, section 1: the "sticker" look) ---------------
+  // ---- The arrow: a plain triangle (Felix, 2026-11-21) -------------------
 
-  // An arrow pointing right, 13 map units long, around (0, 0): a short
-  // shaft and a wide head. A character is 39 units high.
-  const ARROW_POINTS = [[7, 0], [0, -5.5], [0, -2.2], [-6, -2.2], [-6, 2.2], [0, 2.2], [0, 5.5]];
-  const ARROW_OUTLINE = 1.6; // the thick dark outline, as on the buttons
-  const ARROW_SHADOW = 1.3; // the hard shadow, down and to the right
+  // An isosceles triangle pointing right, 11 map units long and 9 wide,
+  // around (0, 0). A character is 39 units high.
+  const TRIANGLE_POINTS = [[6, 0], [-5, -4.5], [-5, 4.5]];
+  const TRIANGLE_OUTLINE = 1.6; // the game's dark outline, readable on every floor
   // Where the arrow stands: this far from the middle of the character's
   // body, which is 14.5 units above its position (feet 5 below it, 39 high).
   const ARROW_DISTANCE = 24;
@@ -211,34 +210,19 @@ window.Game = window.Game || {};
   const FADE_FROM = 60;
   const FADE_TO = 40;
 
-  function arrowPath(ctx) {
-    ctx.beginPath();
-    ARROW_POINTS.forEach(([x, y], index) => (index === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
-    ctx.closePath();
-  }
-
-  // One arrow at (x, y) turned by `angle`: first its dark shadow, moved
-  // down and right on the screen, then the yellow arrow with its outline.
+  // The triangle at (x, y) turned by `angle`: sun yellow with a dark outline.
   function arrow(ctx, x, y, angle, alpha) {
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.lineJoin = 'round';
-    ctx.save();
-    ctx.translate(x + ARROW_SHADOW, y + ARROW_SHADOW);
-    ctx.rotate(angle);
-    arrowPath(ctx);
-    ctx.fillStyle = DARK;
-    ctx.fill();
-    ctx.lineWidth = ARROW_OUTLINE;
-    ctx.strokeStyle = DARK;
-    ctx.stroke();
-    ctx.restore();
     ctx.translate(x, y);
     ctx.rotate(angle);
-    arrowPath(ctx);
+    ctx.beginPath();
+    TRIANGLE_POINTS.forEach(([pointX, pointY], index) => (index === 0 ? ctx.moveTo(pointX, pointY) : ctx.lineTo(pointX, pointY)));
+    ctx.closePath();
     ctx.fillStyle = YELLOW;
     ctx.fill();
-    ctx.lineWidth = ARROW_OUTLINE;
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = TRIANGLE_OUTLINE;
     ctx.strokeStyle = DARK;
     ctx.stroke();
     ctx.restore();
