@@ -1440,6 +1440,9 @@ def end_round_if_over(lobby) -> tuple:
         result = classic.result(winner, end_reason(state))
         open_stations = {name: lobby.tasks.open_station_of(name) for name in lobby.names()}
         lobby.end_round()
+        # Everybody is sent the positions at the next tick, also when nobody
+        # moves: a Free Rider who was hidden (M3-1.4) is visible again.
+        lobby.walkers._everybody_needs_news()
         # Classic does not write statistics yet: no result for the store.
         return {
             name: ([] if station is None else [protocol.station_closed(station)]) + [result]

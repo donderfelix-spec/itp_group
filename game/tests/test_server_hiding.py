@@ -12,6 +12,7 @@ positions are sent as the tick sends them; one test walks with the real tick.
 """
 
 import json
+import time
 
 import pytest
 
@@ -55,6 +56,32 @@ def positions_now(connections):
 
 def names_in(message):
     return [entry["name"] for entry in message["players"]]
+
+
+def positions_arrived(connection):
+    """The `positions` messages this connection got so far. Never waits forever.
+
+    A hello is sent and everything up to its answer is collected.
+    """
+    connection.send_json({"type": "hello", "name": "Reader"})
+    arrived = []
+    while True:
+        message = connection.receive_json()
+        if message["type"] == "welcome":
+            return arrived
+        if message["type"] == "positions":
+            arrived.append(message)
+
+
+def wait_for_positions_with(connection, name, seconds=3):
+    """Collect positions until one lists `name`. Returns all collected, or fails after `seconds`."""
+    deadline = time.monotonic() + seconds
+    collected = []
+    while not any(name in names_in(message) for message in collected):
+        assert time.monotonic() < deadline, f"no positions with {name} arrived"
+        collected += positions_arrived(connection)
+        time.sleep(0.02)
+    return collected
 
 
 def classic_round(connect, names=FOUR):
@@ -221,7 +248,32 @@ def test_a_meeting_does_not_reveal_the_hidden_free_rider(connect, clock):
     assert fr not in names_in(positions_now(connections)[far])
 
 
+def test_the_end_of_the_round_alone_sends_the_hidden_free_rider_to_everybody_again(connect):
+    connections, [fr], [first, second, far] = classic_round(connect)
+    put(fr, IN_THE_SPOT)
+    lobby = app.state.lobbies.lobby_of(fr)
+    # The start of the round put everybody on the spawn, so the first tick
+    # tells everybody where everybody stands: the far player without him.
+    assert sorted(lobby.walkers.names_to_tell()) == sorted(FOUR)
+    connections[fr].portal.call(REAL_TICK, 0.0)
+    told = {name: next_positions(connection) for name, connection in connections.items()}
+    assert fr not in names_in(told[far])
+    assert lobby.walkers.names_to_tell() == []
+
+    # Nobody moves. Two High Performers count as failed: one Free Rider
+    # against one High Performer is parity, so the next tick ends the round.
+    lobby.classic_round.eliminated = {first, second}
+    connections[fr].portal.call(REAL_TICK, 0.0)
+    assert lobby.classic_round is None
+    # The tick after it sends everybody the positions, though nobody moved.
+    connections[fr].portal.call(REAL_TICK, 0.0)
+
+    for name in FOUR:
+        assert fr in names_in(wait_for_positions_with(connections[name], fr)[-1])
+
+
 def test_after_the_round_ended_nobody_is_hidden(connect):
+    # Whatever is sent after the end: here the positions are sent at once.
     connections, [fr], [first, second, far] = classic_round(connect)
     put(fr, IN_THE_SPOT)
     # Two High Performers failed: one Free Rider against one High Performer
