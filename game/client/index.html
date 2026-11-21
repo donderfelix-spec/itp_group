@@ -234,6 +234,15 @@
 
           <!-- In its place during a Duel: next station, clock and everybody's
                progress, filled by js/minigames/duel.js. -->
+          <div id="classic-progress" class="classic-progress" hidden aria-live="polite">
+            <h2 class="panel-heading">Group progress</h2>
+            <p id="classic-own-name" class="classic-own-name"></p>
+            <p id="classic-progress-label">0% complete</p>
+            <div class="classic-progress-track" role="progressbar" aria-label="Group task progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div id="classic-progress-fill" class="classic-progress-fill"></div>
+            </div>
+          </div>
+
           <div id="duel-panel" class="duel-panel" hidden>
             <h2 class="panel-heading">Duel</h2>
             <p id="duel-next" class="duel-next" role="status"></p>
@@ -255,6 +264,51 @@
     </section>
   </main>
 
+  <!-- The Classic meeting uses a canvas for the shared phase and transcript. -->
+  <section id="classic-meeting" class="classic-meeting" aria-label="Meeting" hidden>
+    <div class="classic-meeting-window">
+      <canvas id="classic-meeting-canvas" class="classic-meeting-canvas" aria-label="Meeting details"></canvas>
+      <section id="classic-vote-options" class="classic-vote-options" aria-label="Vote for a living player" hidden>
+        <h2>Who should be ejected?</h2>
+        <div id="classic-vote-players" class="classic-vote-players"></div>
+      </section>
+      <p id="classic-vote-result" class="classic-vote-result" aria-live="polite" hidden></p>
+      <form id="classic-chat-form" class="classic-chat-form">
+        <label for="classic-chat-input">Message</label>
+        <div class="button-row">
+          <input id="classic-chat-input" type="text" maxlength="200" autocomplete="off">
+          <button id="classic-chat-send" class="button button-main" type="submit">Send</button>
+        </div>
+        <p id="classic-chat-hint" class="rule" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+
+  <section id="classic-role-card" class="classic-overlay" aria-label="Your role" hidden>
+    <div class="classic-end-window">
+      <p class="classic-eyebrow">Your role</p>
+      <h1 id="classic-role-name"></h1>
+      <p id="classic-role-instructions"></p>
+      <p id="classic-role-partners" class="classic-role-partners"></p>
+    </div>
+  </section>
+  <section id="classic-end-screen" class="classic-overlay" aria-label="Round result" hidden>
+    <div class="classic-end-window">
+      <p class="classic-eyebrow">Round complete</p>
+      <h1 id="classic-winner"></h1>
+      <p id="classic-end-reason"></p>
+      <h2>Roles</h2>
+      <ul id="classic-role-list" class="classic-role-list"></ul>
+      <h2>Statistics</h2>
+      <ul id="classic-stat-list" class="classic-stat-list"></ul>
+      <div class="button-row">
+        <button type="button" id="classic-new-round" class="button button-main">New Round</button>
+        <button type="button" id="classic-back-lobby" class="button">Back to the lobby</button>
+      </div>
+      <p id="classic-host-hint" class="rule"></p>
+    </div>
+  </section>
+
   <script src="js/net.js"></script>
   <script src="js/world/characters.js"></script>
   <script src="js/world/draw.js"></script>
@@ -265,6 +319,8 @@
   <script src="js/world/art/canteen.js"></script>
   <script src="js/world/art/ctt.js"></script>
   <script src="js/world/art/deck.js"></script>
+  <script src="js/classic/fail-button.js"></script>
+  <script src="js/classic/hud-actions.js"></script>
   <script src="js/world/bridge.js"></script>
   <script src="js/world/world.js"></script>
   <script src="js/world/diagnostic.js"></script>
@@ -282,6 +338,8 @@
   <script src="js/minigames/duel.js"></script>
   <script src="js/minigames/room_tasks.js"></script>
   <script src="js/minigames/task_navigation.js"></script>
+  <script src="js/classic/meeting.js"></script>
+  <script src="js/classic/round.js"></script>
   <script src="js/lobby/statistics.js"></script>
   <script src="js/main.js"></script>
 </body>

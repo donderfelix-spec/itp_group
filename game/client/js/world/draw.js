@@ -883,8 +883,8 @@ Game.world = Game.world || {};
   }
 
   // The red button for the emergency meeting.
-  function drawButton(ctx, campus) {
-    if (campus.button) {
+  function drawButton(ctx, campus, visible) {
+    if (visible && campus.button) {
       circle(ctx, campus.button.x, campus.button.y, campus.button.r, CORAL, 2.5);
     }
   }
@@ -943,7 +943,7 @@ Game.world = Game.world || {};
   // of the world that is visible; without it the whole map is assumed.
   // `shownStations` is the list of station ids to draw (see drawStations).
   // The order matters: what is drawn later lies on top.
-  function drawMap(ctx, campus, view, shownStations) {
+  function drawMap(ctx, campus, view, emergencyVisible, shownStations) {
     if (!ctx || !campus || !campus.colours) {
       return;
     }
@@ -952,7 +952,7 @@ Game.world = Game.world || {};
     ctx.lineJoin = "round";
     drawStaticPart(ctx, campus, view);
     drawHidingSpots(ctx, campus);
-    drawButton(ctx, campus);
+    drawButton(ctx, campus, emergencyVisible === true);
     drawStations(ctx, campus, shownStations);
     ctx.restore();
   }

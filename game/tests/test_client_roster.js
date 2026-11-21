@@ -52,6 +52,9 @@ function environment({ drawing = 'works', missingMarkup = false } = {}) {
       showState: (state) => { nextStation = state.next_station; }, showProgress() {}, showResult() {} },
     statistics: { setup() {}, setOwnName() {}, showProfile() {}, showLeaderboard() {} },
     countdown: { setup() {}, show() {}, noteLobby() {}, reset() {} },
+    // Classic's own modules (from main): every call does nothing here.
+    classicMeeting: new Proxy({}, { get: () => () => undefined }),
+    classicRound: new Proxy({}, { get: () => () => undefined }),
     screens: { current: () => 'lobby', hideMessage() {}, showMessage() {}, showLastingMessage() {} },
     net: { connect() {}, on: (type, action) => handlers.set(type, action), send() {}, ask() {} },
     world: { setOwnName() {}, setPlayers() {}, start() {}, stop() {}, setUseHandler() {}, setPositions() {}, setUsableStations() {},

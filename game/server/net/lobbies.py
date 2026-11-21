@@ -51,6 +51,11 @@ class Lobby:
         # The Duel of the running round (`server/modes/duel.py`), or None:
         # no round is running, or it is a round of another mode.
         self.duel = None
+        # Discussion and vote timing for Classic. Its rules live in
+        # `server/classic/meeting.py`; None until a meeting is triggered.
+        self.meeting = None
+        self.meeting_clock = None
+        self.classic_round = None
 
     def names(self) -> list:
         """The names of the players, in the order they joined."""
@@ -130,6 +135,9 @@ class Lobby:
         self.round_starts_at = None
         self.tasks = None
         self.duel = None
+        self.meeting = None
+        self.meeting_clock = None
+        self.classic_round = None
 
     def add(self, name: str):
         """Put the player in with the first character nobody here has (S-75)."""

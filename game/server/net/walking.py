@@ -62,7 +62,7 @@ class Walkers:
         """Where the player stands, as `(x, y)`, or None before the first tick placed them."""
         return self._walkers[name].position
 
-    def advance(self, seconds, campus) -> bool:
+    def advance(self, seconds, campus, ghosts=()) -> bool:
         """Move every player for `seconds`. Returns whether there is news to send.
 
         There is news if somebody moved in this step, or if somebody joined or
@@ -70,8 +70,9 @@ class Walkers:
         from `load_campus`.
         """
         somebody_moved = False
-        for walker in self._walkers.values():
-            if self._advance_one(walker, seconds, campus):
+        ghost_names = set(ghosts)
+        for name, walker in self._walkers.items():
+            if self._advance_one(walker, seconds, campus, through_walls=name in ghost_names):
                 somebody_moved = True
         if somebody_moved:
             self._everybody_needs_news()
@@ -97,14 +98,14 @@ class Walkers:
         """The newest positions are on their way to this player."""
         self._walkers[name].needs_news = False
 
-    def _advance_one(self, walker: Walker, seconds, campus) -> bool:
+    def _advance_one(self, walker: Walker, seconds, campus, through_walls=False) -> bool:
         """Move one player. Returns whether the position is different afterwards."""
         if walker.position is None:
             walker.position = (campus["spawn"]["x"], campus["spawn"]["y"])
         before = walker.position
         walker.position = movement.step(
             before[0], before[1], walker.dx, walker.dy,
-            seconds, campus["solids"], campus["width"], campus["height"],
+            seconds, [] if through_walls else campus["solids"], campus["width"], campus["height"],
         )
         return walker.position != before
 

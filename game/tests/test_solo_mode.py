@@ -99,7 +99,8 @@ def test_a_signed_in_solo_round_cannot_change_duel_statistics_or_the_leaderboard
     records_before = store.records_of('Mara')
     leaderboard_before = store.top(20)
     profile_before = ask(connection, {'type': 'get_profile'})
-    assert profile_before == protocol.profile('Mara', [('duel', 2, 1)], 12.0)
+    # Classic is a built mode since the merge of main, so it has a row of its own.
+    assert profile_before == protocol.profile('Mara', [('duel', 2, 1), ('classic', 0, 0)], 12.0)
 
     # Capture the boundary before background writes, so the regression
     # cannot pass merely because an incorrect write has not run yet.

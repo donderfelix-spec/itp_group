@@ -251,6 +251,95 @@ input {
 
 .message-error { background: var(--coral); }
 
+/* ---- Classic discussion and voting ---- */
+
+.classic-meeting {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(46, 42, 59, 0.68);
+}
+
+.classic-meeting-window {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(100%, 760px);
+  max-height: 95vh;
+  padding: 18px;
+  border: var(--outline);
+  border-radius: 18px;
+  background: var(--cream);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+.classic-meeting-canvas {
+  display: block;
+  width: 100%;
+  height: min(55vh, 480px);
+  border: var(--outline);
+  border-radius: 12px;
+  background: var(--cream);
+}
+
+.classic-chat-form { display: flex; flex-direction: column; gap: 6px; }
+
+.classic-vote-options { display: flex; flex-direction: column; gap: 8px; }
+.classic-vote-options h2 { font-size: 20px; }
+
+.classic-vote-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.classic-vote-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  border: var(--outline);
+  border-radius: 999px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.classic-vote-player:hover:not(:disabled) { background: var(--sun); }
+
+.classic-vote-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--water);
+}
+
+.classic-vote-result {
+  padding: 10px 14px;
+  border: var(--outline);
+  border-radius: 12px;
+  background: var(--sun);
+  font-size: 18px;
+  font-weight: 800;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .classic-meeting { padding: 8px; }
+  .classic-meeting-window { padding: 10px; }
+  .classic-meeting-canvas { height: 55vh; }
+  .classic-chat-form .button-row { flex-direction: column; }
+}
+
 /* ---- Lobby: the map with the panel next to it ---- */
 
 .screen-lobby {
@@ -300,6 +389,21 @@ input {
   position: absolute;
   right: 34px;
   bottom: 34px;
+  background: var(--sun);
+}
+
+.use-button.fail-button {
+  background: linear-gradient(to right, #F2C84B var(--fail-fill, 100%), #D9D3C5 var(--fail-fill, 100%));
+}
+.use-button.fail-button:disabled {
+  background: linear-gradient(to right, #F2C84B var(--fail-fill, 100%), #D9D3C5 var(--fail-fill, 100%));
+}
+
+.report-button {
+  position: absolute;
+  right: 34px;
+  bottom: 86px;
+  z-index: 1;
   background: var(--sun);
 }
 
@@ -1862,6 +1966,8 @@ body:has(#screen-lobby:not([hidden])) .message {
   white-space: nowrap;
 }
 
+.free-rider-name { color: #C43E3E; }
+
 .icon {
   flex: none;
   width: 48px;
@@ -2169,6 +2275,22 @@ body:has(#screen-lobby:not([hidden])) .message {
   .panel-middle { overflow-y: visible; }
 }
 
+
+/* ---- Classic round HUD and results ---- */
+
+.classic-progress { margin-top: 18px; }
+.classic-own-name { margin: 0 0 8px; font-weight: 800; }
+.classic-progress-track { height: 18px; overflow: hidden; border: var(--outline); border-radius: 999px; background: white; }
+.classic-progress-fill { width: 0; height: 100%; background: var(--green); transition: width 180ms ease-out; }
+.classic-overlay { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(46, 42, 59, 0.78); }
+.classic-end-window { display: flex; flex-direction: column; gap: 14px; width: min(100%, 560px); max-height: calc(100vh - 40px); overflow-y: auto; padding: 28px; border: var(--outline); border-radius: 18px; background: var(--cream); box-shadow: 6px 6px 0 var(--ink); text-align: center; }
+.classic-end-window h1 { margin: 0; font-size: clamp(28px, 7vw, 48px); }
+.classic-end-window h2 { margin-top: 8px; font-size: 22px; }
+.classic-eyebrow { color: #625d6d; font-size: 14px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.classic-role-partners { font-weight: 700; }
+.classic-role-list, .classic-stat-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px 14px; margin: 0; padding: 0; list-style: none; text-align: left; }
+.classic-role-list li, .classic-stat-list li { padding: 6px 10px; border: 2px solid var(--ink); border-radius: 8px; background: white; }
+.classic-end-window .button-row { justify-content: center; flex-wrap: wrap; margin-top: 8px; }
 /* ---- Profile and Leaderboard (js/lobby/statistics.js) ---- */
 
 /* On the Home screen the two are round icons at the top right corner of the

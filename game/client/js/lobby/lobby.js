@@ -18,7 +18,7 @@ window.Game = window.Game || {};
   const MODES = [
     { id: 'duel', name: 'Duel', minPlayers: 2, isBuilt: true },
     { id: 'solo', name: 'Solo', minPlayers: 1, isBuilt: true },
-    { id: 'classic', name: 'Classic', minPlayers: 4, isBuilt: false },
+    { id: 'classic', name: 'Classic', minPlayers: 4, isBuilt: true },
   ];
 
   const codeElement = document.getElementById('lobby-code');
@@ -29,6 +29,8 @@ window.Game = window.Game || {};
   const characterButtons = {}; // character id -> its button
   const modeButtons = {}; // mode id -> its button
   let ownName = null;
+  let ownIsFreeRider = false;
+  let latestState = null;
 
   function setup() {
     allCharacters().forEach(addCharacterButton);
@@ -37,13 +39,16 @@ window.Game = window.Game || {};
       // `ask` ignores further clicks until the server has answered (S-89).
       Game.net.ask({ type: 'start_game' });
     });
-    document.getElementById('lobby-leave').addEventListener('click', () => {
-      Game.net.ask({ type: 'leave_lobby' });
-    });
+    document.getElementById('lobby-leave').addEventListener('click', leaveLobby);
   }
 
   function setOwnName(name) {
     ownName = name;
+  }
+
+  function setOwnFreeRider(value) {
+    ownIsFreeRider = value === true;
+    if (latestState) showPlayers(latestState);
   }
 
   // The one list of characters in the browser is in world/characters.js,
@@ -153,16 +158,12 @@ window.Game = window.Game || {};
 
   // ---- Mode ----
 
-  // Built once, like the character buttons. A mode that is not built yet
-  // stays switched off for good and says when it comes.
+  // Built once, like the character buttons.
   function addModeButton(mode) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'mode';
     button.appendChild(makeText('span', 'mode-name', mode.name));
-    if (!mode.isBuilt) {
-      button.appendChild(makeText('span', 'mode-note', 'Coming with the next milestone'));
-    }
     button.addEventListener('click', () => {
       Game.net.ask({ type: 'choose_mode', mode: mode.id });
     });
@@ -240,6 +241,7 @@ window.Game = window.Game || {};
     row.appendChild(makeIcon(player.character));
     // textContent, never innerHTML: a name is text from another player.
     const name = makeText('span', 'player-name', player.name);
+    if (player.name === ownName && ownIsFreeRider) name.classList.add('free-rider-name');
     name.title = player.name; // A long name is cut off in the narrow list.
     row.appendChild(name);
     if (player.name === hostName) row.appendChild(makeText('span', 'marker marker-host', 'Host'));
@@ -257,6 +259,7 @@ window.Game = window.Game || {};
   // ---- The whole panel ----
 
   function show(state) {
+    latestState = state;
     codeElement.textContent = state.code;
     showPlayers(state);
     const isHost = state.host === ownName;
@@ -275,5 +278,23 @@ window.Game = window.Game || {};
     document.getElementById('lobby-waiting').hidden = isHost || isRunning;
   }
 
-  Game.lobby = { setup: setup, setOwnName: setOwnName, show: show };
+  function setPlayers(players) {
+    if (!latestState || !Array.isArray(players)) return;
+    latestState.players = players;
+    showPlayers(latestState);
+    showCharacters(players);
+  }
+
+  function leaveLobby() {
+    Game.net.ask({ type: 'leave_lobby' });
+  }
+
+  Game.lobby = {
+    setup: setup,
+    setOwnName: setOwnName,
+    setOwnFreeRider: setOwnFreeRider,
+    setPlayers: setPlayers,
+    leaveLobby: leaveLobby,
+    show: show
+  };
 })();

@@ -63,6 +63,9 @@ function environment() {
     statistics: { setup() {}, setOwnName() {}, showProfile() {}, showLeaderboard() {} },
     countdown: { setup() {}, noteLobby() {}, show() {}, reset() {} },
     roster: { setup() {}, setOwnName() {}, show() {}, reset() {} },
+    // Classic's own modules (from main): every call does nothing here.
+    classicMeeting: new Proxy({}, { get: () => () => undefined }),
+    classicRound: new Proxy({}, { get: () => () => undefined }),
     // The task card and arrow moved to minigames/task_navigation.js.
     taskNavigation: { setTarget: (...args) => worldCalls.push(['target', ...args]) },
     world: { setOwnName() {}, setPlayers() {}, start() {}, setUseHandler() {}, stop() {},
@@ -273,6 +276,21 @@ for (const mode of ['duel', 'solo']) {
   assert.deepEqual(env.worldCalls.at(-1), ['target', 2], mode + ' gets its assigned target');
   emit('lobby_state', { code: 'ABCD', players: [{ name: 'Guest1' }], mode, phase: 'lobby' });
   assert.deepEqual(env.worldCalls.at(-1), ['target', null], 'navigation hides outside a round');
+}
+
+{
+  // Classic: every unfinished station is usable and drawn, but the task card
+  // and arrow are for Duel and Solo only, also when one station is left.
+  const env = environment();
+  env.load('main.js');
+  const emit = (type, payload) => env.handlers.get(type)(payload);
+  emit('signed_in', { name: 'Guest1', guest: true });
+  emit('lobby_state', { code: 'ABCD', players: [{ name: 'Guest1' }], mode: 'classic', phase: 'round' });
+  assert.equal(JSON.stringify(env.worldCalls.at(-2)), JSON.stringify(['usable', [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]]));
+  assert.deepEqual(env.worldCalls.at(-1), ['target', null], 'Classic shows no task card');
+  for (const station of [1, 2, 3, 4, 5, 7, 8, 9, 10, 11]) emit('station_done', { station });
+  assert.equal(JSON.stringify(env.worldCalls.at(-2)), JSON.stringify(['usable', [12]]), 'one station is left');
+  assert.deepEqual(env.worldCalls.at(-1), ['target', null], 'Classic shows no task card for the last station either');
 }
 
 {

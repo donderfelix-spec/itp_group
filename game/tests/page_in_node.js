@@ -138,6 +138,8 @@ page.Game = {
   // Rendering the public roster needs a canvas/DOM. Its real renderer and
   // main lifecycle are covered separately in test_client_roster.js.
   roster: doesNothing,
+  classicMeeting: doesNothing,
+  classicRound: doesNothing,
   minigames: doesNothing,
 };
 vm.createContext(page);

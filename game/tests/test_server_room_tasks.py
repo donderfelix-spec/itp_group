@@ -86,7 +86,7 @@ def test_extra_target_enforces_range_order_close_minimum_time_and_no_duplicate(c
 
 
 def test_duel_still_requires_two_players_and_the_discarded_campus_mode_is_absent(connect):
-    assert protocol.MODES == ('duel', 'solo')
+    assert protocol.MODES == ('duel', 'classic', 'solo')
     assert protocol.MIN_PLAYERS['duel'] == 2
     connection = player(connect, 'Mara')
     assert ask(connection, {'type': 'create_lobby'})['mode'] == 'duel'

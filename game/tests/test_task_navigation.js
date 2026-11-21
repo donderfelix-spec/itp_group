@@ -91,7 +91,7 @@ function testTaskStationVisibility(drawMap) {
     const ctx = new Proxy({ arc: function (x, y) { circles.push([x, y]); } }, {
       get: function (target, key) { return key in target ? target[key] : function () {}; }
     });
-    drawMap(ctx, map, null, shown);
+    drawMap(ctx, map, null, false, shown); // no emergency button
     return JSON.stringify(circles);
   }
   function expect(condition, message) {
@@ -227,7 +227,7 @@ async function testWorldTaskArrival(vm, worldSource, navigationSource, campus) {
       addEventListener: () => {}, removeEventListener: () => {} } };
   page.window = page;
   page.Game = { world: {
-    drawMap(context, map, view, shown) { shownStations = shown; },
+    drawMap(context, map, view, emergencyVisible, shown) { shownStations = shown; },
     drawStationGlow(context, station) { glowingStation = station.id; },
     drawCharacter() {},
     chooseLabels: (entries) => ({ shown: entries, hidden: new Set() }),

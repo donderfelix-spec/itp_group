@@ -23,8 +23,8 @@ def rejected(message):
 # Accepted
 
 
-@pytest.mark.parametrize("mode", ["duel", "solo"])
-def test_duel_and_solo_are_accepted(mode):
+@pytest.mark.parametrize("mode", ["duel", "classic", "solo"])
+def test_every_built_mode_is_accepted(mode):
     message = {"type": "choose_mode", "mode": mode}
     assert parse_client_message(json.dumps(message)) == message
 
@@ -35,7 +35,7 @@ def test_the_check_itself_gives_back_the_mode():
 
 
 def test_solo_has_a_name_and_needs_one_player():
-    assert protocol.MODES == ("duel", "solo")
+    assert protocol.MODES == ("duel", "classic", "solo")
     assert protocol.MODE_NAMES["solo"] == "Solo"
     assert protocol.MIN_PLAYERS["solo"] == 1
 

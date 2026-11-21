@@ -192,8 +192,8 @@ def test_between_two_rounds_the_host_can_choose_the_mode_and_nobody_else(connect
     assert news(players["Tiago"]) == [answer]
     assert ask(players["Tiago"], {"type": "choose_mode", "mode": "duel"}) == NOT_HOST
     assert ask(players["Tiago"], {"type": "start_game"}) == NOT_HOST
-    # Classic is not built yet: the host cannot choose it past the page either.
-    assert ask(players["Mara"], {"type": "choose_mode", "mode": "classic"}) == BAD_MODE
+    # A mode that does not exist: the host cannot choose it past the page either.
+    assert ask(players["Mara"], {"type": "choose_mode", "mode": "deadline"}) == BAD_MODE
     assert lobby_named("Mara").phase == "lobby"
 
 

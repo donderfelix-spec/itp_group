@@ -43,7 +43,7 @@ The map is based on the real campus in Carcavelos: light buildings, a large pave
 - **CTT Student Hall:** tall and narrow, with a central aisle between eight rows of long white tables (green and a few black chairs, laptops, books, bags), white pillars with "shh" signs, "Please remain silent" on the wall, windows on both long sides with trees outside, a glass double door and the bookshelf at the end.
 - **Pingo Doce:** a floor of small tiles with grey diamonds and a tiled border, a wooden slat wall with signs (GREENS, PINGO DOCE & GO, READY MEALS) and posters, turnstiles and two sign totems at the entrance, four full shelves (CANDY, DRINKS, PIZZA, PANTRY), fridges along both side walls, the self-checkout with baskets, a round fruit stand, wider than a character, with an olive tree, a hot-food and bakery counter with a coffee corner.
 - **Corridor:** the strip of the deck in front of the top rooms is the building's common area: terrazzo floor, the taupe slatted façade with "ACADEMIC HALL", round ceiling lights, grid-cube dividers with plants, two sofas, a black column and a staircase at the left end. A wall with glass doors separates it from the Main Deck: one opening above the pool and a wide one on the right.
-- **Main Deck:** large paving slabs, the reflecting pool with a stone edge, six trees in gravel beds, a planted bed with a stone border, shrubs and flowers where the hedge stands, the NOVA sign in dark navy with its O as a ring above a bar, benches, lamp posts, a bike rack and a surfboard rack by the exit to the beach; on the sand towels and surfboards big enough for a character. The red button for the emergency meeting stands to the right of the hedge. The sixth station is at the bottom, at the exit to the beach. You have to walk around all of these, and that is how players lose sight of each other.
+- **Main Deck:** large paving slabs, the reflecting pool with a stone edge, six trees in gravel beds, a planted bed with a stone border, shrubs and flowers where the hedge stands, the NOVA sign in dark navy with its O as a ring above a bar, benches, lamp posts, a bike rack and a surfboard rack by the exit to the beach; on the sand towels and surfboards big enough for a character. The red button for the emergency meeting stands to the right of the hedge and appears 45 seconds after a round starts. The sixth station is at the bottom, at the exit to the beach. You have to walk around all of these, and that is how players lose sight of each other.
 - At the bottom, a glass front closes off the deck. You can see the beach and the sea, but you cannot go out.
 - Every room has exactly one door to the deck and one task station (yellow dot). The stations are in the corners of the map, so that you really have to walk in Duel.
 - You only ever see the section around your own character, about one room in size. The camera follows the character.
@@ -142,8 +142,8 @@ Every action also works with a mouse click on the button.
 1. Everyone starts on the Main Deck. Each player sees their role for three seconds. Two Free Riders also see who the other one is.
 2. Each High Performer gets four of the five tasks, chosen at random. Every finished task fills the shared progress bar.
 3. The Free Rider has a list of fake tasks. At a station, the Free Rider sees a loading bar that does not count.
-4. The Free Rider can fail a High Performer who is in range. After that, the Free Rider has to wait 25 seconds, and 15 seconds at the start of the round. The Free Rider cannot fail another Free Rider.
-5. Reporting happens right on the spot: For anyone who stands close to an “F” sheet, the button “Report” lights up (key R). Pressing it starts the meeting for everyone at once, and nobody has to walk anywhere. Without a find, everyone can call a meeting once per round with the red button on the right of the Main Deck, next to the hedge.
+4. The Free Rider can fail a High Performer who is in range (5 fields). After that, the Free Rider has to wait 15 seconds. The Free Rider starts with the ability loaded and cannot fail another Free Rider.
+5. Reporting happens right on the spot: For any living player who stands within 2 fields of an “F” sheet, the button “Report” lights up (key R). Pressing it starts the meeting for everyone at once, removes the reported sheet, and nobody has to walk anywhere. Without a find, each living player can call one meeting per round with the red button on the right of the Main Deck, next to the hedge, available 45 seconds after the round starts.
 6. Meeting: 45 seconds of discussion by chat, then 30 seconds for the vote. You vote for one person or “Skip”. The person with the most votes goes, and nobody goes if there is a tie or a majority for “Skip”. Anyone who does not vote counts as “Skip”.
 7. Whoever is voted out drifts out to sea: The character is caught by a wave on the beach, gets smaller and disappears on the horizon. A text says whether it was a Free Rider: “Mara was a Free Rider.” or “Mara was not a Free Rider.”
 8. After the meeting everyone stands on the Main Deck again, and the Free Rider’s cooldown starts again.
@@ -154,9 +154,11 @@ Every action also works with a mouse click on the button.
 | Players | at least 4, at most 8 |
 | Free Riders | 1 with 4 or 5 players, 2 with 6 to 8 |
 | Tasks per High Performer | 4 |
-| Cooldown “Fail” | 25 s |
+| Cooldown “Fail” | 15 s |
 | Discussion / vote | 45 s / 30 s |
 | Emergency meetings | 1 per player |
+
+Area 3 specification update: the Free Rider fail radius changed from 3 to 5 fields and its cooldown from 25 to 15 seconds. The initial fail ability remains loaded, and reporting an F-sheet still uses a 2-field radius.
 
 **High Performers win:** The progress bar is full, or all Free Riders have been voted out.
 **Free Riders win:** There are as many Free Riders left as High Performers.
