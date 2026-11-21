@@ -137,3 +137,5 @@ Campus branch verification (2026-11-21): complete suite 3,221 passed, additional
 ## Human campus characters, 2026-11-21
 
 Hanna requested returning to the original human student style with only subtle differences. Characters have human faces, hairstyles, clothes and student accessories again. Their smiles are gentler and their cheek tint is more subtle. The original human-rendering geometry and running-pose tests apply again. This replaces the robot and object-head visual direction on the Campus and Characters branch.
+
+The human campus students now have individual small outfit motifs in both lobby portraits and map views. Verified with 300 character and motion checks and a browser preview (2026-11-21); on game/campus-and-characters.

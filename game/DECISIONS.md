@@ -193,3 +193,5 @@ Verification on 2026-11-21: the complete suite passed 3,221 checks and an additi
 ## Human campus characters, 2026-11-21
 
 Hanna requested returning to the original human student style with only subtle differences. Characters have human faces, hairstyles, clothes and student accessories again. Their smiles are gentler and their cheek tint is more subtle. The original human-rendering geometry and running-pose tests apply again. This replaces the robot and object-head visual direction on the Campus and Characters branch.
+
+2026-11-21: Hanna requested slightly more creative human figures in the current style. Personal outfit motifs are drawn inside the existing clothing footprint and follow the torso in both views. They distinguish the student roles while preserving the human drawing style and running geometry.

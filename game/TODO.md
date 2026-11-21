@@ -225,3 +225,5 @@ Verification on 2026-11-21: the complete suite passed 3,221 tests with Node avai
 Hanna requested returning to the original human student style with only subtle differences. Characters have human faces, hairstyles, clothes and student accessories again. Their smiles are gentler and their cheek tint is more subtle. The original human-rendering geometry and running-pose tests apply again. This replaces the robot and object-head visual direction on the Campus and Characters branch.
 
 Human character verification: 300 character, running-pose, running and character-list checks passed on 2026-11-21. The original natural human running model is used with the human drawings. Browser preview checked in the lobby and on the campus.
+
+- [x] Subtle personal outfit motifs for all eight human students: tie clip, finance pin, travel patches, wave-print shorts, hoodie emblem, checklist stitches, shirt stripes and a book emblem. Verified in the browser; 300 character and running checks pass (2026-11-21).
