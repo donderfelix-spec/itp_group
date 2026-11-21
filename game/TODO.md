@@ -127,7 +127,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M2-4.16** Six more minigames at stations 7 to 12, in Duel, Solo and Classic (S-124, Lennart)
 - [x] **M2-4.17** Solo mode, and the mode choice Duel and Solo side by side with Classic below (S-125, Lennart)
 - [x] **M2-4.18** Every player starts at a different station; `draw_routes` never fails for up to 8 players (S-126, Lennart)
-- [x] **M2-4.19** Stations as objects with a pulsing outline, one card at the top left (room and next task), a direction arrow in the sticker look (S-128, S-129, Lennart's branch; drawing in area 1 with Felix's consent)
+- [x] **M2-4.19** Stations as objects with a pulsing outline, one card at the top left (room and next task), a direction arrow as a plain yellow triangle (S-128, S-129, Lennart's branch; drawing in area 1 with Felix's consent)
 - [ ] **M2-4.20** Before PR 69 (Hanna) is merged: drop its room label `drawLocation`, keep the card of S-129 as the only room display, and use one `roomAt` (Hanna, Lennart)
 - [ ] **M2-4.21** The unused route search in `client/js/minigames/task_navigation.js` (`create`, `route`) is used only by `tests/test_task_navigation.js`: decide whether to keep both or drop both (Lennart)
 
