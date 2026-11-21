@@ -17,7 +17,7 @@ All features of the game with their status. Whoever finishes a feature or plans 
 - **M3 Classic:** A complete Classic round with Free Rider, meeting and vote is playable. Status 2026-11-21: playable with known defects, see M3-3.9 to M3-3.18 in [TODO.md](TODO.md).
 - **M4 Extensions:** Sabotage, Deadline mode, finished characters, sound, phone.
 
-As of 2026-11-19. Milestone 1 is on `main` and deployed.
+As of 2026-11-21. Milestone 1 is on `main` and deployed.
 
 ## Area 1: Campus and characters
 
