@@ -18,7 +18,10 @@ from server.world.campus import load_campus
 from server.world.movement import is_free, overlaps, step
 from server.world.paths import station_distances
 
+# Keep the closed-hedge regression scenarios as a historical collision fixture.
+# The current walkable hedge and visibility are covered by test_hiding_visibility.py.
 CAMPUS = load_campus()
+next(solid for solid in CAMPUS["solids"] if solid["id"] == "deck-hedge")["walkable"] = False
 SOLIDS = CAMPUS["solids"]
 WIDTH = CAMPUS["width"]
 HEIGHT = CAMPUS["height"]
