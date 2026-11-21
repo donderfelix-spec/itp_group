@@ -474,6 +474,7 @@ def test_the_station_in_range_is_the_same_in_every_frame_with_and_without_the_br
 # 95 and 101 are held 240 ms each.
 HOLD_UPS = looped(FELIX_DEBUG_RUN, first=-5)
 HELD_MESSAGES = {25: 620, 83: 240, 89: 240, 95: 240, 101: 240}
+SERVER_STEP_MS = SERVER_STEP / 90 * 1000  # the time the server of these tests measures for one step
 
 
 def counted_through_the_hold_ups():
@@ -497,12 +498,14 @@ def test_the_bridge_counts_its_steps_and_the_positions_that_took_their_place():
         assert before["replaced"] == steps_so_far  # all earlier ones were answered, none of these yet
         # (A step that is due is made by the next frame or, at the latest,
         # when the next message arrives: so the steps are counted afterwards.)
+        # The glide of a step lasts as long as the server takes for it; the
+        # first one of a bridge a tenth longer.
         made = after["steps"] - steps_so_far
-        assert (gap - 110) / TICK <= made <= (gap - 95) / TICK + 1
+        assert (gap - 110 - 0.1 * SERVER_STEP_MS) / SERVER_STEP_MS <= made <= (gap - 95) / SERVER_STEP_MS + 1
         # The messages that were held arrive together: each takes the place of one step.
         assert after["replaced"] == after["steps"]
         steps_so_far = after["steps"]
-    assert counts[1]["steps"] == 9 and counts[1]["milliseconds"] == pytest.approx(9 * TICK)
+    assert counts[1]["steps"] == 9 and counts[1]["milliseconds"] == pytest.approx(9.1 * SERVER_STEP_MS)
 
 
 def test_the_counts_at_the_end_of_the_walk_add_up():
@@ -510,7 +513,10 @@ def test_the_counts_at_the_end_of_the_walk_add_up():
     numbers = result["bridge"]
     assert numbers["on"] is True and numbers["loaded"] is True
     assert 9 + 4 * 3 <= numbers["steps"] <= 9 + 4 * 4 + 1
-    assert numbers["milliseconds"] == pytest.approx(numbers["steps"] * TICK)
+    # Five bridges (one per hold-up), each with a first step a tenth
+    # slower; one more if a step was made after the release.
+    bridges = (numbers["milliseconds"] / SERVER_STEP_MS - numbers["steps"]) / 0.1
+    assert bridges == pytest.approx(5, abs=1e-6) or bridges == pytest.approx(6, abs=1e-6)
     # Every step was answered by the server or taken back (at most the one
     # after the release).
     assert numbers["steps"] - numbers["replaced"] == numbers["takenBack"] <= 1
@@ -540,15 +546,37 @@ def test_before_the_first_walk_the_input_lag_is_the_one_assumed():
     assert walk.run()["bridge"]["inputLagMs"] == pytest.approx(100 + 110 - TICK)
 
 
-def test_a_first_position_held_up_is_clamped_and_later_walks_bring_the_lag_back():
-    # Three walks. The first position of the first walk is held 900 ms: its
-    # sample is clamped to 400 ms. The median of three samples forgets it.
-    keys = [(1000, "down", "KeyD"), (2500, "up", "KeyD"), (4000, "down", "KeyD"), (4500, "up", "KeyD"),
-            (6000, "down", "KeyD"), (6500, "up", "KeyD")]
-    steps = [["numbers", 3500], ["numbers", 5500]]
-    result = Scenario(keys, held(m0=900), until=7500, start=OPEN_START, steps=steps).run()
-    after_one, after_two = result["numbers"]
-    assert after_one["inputLagMs"] == pytest.approx(400 + 110 - TICK)
-    good = result["bridge"]["inputLagMs"] - (110 - TICK)
-    assert 45 <= good < 45 + SERVER_TICK
-    assert after_two["inputLagMs"] == pytest.approx((400 + good) / 2 + 110 - TICK, abs=SERVER_TICK / 2)
+def test_a_first_position_held_up_is_clamped_and_the_next_walk_brings_the_lag_back():
+    # Two walks. The first position of the first walk is held 900 ms: its
+    # sample is clamped to 400 ms. The second walk's sample is shorter, and
+    # the lag is the shortest of the last samples.
+    keys = [(1000, "down", "KeyD"), (2500, "up", "KeyD"), (4000, "down", "KeyD"), (4500, "up", "KeyD")]
+    steps = [["numbers", 3500]]
+    result = Scenario(keys, held(m0=900), until=5500, start=OPEN_START, steps=steps).run()
+    assert result["numbers"][0]["inputLagMs"] == pytest.approx(400 + 110 - TICK)
+    second_walk = result["bridge"]["inputLagMs"] - (110 - TICK)
+    assert 45 <= second_walk < 45 + SERVER_TICK
+
+
+def test_a_first_message_that_holds_two_steps_is_no_sample_of_the_start_delay():
+    # The server skips this browser at the first tick of the walk: the first
+    # message comes a tick late and holds two steps. It says neither when
+    # the walk began nor how long a tick is.
+    walk = walk_right(on_time(), until=3000, skipped=[KEY_AT])
+    first = walk.messages[1][1][0]
+    assert first["x"] - OPEN_START[0] == pytest.approx(2 * SERVER_STEP)
+    numbers = walk.run()["bridge"]
+    assert numbers["inputLagMs"] == pytest.approx(100 + 110 - TICK)  # still the one assumed
+    assert numbers["serverStepMs"] == pytest.approx(SERVER_STEP_MS)  # from the single steps that followed
+    # On time, the same walk gives a sample.
+    assert walk_right(on_time(), until=3000).run()["bridge"]["inputLagMs"] < 100 + 110 - TICK
+
+
+def test_two_steps_in_one_message_do_not_change_the_length_of_the_servers_tick():
+    # Five of the last eight messages hold two steps: read as steps, they
+    # would be the usual length, and the bridge would walk at the server's cap.
+    skipped = [2000 + 136 * number for number in range(5)]
+    walk = walk_right(on_time(), until=2000 + 136 * 5 + 40, skipped=skipped)
+    doubles = [b[1][0]["x"] - a[1][0]["x"] for a, b in zip(walk.messages, walk.messages[1:])][-8:]
+    assert sum(1 for change in doubles if change == pytest.approx(2 * SERVER_STEP)) == 5
+    assert walk.run()["bridge"]["serverStepMs"] == pytest.approx(SERVER_STEP_MS)

@@ -37,6 +37,7 @@ from bridge_helpers import (
     OWN_CHARACTER,
     SERVER_STEP,
     SERVER_TICK,
+    SPAWN,
     TICK,
     UNEVEN_STEPS,
     Scenario,
@@ -47,6 +48,7 @@ from bridge_helpers import (
     frozen,
     held,
     held_from,
+    later_from,
     looped,
     on_time,
     open_square,
@@ -54,6 +56,7 @@ from bridge_helpers import (
     place,
     speeds,
     walk_right,
+    wall_ahead,
     way_back,
 )
 
@@ -254,8 +257,9 @@ def test_during_the_long_hold_up_the_character_walks_at_the_servers_speed():
     end = hold_ups.arrival(LONG_HOLD_UP_MESSAGE) - 1
     assert end - start > 400
     drawn_speeds = speeds(frames, start, end)
-    # A bridged step is as long as the server's and is drawn over one tick of the browser.
-    assert all(speed == pytest.approx(SERVER_STEP / (TICK / 1000), rel=0.01) for speed in drawn_speeds)
+    # A bridged step is as long as the server's and its glide lasts as long
+    # as the server takes for it: 90 units per second, the server's speed.
+    assert all(speed == pytest.approx(90, rel=0.01) for speed in drawn_speeds)
 
 
 # ---- d. A hold-up longer than the bridge may cover ------------------------------------------
@@ -400,6 +404,206 @@ def test_some_turns_in_a_hold_up_need_a_correction_and_some_do_not():
     assert 0 < sum(large) < len(large)
 
 
+# ---- Positions that are only a little later than the queue expected ------------------------------
+
+# The bridge must not gain on the server. Once the positions arrive a moment
+# after each glide ends (not held up, only later), a bridge at a faster pace
+# than the server's stepped in before every one of them, got a whole step
+# ahead every few seconds, and at the release the character stood beyond the
+# server and slid back a second later.
+
+
+def furthest_right(frames):
+    return max(place(frame)[0] for frame in frames)
+
+
+def test_when_the_connection_gets_60_ms_slower_in_a_walk_no_release_ends_beyond_the_server():
+    # From 2 s on every message takes 60 ms longer, for good.
+    bridged = []
+    for number in range(30):
+        release_at = 4000 + 37 * number
+        walk = walk_right(later_from(2000, 60), until=release_at + 2500, release_at=release_at)
+        result = walk.run()
+        frames = result["frames"]
+        final = walk.server_place()
+        assert furthest_right(frames) <= final[0] + SERVER_STEP + EXACT, release_at  # never more than one step beyond
+        assert furthest_right(frames) <= final[0] + EXACT, release_at  # in fact not beyond at all
+        assert way_back(frames, RIGHT) == 0, release_at
+        assert math.dist(place(frames[-1]), final) < 1e-9, release_at
+        assert frozen(frames, SETTLED, release_at) == [], release_at
+        bridged.append(result["bridge"]["steps"])
+    # A few steps are bridged when the messages get later; then the queue
+    # has its delay again and the positions are played from it as before.
+    assert 1 <= min(bridged) and max(bridged) <= 6, bridged
+
+
+def test_when_the_connection_gets_slower_the_walk_stays_smooth():
+    walk = walk_right(later_from(2000, 60), until=WALK_UNTIL)
+    frames = walk.run()["frames"]
+    assert frozen(frames, SETTLED) == []
+    drawn_speeds = speeds(frames, SETTLED)
+    assert 60 <= min(drawn_speeds) and max(drawn_speeds) <= 120, (min(drawn_speeds), max(drawn_speeds))
+
+
+@pytest.mark.parametrize("release_at", [5000, 5020, 5040, 5060])
+def test_after_one_skipped_tick_the_bridge_does_not_step_in_for_the_rest_of_the_walk(release_at):
+    # At 2 s the server skips this browser for one tick: the next message
+    # holds two steps, and from then on every position is one tick "late".
+    walk = walk_right(on_time(), until=release_at + 2500, release_at=release_at, skipped=[2000])
+    result = walk.run()
+    frames = result["frames"]
+    numbers = result["bridge"]
+    # One step for the missing message and a few until the queue has its
+    # delay again; not every step of the three seconds that follow.
+    assert 1 <= numbers["steps"] <= 5
+    assert numbers["largeCorrections"] == 1  # the message with two steps: the bridge had walked one
+    assert numbers["takenBack"] == 0
+    # Nothing beyond the server at the release, and the end is the server's position.
+    assert furthest_right(frames) <= walk.server_place()[0] + EXACT
+    assert way_back(frames, RIGHT) == 0
+    assert math.dist(place(frames[-1]), walk.server_place()) < 1e-9
+
+
+def test_a_skipped_tick_before_the_hold_ups_adds_only_a_few_bridged_steps():
+    release_at = KEY_AT + 7100
+    without_skip = walk_right(HOLD_UPS, until=release_at + 2400, release_at=release_at).run()["bridge"]["steps"]
+    walk = walk_right(HOLD_UPS, until=release_at + 2400, release_at=release_at, skipped=[1500])
+    result = walk.run()
+    assert without_skip <= result["bridge"]["steps"] <= without_skip + 5
+    assert frozen(result["frames"], SETTLED, release_at) == []
+    assert furthest_right(result["frames"]) <= walk.server_place()[0] + SERVER_STEP + EXACT
+    assert math.dist(place(result["frames"][-1]), walk.server_place()) < 1e-9
+
+
+def test_after_a_skipped_tick_a_turn_is_not_guessed_wrong():
+    # While the bridge stepped in before every position, it used a
+    # direction that was too old and took every turn one step late.
+    wrong = []
+    for number in range(12):
+        turn_at = 1900 + 6 * number
+        keys = [(KEY_AT, "down", "KeyD"), (turn_at, "up", "KeyD"), (turn_at, "down", "KeyS"), (2500, "up", "KeyS")]
+        walk = Scenario(keys, on_time(), until=4500, start=open_square(120), skipped=[1500])
+        result = walk.run()
+        wrong.append(result["bridge"]["largeCorrections"] - 1)  # one is the skipped tick itself
+        assert math.dist(place(result["frames"][-1]), walk.server_place()) < 1e-9
+    assert wrong == [0] * 12
+
+
+# ---- Releases at every moment, on the measured connections -----------------------------------------
+
+
+@pytest.mark.parametrize("name, delays, most_beyond", [
+    ("the walking diagnostic's run", HOLD_UPS, 0),
+    ("bunched messages", looped(FELIX), 0),
+    # In this one the very first position of the walk is 100 ms late, so the
+    # input lag (measured from it) is 100 ms too long for the whole walk.
+    ("the bad second", looped(FELIX_BAD_SECOND), 1),
+], ids=lambda value: value if isinstance(value, str) else "")
+def test_a_release_at_any_moment_of_a_measured_connection_ends_on_the_servers_position(name, delays, most_beyond):
+    beyond = 0
+    for number in range(24):
+        release_at = 2400 + 173 * number
+        walk = walk_right(delays, until=release_at + 2600, release_at=release_at)
+        frames = walk.run()["frames"]
+        final = walk.server_place()
+        over = furthest_right(frames) - final[0]
+        # At most one step too far, taken back within the time the bridge waits for the server.
+        assert over <= SERVER_STEP + EXACT, release_at
+        assert way_back(frames, RIGHT) <= SERVER_STEP + EXACT, release_at
+        assert math.dist(place(frames[-1]), final) < 1e-9, release_at
+        assert frozen(frames, SETTLED, release_at) == [], release_at
+        beyond += over > EXACT
+    assert beyond <= most_beyond
+
+
+# ---- The input lag: the smallest of the last samples ------------------------------------------------
+
+WALL = wall_ahead(SPAWN, 1, 0)
+
+
+def started_against_a_wall(release_at):
+    """Four walks that start against a wall, then a walk to the left with a release inside a hold-up.
+
+    Each of the four: the key into the wall for 500 ms (nothing moves), then
+    a free direction is added without releasing. The time from the first key
+    to the first position that moved is the whole time at the wall.
+    """
+    keys = []
+    for number, free_key in enumerate(["KeyW", "KeyS", "KeyW", "KeyS"]):
+        at = 1000 + 1800 * number
+        keys += [(at, "down", "KeyD"), (at + 500, "down", free_key), (at + 1000, "up", "KeyD"), (at + 1000, "up", free_key)]
+    keys += [(8200, "down", "KeyA"), (release_at, "up", "KeyA")]
+    return Scenario(keys, held_from(9000, 600), until=release_at + 2600, start=WALL, steps=[["numbers", 8100]])
+
+
+def test_walks_started_against_a_wall_give_samples_that_are_far_too_long():
+    result = started_against_a_wall(9200).run()
+    # Before the fifth walk: four samples of 500 ms and more, each clamped to 400 ms.
+    assert result["numbers"][0]["inputLagMs"] == pytest.approx(400 + 110 - TICK)
+    # The fifth walk starts in the open: its sample is the smallest and counts.
+    assert result["bridge"]["inputLagMs"] < 70 + SERVER_TICK + 110 - TICK
+
+
+def test_after_four_starts_against_a_wall_a_release_in_a_hold_up_walks_one_step_too_far_at_most():
+    # With the middle of the samples the lag was 443 ms here, and the
+    # character walked 30 to 37 units beyond the server.
+    too_far = []
+    for number in range(12):
+        release_at = 9100 + 25 * number
+        walk = started_against_a_wall(release_at)
+        result = walk.run()
+        frames = result["frames"]
+        final = walk.server_place()
+        over = final[0] - min(place(frame)[0] for frame in frames)  # the last walk goes left
+        assert over <= SERVER_STEP + EXACT, release_at
+        assert math.dist(place(frames[-1]), final) < 1e-9, release_at
+        too_far.append(over > EXACT)
+    assert sum(too_far) < len(too_far) / 2
+
+
+def after_five_ordinary_walks(release_at):
+    """Five short walks, then a walk with a release inside a hold-up."""
+    keys = []
+    for number in range(5):
+        at = 1000 + 1013 * number  # at another moment of the server's tick each time
+        keys += [(at, "down", "KeyD"), (at + 400, "up", "KeyD")]
+    keys += [(6500, "down", "KeyD"), (release_at, "up", "KeyD")]
+    return Scenario(keys, held_from(7600, 600), until=release_at + 2600, start=OPEN_START, steps=[["numbers", 6400]])
+
+
+def test_after_five_ordinary_walks_a_release_in_a_hold_up_walks_one_step_too_far_at_most():
+    too_far = []
+    for number in range(20):
+        release_at = 7650 + 23 * number
+        walk = after_five_ordinary_walks(release_at)
+        result = walk.run()
+        frames = result["frames"]
+        final = walk.server_place()
+        # The lag is the shortest of the five start delays: the way to the
+        # server and back plus the shortest wait for its tick.
+        assert 45 + 110 - TICK <= result["numbers"][0]["inputLagMs"] < 45 + 30 + 110 - TICK
+        over = furthest_right(frames) - final[0]
+        assert over <= SERVER_STEP + EXACT, release_at
+        assert way_back(frames, RIGHT) <= SERVER_STEP + EXACT, release_at
+        assert math.dist(place(frames[-1]), final) < 1e-9, release_at
+        too_far.append(over > EXACT)
+    assert sum(too_far) < len(too_far) / 2
+
+
+# ---- The end is exactly the server's position ---------------------------------------------------------
+
+
+@pytest.mark.parametrize("release_at", range(3150, 3426, 23))
+def test_with_uneven_ticks_a_release_in_a_hold_up_ends_exactly_on_the_servers_position(release_at):
+    # The bridged steps end up to a fifth of a unit beside the server's.
+    # "Less than 0.05 units beside it" is not on it: in five of these twelve
+    # releases the character stayed 0.04 units off.
+    walk = walk_right(held_from(3073, 600), until=6500, release_at=release_at, step_lengths=UNEVEN_STEPS)
+    result = walk.run()
+    assert result["bridge"]["steps"] >= 2
+    assert math.dist(place(result["frames"][-1]), walk.server_place()) < 1e-9
+
+
 # ---- l. The other players are drawn as before --------------------------------------------------
 
 
@@ -448,6 +652,51 @@ def test_switched_off_every_frame_is_the_same_as_without_bridge_js(name):
     assert switched_off["bridge"]["steps"] == 0
     assert switched_off["bridge"]["on"] is False
     assert not_loaded["bridge"] == {"on": False, "loaded": False}
+
+
+def everything_the_lobby_page_does():
+    """A walk through the hold-ups in which the lobby page calls everything the bridge hooks into.
+
+    The input is paused inside a hold-up and released again, a round starts
+    inside another one, and the world is stopped and started while the
+    player walks. Before every frame the own position is asked for.
+    """
+    keys = [(KEY_AT, "down", "KeyD"), (4200, "up", "KeyD"), (4400, "down", "KeyD"), (7000, "up", "KeyD"),
+            (7300, "down", "KeyD")]
+    steps = [
+        ["pause", 3000, True],  # inside the hold-up of 620 ms; the keys count as released
+        ["pause", 3600, False],
+        ["start_of_round", 5200],
+        ["stop", 6200],
+        ["start", 6400],
+        ["numbers", 7900],
+    ]
+    return Scenario(keys, HOLD_UPS, until=8000, start=OPEN_START, other=SOMEBODY, steps=steps)
+
+
+def test_switched_off_a_pause_a_round_start_and_a_restart_are_the_same_as_without_bridge_js():
+    walk = everything_the_lobby_page_does()
+    asked = [0, 40, 500, -30]
+    switched_off = walk.run(search="?bridge=off", ask=asked)
+    not_loaded = walk.run(bridge=False, ask=asked)
+    # Every frame: the camera, both characters with their feet and the side
+    # they face, the station in range, and the answers of ownDrawnPosition().
+    assert switched_off["frames"] == not_loaded["frames"]
+    assert switched_off["moves"] == not_loaded["moves"]
+    assert len(switched_off["frames"]) > 400
+    assert switched_off["bridge"]["steps"] == 0
+    # The same walk with the bridge on does bridge, so the comparison above
+    # is one of a walk in which the bridge had work to do.
+    assert walk.run()["bridge"]["steps"] > 0
+
+
+def test_switched_off_asking_for_the_own_position_changes_no_frame():
+    walk = everything_the_lobby_page_does()
+    asked = walk.run(search="?bridge=off", ask=[0, 40, 500, 5000, -30])["frames"]
+    never_asked = walk.run(search="?bridge=off")["frames"]
+    for frame in asked + never_asked:
+        del frame["asked"]
+    assert asked == never_asked
 
 
 @pytest.mark.parametrize("search", ["?bridge=off", "?debug&bridge=off", "?bridge=off&x=1"])
@@ -514,7 +763,7 @@ def test_asked_before_a_frame_the_own_position_is_what_that_frame_draws(name):
 
 
 def test_asked_before_a_frame_the_own_position_is_right_through_a_release_and_a_turn_in_a_hold_up():
-    for walk in [released_in_a_hold_up(3180), released_in_a_hold_up(3240), turned_in_a_hold_up(1540), turned_in_a_hold_up(1620)]:
+    for walk in [released_in_a_hold_up(3180), released_in_a_hold_up(3255), turned_in_a_hold_up(1620), turned_in_a_hold_up(1760)]:
         result = walk.run(ask=list(ASKED_AT_THE_FRAME))
         # These walks have a step taken back or a wrong guess corrected.
         assert result["bridge"]["takenBack"] + result["bridge"]["largeCorrections"] == 1

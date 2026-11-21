@@ -101,6 +101,11 @@ def held_from(time, milliseconds):
     return lambda number, sent_at: milliseconds if time <= sent_at < time + SERVER_TICK else 0
 
 
+def later_from(time, milliseconds):
+    """From `time` on every message takes `milliseconds` longer: the connection got slower for good."""
+    return lambda number, sent_at: milliseconds if sent_at >= time else 0
+
+
 # ---- The server ----------------------------------------------------------------------
 
 
@@ -162,21 +167,24 @@ class Scenario:
     step_lengths  see server_ticks()
     silent_from   the server sends nothing from this time on (it is the test's
                   way to say that the server never walked what the keys asked)
+    skipped       times: the server's first tick at or after each sends no
+                  message (this browser was still busy with the one before),
+                  so the next message holds two steps
     steps         more steps for the harness, each [name, time, ...]
     """
 
     def __init__(self, keys, delays, until, start=SPAWN, other=None, stands_from=math.inf, silent_from=math.inf,
-                 step_lengths=(SERVER_STEP,), steps=()):
+                 step_lengths=(SERVER_STEP,), skipped=(), steps=()):
         self.keys = sorted(keys)
         self.until = until
         self.start = start
         self.has_other = other is not None
         self.steps = list(steps)
         self.ticks = server_ticks(self.keys, until, start, stands_from, step_lengths)
-        self.sent = self._messages(other, silent_from)
+        self.sent = self._messages(other, silent_from, skipped)
         self.messages = self._deliver(delays)
 
-    def _messages(self, other, silent_from):
+    def _messages(self, other, silent_from, skipped):
         """[(sent_at, players)]: one message per tick in which somebody moved."""
         first = [{"name": OWN, "x": self.start[0], "y": self.start[1]}]
         if other:
@@ -190,7 +198,8 @@ class Scenario:
                 players.append({"name": OTHER, "x": now[0], "y": now[1]})
                 moved = moved or now != before
                 before = now
-            if moved and time < silent_from:
+            is_skipped = any(at <= time < at + SERVER_TICK for at in skipped)
+            if moved and time < silent_from and not is_skipped:
                 sent.append((time, players))
         return sent
 

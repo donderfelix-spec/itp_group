@@ -158,6 +158,16 @@ Game.world = Game.world || {};
   // At most this many bridged steps wait for the server: about 700 ms.
   // After a longer hold-up the character stands, as it did before.
   var MOST_BRIDGED_STEPS = 10;
+  // The first step of a bridge is drawn this much slower than the server
+  // walks. Often the positions are not held up but only a little later
+  // than the queue expected (the connection got slower, or the server
+  // skipped this browser for a tick). Then each position arrives a moment
+  // after the glide before it ended. At the server's exact pace the bridge
+  // would step in before every single one, for the rest of the walk, and
+  // guess every turn a step late (the input lag assumes the queue's usual
+  // wait). On the slower first step the next position arrives before the
+  // glide is over, so the queue takes over again and rebuilds its delay.
+  var FIRST_STEP_SLOWER = 1.1;
   // A bridged step only follows a glide that ended at most this long ago.
   // After a hidden tab or a long pause the character does not walk on.
   var LONGEST_WAIT_MILLISECONDS = 250;
@@ -280,15 +290,35 @@ Game.world = Game.world || {};
     return (sorted[middle - 1] + sorted[middle]) / 2;
   }
 
-  // How far the drawn character is behind the keys, in ms: the usual start
+  // How far the drawn character is behind the keys, in ms: the start
   // delay, plus the time a position waits in the queue before its glide
   // starts (the smallest playback delay minus the glide of one tick).
+  //
+  // The start delay is the smallest of the last samples, not their middle.
+  // A sample can only be too long: it contains the wait for the server's
+  // next tick, sometimes a hold-up, and the whole time at a wall when a
+  // walk starts against one. And only a lag that is too long does harm: the
+  // character walks on after a release and slides back a second later. With
+  // a lag that is too short the bridge stops a step early and walks that
+  // step when the positions arrive.
   function inputLag(samples, glideMilliseconds, tickMilliseconds) {
-    var startDelay = samples.length > 0 ? median(samples) : START_DELAY_BEFORE_MEASURED;
+    var startDelay = samples.length > 0 ? Math.min.apply(null, samples) : START_DELAY_BEFORE_MEASURED;
     return startDelay + glideMilliseconds - tickMilliseconds;
   }
 
   // ---- How long a tick of the server is -----------------------------------
+
+  // Is a change of the own position by (dx, dy) one step of the server?
+  // It has to move at all, and not further on an axis than the server can
+  // walk in one step (its speed times its cap: 9 units). A longer change is
+  // two steps in one message (the server skipped this browser for a tick)
+  // or the server putting the player somewhere: neither tells how long a
+  // tick is or when a walk started.
+  function isOneServerStep(dx, dy) {
+    var further = Math.max(Math.abs(dx), Math.abs(dy));
+    var longest = PLAYER_SPEED * MAX_STEP_SECONDS;
+    return further > SAME_PLACE && further <= longest + SAME_PLACE;
+  }
 
   // The server moves a player by its speed times the time it measured
   // since its last tick. That is a little more than 1/15 s (on the deployed
@@ -304,11 +334,21 @@ Game.world = Game.world || {};
   // The time is read from the axis that moved further. A straight step
   // covers speed x time on it; a diagonal step, also one that slides along
   // a wall, covers that divided by the square root of 2. A tick is never
-  // shorter than `tickMilliseconds`, so the two cannot be mixed up: at
-  // least a full tick's way on an axis is a straight step, at least a
-  // diagonal tick's way a diagonal one. A shorter step was stopped by a
-  // wall and tells nothing: the list is returned as it is.
+  // shorter than `tickMilliseconds`. So at least a full tick's way on an
+  // axis is read as a straight step, and at least a diagonal tick's way as
+  // a diagonal one. A shorter step was stopped by a wall and tells
+  // nothing, and neither does a change that is no single step (see
+  // isOneServerStep()): the list is returned as it is.
+  //
+  // Two kinds of step are read wrongly. A straight step that a wall
+  // shortened to between a diagonal tick's way and a full one (4.24 to 6
+  // units) is read as a diagonal: too long a time. A diagonal step of a
+  // tick of 94 ms or more is read as straight: too short a time. Both are
+  // single steps among the eight kept, and stepSeconds() takes the median.
   function rememberServerStep(samples, dx, dy, tickMilliseconds) {
+    if (!isOneServerStep(dx, dy)) {
+      return samples;
+    }
     var further = Math.max(Math.abs(dx), Math.abs(dy));
     var straight = PLAYER_SPEED * (tickMilliseconds / 1000); // the way of a straight tick
     var almost = 1e-6; // room for the last digits of a float
@@ -353,8 +393,8 @@ Game.world = Game.world || {};
   //   waitingSteps      how many bridged steps wait for the server
   //   history           the direction history, see rememberDirection()
   //   inputLag          see inputLag(), in ms
-  //   stepSeconds       see stepSeconds(): the time one step of the server covers
-  //   tickMilliseconds  how long the glide of one step lasts
+  //   stepSeconds       see stepSeconds(): the time one step of the server
+  //                     covers, which is also how long the step's glide lasts
   // Returns null, or the step {x, y, dx, dy, startAt, endAt}: the glide to
   // (x, y) starts at the end of the glide before, not at `now`, so the pace
   // stays even on every screen. (dx, dy) is the direction it walked.
@@ -381,8 +421,18 @@ Game.world = Game.world || {};
       dx: wanted.dx,
       dy: wanted.dy,
       startAt: startAt,
-      endAt: startAt + situation.tickMilliseconds
+      endAt: startAt + glideMilliseconds(situation)
     };
+  }
+
+  // How long the glide of a bridged step lasts: as long as the server
+  // takes for a step, so the bridge walks at the server's speed. (With a
+  // shorter glide the drawing gained on the server, a whole step every few
+  // seconds.) The first step of a bridge is a little slower, see
+  // FIRST_STEP_SLOWER.
+  function glideMilliseconds(situation) {
+    var serverStep = situation.stepSeconds * 1000;
+    return situation.waitingSteps === 0 ? serverStep * FIRST_STEP_SLOWER : serverStep;
   }
 
   // Where a player at `from` {x, y} is after one step of `seconds` in the
@@ -535,6 +585,7 @@ Game.world = Game.world || {};
     PLAYER_SPEED: PLAYER_SPEED,
     MAX_STEP_SECONDS: MAX_STEP_SECONDS,
     MOST_BRIDGED_STEPS: MOST_BRIDGED_STEPS,
+    FIRST_STEP_SLOWER: FIRST_STEP_SLOWER,
     LONGEST_WAIT_MILLISECONDS: LONGEST_WAIT_MILLISECONDS,
     TAKE_BACK_MILLISECONDS: TAKE_BACK_MILLISECONDS,
     SAME_PLACE: SAME_PLACE,
@@ -547,6 +598,7 @@ Game.world = Game.world || {};
     walkStart: walkStart,
     rememberStartDelay: rememberStartDelay,
     inputLag: inputLag,
+    isOneServerStep: isOneServerStep,
     rememberServerStep: rememberServerStep,
     stepSeconds: stepSeconds,
     nextStep: nextStep,

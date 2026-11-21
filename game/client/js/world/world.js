@@ -415,6 +415,7 @@ Game.world = Game.world || {};
     var previous = player.server;
     player.server = { x: x, y: y };
     var isPlacement = now < player.placedUntil;
+    // receiveOwnPosition() has the same test: CHANGE BOTH TOGETHER.
     if (!previous || isFarApart(previous, x, y) || isPlacement) {
       // The first position, a respawn or the start of a round: shown at
       // once, without waiting behind the queue. moveTo() puts it there.
@@ -603,9 +604,9 @@ Game.world = Game.world || {};
     playQueue(player, now);
     bridgeOwnGaps(player, ownWalk, now, bridgeTally);
     var previous = player.server;
+    // The same test as in receivePosition(): CHANGE BOTH TOGETHER.
     var isShownAtOnce = !previous || isFarApart(previous, x, y) || now < player.placedUntil;
-    var isAStep = Boolean(previous) && bridge.differs(previous, { x: x, y: y }) && !isShownAtOnce;
-    noteOwnArrival(isAStep ? { dx: x - previous.x, dy: y - previous.y } : null, now);
+    noteOwnArrival(isShownAtOnce ? null : { dx: x - previous.x, dy: y - previous.y }, now);
     if (isShownAtOnce) {
       // The first position, a respawn or the start of a round: nothing of
       // the walk before counts any more. Handled like for everybody.
@@ -621,22 +622,27 @@ Game.world = Game.world || {};
     }
   }
 
-  // Writes down that an own position arrived. `step` is how far the server
-  // walked the player since the position before, {dx, dy} in map units, or
-  // null when this is no step of a walk. If it is the first step of a walk
-  // that started from standing, the time since the key is one sample of
-  // the start delay.
-  function noteOwnArrival(step, now) {
+  // Writes down that an own position arrived. `change` is how far it is
+  // from the position before, {dx, dy} in map units, or null for a
+  // position that is shown at once (no walk). A change that is one step of
+  // the server tells how long its tick was. If it is the first change of a
+  // walk that started from standing, the time since the key is one sample
+  // of the start delay.
+  function noteOwnArrival(change, now) {
     ownWalk.lastArrivalAt = now;
-    if (step === null) {
+    var hasMoved = change !== null && bridge.differs({ x: 0, y: 0 }, { x: change.dx, y: change.dy });
+    if (!hasMoved) {
       return;
     }
-    serverStepTimes = bridge.rememberServerStep(serverStepTimes, step.dx, step.dy, TICK_MILLISECONDS);
     ownWalk.lastMoveArrivedAt = now;
-    if (ownWalk.startedAt !== null) {
+    var isOneStep = bridge.isOneServerStep(change.dx, change.dy);
+    serverStepTimes = bridge.rememberServerStep(serverStepTimes, change.dx, change.dy, TICK_MILLISECONDS);
+    if (ownWalk.startedAt !== null && isOneStep) {
       startDelays = bridge.rememberStartDelay(startDelays, now - ownWalk.startedAt);
-      ownWalk.startedAt = null;
     }
+    // The walk has begun, also when its first message held two steps
+    // (then it is no sample): later positions are not its start.
+    ownWalk.startedAt = null;
   }
 
   // Where the server is believed to be once the drawing has ended: at the
@@ -720,8 +726,7 @@ Game.world = Game.world || {};
       waitingSteps: walk.waiting.length,
       history: walk.history,
       inputLag: currentInputLag(),
-      stepSeconds: serverStepSeconds(),
-      tickMilliseconds: TICK_MILLISECONDS
+      stepSeconds: serverStepSeconds()
     };
   }
 
@@ -775,7 +780,8 @@ Game.world = Game.world || {};
       return;
     }
     walk.mayBeOffServer = false;
-    if (bridge.differs(player.to, player.server)) {
+    // Compared exactly: a hair beside the server's position is not on it.
+    if (player.to.x !== player.server.x || player.to.y !== player.server.y) {
       // From the moment this became due, not from `now`: a late frame
       // then draws the character where it would have been.
       var startAt = Math.max(glideEndsAt, walk.forgottenAt);

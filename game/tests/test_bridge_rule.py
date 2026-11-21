@@ -316,15 +316,29 @@ def test_before_a_sample_the_input_lag_is_100_ms_plus_the_wait_in_the_queue():
     assert call("inputLag", [], GLIDE, TICK) == pytest.approx(100 + GLIDE - TICK)
 
 
-@pytest.mark.parametrize("samples, median", [
+@pytest.mark.parametrize("samples, smallest", [
     ([80], 80),
-    ([80, 120], 100),  # an even count: the mean of the two middle ones
-    ([400, 70, 90], 90),  # one sample during a hold-up does not count
-    ([90, 30, 400, 70, 110], 90),
-    ([100, 9, 20, 11], 15.5),  # sorted as numbers, not as text
+    ([80, 120], 80),
+    ([400, 70, 90], 70),  # a sample during a hold-up does not count
+    ([400, 400, 400, 400, 62], 62),  # nor do four walks that started against a wall
+    ([90, 30, 400, 70, 110], 30),
+    ([100, 9, 20, 11], 9),  # compared as numbers, not as text
 ])
-def test_the_input_lag_is_the_median_start_delay_plus_the_wait_in_the_queue(samples, median):
-    assert call("inputLag", samples, GLIDE, TICK) == pytest.approx(median + GLIDE - TICK)
+def test_the_input_lag_is_the_smallest_start_delay_plus_the_wait_in_the_queue(samples, smallest):
+    # A sample can only be too long (the wait for the server's tick, a
+    # hold-up, the time at a wall), so the smallest one is the best.
+    assert call("inputLag", samples, GLIDE, TICK) == pytest.approx(smallest + GLIDE - TICK)
+
+
+def test_a_long_sample_leaves_the_last_five_after_five_more_walks():
+    samples = [400]
+    for delay in [70, 75, 80, 85]:
+        samples = call("rememberStartDelay", samples, delay)
+    assert call("inputLag", samples, GLIDE, TICK) == pytest.approx(70 + GLIDE - TICK)
+    # The connection got slower: after five walks the old short sample is gone.
+    for delay in [150, 160, 155, 170, 165]:
+        samples = call("rememberStartDelay", samples, delay)
+    assert call("inputLag", samples, GLIDE, TICK) == pytest.approx(150 + GLIDE - TICK)
 
 
 # ---- How long a tick of the server is ----------------------------------------------------
@@ -361,6 +375,35 @@ def test_a_diagonal_step_that_slides_along_a_wall_tells_the_same_time(dx, dy):
 def test_a_step_stopped_by_a_wall_tells_nothing(dx, dy):
     assert remember([SECONDS], dx, dy) == [SECONDS]
     assert remember([], dx, dy) == []
+
+
+@pytest.mark.parametrize("dx, dy", [(12.2, 0), (0, -9.1), (8.63, 8.63 + 1), (-40, 3), (59, 59)])
+def test_a_change_further_than_the_server_walks_in_one_step_tells_nothing(dx, dy):
+    # Two steps in one message (the server skipped this browser for a
+    # tick), or the server put the player somewhere.
+    assert remember([SECONDS], dx, dy) == [SECONDS]
+    assert call("isOneServerStep", dx, dy) is False
+
+
+@pytest.mark.parametrize("dx, dy, one_step", [
+    (6.1, 0, True), (0, -6.1, True), (DIAGONAL, DIAGONAL, True), (0.3, 0, True),
+    (9, 0, True), (-9, 9, True),  # the longest step: 90 units per second for the cap of 0.1 s
+    (9.2, 0, False), (0, 0, False), (0.04, -0.04, False),
+])
+def test_what_counts_as_one_step_of_the_server(dx, dy, one_step):
+    assert call("isOneServerStep", dx, dy) is one_step
+
+
+def test_two_kinds_of_step_are_read_wrongly_and_the_median_drops_them():
+    # A straight step that a wall shortened to 5 units is read as a diagonal
+    # (too long a time); a diagonal step of a tick of 100 ms is read as
+    # straight (too short a time). Among ordinary steps neither changes the result.
+    shortened = remember([], 5, 0)
+    assert shortened == [pytest.approx(5 * math.sqrt(2) / 90)]
+    slow_diagonal = remember([], 9 / math.sqrt(2), 9 / math.sqrt(2))
+    assert slow_diagonal == [pytest.approx(9 / math.sqrt(2) / 90)]
+    samples = [SECONDS, SECONDS, SECONDS] + shortened + slow_diagonal + [SECONDS, SECONDS]
+    assert call("stepSeconds", samples, TICK) == pytest.approx(SECONDS)
 
 
 def test_a_tick_of_exactly_a_fifteenth_of_a_second_is_read_right_on_both_kinds_of_step():
@@ -407,7 +450,6 @@ def situation(**changes):
         "history": HELD_RIGHT,
         "inputLag": 120,
         "stepSeconds": TICK / 1000,
-        "tickMilliseconds": TICK,
     }
     base.update(changes)
     return base
@@ -436,19 +478,41 @@ def test_in_the_open_with_the_key_held_a_step_is_made():
     assert (step["dx"], step["dy"]) == (1, 0)  # the direction it walked is kept with it
 
 
-def test_the_step_is_as_long_as_the_servers_steps_and_its_glide_lasts_one_tick():
-    step = next_step(stepSeconds=6.1 / 90)
+SERVER_TICK_SECONDS = 6.1 / 90  # a tick of the deployed server: 67.8 ms, 6.1 units per step
+
+
+def test_the_step_is_as_long_as_the_servers_steps():
+    step = next_step(stepSeconds=SERVER_TICK_SECONDS)
     assert step["x"] == pytest.approx(SPAWN[0] + 6.1)
-    assert step["endAt"] - step["startAt"] == pytest.approx(TICK)
-    assert (step["x"], step["y"]) == movement.step(*SPAWN, 1, 0, 6.1 / 90, SOLIDS, WIDTH, HEIGHT)
+    assert (step["x"], step["y"]) == movement.step(*SPAWN, 1, 0, SERVER_TICK_SECONDS, SOLIDS, WIDTH, HEIGHT)
 
 
-def test_the_step_starts_at_the_end_of_the_glide_before_and_lasts_one_tick():
+def test_the_glide_of_a_step_lasts_as_long_as_the_server_takes_for_it():
+    # Not one tick of the browser (66.7 ms): drawn faster than the server
+    # walks, the character gained a whole step on it every few seconds.
+    step = next_step(stepSeconds=SERVER_TICK_SECONDS, waitingSteps=1)
+    assert step["endAt"] - step["startAt"] == pytest.approx(SERVER_TICK_SECONDS * 1000)
+    way = step["x"] - SPAWN[0]
+    assert way / ((step["endAt"] - step["startAt"]) / 1000) == pytest.approx(movement.PLAYER_SPEED)
+
+
+def test_the_first_step_of_a_bridge_is_drawn_a_tenth_slower():
+    # So a position that is only a little late arrives before the glide is
+    # over, and the queue takes over again.
+    first = next_step(stepSeconds=SERVER_TICK_SECONDS, waitingSteps=0)
+    assert first["endAt"] - first["startAt"] == pytest.approx(1.1 * SERVER_TICK_SECONDS * 1000)
+    assert first["x"] == pytest.approx(SPAWN[0] + 6.1)  # as far as every step
+    for waiting in [1, 2, 9]:
+        later = next_step(stepSeconds=SERVER_TICK_SECONDS, waitingSteps=waiting)
+        assert later["endAt"] - later["startAt"] == pytest.approx(SERVER_TICK_SECONDS * 1000)
+
+
+def test_the_step_starts_at_the_end_of_the_glide_before():
     # Not at `now`: so the pace is the same however late the frame is.
     for now in [10_000, 10_005, 10_033, 10_250]:
-        step = next_step(now=now)
+        step = next_step(now=now, waitingSteps=1)
         assert step["startAt"] == 10_000
-        assert step["endAt"] == pytest.approx(10_000 + TICK)
+        assert step["endAt"] == pytest.approx(10_000 + TICK)  # the server's tick of this situation
 
 
 def test_no_step_while_the_map_is_not_loaded():
