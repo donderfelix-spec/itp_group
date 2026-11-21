@@ -25,8 +25,8 @@ window.Game = window.Game || {};
 
   // The stations with a minigame (station 6 is not in use yet). Must equal
   // the stations of MINIGAMES in server/modes/minigames.py (checked by
-  // tests/test_client_stations_in_use.py). Only Classic uses it; M3-3.17
-  // will replace it with the player's own task list from the server.
+  // tests/test_client_stations_in_use.py). Classic checks the own task list
+  // from the server against it (rememberClassicTasks).
   const STATIONS_IN_USE = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12];
   // Errors after which no task is open on the server, so no window may stay.
   // `task_failed` is in the list because a fault while closing or finishing
@@ -39,7 +39,10 @@ window.Game = window.Game || {};
   // The stations this player has finished in the running round. The server
   // keeps the real list; this one only decides which stations glow.
   let finishedStations = new Set();
-  let classicTask = null; // first of the own remaining stations sent privately
+  // The own unfinished Classic stations, sent to this player alone
+  // (`task_stations`). A Free Rider's list is empty: no station pulses for
+  // them and "E Use" lights up nowhere; they fake tasks by standing at one.
+  let classicTasks = [];
   // True from the moment this browser asked to log out until the server
   // answers. It tells a wanted `signed_out` from one that came unasked.
   let logOutWasAsked = false;
@@ -80,7 +83,7 @@ window.Game = window.Game || {};
     Game.countdown.reset();
     roundIsRunning = false;
     finishedStations = new Set();
-    classicTask = null;
+    classicTasks = [];
     if (!worldIsRunning) return;
     worldIsRunning = false;
     callWorld('stop');
@@ -135,10 +138,11 @@ window.Game = window.Game || {};
 
   // Which stations glow and can be used: outside a round none. In a Duel
   // only the player's next station, and none once all are done (S-94). In
-  // any other round the ones in use that this player has not finished yet.
+  // Classic the own unfinished list (M3-3.17). In any other round the ones
+  // in use that this player has not finished yet.
   function usableStations() {
     if (!roundIsRunning) return [];
-    if (mode === 'classic') return classicTask === null ? [] : [classicTask];
+    if (mode === 'classic') return classicTasks.slice();
     if (hasOneTaskAtATime()) {
       const next = Game.duel.nextStation();
       return next === null ? [] : [next];
@@ -175,7 +179,7 @@ window.Game = window.Game || {};
     }
     if (!isRound) {
       Game.minigames.close(); // no round, no task
-      classicTask = null;
+      classicTasks = [];
     }
     roundIsRunning = isRound;
   }
@@ -289,7 +293,7 @@ window.Game = window.Game || {};
     if (mode !== 'classic' || !roundIsRunning || !Array.isArray(stations)
         || stations.length > STATIONS_IN_USE.length || new Set(stations).size !== stations.length
         || !stations.every((station) => Number.isInteger(station) && STATIONS_IN_USE.includes(station))) return;
-    classicTask = stations.length ? stations[0] : null;
+    classicTasks = stations.slice();
   }
 
   function whenClassicRole(message) {
