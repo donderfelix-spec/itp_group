@@ -9,18 +9,20 @@ lobby of eight, on a good connection and behind the delay proxy) and what
   sent a second later, and goes on from the server's place when the
   messages arrive;
 - a walk that starts again a moment after a stop, with every message on
-  time: one step is bridged and nothing needs a correction;
+  time: nothing is bridged and nothing needs a correction;
 - a change of direction with a short moment in which no key is held, with
   every message on time. A player who lets go of one key before pressing
   the next does this all the time. If the server's tick falls into that
   moment, the server sends no position for it (nobody moved), and the
-  bridge takes that for a held-up message: it walks one step on in the old
-  direction and is corrected by one step each way (8.6 units after a
+  bridge took that for a held-up message: it walked one step on in the old
+  direction and was corrected by one step each way (8.6 units after a
   quarter turn, 12.2 after a reversal). In the browser this showed on a
   connection without any delay: "corrections: largest units: 12.25, above
-  1.5 units: 2" after 26 seconds of walking. The first test below says how
-  far that goes at most; the second one says what the to-do expects (no
-  wrong guess while the messages are on time) and is marked as failing.
+  1.5 units: 2" after 26 seconds of walking. Since then the bridge makes
+  no step when no key was held at some time near the moment it reads the
+  direction from (within a tick and a half of the server), and the
+  character waits for the server's position as it did before the bridge.
+  The tests below sweep such changes of direction over the server's tick.
 """
 
 import functools
@@ -89,30 +91,126 @@ def test_a_change_of_direction_through_a_moment_without_keys_is_guessed_one_step
         assert math.dist(place(frames[-1]), walk.server_place()) < 1e-9
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "Found in the play test of M2-1.16: with every message on time the bridge still guesses a step wrong when the "
-    "server's tick falls into the moment without keys of a change of direction (correction of 8.6 or 12.2 units). "
-    "Remove this mark when that is fixed, or the test when the team accepts it as a known limit of S-121."
-))
 @pytest.mark.parametrize("kind", NEXT_KEYS)
 def test_with_messages_on_time_a_change_of_direction_is_never_guessed_wrong(kind):
     wrong = [change_at for change_at in CHANGES_AT if change_of_direction(kind, change_at)[1]["bridge"]["largeCorrections"] > 0]
     assert wrong == []
 
 
+# The same, wider: every way a player changes direction through a moment
+# without a direction, for moments of 5 to 120 ms, at twelve times spread
+# over one tick of the server.
+
+MOMENTS_WITHOUT_A_DIRECTION = [5, 10, 30, 60, 120]  # ms
+TWELVE_TIMES = [1900 + 68 * number / 12 for number in range(12)]
+WAYS_TO_CHANGE = ["a reversal", "a quarter turn", "a stop and go", "a reversal with both keys down"]
+
+
+def keys_of_a_change(way, change_at, milliseconds, first_key_at=KEY_AT):
+    """Walk right, change direction through `milliseconds` without a direction, walk on for half a second."""
+    again_at = change_at + milliseconds
+    if way == "a reversal with both keys down":
+        # The opposite key is pressed while the first is still down: right
+        # and left cancel each other until the first key is released.
+        return [(first_key_at, "down", "KeyD"), (change_at, "down", "KeyA"), (again_at, "up", "KeyD"), (again_at + 500, "up", "KeyA")]
+    next_key = {"a reversal": "KeyA", "a quarter turn": "KeyS", "a stop and go": "KeyD"}[way]
+    return [(first_key_at, "down", "KeyD"), (change_at, "up", "KeyD"), (again_at, "down", next_key), (again_at + 500, "up", next_key)]
+
+
+def changed(way, change_at, milliseconds, first_key_at=KEY_AT):
+    keys = keys_of_a_change(way, change_at, milliseconds, first_key_at)
+    return Scenario(keys, on_time(), until=change_at + milliseconds + 2600, start=open_square(120))
+
+
+def assert_nothing_was_guessed(walk, result, where):
+    frames = result["frames"]
+    numbers = result["bridge"]
+    # No correction at all, large or small, and nothing taken back.
+    assert numbers["corrections"] == 0 and numbers["largeCorrections"] == 0 and numbers["takenBack"] == 0, where
+    # No bridged step in the old direction: the character is never drawn
+    # beyond the place where the server stopped or turned.
+    furthest = max(x for x, _ in walk.server_path())
+    assert max(place(frame)[0] for frame in frames) <= furthest + EXACT, where
+    assert overlapping(frames) == [], where
+    assert math.dist(place(frames[-1]), walk.server_place()) < 1e-9, where
+
+
+@pytest.mark.parametrize("milliseconds", MOMENTS_WITHOUT_A_DIRECTION)
+@pytest.mark.parametrize("way", WAYS_TO_CHANGE)
+def test_with_messages_on_time_no_way_of_changing_direction_is_guessed_wrong(way, milliseconds):
+    servers_ticks_in_the_moment = 0
+    for change_at in TWELVE_TIMES:
+        walk = changed(way, change_at, milliseconds)
+        assert_nothing_was_guessed(walk, walk.run(), (way, milliseconds, change_at))
+        # Did the server stand for a tick? Then one position less was sent.
+        moved = [was_moved for time, _, was_moved in walk.ticks if 1500 < time < change_at + milliseconds + 400]
+        servers_ticks_in_the_moment += moved.count(False) > 0
+    # The sweep hits what it is for: in some of the twelve the server's tick
+    # fell into the moment without a direction (in all of them when the
+    # moment is longer than a tick).
+    assert servers_ticks_in_the_moment >= 1
+    if milliseconds > 68:
+        assert servers_ticks_in_the_moment == 12
+
+
+@pytest.mark.parametrize("first_key_at", [KEY_AT + 17, KEY_AT + 34, KEY_AT + 51])
+@pytest.mark.parametrize("way", ["a reversal", "a quarter turn"])
+def test_the_same_holds_whenever_the_first_key_fell_within_the_servers_tick(way, first_key_at):
+    # The input lag is measured at the start of the walk and contains the
+    # wait for the server's next tick, a different one for each of these
+    # keys. With one tick on each side, 4 of 240 such changes were still
+    # guessed wrong; with a tick and a half none.
+    for change_at in TWELVE_TIMES:
+        walk = changed(way, change_at, 30, first_key_at)
+        assert_nothing_was_guessed(walk, walk.run(), (way, first_key_at, change_at))
+
+
+@pytest.mark.parametrize("way", WAYS_TO_CHANGE)
+def test_a_change_of_direction_is_drawn_as_without_the_bridge_except_for_the_own_delay(way):
+    identical = 0
+    for milliseconds in [10, 60]:
+        for change_at in TWELVE_TIMES[::3]:
+            walk = changed(way, change_at, milliseconds)
+            with_bridge = walk.run()["frames"]
+            without = walk.run(search="?bridge=off")["frames"]
+            assert len(with_bridge) == len(without)
+            # Up to the change, and for 100 ms after it, every frame is the same.
+            early = [frame["t"] <= change_at + 100 for frame in with_bridge]
+            assert [f for f, is_early in zip(with_bridge, early) if is_early] == [f for f, is_early in zip(without, early) if is_early]
+            # Afterwards the only difference is the own delay. When the
+            # server stood for a tick, one message is missing; without the
+            # bridge the playback delay grows with that gap (to about 150
+            # ms), with it the own character stays at 110 ms. So the two
+            # drawings are less than half a step apart for the rest of the
+            # walk, and they end on the same place.
+            apart = max(math.dist(place(a), place(b)) for a, b in zip(with_bridge, without))
+            assert apart < 3.1, (milliseconds, change_at)
+            assert place(with_bridge[-1]) == place(without[-1])
+            # And like without the bridge the character never stands while
+            # the new key is held (after the start of the new walk).
+            new_walk = change_at + milliseconds
+            assert frozen(with_bridge, new_walk + 200, new_walk + 500) == frozen(without, new_walk + 200, new_walk + 500) == []
+            identical += with_bridge == without
+    # Where the server did not stand for a tick, there is no gap and no difference at all.
+    assert identical >= 2
+
+
 # ---- A walk that starts again a moment after a stop, messages on time ------------------------------
 
 
 @pytest.mark.parametrize("pause", [150, 300, 390])
-def test_a_walk_that_starts_again_within_400_ms_bridges_one_step_and_needs_no_correction(pause):
+def test_a_walk_that_starts_again_within_400_ms_is_not_bridged_and_needs_no_correction(pause):
     # After a pause shorter than PAUSE_MILLISECONDS in world.js the queue
     # starts without its delay, so the second position of the new walk
-    # arrives a moment after the first glide ended: one bridged step.
+    # arrives a moment after the first glide ended. Before the bridge kept
+    # away from a moment without keys, it stepped in there once; now the
+    # walk has only just begun, and the character waits for the position
+    # as it did before the bridge.
     keys = [(KEY_AT, "down", "KeyD"), (1900, "up", "KeyD"), (1900 + pause, "down", "KeyD"), (2900, "up", "KeyD")]
     walk = Scenario(keys, on_time(), until=5000, start=open_square(120))
     result = walk.run()
     numbers = result["bridge"]
-    assert numbers["steps"] == 1 and numbers["replaced"] == 1
+    assert numbers["steps"] == 0 and numbers["replaced"] == 0
     assert numbers["corrections"] == 0 and numbers["takenBack"] == 0
     assert way_back(result["frames"], RIGHT) == 0
     assert math.dist(place(result["frames"][-1]), walk.server_place()) < 1e-9

@@ -311,22 +311,27 @@ def released_in_a_hold_up(release_at, **more):
 
 
 @pytest.mark.parametrize("release_at", RELEASES)
-def test_released_in_a_hold_up_the_character_stops_within_one_tick_of_the_server(release_at):
+def test_released_in_a_hold_up_the_character_stops_short_of_the_server_never_beyond_it(release_at):
     stop = released_in_a_hold_up(release_at)
     frames = stop.run()["frames"]
     arrives = stop.arrival(30)
     assert stop.arrival(29) < 3150 and arrives == pytest.approx(3698)
     # It stands before the held messages arrive ...
     assert frozen(frames, arrives - 100, arrives - 1) == [frame["t"] for frame in between(frames, arrives - 100, arrives - 1)]
-    # ... at most one step of the server from where the server stopped.
+    # ... where the server stopped, or up to two steps before it. The
+    # bridge keeps a tick and a half away from the release: when exactly
+    # the server read the keys is not known, and a step too far is taken
+    # back, which looks worse than a step that comes a moment later.
     standing_at = place(between(frames, 0, arrives - 1)[-1])
-    assert math.dist(standing_at, stop.server_place()) <= SERVER_STEP + 0.6
+    short = stop.server_place()[0] - standing_at[0]
+    assert -EXACT <= short <= 2 * SERVER_STEP + EXACT
 
 
 @pytest.mark.parametrize("release_at", RELEASES)
 def test_released_in_a_hold_up_the_character_ends_exactly_on_the_servers_position(release_at):
     stop = released_in_a_hold_up(release_at)
-    frames = stop.run()["frames"]
+    result = stop.run()
+    frames = result["frames"]
     arrives = stop.arrival(30)
     final = stop.server_place()
     late = between(frames, arrives + 1200)
@@ -334,24 +339,10 @@ def test_released_in_a_hold_up_the_character_ends_exactly_on_the_servers_positio
     for frame in late:
         assert math.dist(place(frame), final) <= 0.05, frame["t"]
     assert place(frames[-1]) == pytest.approx(final, abs=EXACT)
-    # One made-up step at most is taken back.
-    assert way_back(frames, RIGHT) <= 7
-
-
-def test_some_releases_in_a_hold_up_walk_one_step_too_far_and_take_it_back():
-    # The measured input lag is known to within one tick only (the start
-    # delay it is made of contains the wait for the server's tick). So the
-    # character may walk one step further than the server; the step is
-    # taken back a second after the last sign of life.
-    taken_back = []
-    for release_at in RELEASES:
-        stop = released_in_a_hold_up(release_at)
-        result = stop.run()
-        numbers = result["bridge"]
-        assert numbers["steps"] - numbers["replaced"] in (0, 1)
-        assert numbers["takenBack"] == numbers["steps"] - numbers["replaced"]
-        taken_back.append(numbers["takenBack"])
-    assert 0 < sum(taken_back) < len(taken_back)
+    # No step is made up that the server did not walk: nothing goes back.
+    assert way_back(frames, RIGHT) == 0
+    assert result["bridge"]["takenBack"] == 0
+    assert result["bridge"]["steps"] == result["bridge"]["replaced"] >= 1
 
 
 # ---- f. The player turns in the middle of a hold-up ------------------------------------------
@@ -495,9 +486,7 @@ def test_after_a_skipped_tick_a_turn_is_not_guessed_wrong():
 @pytest.mark.parametrize("name, delays, most_beyond", [
     ("the walking diagnostic's run", HOLD_UPS, 0),
     ("bunched messages", looped(FELIX), 0),
-    # In this one the very first position of the walk is 100 ms late, so the
-    # input lag (measured from it) is 100 ms too long for the whole walk.
-    ("the bad second", looped(FELIX_BAD_SECOND), 1),
+    ("the bad second", looped(FELIX_BAD_SECOND), 0),
 ], ids=lambda value: value if isinstance(value, str) else "")
 def test_a_release_at_any_moment_of_a_measured_connection_ends_on_the_servers_position(name, delays, most_beyond):
     beyond = 0
@@ -507,8 +496,8 @@ def test_a_release_at_any_moment_of_a_measured_connection_ends_on_the_servers_po
         frames = walk.run()["frames"]
         final = walk.server_place()
         over = furthest_right(frames) - final[0]
-        # At most one step too far, taken back within the time the bridge waits for the server.
-        assert over <= SERVER_STEP + EXACT, release_at
+        # Never beyond the place where the server stopped.
+        assert over <= EXACT, release_at
         assert way_back(frames, RIGHT) <= SERVER_STEP + EXACT, release_at
         assert math.dist(place(frames[-1]), final) < 1e-9, release_at
         assert frozen(frames, SETTLED, release_at) == [], release_at
@@ -544,7 +533,7 @@ def test_walks_started_against_a_wall_give_samples_that_are_far_too_long():
     assert result["bridge"]["inputLagMs"] < 70 + SERVER_TICK + 110 - TICK
 
 
-def test_after_four_starts_against_a_wall_a_release_in_a_hold_up_walks_one_step_too_far_at_most():
+def test_after_four_starts_against_a_wall_a_release_in_a_hold_up_does_not_walk_too_far():
     # With the middle of the samples the lag was 443 ms here, and the
     # character walked 30 to 37 units beyond the server.
     too_far = []
@@ -558,7 +547,7 @@ def test_after_four_starts_against_a_wall_a_release_in_a_hold_up_walks_one_step_
         assert over <= SERVER_STEP + EXACT, release_at
         assert math.dist(place(frames[-1]), final) < 1e-9, release_at
         too_far.append(over > EXACT)
-    assert sum(too_far) < len(too_far) / 2
+    assert sum(too_far) == 0
 
 
 def after_five_ordinary_walks(release_at):
@@ -571,7 +560,7 @@ def after_five_ordinary_walks(release_at):
     return Scenario(keys, held_from(7600, 600), until=release_at + 2600, start=OPEN_START, steps=[["numbers", 6400]])
 
 
-def test_after_five_ordinary_walks_a_release_in_a_hold_up_walks_one_step_too_far_at_most():
+def test_after_five_ordinary_walks_a_release_in_a_hold_up_does_not_walk_too_far():
     too_far = []
     for number in range(20):
         release_at = 7650 + 23 * number
@@ -587,7 +576,7 @@ def test_after_five_ordinary_walks_a_release_in_a_hold_up_walks_one_step_too_far
         assert way_back(frames, RIGHT) <= SERVER_STEP + EXACT, release_at
         assert math.dist(place(frames[-1]), final) < 1e-9, release_at
         too_far.append(over > EXACT)
-    assert sum(too_far) < len(too_far) / 2
+    assert sum(too_far) == 0
 
 
 # ---- The end is exactly the server's position ---------------------------------------------------------
@@ -600,7 +589,7 @@ def test_with_uneven_ticks_a_release_in_a_hold_up_ends_exactly_on_the_servers_po
     # releases the character stayed 0.04 units off.
     walk = walk_right(held_from(3073, 600), until=6500, release_at=release_at, step_lengths=UNEVEN_STEPS)
     result = walk.run()
-    assert result["bridge"]["steps"] >= 2
+    assert result["bridge"]["steps"] >= 1
     assert math.dist(place(result["frames"][-1]), walk.server_place()) < 1e-9
 
 
@@ -763,11 +752,14 @@ def test_asked_before_a_frame_the_own_position_is_what_that_frame_draws(name):
 
 
 def test_asked_before_a_frame_the_own_position_is_right_through_a_release_and_a_turn_in_a_hold_up():
-    for walk in [released_in_a_hold_up(3180), released_in_a_hold_up(3255), turned_in_a_hold_up(1620), turned_in_a_hold_up(1760)]:
+    never_walked = walk_right(on_time(), until=6500, silent_from=2500)  # ten steps are taken back
+    for walk in [released_in_a_hold_up(3180), never_walked, turned_in_a_hold_up(1620), turned_in_a_hold_up(1760)]:
         result = walk.run(ask=list(ASKED_AT_THE_FRAME))
-        # These walks have a step taken back or a wrong guess corrected.
-        assert result["bridge"]["takenBack"] + result["bridge"]["largeCorrections"] == 1
+        assert result["bridge"]["steps"] >= 1
         assert_asked_is_drawn(result["frames"])
+    # The last three have steps taken back or a wrong guess corrected.
+    assert never_walked.run()["bridge"]["takenBack"] == 1
+    assert turned_in_a_hold_up(1620).run()["bridge"]["largeCorrections"] == 1
 
 
 @pytest.mark.parametrize("name", ["felix", "hold-ups", "bad second", "long hold-up"])
@@ -842,11 +834,13 @@ def test_a_correction_does_not_turn_the_character_and_does_not_restart_its_feet(
         assert straight - 1e-9 <= advanced <= 1.5 * straight + 1e-9, frame["t"]
 
 
-def test_a_step_that_is_taken_back_does_not_turn_the_character_or_move_its_feet():
-    stop = released_in_a_hold_up(3180)
-    result = stop.run()
+def test_steps_that_are_taken_back_do_not_turn_the_character_or_move_its_feet():
+    # The server never walked what the keys asked for from 2.5 s on; the
+    # key is released a little later. The steps made up are taken back.
+    walk = walk_right(on_time(), until=6500, silent_from=2500, release_at=3000)
+    result = walk.run()
     frames = result["frames"]
-    assert result["bridge"]["takenBack"] == 1
+    assert result["bridge"]["takenBack"] == 1 and 2 <= result["bridge"]["steps"] <= 8
     moved_back = [frame for before, frame in pairs(frames, 0) if place(frame)[0] < place(before)[0] - EXACT]
     assert len(moved_back) >= 3  # it glides back over one tick
     for frame in moved_back:

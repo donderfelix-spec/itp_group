@@ -479,7 +479,8 @@ SERVER_STEP_MS = SERVER_STEP / 90 * 1000  # the time the server of these tests m
 
 def counted_through_the_hold_ups():
     """The walk through the hold-ups, with the counts written down right before and after each held message arrives."""
-    walk = walk_right(HOLD_UPS, until=KEY_AT + 9500, release_at=KEY_AT + 7100)
+    # The key is released well after the last hold-up: near a release the bridge does not step in.
+    walk = walk_right(HOLD_UPS, until=KEY_AT + 9800, release_at=KEY_AT + 7350)
     for number in HELD_MESSAGES:
         walk.steps += [["numbers", walk.arrival(number) - 0.5], ["numbers", walk.arrival(number) + 0.5]]
     return walk, walk.run()

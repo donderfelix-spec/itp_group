@@ -168,6 +168,9 @@ Game.world = Game.world || {};
   // wait). On the slower first step the next position arrives before the
   // glide is over, so the queue takes over again and rebuilds its delay.
   var FIRST_STEP_SLOWER = 1.1;
+  // How far the bridge keeps away from a moment without keys, in ticks of
+  // the server on each side, see bridgedDirection().
+  var NEAR_A_STANDSTILL_TICKS = 1.5;
   // A bridged step only follows a glide that ended at most this long ago.
   // After a hidden tab or a long pause the character does not walk on.
   var LONGEST_WAIT_MILLISECONDS = 250;
@@ -239,6 +242,18 @@ Game.world = Game.world || {};
 
   function isStanding(someDirection) {
     return someDirection.dx === 0 && someDirection.dy === 0;
+  }
+
+  // Was the direction (0, 0) at any time from `from` to `to`? That is so
+  // when the player stood at `from` already (also a standing that began
+  // earlier and lasts into this time), or let go of all keys in between.
+  function stoodBetween(history, from, to) {
+    if (isStanding(directionAt(history, from))) {
+      return true;
+    }
+    return history.some(function (entry) {
+      return entry.time > from && entry.time <= to && isStanding(entry);
+    });
   }
 
   // Is the player walking at `time`, by the keys of that instant or by the
@@ -460,17 +475,34 @@ Game.world = Game.world || {};
   }
 
   // The direction of a bridged step that starts at `startAt`: the one the
-  // player held one input lag earlier. With one exception: when the keys
-  // are released by then and no bridged step is waiting, there is no step.
-  // That is an ordinary stop. The queue runs empty then too, but the server
-  // sends nothing more, and a step made up here would walk the character
-  // on and bring it back a second later.
+  // player held one input lag earlier. In two cases there is no step,
+  // because a missing position need not be a held-up one: the server sends
+  // nothing for a tick in which the player stood.
+  //
+  // 1. The keys are released by `startAt` and no bridged step is waiting.
+  //    That is an ordinary stop. The queue runs empty then too, and a step
+  //    made up here would walk the character on and bring it back a second
+  //    later.
+  // 2. No key was held at some time near the moment the direction is read
+  //    from: a player who lets go of one key before pressing the next
+  //    (a turn, a reversal, a stop and go) stands for a moment. If the
+  //    server's tick fell into that moment, it sent no position for it.
+  //    When exactly the server read the keys is only known to within about
+  //    a tick (see inputLag()), so the bridge keeps away from the moment
+  //    by NEAR_A_STANDSTILL_TICKS on each side. The character then waits
+  //    for the server's position, as it did before there was a bridge.
   function bridgedDirection(situation, startAt) {
-    var releasedByThen = isStanding(directionAt(situation.history, startAt));
+    var history = situation.history;
+    var releasedByThen = isStanding(directionAt(history, startAt));
     if (releasedByThen && situation.waitingSteps === 0) {
       return { dx: 0, dy: 0 };
     }
-    return directionAt(situation.history, startAt - situation.inputLag);
+    var readAt = startAt - situation.inputLag;
+    var near = NEAR_A_STANDSTILL_TICKS * situation.stepSeconds * 1000;
+    if (stoodBetween(history, readAt - near, readAt + near)) {
+      return { dx: 0, dy: 0 };
+    }
+    return directionAt(history, readAt);
   }
 
   // ---- When the server's position arrives --------------------------------
@@ -586,6 +618,7 @@ Game.world = Game.world || {};
     MAX_STEP_SECONDS: MAX_STEP_SECONDS,
     MOST_BRIDGED_STEPS: MOST_BRIDGED_STEPS,
     FIRST_STEP_SLOWER: FIRST_STEP_SLOWER,
+    NEAR_A_STANDSTILL_TICKS: NEAR_A_STANDSTILL_TICKS,
     LONGEST_WAIT_MILLISECONDS: LONGEST_WAIT_MILLISECONDS,
     TAKE_BACK_MILLISECONDS: TAKE_BACK_MILLISECONDS,
     SAME_PLACE: SAME_PLACE,
@@ -594,6 +627,7 @@ Game.world = Game.world || {};
     overlaps: overlaps,
     rememberDirection: rememberDirection,
     directionAt: directionAt,
+    stoodBetween: stoodBetween,
     isWalkingAt: isWalkingAt,
     walkStart: walkStart,
     rememberStartDelay: rememberStartDelay,

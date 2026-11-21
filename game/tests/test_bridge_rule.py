@@ -259,6 +259,35 @@ def test_a_history_never_grows_beyond_64_entries():
     assert history[-1]["time"] == 1000 + 5 * 199
 
 
+def test_stood_between_with_an_empty_history_or_before_the_first_key():
+    assert call("stoodBetween", [], 100, 200) is True
+    assert call("stoodBetween", HISTORY, 500, 900) is True  # before the first entry the player stood
+    assert call("stoodBetween", HISTORY, 900, 1200) is True  # stood at the beginning of the time asked for
+
+
+def test_stood_between_finds_a_moment_without_keys_inside_the_time():
+    # HISTORY: right from 1000, down from 1500, no key from 2000.
+    stop_and_go = HISTORY + [{"time": 2030, **RIGHT}]
+    results = calls(
+        ["stoodBetween", stop_and_go, 1000, 1999.9],  # walking the whole time, with a turn
+        ["stoodBetween", stop_and_go, 1000, 2000],  # the release at the very end counts
+        ["stoodBetween", stop_and_go, 1990, 2100],  # the whole moment lies inside
+        ["stoodBetween", stop_and_go, 2010, 2100],  # it began before and lasts into the time
+        ["stoodBetween", stop_and_go, 2029.9, 2100],
+        ["stoodBetween", stop_and_go, 2030, 2100],  # pressed again at the very beginning: walking
+        ["stoodBetween", stop_and_go, 2040, 5000],
+    )
+    assert results == [False, True, True, True, True, False, False]
+
+
+def test_stood_between_sees_a_moment_without_keys_of_no_length():
+    # The opposite key and the release at the same instant.
+    reversal = [{"time": 1000, **RIGHT}, {"time": 1500, **STANDING}, {"time": 1500, "dx": -1, "dy": 0}]
+    assert call("stoodBetween", reversal, 1400, 1600) is True
+    assert call("stoodBetween", reversal, 1500, 1600) is False
+    assert call("stoodBetween", reversal, 1000, 1499) is False
+
+
 def test_is_walking_at_looks_at_the_keys_now_and_one_input_lag_ago():
     walk = [{"time": 1000, **RIGHT}, {"time": 2000, **STANDING}]
     results = calls(
@@ -554,8 +583,59 @@ def test_no_step_when_the_player_stood_one_input_lag_before():
     # would start: with a lag of 120 ms the server did not know it yet.
     pressed_late = [{"time": 9_900, **RIGHT}]
     assert next_step(history=pressed_late) is None
-    assert next_step(history=pressed_late, inputLag=100) is not None
     assert next_step(history=[]) is None
+
+
+# The situation of these tests: the step would start at 10 000, the input
+# lag is 120 ms, so the direction is read from 9 880. One tick of the server
+# is 66.7 ms there, and the bridge keeps a tick and a half (100 ms) away
+# from a moment without keys: from 9 780 to 9 980.
+READ_AT = 10_000 - 120
+NEAR = 1.5 * TICK
+
+
+def test_the_bridge_keeps_a_tick_and_a_half_away_from_a_moment_without_keys():
+    assert NEAR == pytest.approx(100)
+    assert "var NEAR_A_STANDSTILL_TICKS = 1.5;" in BRIDGE_JS.read_text(encoding="utf-8")
+
+
+def test_no_step_when_the_key_was_pressed_less_than_a_tick_and_a_half_before_the_moment_read():
+    # The walk began a moment before: the server may still have stood at
+    # the tick whose position is missing.
+    assert next_step(history=[{"time": READ_AT - NEAR + 0.1, **RIGHT}]) is None
+    assert next_step(history=[{"time": READ_AT - NEAR, **RIGHT}]) is not None
+    assert next_step(history=[{"time": READ_AT - NEAR + 0.1, **RIGHT}], waitingSteps=3) is None
+
+
+@pytest.mark.parametrize("released_at, pressed_at, steps", [
+    (9_600, 9_630, True),  # the moment without keys was over long before
+    (READ_AT - NEAR - 30, READ_AT - NEAR, True),  # it ended exactly a tick and a half before
+    (READ_AT - NEAR - 30, READ_AT - NEAR + 0.1, False),  # it lasts into that time
+    (9_850, 9_880, False),  # around the moment the direction is read from
+    (READ_AT + 5, READ_AT + 10, False),  # 5 ms without a key, right after it
+    (READ_AT + NEAR, READ_AT + NEAR + 5, False),  # it begins exactly a tick and a half after
+    (READ_AT + NEAR + 0.1, READ_AT + NEAR + 5, True),  # it begins later than that
+])
+def test_no_step_when_no_key_was_held_at_some_time_near_the_moment_read(released_at, pressed_at, steps):
+    # A stop and go: right, no key, right again. If the server's tick fell
+    # into the moment without a key, it sent no position for that tick, and
+    # the position that is missing now may be that one.
+    stop_and_go = [{"time": 0, **RIGHT}, {"time": released_at, **STANDING}, {"time": pressed_at, **RIGHT}]
+    assert (next_step(history=stop_and_go) is not None) is steps
+    # The same in the middle of a bridge.
+    assert (next_step(history=stop_and_go, waitingSteps=2) is not None) is steps
+
+
+def test_a_reversal_through_a_moment_without_keys_makes_no_step_in_either_direction():
+    # Right, then the opposite key while the first is still down (no
+    # direction), then left: neither the old nor the new direction is bridged.
+    reversal = [{"time": 0, **RIGHT}, {"time": 9_870, **STANDING}, {"time": 9_875, "dx": -1, "dy": 0}]
+    assert next_step(history=reversal) is None
+    assert next_step(history=reversal, waitingSteps=1) is None
+    # A turn without such a moment (both keys change at once) is bridged as before.
+    turn = [{"time": 0, **RIGHT}, {"time": 9_870, **DOWN}]
+    step = next_step(history=turn)
+    assert (step["x"], step["y"]) == pytest.approx((SPAWN[0], SPAWN[1] + STEP))
 
 
 def test_no_step_when_ten_steps_wait_for_the_server():
@@ -605,14 +685,17 @@ def test_released_keys_start_no_bridge():
     assert next_step(history=[{"time": 0, **RIGHT}, {"time": 10_000.1, **STANDING}]) is not None
 
 
-def test_released_keys_do_not_end_a_bridge_that_is_under_way():
-    # During a hold-up (a bridged step is waiting already) the character
-    # walks on for one input lag after the release, like on the server.
-    released = [{"time": 0, **RIGHT}, {"time": 9_950, **STANDING}]
+def test_a_bridge_that_is_under_way_goes_on_after_a_release_until_the_release_is_near_the_moment_read():
+    # During a hold-up (a bridged step is waiting already) the server still
+    # walks for a moment after the release. The bridge walks on as long as
+    # the release lies more than a tick and a half after the moment the
+    # direction is read from.
+    released = [{"time": 0, **RIGHT}, {"time": READ_AT + NEAR + 0.1, **STANDING}]
     step = next_step(history=released, waitingSteps=1)
     assert step["x"] == pytest.approx(SPAWN[0] + STEP)
-    # One input lag after the release it stands.
+    # The next step (one tick later) reads from a moment nearer to the release: it is not made.
     assert next_step(history=released, waitingSteps=1, now=10_075, glideEndsAt=10_070) is None
+    assert next_step(history=[{"time": 0, **RIGHT}, {"time": READ_AT + NEAR, **STANDING}], waitingSteps=1) is None
 
 
 def test_without_a_place_to_start_from_no_step_is_made():
