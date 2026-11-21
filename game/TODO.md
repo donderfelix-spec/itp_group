@@ -245,3 +245,7 @@ Human character verification: 300 character, running-pose, running and character
 ## Canteen seating, 2026-11-21
 
 - [x] Reduce canteen table groups and add seated diners with meal trays, requested by Hanna. Browser checked;19 new movement regressions pass,452 targeted checks pass in total. One retained historical distance comparison fails for the shorter canteen route. Ready for the authorised campus-branch push.
+
+## Round bushes, 2026-11-21
+
+- [x] Replace deck bush silhouettes with round circles, branches and leaves; remove square planter/soil/gravel outlines, including the hedge. Browser verified. 324 map/art checks passed; retained known historical route-distance failure. Push authorised by Hanna.

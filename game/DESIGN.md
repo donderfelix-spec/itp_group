@@ -309,3 +309,7 @@ Lecture Hall keeps four curved rows, now spaced at y52/82/112/142 with 12-unit d
 ## Canteen seating, 2026-11-21
 
 Canteen keeps five table groups with mint chairs, reduced from40x36 to32x28 around their existing centres. Clear cross aisles are22 units and column gaps25 units. Eight decorative seated diners have varied clothes/skin/hair, cutlery and meal trays. They stay inside chair footprints; no extra network entities or collision rectangles are added.
+
+## Round bushes, 2026-11-21
+
+Deck bushes use a circular green silhouette containing woody branches and pointed leaves. Both individual tree-kind objects and the hedge use this drawing. Square gravel beds, outer gravel rings and the hedge soil rectangle are removed.

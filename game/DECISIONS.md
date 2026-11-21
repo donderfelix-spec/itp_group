@@ -213,3 +213,7 @@ Hanna requested accessible gaps between every lecture row, more space around Mon
 ## Canteen seating, 2026-11-21
 
 Hanna requested smaller canteen tables, easier passage between chairs, seated guests and a push to the campus branch. The group rectangles shrink symmetrically around the same centres; player size and movement rules remain unchanged. The historical route comparison now flags spawn-to-station3 as315.93 instead of317.30 units: the requested open layout makes that path shorter. The old assertion is retained and the deviation disclosed.
+
+## Round bushes, 2026-11-21
+
+Hanna explicitly requested simple round bushes with branches and leaves, no square frames, everywhere among the deck bushes, followed by a push. Only drawing and decorative gravel-ring entries change. Solid geometry and hiding rules stay unchanged.

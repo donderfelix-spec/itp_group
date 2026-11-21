@@ -1,5 +1,5 @@
 // The art of the Main Deck and the corridor (M2-1.4): the reflecting pool
-// with its stone edge, a step and reflections, young trees with gravel beds,
+// with its stone edge, a step and reflections, round leafy bushes,
 // the hedge, benches, lamp posts, a bike rack, drains, the glass front, the
 // beach with towels, parasols and surfboards and a surfboard rack; in the
 // corridor a terrazzo floor, the taupe slat wall with "ACADEMIC HALL",
@@ -70,31 +70,21 @@ Game.world = Game.world || {};
     ctx.lineCap = "butt";
   };
 
-  // A young tree: a gravel bed, and above it a round crown of leaves with
-  // volume, its shadow falling on the paving.
-  art.kinds.tree = function (ctx, bed) {
-    util.box(ctx, bed.x, bed.y, bed.w, bed.h, 2, "#D9D2C2", 1);
-    ctx.fillStyle = "#B8AE98";
-    for (var i = 0; i < 26; i++) {
-      var x = bed.x + 2 + util.noise(bed.x + i, bed.y) * (bed.w - 4);
-      var y = bed.y + 2 + util.noise(bed.y, bed.x + i * 1.7) * (bed.h - 4);
-      ctx.fillRect(x, y, 0.8, 0.8);
-    }
-    util.circle(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2 + 2, 2, "#7A5434", 0.6); // the trunk
-    // The crown reaches at most about 1 unit past its bed (the drawings of a tile reach 4).
-    leafyCrown(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2 - 1, bed.w * 0.43, bed.x);
+  // Round bushes without gravel beds, planters or square borders.
+  art.kinds.tree = function (ctx, bush) {
+    leafyCrown(ctx, bush.x + bush.w / 2, bush.y + bush.h / 2,
+      Math.min(bush.w, bush.h) / 2, bush.x);
   };
 
-  // An irregular woody crown: overlapping masses, forked branches and
-  // pointed leaf pairs, rather than concentric rings that read as lettuce.
+  // A simple circular silhouette with visible branches and pointed leaves.
   function leafyCrown(ctx, x, y, radius, seed) {
-    var masses = [[-0.48, 0.18, 0.48], [0.36, 0.28, 0.58],
-      [-0.3, -0.34, 0.55], [0.28, -0.38, 0.47], [0, 0, 0.6]];
-    masses.forEach(function (mass, index) {
-      util.ellipse(ctx, x + radius * mass[0], y + radius * mass[1],
-        radius * mass[2], radius * mass[2] * 0.8,
-        ["#285A3E", "#326E46", "#447F4A", "#548B4D", "#397343"][index], 0.65);
-    });
+    util.circle(ctx, x, y, radius, "#43864D", 0.8);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, radius - 0.4, 0, Math.PI * 2);
+    ctx.clip();
+    util.ellipse(ctx, x + radius * 0.35, y + radius * 0.4,
+      radius * 0.9, radius * 0.85, "#347043", 0);
     util.line(ctx, x, y + radius * 0.75, x - radius * 0.12, y - radius * 0.25, "#756044", 1.1);
     util.line(ctx, x - radius * 0.04, y + radius * 0.3, x + radius * 0.53, y - radius * 0.12, "#756044", 0.75);
     util.line(ctx, x - radius * 0.1, y, x - radius * 0.55, y - radius * 0.35, "#756044", 0.65);
@@ -115,18 +105,15 @@ Game.world = Game.world || {};
       ctx.fillStyle = i % 3 === 0 ? "#8BAC62" : i % 3 === 1 ? "#60964F" : "#3C7041";
       ctx.fill();
     }
+    ctx.restore();
   }
 
-  // A continuous shrub hedge with a narrow earth base and woody stems.
-  // Its footprint and hiding behaviour stay exactly the same.
+  // Round bushes also form the hedge; the hiding footprint stays the same.
   art.kinds.hedge = function (ctx, bed) {
-    util.shadowBelow(ctx, bed.x + 2, bed.y + bed.h - 1, bed.w - 4, 1.6);
-    util.box(ctx, bed.x + 2, bed.y + bed.h * 0.55, bed.w - 4, bed.h * 0.4, 3, "#817054", 0.6);
     var radius = bed.h * 0.49;
     [0.18, 0.4, 0.62, 0.82].forEach(function (share, index) {
       var x = bed.x + bed.w * share;
       var y = bed.y + bed.h * (index % 2 ? 0.44 : 0.51);
-      util.line(ctx, x, bed.y + bed.h - 1.5, x - 0.7, y, "#76583A", 1.7);
       leafyCrown(ctx, x, y, radius * (index % 2 ? 1 : 0.9), bed.x + index * 7);
     });
   };
@@ -266,18 +253,6 @@ Game.world = Game.world || {};
       util.line(ctx, rack.x + 2.5 + wheel, y, rack.x + rack.w - 0.5 - wheel, y, colour, 1.4);
       util.line(ctx, rack.x + rack.w - 0.5 - wheel, y - wheel * 0.9, rack.x + rack.w - 0.5 - wheel, y + wheel * 0.9, util.OUTLINE, 0.8);
     });
-  };
-
-  // A gravel bed around a tree's bed, with small plants.
-  art.decor["gravel-ring"] = function (ctx, item) {
-    util.box(ctx, item.x, item.y, item.w, item.h, 3, "#E0D9C9", 0.5, "#CFC7B6");
-    var plants = ["#5FA86B", "#7DBE7A", "#E8A0B4"];
-    for (var i = 0; i < 12; i++) {
-      var angle = i / 12 * Math.PI * 2;
-      var x = item.x + item.w / 2 + Math.cos(angle) * item.w * 0.44;
-      var y = item.y + item.h / 2 + Math.sin(angle) * item.h * 0.44;
-      util.circle(ctx, x, y, 1.1, util.pick(plants, i, item.x), 0.3);
-    }
   };
 
   // A drain: a thin dark grate in the paving.

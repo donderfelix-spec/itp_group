@@ -160,3 +160,7 @@ Lecture Hall walkable row gaps and wider side aisles, Mon Cafe smaller spaced ta
 ## Canteen seating, 2026-11-21
 
 Smaller canteen table groups with eight seated diners and food trays, locally implemented and browser checked. 19 new bidirectional walkway/entry checks passed; the targeted map/art/movement run reports452 passed and one historical distance comparison failure because the route is shorter.
+
+## Round bushes, 2026-11-21
+
+Circular deck bushes and hedge crowns without square planters or gravel beds: implemented and visually checked. 324 map/art checks pass; the previously documented historical canteen-route comparison remains the sole failure. JavaScript syntax and diff checks pass.
