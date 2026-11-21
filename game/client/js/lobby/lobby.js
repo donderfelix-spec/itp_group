@@ -36,8 +36,12 @@ window.Game = window.Game || {};
   // In a Duel or Solo round: how many stations each player has done, from
   // `duel_progress` (see showProgress). null outside such a round.
   let progress = null;
+  let leaveHandler = null; // see setup
 
-  function setup() {
+  // `whenLeaveAsked` (from main.js) runs once "Leave lobby" has sent
+  // `leave_lobby`, so that no `move` follows it (M2-2.12).
+  function setup(whenLeaveAsked) {
+    leaveHandler = whenLeaveAsked;
     allCharacters().forEach(addCharacterButton);
     MODES.forEach(addModeButton);
     startButton.addEventListener('click', () => {
@@ -445,7 +449,10 @@ window.Game = window.Game || {};
   }
 
   function leaveLobby() {
-    Game.net.ask({ type: 'leave_lobby' });
+    // `ask` sends nothing while another answer is awaited: then the player
+    // is not leaving yet and may go on walking.
+    const wasSent = Game.net.ask({ type: 'leave_lobby' });
+    if (wasSent && typeof leaveHandler === 'function') leaveHandler();
   }
 
   Game.lobby = {

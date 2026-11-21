@@ -214,6 +214,17 @@
         </div>
 
         <div class="panel-middle">
+          <!-- Only during a Duel or Solo round: the own next task and the
+               clock, filled by js/minigames/duel.js. First in the middle, so
+               both stay visible without scrolling above eight players with
+               their progress rows (M2-2.11). Hidden, it takes no room, so the
+               lobby and Classic look as before. -->
+          <div id="duel-panel" class="duel-panel" hidden>
+            <h2 id="duel-heading" class="panel-heading">Duel</h2>
+            <p id="duel-next" class="duel-next" role="status"></p>
+            <p id="duel-clock" class="duel-clock" aria-label="Time left"></p>
+          </div>
+
           <h2 class="panel-heading">Players</h2>
           <ul id="lobby-players" class="players"></ul>
 
@@ -228,8 +239,7 @@
             <div id="lobby-characters" class="characters"></div>
           </div>
 
-          <!-- In its place during a Duel: next station, clock and everybody's
-               progress, filled by js/minigames/duel.js. -->
+          <!-- Only during a Classic round. -->
           <div id="classic-progress" class="classic-progress" hidden aria-live="polite">
             <h2 class="panel-heading">Group progress</h2>
             <p id="classic-own-name" class="classic-own-name"></p>
@@ -237,12 +247,6 @@
             <div class="classic-progress-track" role="progressbar" aria-label="Group task progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
               <div id="classic-progress-fill" class="classic-progress-fill"></div>
             </div>
-          </div>
-
-          <div id="duel-panel" class="duel-panel" hidden>
-            <h2 id="duel-heading" class="panel-heading">Duel</h2>
-            <p id="duel-next" class="duel-next" role="status"></p>
-            <p id="duel-clock" class="duel-clock" aria-label="Time left"></p>
           </div>
         </div>
 

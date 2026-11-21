@@ -42,6 +42,10 @@ window.Game = window.Game || {};
   // True from the moment this browser asked to log out until the server
   // answers. It tells a wanted `signed_out` from one that came unasked.
   let logOutWasAsked = false;
+  // True from the click on "Leave lobby" until the world starts in the next
+  // lobby. The world only stops when the answer `left_lobby` arrives, and
+  // until then no `move` may be sent (see sendMove).
+  let leaveWasAsked = false;
   // The code of the lobby this player is in, from the last `lobby_state`.
   // null outside a lobby.
   let lobbyCode = null;
@@ -59,12 +63,22 @@ window.Game = window.Game || {};
   }
 
   function sendMove(dx, dy) {
+    // On the way out of the lobby: a walking key released now must send
+    // nothing. The server may have taken the player out already and would
+    // answer "You are not in a lobby." (M2-2.12)
+    if (leaveWasAsked) return;
     Game.net.send({ type: 'move', dx: dx, dy: dy });
+  }
+
+  // From lobby.js, right after "Leave lobby" has sent `leave_lobby`.
+  function whenLeaveWasAsked() {
+    leaveWasAsked = true;
   }
 
   function startWorld() {
     if (worldIsRunning) return;
     worldIsRunning = true;
+    leaveWasAsked = false; // a new lobby: walking is sent again
     callWorld('start', document.getElementById('map'), sendMove);
   }
 
@@ -357,7 +371,7 @@ window.Game = window.Game || {};
   }
 
   Game.forms.setup(askToLogOut);
-  Game.lobby.setup();
+  Game.lobby.setup(whenLeaveWasAsked);
   Game.duel.setup();
   Game.classicMeeting.setup();
   Game.classicRound.setup();

@@ -1677,11 +1677,14 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 /* ---- Duel: the panel during the round and the ranking, built by js/minigames/duel.js ---- */
 
-/* In the lobby panel, where the character selection stands outside a round. */
+/* At the top of the middle of the lobby panel, above the player list, so
+   the clock is seen without scrolling (M2-2.11). The margin keeps it apart
+   from the "Players" heading below. */
 .duel-panel {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-bottom: 8px;
 }
 
 .duel-next {
