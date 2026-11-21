@@ -130,6 +130,8 @@ Every action also works with a mouse click on the button.
 
 **Walking diagnostic.** Opened with `?debug` at the end of the address, the page shows a small panel in the top left corner with numbers about the connection and the drawing while walking (S-120), and the buttons “Copy”, “Reset” and “Hide”. It is a tool for the team, not part of the game: without `?debug` it does not exist.
 
+**Walking through hold-ups.** When the connection holds the server's positions up while the player walks, the own character walks on by itself for at most about 700 ms with the same movement and wall rule as the server, and the server's positions take over when they arrive (S-121). The server still decides: the character always ends where the server says, and a station can be used when the server's position is in range. `?bridge=off` at the end of the address switches this off, to compare.
+
 ## 5. Classic mode
 
 4 to 8 players. With fewer than 4, the round cannot be started.
