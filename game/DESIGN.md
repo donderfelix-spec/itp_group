@@ -288,3 +288,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 ## Campus branch preview, 2026-11-21
 
 The individual campus mascots use their own head shapes and student accessories. The map camera follows the own player without extending past the campus edges. A fixed top-left label names the current room, or Main Deck, and adds Hidden inside a hiding circle. Room floors have wood, tile or carpet seams. Trees have highlights within their existing footprint. The hedge is walkable. Hiding activates automatically inside any marked circle: the own figure is half transparent and hidden players are only revealed within 35 map units. The reveal distance is a branch proposal recorded in DECISIONS.md.
+
+## Human campus characters, 2026-11-21
+
+Hanna requested returning to the original human student style with only subtle differences. Characters have human faces, hairstyles, clothes and student accessories again. Their smiles are gentler and their cheek tint is more subtle. The original human-rendering geometry and running-pose tests apply again. This replaces the robot and object-head visual direction on the Campus and Characters branch.

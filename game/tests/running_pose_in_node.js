@@ -63,7 +63,7 @@ const result = {};
 world.characters.forEach((look) => {
   result[look.id] = poses.map((pose) => {
     const drawings = [];
-    world.drawCharacter(recordingCanvas(drawings), look.id, 0, 0, 112, pose, pose && pose.animation);
+    world.drawCharacter(recordingCanvas(drawings), look.id, 0, 0, 112, pose);
     const back = pose && pose.mirrored ? MIRROR : [1, 0, 0, 1, 0, 0];
     return drawings
       .filter((d) => d.points.length)

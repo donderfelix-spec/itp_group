@@ -219,3 +219,9 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 - [x] Integration review of main with the individual mascots, distance-based walking poses, bounded camera, floor patterns and tree detail. Hanna authorised updating tests for the new design on 2026-11-21. The new mascot geometry and camera bounds have dedicated checks; historical closed-hedge collision scenarios remain covered separately.
 
 Verification on 2026-11-21: the complete suite passed 3,221 tests with Node available; the additional unknown-character regression passed separately. Dependency audit: no known vulnerabilities. Code and test reviews found no remaining blocking issues. Saved locally on game/campus-and-characters for team review.
+
+## Human campus characters, 2026-11-21
+
+Hanna requested returning to the original human student style with only subtle differences. Characters have human faces, hairstyles, clothes and student accessories again. Their smiles are gentler and their cheek tint is more subtle. The original human-rendering geometry and running-pose tests apply again. This replaces the robot and object-head visual direction on the Campus and Characters branch.
+
+Human character verification: 300 character, running-pose, running and character-list checks passed on 2026-11-21. The original natural human running model is used with the human drawings. Browser preview checked in the lobby and on the campus.

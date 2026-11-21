@@ -24,14 +24,14 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 |---|---|---|
 | Map with Lecture Hall, Mon Café, Canteen, CTT Student Hall and Pingo Doce, connected by the Main Deck | M1 | Done |
 | Move the character with the keyboard (WASD or arrow keys) | M1 | Done |
-| Character-specific walk cycles, animated accessories, idle poses, blinking and directional views | M1 | In progress |
+| Human running animation with alternating arms and legs and mirrored side views | M1 | In progress |
 | Walls and furniture stop the character | M1 | Done |
 | Camera follows your own character | M1 | Done |
 | See other players with their names above the character; where name labels would cover each other only one is shown, the own name first (S-117) | M1 | Done |
 | Stations for tasks on the map | M2 | Done |
 | Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E done; R and Q come with Classic) | M2 | In progress |
 | Choose a character from the list of stereotypes | M2 | Done |
-| Eight individual campus mascots with distinct silhouettes and student accessories | M2 | In progress |
+| Eight human campus students with distinct outfits and student accessories | M2 | In progress |
 | Display of the current room | M2 | In progress |
 | Nicer, more detailed map: floors, furniture and plants | M2 | In progress |
 | Larger characters in a three-quarter view, facing only left or right; held objects stay in the same hand | M2 | Done |
@@ -133,3 +133,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Four hiding circles, a walkable hedge and server-side visibility filtering | M3 | In progress |
 
 Campus branch verification (2026-11-21): complete suite 3,221 passed, additional unknown-ID regression passed, dependency audit clear, and hiding played with two browser guests. Status stays In progress until the team merges this branch into main.
+
+## Human campus characters, 2026-11-21
+
+Hanna requested returning to the original human student style with only subtle differences. Characters have human faces, hairstyles, clothes and student accessories again. Their smiles are gentler and their cheek tint is more subtle. The original human-rendering geometry and running-pose tests apply again. This replaces the robot and object-head visual direction on the Campus and Characters branch.
