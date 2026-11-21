@@ -38,7 +38,7 @@ from server.net.sessions import GUEST_NUMBERS, Sessions
 from server.protocol import PROTOCOL_VERSION, ProtocolError, error, parse_client_message, welcome
 from rules import FAIL_COOLDOWN_SECONDS, FAIL_RANGE_TILES, can_fail, check_winner, end_reason
 from server.classic.round import EMERGENCY_DELAY_SECONDS
-from server.world import paths
+from server.world import paths, visibility
 from server.world.campus import load_campus
 
 logger = logging.getLogger(__name__)
@@ -781,6 +781,11 @@ def tell_positions(lobby):
         classic = lobby.classic_round
         if classic is not None and classic.phase == "round" and name not in classic.eliminated:
             positions = [entry for entry in positions if entry[0] not in classic.eliminated]
+        if classic is not None:
+            # On top of that, a Free Rider in a hiding spot is only sent to
+            # those close to him (M3-1.4). Outside Classic nobody hides.
+            hiders = visibility.players_who_hide_from(name, classic.roles, classic.eliminated, classic.phase)
+            positions = visibility.visible_positions(positions, name, app.state.campus, hiders)
         message = protocol.positions(positions)
         task = asyncio.create_task(send_positions(name, connection, lobby, message))
         background_sends.add(task)
