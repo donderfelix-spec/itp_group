@@ -23,7 +23,9 @@ Game.classicMeeting = Game.classicMeeting || {};
   var voteListSignature = "";
   var pendingVoteTarget = null;
   var resultCloseTimer = null;
-  var noEjectionShown = false;
+  var resultShown = false;
+  // The window stays this long after any result, then the round goes on.
+  var RESULT_MILLISECONDS = 1800;
   // The vote for nobody: the same value as SKIP_VOTE in server/protocol.py.
   var SKIP_VOTE = "";
 
@@ -56,11 +58,13 @@ Game.classicMeeting = Game.classicMeeting || {};
 
   function show(message) {
     if (!isMeetingState(message)) return;
-    if (message.phase === "result" && !message.ejected_id) {
-      if (noEjectionShown) return;
-      noEjectionShown = true;
+    // A result is shown once: a later copy of the same result (the server
+    // may send the snapshot again) must not open the closed window again.
+    if (message.phase === "result") {
+      if (resultShown) return;
+      resultShown = true;
     } else {
-      noEjectionShown = false;
+      resultShown = false;
     }
     cancelResultClose();
     state = message;
@@ -77,8 +81,8 @@ Game.classicMeeting = Game.classicMeeting || {};
     updateInput();
     updateVoting();
     updateVoteResult();
-    if (message.phase === "result" && !message.ejected_id) {
-      resultCloseTimer = window.setTimeout(hide, 1800);
+    if (message.phase === "result") {
+      resultCloseTimer = window.setTimeout(hide, RESULT_MILLISECONDS);
     }
     draw();
   }
