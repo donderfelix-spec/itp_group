@@ -214,6 +214,8 @@ const minigames = {
 
 // The map drawing of draw.js: only the red button is written down.
 let emergencyButtonDrawn = null;
+// The stations the last frame let pulse (the fifth argument of drawMap).
+let pulsingStations = null;
 
 const page = {
   console: {
@@ -261,7 +263,10 @@ page.Game = {
   minigames: minigames,
   world: {
     characters: [],
-    drawMap(ctx, map, view, emergencyVisible) { emergencyButtonDrawn = emergencyVisible === true; },
+    drawMap(ctx, map, view, emergencyVisible, pulsing) {
+      emergencyButtonDrawn = emergencyVisible === true;
+      pulsingStations = Array.isArray(pulsing) ? pulsing.slice() : pulsing;
+    },
     drawStationGlow() {},
     drawCharacter() {},
     chooseLabels: (labels) => ({ shown: labels, hidden: new Set() }),
@@ -344,6 +349,11 @@ function look() {
     ownNameRedInRound: element('classic-own-name').classList.contains('free-rider-name'),
     meetingKnowsFreeRider: meetingKnowsFreeRider,
     focusedId: document.activeElement ? document.activeElement.id : null,
+    pulsing: pulsingStations,
+    useButtonDisabled: useButton ? useButton.disabled : null,
+    voteButtons: element('classic-vote-players').children.map((button) => ({
+      target: button.dataset.targetId, text: button.textContent, disabled: button.disabled,
+    })),
   };
 }
 
@@ -380,6 +390,15 @@ const STEPS = {
   click(id) {
     element(id).focus();
     (element(id).listeners.click || []).forEach((listener) => listener({ preventDefault() {} }));
+  },
+  // Clicks the vote button for this target ("" is Skip).
+  clickVote(targetId) {
+    const button = element('classic-vote-players').children.find(
+      (candidate) => candidate.dataset.targetId === targetId
+    );
+    if (!button) throw new Error('Vote target not found: ' + JSON.stringify(targetId));
+    button.focus();
+    (button.listeners.click || []).forEach((listener) => listener({ preventDefault() {} }));
   },
   // Calls a function of the page directly, for example ["call", "world", "stop"].
   call(part, functionName) {

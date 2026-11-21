@@ -142,7 +142,9 @@ window.Game = window.Game || {};
   // in use that this player has not finished yet.
   function usableStations() {
     if (!roundIsRunning) return [];
-    if (mode === 'classic') return classicTasks.slice();
+    // A station finished here never pulses again, even if a later list
+    // from the server was malformed and so did not replace the old one.
+    if (mode === 'classic') return classicTasks.filter((station) => !finishedStations.has(station));
     if (hasOneTaskAtATime()) {
       const next = Game.duel.nextStation();
       return next === null ? [] : [next];

@@ -1131,11 +1131,20 @@ def update_meeting_clock(lobby):
     now = seconds_now()
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
     sync_classic_after_meeting(lobby)
-    snapshot = classic_meeting.meeting_snapshot(lobby.meeting, now)
-    clock = (snapshot["phase"], snapshot["seconds_left"])
+    clock = meeting_clock_of(lobby.meeting, now)
     if clock != lobby.meeting_clock:
         lobby.meeting_clock = clock
         run_in_background(publish_meeting_and_round_result(lobby, now))
+
+
+def meeting_clock_of(meeting, now):
+    """The (phase, seconds left) that the players last saw of a meeting.
+
+    The tick publishes a snapshot only when this changes, so whoever else
+    publishes a snapshot records it too (see `answer_vote_message`).
+    """
+    snapshot = classic_meeting.meeting_snapshot(meeting, now)
+    return (snapshot["phase"], snapshot["seconds_left"])
 
 
 async def answer_chat_message(websocket: WebSocket, message: dict):
@@ -1198,8 +1207,14 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
     except ValueError:
         await websocket.send_json(protocol.rejection("vote_rejected"))
     sync_classic_after_meeting(lobby)
+    if lobby.meeting is not None:
+        # This snapshot is the news of the moment: the tick must not send the
+        # same one again (after an early end it would repeat the result).
+        lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
     await tell_meeting_state(lobby, now)
-    if lobby.meeting.get("phase") == "result":
+    # A handler that ended the round meanwhile (two last votes at once) may
+    # have cleared the meeting while this one waited.
+    if lobby.meeting is not None and lobby.meeting.get("phase") == "result":
         await tell_classic_roster(lobby)
         lobby.walkers._everybody_needs_news()
         tell_positions(lobby)

@@ -121,7 +121,7 @@ Game.classicMeeting = Game.classicMeeting || {};
     input.disabled = !mayWrite;
     sendButton.disabled = !mayWrite;
     if (mayWrite) hint.textContent = "Living players can chat during the discussion.";
-    else if (state && state.phase === "voting") hint.textContent = "Chat is closed. Choose one living player to eject.";
+    else if (state && state.phase === "voting") hint.textContent = "Chat is closed. Choose one living player to eject, or Skip.";
     else if (state && state.phase === "result") hint.textContent = "The vote is over.";
     else hint.textContent = "Ghosts can read the chat but cannot write.";
   }
