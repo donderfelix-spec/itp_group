@@ -2,7 +2,7 @@
 
 Only the own living Free Rider in a Classic round, standing in a hiding
 spot, sees the own character half transparent and the text "Hidden" in the
-Classic panel (S-128). A High Performer, a ghost, a Duel and the lobby show
+Classic panel (S-135). A High Performer, a ghost, a Duel and the lobby show
 nothing of it. The browser only draws: what the others are sent is decided
 by the server (test_server_hiding.py).
 

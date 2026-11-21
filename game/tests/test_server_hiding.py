@@ -3,8 +3,8 @@
 `tell_positions` sends every member the positions. In a Classic round a
 living Free Rider whose centre stands in one of the four hiding spots is
 left out for every living High Performer farther than 35 map units away
-(S-124 to S-126). Ghosts see him (S-129), other Free Riders see him
-(S-130), a meeting does not reveal him (S-131). Classic's own filter stays:
+(S-131 to S-133). Ghosts see him (S-136), other Free Riders see him
+(S-137), a meeting does not reveal him (S-138). Classic's own filter stays:
 the living are never sent the ghosts. Outside Classic nothing changes.
 
 The players are placed where a long walk would have brought them, then the

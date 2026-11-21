@@ -4,18 +4,18 @@ Plain functions: no network, no clock. The server leaves a hidden player out
 of the `positions` message, so a browser far away never learns where that
 player is. Positions outside the reveal range are never transmitted.
 
-Only a living Free Rider hides (S-125), and only during a Classic round
-(S-124). Everybody else is sent as anywhere on the map.
+Only a living Free Rider hides (S-132), and only during a Classic round
+(S-131). Everybody else is sent as anywhere on the map.
 """
 
 from math import hypot
 
 # The phases of a Classic round in which the Free Rider can hide. A meeting
-# does not reveal him: whoever hid when it started stays hidden (S-131).
+# does not reveal him: whoever hid when it started stays hidden (S-138).
 HIDING_PHASES = ("round", "meeting")
 
 # How close a viewer must be to see a hidden player, in map units, when the
-# map does not say (`hide_reveal_range` in campus.json, which says 35, S-126).
+# map does not say (`hide_reveal_range` in campus.json, which says 35, S-133).
 DEFAULT_REVEAL_RANGE = 35
 
 
@@ -33,9 +33,9 @@ def players_who_hide_from(viewer, roles, ghosts, phase) -> set:
 
     `roles` maps each player of the Classic round to "HP" or "FR", `ghosts`
     are the players who failed or were voted out, `phase` is the round's phase.
-    Only living Free Riders hide. A ghost sees everybody (S-129), and a Free
+    Only living Free Riders hide. A ghost sees everybody (S-136), and a Free
     Rider sees the other Free Riders, because Free Riders know each other
-    (S-130).
+    (S-137).
     """
     if phase not in HIDING_PHASES:
         return set()

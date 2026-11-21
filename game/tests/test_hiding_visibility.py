@@ -3,7 +3,7 @@
 The plain rules of `server/world/visibility.py`, the checks of the map
 (`walkable`, `hide_reveal_range`, the hiding spots) and walking into the
 walkable hedge on the real map. Only a living Free Rider hides, and only in
-a Classic round (S-124, S-125); the server tests are in test_server_hiding.py.
+a Classic round (S-131, S-132); the server tests are in test_server_hiding.py.
 """
 
 import pytest

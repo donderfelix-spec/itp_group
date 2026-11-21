@@ -94,7 +94,7 @@ Game.classicRound = Game.classicRound || {};
     return hint;
   }
 
-  // Hiding is possible only in a Classic round (S-124): only then does the
+  // Hiding is possible only in a Classic round (S-131): only then does the
   // world get the check below.
   function allowHiding(allowed) {
     if (!allowed) {
