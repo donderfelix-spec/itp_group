@@ -18,6 +18,7 @@ hedge becomes a hiding place in M3-1.4 (S-98), they must be rethought.
 """
 
 import contextlib
+import copy
 import time
 
 import pytest
@@ -28,7 +29,9 @@ from server.world.movement import PLAYER_HALF_SIZE, is_free, overlaps
 from task_helpers import put
 
 PASSWORD = "password123"
-CAMPUS = app.state.campus
+# Historical closed-hedge scenario; current hiding has separate live-map tests.
+CAMPUS = copy.deepcopy(app.state.campus)
+next(solid for solid in CAMPUS["solids"] if solid["id"] == "deck-hedge")["walkable"] = False
 SOLIDS = CAMPUS["solids"]
 TREE = next(item for item in SOLIDS if item["id"] == "deck-tree-3")
 HEDGE = next(item for item in SOLIDS if item["id"] == "deck-hedge")
@@ -48,6 +51,16 @@ QUIET_SECONDS = 0.4
 @pytest.fixture(autouse=True)
 def quiet_tick():
     """Replaces the fixture of the same name in conftest.py: here the real tick runs."""
+
+
+@pytest.fixture(autouse=True)
+def closed_hedge_scenario():
+    original = app.state.campus
+    app.state.campus = CAMPUS
+    try:
+        yield
+    finally:
+        app.state.campus = original
 
 
 @pytest.fixture
