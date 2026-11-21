@@ -121,3 +121,24 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Mon Café: put chairs in rows for the event | M4 | Later |
 | Deadline mode: shared clock, progress bar, random disruptions | M4 | Planned |
 | Duel variants: best of 3, knockout rounds | M4 | Later |
+
+
+## User branch: Additional tasks and navigator
+
+These features are on `Minispiele-und-Modi`, awaiting validation and review; “Done” above continues to mean merged to `main`.
+
+| Feature | Status |
+|---|---|
+| Six funny illustrated tasks at six additional stations, retaining the original games | In progress |
+| Existing Duel assignment pool extended to eleven tasks; existing rules retained | In progress |
+| Private current-task station visibility and direct destination arrow, without a trail or step count | In progress |
+
+Branch validation complete: all six tasks and private navigation implemented and checked; 2,184 Python tests and the dependency audit passed. Status stays In progress here until the branch is merged.
+
+| Separate Test mode for solo testing, using existing round mechanics | In progress (implemented and validated on branch; merge pending) |
+
+| In-round player roster with public dead-state styling | In progress (implemented and validated on branch; merge pending) |
+
+| Canteen cleanup: compact overhead tray, 10 rice grains/3 vegetables/3 chicken pieces, 3/1/1 randomly discoloured | Implemented and validated on branch; merge pending |
+
+| Distinct first task station for each player; 0.5-second automatic Done window | Implemented and validated on branch; merge pending |

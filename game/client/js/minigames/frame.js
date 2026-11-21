@@ -33,7 +33,7 @@ window.Game = window.Game || {};
 (function () {
   const DONE_TEXT = 'Done';
   const CLOSE_LABEL = 'Close';
-  const DONE_VISIBLE_MS = 1000;
+  const DONE_VISIBLE_MS = 500;
   const FALLBACK_KIND = 'placeholder';
   const DONE_RETRY_MS = 250;
   // What Tab can reach inside the window. Switched-off controls and those

@@ -208,7 +208,7 @@ Every room has its fixed minigame, it does not change. But the content is shuffl
 
 After a mistake, only the wrong piece is reset, never the whole minigame.
 
-A minigame opens with E or the button “E Use” at its station, only while a round is running. While it is open the character stands still. The close button and Esc close it without counting; it can be opened again and then has new content. When it is solved, the window shows “Done” in green for a moment and closes. A station whose minigame is not built yet shows “This task is still being built.” and a button “Finish task”.
+A minigame opens with E or the button “E Use” at its station, only while a round is running. While it is open the character stands still. The close button and Esc close it without counting; it can be opened again and then has new content. When it is solved, the window shows “Done” in green for 0.5 seconds and closes automatically. A station whose minigame is not built yet shows “This task is still being built.” and a button “Finish task”.
 
 | No. | Room | Title | Task | Done when | After a mistake |
 |---|---|---|---|---|---|
@@ -289,3 +289,50 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 - No phone controls, unless time allows (S-14).
 - No email addresses and no “forgot password” (S-38).
 - No return into a running round after a lost connection: the player signs in again and waits on Home until the round is over (S-109).
+
+
+
+## Branch extension: Additional room tasks and navigator
+
+On `Minispiele-und-Modi`, Lennart requested six funny additional tasks and a navigator. The existing rules, modes, minimum player counts, three-task Duel routes, random individual assignments, five original minigames and original station locations stay unchanged. A separately requested Test mode is described below. The six new games live at separate, additional locations, one in each room plus the Main Deck. They join the existing pool for the server's random routes; the next task is revealed after the current one is completed, as before.
+
+| Station | Room | Title | Instructions |
+|---|---|---|---|
+| 7 | Lecture Hall | De-buzzword the slides | Cross out the nonsense buzzwords. Keep the useful content. |
+| 8 | Mon Café | Emergency caffeine protocol | Follow the recipe. The group deadline runs on caffeine. |
+| 9 | Canteen | Save the lunch | Remove the mouldy pieces from the lunch tray. Keep the fresh food. |
+| 10 | CTT Student Hall | Decode the group chat | Put the words in order to decode your teammate's excuse. |
+| 11 | Pingo Doce | Expense the essentials | Scan emergency supplies until the total matches the budget. |
+| 12 | Main Deck | Seagull quality control | Catch the seagull to recover every stolen project page. |
+
+The original tasks at stations 1–5 remain unchanged; original station 6 remains reserved for Catch the wave. The map has six extra stations, each at a different location from the original one in that room. The server draws from the eleven playable stations, using the same comparable-length Duel routes, three-minute limit and three-task ranking. No new browser messages are introduced.
+
+Only the player's current assigned task station is drawn, named, highlighted or usable. All other task markers are hidden, including outside a round and after finishing. Other players' targets are never sent to this client. The navigator displays the own current task and destination room, with an arrow pointing directly towards the current task station and “E Use” on arrival. It shows no route, distance, step count or trail instructions. It changes when the server reveals the next task.
+
+The new minigames use illustrated room-specific compositions: a presentation board, coffee machine and layered cup, an overhead lunch tray with rice, vegetables and chicken, a group-chat conversation, an emergency shopping receipt and a project-stealing seagull. Labels and shapes supplement colour; large clickable targets and keyboard controls remain usable. Mistakes preserve valid progress. Esc closes without completing. Existing S-19 and S-93 server completion and permission checks stay in force.
+
+
+## Test mode (user request, 2026-11-19)
+
+The selectable “Test mode” lets one player start a round to try the game alone. It uses the existing three random tasks, three-minute timer, private task visibility, navigator and ranking. Normal Duel stays the default and still requires two players. The host selects Test mode in the lobby before pressing Start game. This mode reuses the existing messages and completion checks.
+
+
+## In-round player roster (M2-4.13)
+
+A compact “Players” card stays at the top right of the map during a round. It lists every current lobby member with their character portrait, name and a “You” marker for the local player. At most eight rows fit a scrolling card; narrow screens place it below the task card so the two do not overlap. It does not intercept walking keys or cover the use button, minigame or ranking. The card disappears outside a round and after leaving/disconnecting.
+
+Show “In game” for current members. Only an explicit public server value `alive: false` on a player in `lobby_state.players` marks them “Dead”: faded portrait, crossed-out name, a visible cross and text, never colour alone. Do not infer death from finishing Duel, missing positions, leaving or a disconnected connection. Current Duel/Test rules do not include elimination and send no such status, so current players remain “In game”. This optional presentation hook is for a future server-owned public life status; no death action, role leak, simulation switch or game rule is added here.
+
+
+
+## Main refresh integration (2026-11-21)
+
+Duel and Test mode keep the upstream five-second countdown before a round begins. The player roster stays hidden during countdown and is shown only in the running round. Added tasks remain at their own stations; their positions may shift slightly within the room to clear the detailed map furniture. Live arrival hints use the server position, while the direct arrow starts at the drawn character. Practice rounds stay excluded from competitive statistics.
+
+## Canteen lunch tray (user request, 2026-11-21)
+
+Save the lunch shows one compact tray from directly above, with exactly ten individual rice grains, three vegetable pieces and three chicken pieces. The server randomly marks three grains, one vegetable and one chicken piece as spoiled. Spoiled food has an unusual discoloration, without text labels, fuzzy patches or crosses. Click or keyboard-activate the spoiled pieces to remove them; fresh food stays and a mistaken selection gives feedback without losing progress. Accessible names identify food and piece number without revealing its condition. Complete after all five spoiled pieces have been removed; existing server completion checks and other minigames remain unchanged.
+
+## Distinct first tasks (user request, 2026-11-21)
+
+At the start of Duel and Test mode, every participant has a different first task station. The server draws three different stations per route and retains random individual assignments. It prefers routes within the existing 10 % walking-distance tolerance; when no distinct-start combination fits, it picks the closest available lengths.

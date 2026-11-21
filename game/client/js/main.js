@@ -23,8 +23,8 @@ window.Game = window.Game || {};
     too_many_attempts: 'attempts',
   };
 
-  // The stations with a minigame (1 to 5; station 6 is not in use yet).
-  const STATIONS_IN_USE = [1, 2, 3, 4, 5];
+  // The original five stations and six new campus emergencies. Station 6 is reserved.
+  const STATIONS_IN_USE = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12];
   // Errors after which no task is open on the server, so no window may stay.
   // `task_failed` is in the list because a fault while closing or finishing
   // is answered with this error only: no `station_closed` follows it.
@@ -70,6 +70,8 @@ window.Game = window.Game || {};
   function stopWorld() {
     Game.minigames.close(); // before the world stops, so its keys are not left paused
     Game.duel.reset();
+    Game.roster.reset();
+    callWorld('setTaskTarget', null);
     Game.countdown.reset();
     roundIsRunning = false;
     finishedStations = new Set();
@@ -87,7 +89,7 @@ window.Game = window.Game || {};
   // any other round the ones in use that this player has not finished yet.
   function usableStations() {
     if (!roundIsRunning) return [];
-    if (mode === 'duel') {
+    if (mode === 'duel' || mode === 'test') {
       const next = Game.duel.nextStation();
       return next === null ? [] : [next];
     }
@@ -95,7 +97,9 @@ window.Game = window.Game || {};
   }
 
   function showUsableStations() {
-    callWorld('setUsableStations', usableStations());
+    const stations = usableStations();
+    callWorld('setUsableStations', stations);
+    callWorld('setTaskTarget', stations.length === 1 ? stations[0] : null);
   }
 
   function noteThePhase(phase) {
@@ -112,6 +116,7 @@ window.Game = window.Game || {};
     Game.lobby.setOwnName(message.name);
     Game.duel.setOwnName(message.name);
     Game.statistics.setOwnName(message.name);
+    Game.roster.setOwnName(message.name);
     callWorld('setOwnName', message.name);
     Game.forms.showSignedIn(message.name, message.guest);
     rejoinTheLostLobby(); // after showSignedIn, whose Home screen empties the join field
@@ -175,6 +180,7 @@ window.Game = window.Game || {};
     if (!isLobbyState(message)) return; // Unreadable: keep what is shown.
     lobbyCode = message.code;
     Game.lobby.show(message);
+    Game.roster.show(message);
     // Switching screens moves the keyboard focus, so it happens only on
     // entering the lobby and not on every change in it.
     if (Game.screens.current() !== 'lobby') Game.screens.show('lobby');
@@ -276,6 +282,7 @@ window.Game = window.Game || {};
   Game.duel.setup();
   Game.countdown.setup();
   Game.statistics.setup();
+  Game.roster.setup();
   callWorld('setUseHandler', openStation);
 
   Game.net.on('open', Game.screens.hideMessage);

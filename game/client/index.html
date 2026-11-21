@@ -181,6 +181,13 @@
     <section id="screen-lobby" class="screen screen-lobby" hidden>
       <div class="map-area">
         <canvas id="map" class="map" aria-label="Campus map"></canvas>
+        <!-- Public players only: portraits, names and an explicit life status. -->
+        <aside id="player-roster" class="player-roster" aria-label="Players in this round" hidden>
+          <header class="player-roster-header">
+            <h2>Players</h2><span id="player-roster-count" class="player-roster-count">0</span>
+          </header>
+          <ul id="player-roster-list" class="player-roster-list" aria-label="Current players"></ul>
+        </aside>
         <!-- Two parts, so that on a narrow map the hint can be two lines
              (style.css). On a wide map it is one line. -->
         <p class="hint"><span class="hint-part">Walk with WASD</span> <span class="hint-part">or the arrow keys</span></p>
@@ -245,6 +252,7 @@
   <script src="js/net.js"></script>
   <script src="js/world/characters.js"></script>
   <script src="js/world/draw.js"></script>
+  <script src="js/world/navigation.js"></script>
   <script src="js/world/art/common.js"></script>
   <script src="js/world/art/pingo_doce.js"></script>
   <script src="js/world/art/lecture_hall.js"></script>
@@ -258,6 +266,7 @@
   <script src="js/lobby/screens.js"></script>
   <script src="js/lobby/forms.js"></script>
   <script src="js/lobby/lobby.js"></script>
+  <script src="js/lobby/roster.js"></script>
   <script src="js/lobby/countdown.js"></script>
   <script src="js/minigames/frame.js"></script>
   <script src="js/minigames/build_tray.js"></script>
@@ -266,6 +275,7 @@
   <script src="js/minigames/shelve_books.js"></script>
   <script src="js/minigames/self_checkout.js"></script>
   <script src="js/minigames/duel.js"></script>
+  <script src="js/minigames/room_tasks.js"></script>
   <script src="js/lobby/statistics.js"></script>
   <script src="js/main.js"></script>
 </body>

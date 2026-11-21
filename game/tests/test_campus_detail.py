@@ -24,7 +24,6 @@ from pathlib import Path
 
 import pytest
 
-from server.modes import minigames
 from server.world import paths
 from server.world.campus import CampusError, check_campus, load_campus
 from server.world.paths import station_distances
@@ -348,7 +347,8 @@ def without_the_new_solids_of_pingo_doce(campus):
 
 def test_the_new_furniture_of_pingo_doce_changes_no_walking_distance_of_the_duel():
     # Measured for this to-do: spawn to station 5 stays 262.5, 4 to 5 stays 1031.5.
-    stations = sorted(minigames.MINIGAMES)
+    # These historical bounds were measured for the original five stations.
+    stations = [1, 2, 3, 4, 5]
     before = station_distances(without_the_new_solids_of_pingo_doce(CAMPUS), stations)
     after = station_distances(CAMPUS, stations)
     assert after.keys() == before.keys()
@@ -371,7 +371,8 @@ def test_the_walking_distances_changed_only_a_little():
     #   little, 4 to 5 too but it stays 5.4 % shorter than on main.
     # The ways to station 4 may be up to 10 % shorter and never longer; no
     # other way is shorter than on main or more than 6 % longer.
-    stations = sorted(minigames.MINIGAMES)
+    # These historical bounds were measured for the original five stations.
+    stations = [1, 2, 3, 4, 5]
     before = station_distances(as_before_this_to_do(CAMPUS), stations)
     after = station_distances(CAMPUS, stations)
     for pair, distance in before.items():

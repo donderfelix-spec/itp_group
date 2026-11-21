@@ -169,7 +169,13 @@
     {"id": 3, "name": "Build the tray",   "room": "canteen",      "x": 640, "y": 48,  "r": 10},
     {"id": 4, "name": "Shelve the books", "room": "ctt",          "x": 90,  "y": 520, "r": 10},
     {"id": 5, "name": "Self-checkout",    "room": "pingo-doce",   "x": 532, "y": 534, "r": 10},
-    {"id": 6, "name": "Catch the wave",   "room": "deck",         "x": 300, "y": 534, "r": 10}
+    {"id": 6, "name": "Catch the wave",   "room": "deck",         "x": 300, "y": 534, "r": 10},
+    {"id": 7, "name": "De-buzzword the slides",     "room": "lecture-hall", "x": 32,  "y": 46,  "r": 10},
+    {"id": 8, "name": "Emergency caffeine protocol", "room": "mon-cafe",     "x": 284, "y": 108, "r": 10},
+    {"id": 9, "name": "Save the lunch",             "room": "canteen",      "x": 650, "y": 144, "r": 10},
+    {"id": 10, "name": "Decode the group chat",     "room": "ctt",          "x": 140, "y": 280, "r": 10},
+    {"id": 11, "name": "Expense the essentials",    "room": "pingo-doce",   "x": 640, "y": 460, "r": 10},
+    {"id": 12, "name": "Seagull quality control",   "room": "deck",         "x": 600, "y": 350, "r": 10}
   ],
 
   "use_range": 25,

@@ -149,6 +149,35 @@ Game.world = Game.world || {};
   // oldest first. One list for the world: every message lists all players.
   var arrivalTimes = [];
 
+  // Only the target assigned to this player is passed to the navigator.
+  var taskTarget = null;
+  var taskTitle = null;
+
+  function setTaskTarget(stationId, title) {
+    var next = Number.isInteger(stationId) ? stationId : null;
+    taskTarget = next;
+    taskTitle = typeof title === "string" ? title : null;
+    if (next === null && canvas && typeof canvas.setAttribute === "function") canvas.setAttribute("aria-label", "Campus map");
+  }
+
+  // The compass follows the direct destination vector on every frame,
+  // using only the latest position the server sent for this player.
+  function updateGuidance() {
+    if (taskTarget === null || inputPaused || !Game.world.navigation) return null;
+    var own = ownName !== null && players.has(ownName) ? players.get(ownName).server : null;
+    if (!own) return null;
+    var guidance = Game.world.navigation.directGuidance(campus, own, taskTarget);
+    if (guidance) {
+      var label = "Campus map. " + (taskTitle || guidance.title) + " in " + guidance.room + ". "
+        + (guidance.arrived ? "Press E to use." : "The arrow points to your task.");
+      if (typeof canvas.setAttribute === "function"
+        && (typeof canvas.getAttribute !== "function" || canvas.getAttribute("aria-label") !== label)) {
+        canvas.setAttribute("aria-label", label);
+      }
+    }
+    return guidance;
+  }
+
   // ---- Players and smoothing -------------------------------------------
 
   function newPlayer(name) {
@@ -942,8 +971,8 @@ Game.world = Game.world || {};
     return null;
   }
 
-  // Which stations count as targets. The others are still drawn but never
-  // glow. Only `null` means all of them. An array or a Set is the list of
+  // Which stations count as targets. Only the current private target is
+  // drawn; the others have no marker or glow. Only `null` means all of them. An array or a Set is the list of
   // ids. Anything else (nothing at all, a number, a text, an object) is a
   // mistake of the caller and means no station: a mistake must never open
   // every station.
@@ -1387,13 +1416,22 @@ Game.world = Game.world || {};
       return;
     }
     var view = aimCamera(cameraCentre(now));
-    Game.world.drawMap(ctx, campus, view);
+    // The one private usable station is already the player's current task.
+    // Older callers need not also set the optional navigator target.
+    var visibleStation = Array.isArray(usableStations) && usableStations.length === 1
+      ? usableStations[0] : null;
+    Game.world.drawMap(ctx, campus, view, visibleStation);
     var idInRange = stationInRange();
+    if (idInRange !== visibleStation) idInRange = null;
     if (idInRange !== null) {
       Game.world.drawStationGlow(ctx, stationWithId(idInRange), now);
     }
     updateUseButton(idInRange);
+    var taskGuidance = updateGuidance();
+    var ownPosition = cameraCentre(now);
+    if (taskGuidance) Game.world.navigation.drawArrow(ctx, taskGuidance, ownPosition);
     drawPlayers(now);
+    if (taskGuidance) Game.world.navigation.drawOverlay(ctx, taskGuidance, taskTitle, canvas);
   }
 
   // The browser calls this before every repaint of the screen, and not at
@@ -1481,6 +1519,7 @@ Game.world = Game.world || {};
     removeUseButton();
     running = false;
     usableStations = null; // the next lobby starts with all stations again
+    setTaskTarget(null);
     players.clear();
     arrivalTimes = [];
     hiddenNames = new Set(); // in the next lobby nobody counts as hidden before
@@ -1524,6 +1563,7 @@ Game.world = Game.world || {};
 
   Game.world.start = start;
   Game.world.stop = stop;
+  Game.world.setTaskTarget = setTaskTarget;
   Game.world.setOwnName = setOwnName;
   Game.world.setPlayers = setPlayers;
   Game.world.setPositions = setPositions;

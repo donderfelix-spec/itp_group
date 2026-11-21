@@ -135,6 +135,9 @@ page.Game = {
   duel: doesNothing,
   countdown: doesNothing,
   statistics: doesNothing,
+  // Rendering the public roster needs a canvas/DOM. Its real renderer and
+  // main lifecycle are covered separately in test_client_roster.js.
+  roster: doesNothing,
   minigames: doesNothing,
 };
 vm.createContext(page);

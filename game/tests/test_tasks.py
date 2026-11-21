@@ -491,8 +491,9 @@ def test_every_rejection_code_of_the_rules_has_a_text():
 # The table of minigames
 
 
-def test_stations_1_to_5_are_in_use_and_station_6_is_not():
-    assert sorted(minigames.MINIGAMES) == [1, 2, 3, 4, 5]
+def test_original_and_extra_stations_are_in_use_and_station_6_is_not():
+    assert sorted(minigames.MINIGAMES) == [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
+    assert 6 not in minigames.MINIGAMES
 
 
 def test_the_titles_are_the_ones_of_the_stations_on_the_map():
@@ -535,10 +536,14 @@ def test_without_a_table_of_its_own_a_round_uses_the_real_minigames(monkeypatch)
     assert round_tasks.finish("Mara", 17.0) == (1, None)
 
 
-def test_the_real_table_has_the_five_stations_with_the_titles_of_the_design():
+def test_the_real_table_has_original_and_extra_tasks_with_the_titles_of_the_design():
     """True whatever minigames are in the table: stations, titles, a minimum time, content."""
     titles = {1: "Sort the slides", 2: "Brew the order", 3: "Build the tray", 4: "Shelve the books", 5: "Self-checkout"}
-    assert {station: minigame.title for station, minigame in minigames.MINIGAMES.items()} == titles
+    extra_titles = {
+        7: "De-buzzword the slides", 8: "Emergency caffeine protocol", 9: "Save the lunch",
+        10: "Decode the group chat", 11: "Expense the essentials", 12: "Seagull quality control",
+    }
+    assert {station: minigame.title for station, minigame in minigames.MINIGAMES.items()} == titles | extra_titles
     for minigame in minigames.MINIGAMES.values():
         assert minigame.min_seconds > 0
         content = minigame.make_content(random.Random(0))
