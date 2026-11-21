@@ -288,9 +288,52 @@ Game.world = Game.world || {};
     util.circle(ctx, x, y, top, WOOD, 1);
     util.circle(ctx, x, y, top * 0.72, null, 0.3, "#C99A5E");
     util.circle(ctx, x - top * 0.3, y - top * 0.3, top * 0.25, "rgba(255, 255, 255, 0.35)", 0);
-    // A cup on the table.
-    util.circle(ctx, x + top * 0.35, y + top * 0.1, 0.9, "#FFFFFF", 0.35);
+    // Guests are scenery on the existing chair footprint, never extra blockers.
+    var variant = table.id === "mon-cafe-table-1" ? 0 : table.id === "mon-cafe-table-2" ? 1 : 2;
+    seatedGuest(ctx, x - distance, y, chairSize, variant);
+    if (variant !== 1) seatedGuest(ctx, x + distance, y, chairSize, variant + 1);
+    coffeeAndCake(ctx, x, y, top);
+
   };
+
+  // Small seated students, with different hair, skin and clothes.
+  // All limbs stay within the chairs so the newly opened aisles remain clear.
+  function seatedGuest(ctx, x, y, size, variant) {
+    var skin = ["#E7B88E", "#9B6145", "#D99E75"][variant % 3];
+    var shirt = ["#C96E59", "#4C889A", "#8A78A5"][variant % 3];
+    var hair = ["#49372C", "#28262C", "#B68245"][variant % 3];
+    util.box(ctx, x - size * 0.32, y, size * 0.64, size * 0.4, 0.6, shirt, 0.4);
+    util.line(ctx, x - size * 0.25, y + size * 0.36, x - size * 0.25, y + size * 0.49, "#34323D", 0.9);
+    util.line(ctx, x + size * 0.25, y + size * 0.36, x + size * 0.25, y + size * 0.49, "#34323D", 0.9);
+    util.circle(ctx, x, y - size * 0.13, size * 0.32, hair, 0.4);
+    util.ellipse(ctx, x, y - size * 0.06, size * 0.24, size * 0.25, skin, 0);
+    util.ellipse(ctx, x - size * 0.06, y - size * 0.28, size * 0.27, size * 0.12, hair, 0);
+    [-0.09, 0.09].forEach(function (eye) {
+      util.circle(ctx, x + size * eye, y - size * 0.05, 0.16, OUTLINE, 0);
+    });
+    // A hand holding a small coffee cup close to the seated guest.
+    util.line(ctx, x + size * 0.27, y + size * 0.1, x + size * 0.38, y - size * 0.03, skin, 0.7);
+    util.box(ctx, x + size * 0.26, y - size * 0.13, size * 0.22, size * 0.2, 0.2, "#FFF6E8", 0.25);
+    util.ellipse(ctx, x + size * 0.37, y - size * 0.13, size * 0.1, size * 0.035, "#69412C", 0);
+  }
+
+  function coffeeAndCake(ctx, x, y, radius) {
+    util.circle(ctx, x - radius * 0.3, y - radius * 0.15, 1.8, "#FFF8EA", 0.3);
+    util.circle(ctx, x - radius * 0.3, y - radius * 0.15, 1.1, "#855239", 0.2);
+    util.line(ctx, x - radius * 0.3 + 1.1, y - radius * 0.15, x - radius * 0.3 + 1.6, y - radius * 0.15, "#FFFFFF", 0.6);
+    util.ellipse(ctx, x + radius * 0.28, y + radius * 0.2, 2.2, 1.8, "#FFF8EA", 0.3);
+    ctx.beginPath();
+    ctx.moveTo(x + radius * 0.05, y + radius * 0.3);
+    ctx.lineTo(x + radius * 0.43, y - radius * 0.04);
+    ctx.lineTo(x + radius * 0.48, y + radius * 0.36);
+    ctx.closePath();
+    ctx.fillStyle = "#E8C293";
+    ctx.fill();
+    ctx.strokeStyle = "#98633F";
+    ctx.lineWidth = 0.4;
+    ctx.stroke();
+    util.circle(ctx, x + radius * 0.32, y + radius * 0.15, 0.55, "#BC4D4A", 0);
+  }
 
   // A high wooden table along the window, with round bar stools on its
   // room side; everything lies inside the solid.
