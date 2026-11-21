@@ -13,8 +13,10 @@ a different spot each time, so each test puts the walker where the walk
 starts (as `task_helpers.put` does for the stations) and then walks with
 real `move` messages.
 
-Like `test_hedge_gap.py`, these tests assume a solid hedge (S-87). When the
-hedge becomes a hiding place in M3-1.4 (S-98), they must be rethought.
+Like `test_hedge_gap.py`, these tests are about a solid hedge (S-87). Since
+M3-1.4 the hedge is a walkable hiding place (S-98), so the server runs them
+on a copy of the real map with the hedge made solid again. Walking into the
+walkable hedge is tested in `test_hiding_visibility.py`.
 """
 
 import contextlib
