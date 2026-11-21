@@ -43,7 +43,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Walking diagnostic for the team: with `?debug` in the address a panel measures the connection and the drawing while walking and copies the numbers as text | M2 | Done |
 | Limited view: You only see what is nearby and not behind a wall | M3 | Planned |
 | Show failed players as ghosts | M3 | Planned |
-| Four hiding spots in which you are visible only from close by | M3 | Planned |
+| Four hiding spots in Classic in which the Free Rider is visible only within 35 map units (S-131 to S-140) | M3 | Done |
 | Overview map with your own open tasks | M3 | Planned |
 | Finished graphics for rooms and characters instead of placeholders | M4 | Planned |
 | Sounds and music | M4 | Later |

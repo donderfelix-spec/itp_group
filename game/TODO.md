@@ -137,7 +137,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [ ] **M3-1.1** Limited vision (Hanna)
 - [ ] **M3-1.2** Show ghosts, a failed character stays on the ground until it is reported (Hanna)
 - [ ] **M3-1.3** Overview map with open tasks (Hanna)
-- [ ] **M3-1.4** Four hiding spots (S-62), after the core of Classic (Hanna)
+- [x] **M3-1.4** Four hiding spots (S-62), after the core of Classic (Hanna). Built from Hanna's hiding code in PR #69, split off by Felix's decision of 2026-11-21 (S-131 to S-135): only a living Free Rider hides, only in Classic, and is then sent only to players within 35 map units; the hedge is walkable, so all four spots can be reached; the hidden Free Rider sees his own character half transparent and “Hidden” under the progress bar. Proposals S-136 to S-140 (ghosts and the other Free Rider see him, a meeting does not reveal him, the browser forgets a player missing from `positions` in Classic, the measured walkable hedge). Two code reviews, play test with five Classic and two Duel pages in Chromium (`tests/test_play_hiding.py`, 2026-11-21). Known limit for Felix: because only the Free Rider is ever left out of `positions`, a High Performer's browser can work out who he is (S-133)
 
 **Area 2 (Felix)**
 
@@ -165,6 +165,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [ ] **M3-3.17** No browser gets its task list, so all five stations glow and a High Performer has to try each; the Free Rider reads “Free Riders cannot complete tasks.”, which gives them away. Send every player their own list in a message to them alone, let only those stations glow, and give the Free Rider a fake list with a loading bar that does not count. Belongs together with M3-4.1 (Laurin, with Lennart)
 - [ ] **M3-3.18** Texts and checks: about eleven new rejection texts are not in DESIGN.md, section 9; `set_up_classic` prints the roles when `DEBUG_ROLES` is set (remove it); `tests/test_protocol.py` lacks rejected cases for `report.sheet_id`, `report.position` and `vote.target_id` (Laurin)
 - [ ] **M3-3.19** A failed player (ghost) who stands at the red button still sees “E Emergency”; the server refuses the press with a clear message, so only the hint is wrong. Show the hint only to players who are alive (`client/js/classic/`). Found in the play test of pull request 72 (Laurin)
+- [ ] **M3-3.20** Rule 1: during a meeting the living are sent the ghosts' positions. Classic's filter in `tell_positions` in `server/main.py` (and the same condition in `state_of`) only works while the phase is "round"; in the phase "meeting" every ghost goes to everybody. Seen in the play test of M3-1.4 (`tests/test_play_hiding.py` records it as `living_frames_with_ghost_during_meeting`: 3 of 3 frames for each living page); the pages do not draw the ghost, so it shows only in DevTools. Filter ghosts out for the living in every phase of the round (Laurin)
 - [ ] **M3-3.7** Play test: one complete round with five players, once the students win, once the Free Rider wins (Laurin)
 
 Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with one entry per mode, and `protocol.MODES` lists the modes the host can choose. A new mode adds one entry to each.
