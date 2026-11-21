@@ -96,7 +96,7 @@ def test_report_on_a_sheet_made_after_another_report_names_that_sheet(connect, c
     })
     meeting = receive_broadcast(connections, "meeting_state")
     assert meeting["phase"] == "discussion"
-    assert fail_a["sheet_id"] not in round_state.f_sheets
+    assert fail_a["sheet_id"] in round_state.f_sheets
     assert fail_b["sheet_id"] in round_state.f_sheets
 
     living = [player for player in EIGHT_PLAYERS if player not in ghosts]

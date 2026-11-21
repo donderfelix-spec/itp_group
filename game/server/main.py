@@ -904,7 +904,11 @@ def handle_finish_station(lobby, name: str, message: dict) -> list:
     # station again, instead of being left with a station that the server
     # counts but the browser still shows as open.
     try:
-        return [protocol.station_done(station)] + count_for_the_mode(lobby, name, station, now)
+        answers = [protocol.station_done(station)] + count_for_the_mode(lobby, name, station, now)
+        if lobby.classic_round is not None:
+            # This reply goes only to its acting player, never the lobby.
+            answers[0]["task_stations"] = classic_task_stations(lobby.classic_round, name)
+        return answers
     except Exception:
         take_back_the_count(lobby, name, station)
         raise
@@ -928,6 +932,21 @@ def take_back_the_count(lobby, name: str, station: int):
     lobby.tasks.take_back(name, station)
     if lobby.duel is not None:
         lobby.duel.take_back(name, station)
+    if lobby.classic_round is not None:
+        lobby.classic_round.completed_tasks.get(name, set()).discard(str(station))
+
+
+def classic_task_stations(classic, name: str) -> list:
+    """Only this High Performer's ordered, unfinished task stations.
+
+    Free Riders cannot complete tasks in the upstream Classic rules, so
+    their private task list is empty. Other players' assignments never
+    enter this value, including when the viewer is a ghost.
+    """
+    if classic.roles.get(name) != "HP":
+        return []
+    finished = classic.completed_tasks.get(name, set())
+    return [int(station) for station in classic.tasks.get(name, ()) if station not in finished]
 
 
 TASK_HANDLERS = {
@@ -1304,7 +1323,10 @@ async def tell_classic_start(name: str, lobby, classic):
         return
     reveal = classic.role_reveal(name)
     if reveal is not None:
-        await send_to(name, {"type": "classic_role", **reveal})
+        await send_to(name, {
+            "type": "classic_role", **reveal,
+            "task_stations": classic_task_stations(classic, name),
+        })
         if reveal["role"] == "FR":
             await send_to(name, {"type": "you_are_fr"})
             await tell_classic_fail_status(lobby, name)

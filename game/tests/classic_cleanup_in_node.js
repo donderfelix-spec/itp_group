@@ -42,6 +42,8 @@ const sent = [];
 const errors = [];
 const handlers = {};
 let clock = 0;
+let nextTimer = 1;
+const timers = new Map();
 
 // ---- A canvas context that writes down every text it draws ------------
 
@@ -225,8 +227,12 @@ const page = {
   fetch: () => Promise.resolve({ ok: true, json: () => Promise.resolve(campus) }),
   requestAnimationFrame: (callback) => { nextFrame = callback; return 1; },
   cancelAnimationFrame: () => { nextFrame = null; },
-  setTimeout: () => 0,
-  clearTimeout() {},
+  setTimeout(callback, delay) {
+    const id = nextTimer++;
+    timers.set(id, { callback, at: clock + Number(delay || 0) });
+    return id;
+  },
+  clearTimeout(id) { timers.delete(id); },
   addEventListener(type, listener) {
     if (!windowListeners[type]) windowListeners[type] = [];
     windowListeners[type].push(listener);
@@ -301,6 +307,18 @@ function runFrame() {
   mapTexts = context.texts;
 }
 
+function runDueTimers() {
+  for (const [id, timer] of [...timers]) {
+    if (timer.at > clock) continue;
+    timers.delete(id);
+    try {
+      timer.callback();
+    } catch (problem) {
+      errors.push(String(problem && problem.stack || problem));
+    }
+  }
+}
+
 function mapButton(className) {
   return element('map-box').children.find((child) => child.classList.contains(className)) || null;
 }
@@ -346,6 +364,7 @@ const STEPS = {
     const end = clock + milliseconds;
     while (clock < end) {
       clock = Math.min(end, clock + FRAME_MILLISECONDS);
+      runDueTimers();
       runFrame();
     }
   },

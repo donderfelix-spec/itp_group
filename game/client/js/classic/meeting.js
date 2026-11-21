@@ -22,6 +22,8 @@ Game.classicMeeting = Game.classicMeeting || {};
   var voteResult;
   var voteListSignature = "";
   var pendingVoteTarget = null;
+  var resultCloseTimer = null;
+  var noEjectionShown = false;
 
   function setup() {
     screen = document.getElementById("classic-meeting");
@@ -52,21 +54,30 @@ Game.classicMeeting = Game.classicMeeting || {};
 
   function show(message) {
     if (!isMeetingState(message)) return;
+    if (message.phase === "result" && !message.ejected_id) {
+      if (noEjectionShown) return;
+      noEjectionShown = true;
+    } else {
+      noEjectionShown = false;
+    }
+    cancelResultClose();
     state = message;
-    // The server removed this sheet when the meeting started. The other
-    // sheets stay on the map until the round ends (Game.world.clearClassicRound).
+    // A reported sheet stays visible, but can no longer start a meeting.
     if (
       message.reason === "report" &&
       typeof message.reported_sheet_id === "string" &&
-      Game.world && typeof Game.world.removeBloodSheet === "function"
+      Game.world && typeof Game.world.markBloodSheetReported === "function"
     ) {
-      Game.world.removeBloodSheet(message.reported_sheet_id);
+      Game.world.markBloodSheetReported(message.reported_sheet_id);
     }
     screen.hidden = false;
     holdTheCharacter(message.phase !== "result");
     updateInput();
     updateVoting();
     updateVoteResult();
+    if (message.phase === "result" && !message.ejected_id) {
+      resultCloseTimer = window.setTimeout(hide, 1800);
+    }
     draw();
   }
 
@@ -80,6 +91,7 @@ Game.classicMeeting = Game.classicMeeting || {};
   }
 
   function hide() {
+    cancelResultClose();
     if (state !== null) holdTheCharacter(false);
     state = null;
     pendingVoteTarget = null;
@@ -162,6 +174,13 @@ Game.classicMeeting = Game.classicMeeting || {};
       voteResult.textContent = state.ejected_id + " was not a Free Rider.";
     }
     if (state.winner) voteResult.textContent += " " + state.winner + " wins.";
+  }
+
+  function cancelResultClose() {
+    if (resultCloseTimer !== null) {
+      window.clearTimeout(resultCloseTimer);
+      resultCloseTimer = null;
+    }
   }
 
   function sendMessage(event) {

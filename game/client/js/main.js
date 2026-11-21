@@ -39,6 +39,7 @@ window.Game = window.Game || {};
   // The stations this player has finished in the running round. The server
   // keeps the real list; this one only decides which stations glow.
   let finishedStations = new Set();
+  let classicTask = null; // first of the own remaining stations sent privately
   // True from the moment this browser asked to log out until the server
   // answers. It tells a wanted `signed_out` from one that came unasked.
   let logOutWasAsked = false;
@@ -79,6 +80,7 @@ window.Game = window.Game || {};
     Game.countdown.reset();
     roundIsRunning = false;
     finishedStations = new Set();
+    classicTask = null;
     if (!worldIsRunning) return;
     worldIsRunning = false;
     callWorld('stop');
@@ -136,6 +138,7 @@ window.Game = window.Game || {};
   // any other round the ones in use that this player has not finished yet.
   function usableStations() {
     if (!roundIsRunning) return [];
+    if (mode === 'classic') return classicTask === null ? [] : [classicTask];
     if (hasOneTaskAtATime()) {
       const next = Game.duel.nextStation();
       return next === null ? [] : [next];
@@ -170,7 +173,10 @@ window.Game = window.Game || {};
       finishedStations = new Set();
       callWorld('startOfRound'); // everybody stands and faces right
     }
-    if (!isRound) Game.minigames.close(); // no round, no task
+    if (!isRound) {
+      Game.minigames.close(); // no round, no task
+      classicTask = null;
+    }
     roundIsRunning = isRound;
   }
 
@@ -278,6 +284,19 @@ window.Game = window.Game || {};
     callWorld('setPlayers', message.players);
   }
 
+  function rememberClassicTasks(message) {
+    const stations = message && message.task_stations;
+    if (mode !== 'classic' || !roundIsRunning || !Array.isArray(stations)
+        || stations.length > STATIONS_IN_USE.length || new Set(stations).size !== stations.length
+        || !stations.every((station) => Number.isInteger(station) && STATIONS_IN_USE.includes(station))) return;
+    classicTask = stations.length ? stations[0] : null;
+  }
+
+  function whenClassicRole(message) {
+    rememberClassicTasks(message);
+    showUsableStations();
+  }
+
   function whenStationOpened(message) {
     const isReadable = Number.isInteger(message.station)
       && typeof message.title === 'string'
@@ -298,6 +317,7 @@ window.Game = window.Game || {};
 
   function whenStationDone(message) {
     finishedStations.add(message.station);
+    if (mode === 'classic') rememberClassicTasks(message);
     showUsableStations();
     Game.minigames.showDone();
   }
@@ -377,6 +397,7 @@ window.Game = window.Game || {};
   Game.net.on('left_lobby', whenLeftLobby);
   Game.net.on('positions', whenPositions);
   Game.net.on('classic_roster', whenClassicRoster);
+  Game.net.on('classic_role', whenClassicRole);
   Game.net.on('station_opened', whenStationOpened);
   Game.net.on('station_closed', Game.minigames.close);
   Game.net.on('station_done', whenStationDone);

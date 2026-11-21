@@ -217,6 +217,22 @@ def test_a_round_ended_by_the_vote_closes_the_meeting_result():
     assert after["endScreenHidden"] is False
 
 
+@needs_node
+def test_a_meeting_without_an_ejection_closes_after_its_result():
+    result = meeting_state("result")
+    result[1]["ejected_id"] = None
+    result[1]["revealed_role"] = None
+    result[1]["winner"] = None
+    steps = classic_round_as_free_rider() + [
+        result, ["look"], ["wait", 1799], ["look"], ["wait", 1], ["look"],
+    ]
+    shown, still_shown, closed = run_page(steps)["looks"][1:]
+    assert shown["meetingHidden"] is False
+    assert still_shown["meetingHidden"] is False
+    assert closed["meetingHidden"] is True
+    assert closed["inputPaused"] is False
+
+
 # Accepted: the end screen closes with the next countdown, round or stop
 
 
