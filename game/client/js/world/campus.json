@@ -8,14 +8,19 @@
   "colours": {"lawn": "#DCE6C8", "deck": "#F3F0E9", "outline": "#2E2A3B"},
 
   "rooms": [
-    {"id": "lecture-hall", "name": "Lecture Hall",     "x": 20,  "y": 20,  "w": 210, "h": 150, "floor": "#EAD3AE", "label": {"x": 125, "y": 152}},
-    {"id": "mon-cafe",     "name": "Mon Café",         "x": 250, "y": 20,  "w": 200, "h": 150, "floor": "#F6ECE0", "label": {"x": 350, "y": 152}},
-    {"id": "canteen",      "name": "Canteen",          "x": 470, "y": 20,  "w": 190, "h": 150, "floor": "#D7EDDF", "label": {"x": 565, "y": 152}},
-    {"id": "ctt",          "name": "CTT Student Hall", "x": 20,  "y": 230, "w": 140, "h": 330, "floor": "#D6E4F4", "label": {"x": 90,  "y": 248}},
-    {"id": "pingo-doce",   "name": "Pingo Doce",       "x": 440, "y": 400, "w": 220, "h": 160, "floor": "#DCEFC8", "label": {"x": 614, "y": 421}}
+    {"id": "lecture-hall", "name": "Lecture Hall",     "x": 20,  "y": 20,  "w": 210, "h": 150, "floor": "#EAD3AE", "label": {"x": 125, "y": 152}, "pattern": "planks",        "wall_face": "bamboo-slats"},
+    {"id": "mon-cafe",     "name": "Mon Café",         "x": 250, "y": 20,  "w": 200, "h": 150, "floor": "#F6ECE0", "label": {"x": 350, "y": 152}, "pattern": "concrete",      "wall_face": "sage-tiles"},
+    {"id": "canteen",      "name": "Canteen",          "x": 470, "y": 20,  "w": 190, "h": 150, "floor": "#D7EDDF", "label": {"x": 565, "y": 152}, "pattern": "mint-tiles",    "wall_face": "white-tiles"},
+    {"id": "ctt",          "name": "CTT Student Hall", "x": 20,  "y": 230, "w": 140, "h": 330, "floor": "#D6E4F4", "label": {"x": 90,  "y": 248}, "pattern": "speckled",      "wall_face": "white-wall"},
+    {"id": "pingo-doce",   "name": "Pingo Doce",       "x": 440, "y": 400, "w": 220, "h": 160, "floor": "#DCEFC8", "label": {"x": 614, "y": 421}, "pattern": "diamond-tiles", "wall_face": "wood-slats"}
   ],
 
   "deck_label": {"name": "Main Deck", "x": 365, "y": 350},
+
+  "art_note": "Only for the browser's drawing (M2-1.4). A room's pattern and wall_face, deck_pattern and deck_wall_face name drawings in client/js/world/art/. wall_face_height is how far below a wall running left to right its face is drawn (never solid). decor is drawn and never solid: layer floor lies flat on the floor, wall hangs on a wall and touches it, on stands on a solid and lies inside it.",
+  "deck_pattern": "paving",
+  "deck_wall_face": "facade",
+  "wall_face_height": 8,
 
   "deck": [
     {"x": 20,  "y": 170}, {"x": 660, "y": 170}, {"x": 660, "y": 400}, {"x": 440, "y": 400},
@@ -100,6 +105,14 @@
     {"id": "pingo-doce-shelf-3",      "kind": "shelf",    "x": 566, "y": 440, "w": 16, "h": 56},
     {"id": "pingo-doce-shelf-4",      "kind": "shelf",    "x": 616, "y": 440, "w": 16, "h": 56},
     {"id": "pingo-doce-checkout",     "kind": "checkout", "x": 456, "y": 528, "w": 56, "h": 13},
+    {"id": "pingo-doce-gate-1",       "kind": "turnstile",   "x": 511, "y": 417, "w": 4,  "h": 9},
+    {"id": "pingo-doce-gate-2",       "kind": "turnstile",   "x": 529, "y": 417, "w": 4,  "h": 9},
+    {"id": "pingo-doce-gate-3",       "kind": "turnstile",   "x": 547, "y": 417, "w": 4,  "h": 9},
+    {"id": "pingo-doce-gate-4",       "kind": "turnstile",   "x": 565, "y": 417, "w": 4,  "h": 9},
+    {"id": "pingo-doce-fridge-left",  "kind": "fridge",      "x": 443, "y": 403, "w": 8,  "h": 117},
+    {"id": "pingo-doce-fridge-right", "kind": "fridge",      "x": 649, "y": 436, "w": 8,  "h": 109},
+    {"id": "pingo-doce-fruit-stand",  "kind": "fruit-stand", "x": 587, "y": 510, "w": 26, "h": 26},
+    {"id": "pingo-doce-hot-counter",  "kind": "hot-counter", "x": 590, "y": 545, "w": 67, "h": 12},
 
     {"id": "deck-pool",               "kind": "pool",  "x": 300, "y": 262, "w": 130, "h": 56},
     {"id": "deck-tree-1",             "kind": "tree",  "x": 198, "y": 238, "w": 28, "h": 28},
@@ -135,5 +148,21 @@
   "bands": [
     {"id": "sand", "x": 0, "y": 566, "w": 680, "h": 18, "colour": "#F0DFA8"},
     {"id": "sea",  "x": 0, "y": 584, "w": 680, "h": 30, "colour": "#4FA3D9"}
+  ],
+
+  "decor": [
+    {"kind": "mat",            "layer": "floor", "x": 522, "y": 405, "w": 36, "h": 8},
+    {"kind": "sign",           "layer": "wall",  "x": 452, "y": 403, "w": 24, "h": 6, "text": "GREENS"},
+    {"kind": "screen",         "layer": "wall",  "x": 480, "y": 403, "w": 8,  "h": 6, "colour": "#58C23A"},
+    {"kind": "sign",           "layer": "wall",  "x": 492, "y": 403, "w": 24, "h": 6, "text": "CANDY"},
+    {"kind": "sign",           "layer": "wall",  "x": 563, "y": 403, "w": 38, "h": 6, "text": "PINGO DOCE & GO", "colour": "#3E9B4F"},
+    {"kind": "screen",         "layer": "wall",  "x": 604, "y": 403, "w": 8,  "h": 6, "colour": "#7CC7EC"},
+    {"kind": "sign",           "layer": "wall",  "x": 615, "y": 403, "w": 32, "h": 6, "text": "READY MEALS"},
+    {"kind": "sign",           "layer": "on",    "x": 467, "y": 489, "w": 14, "h": 5, "text": "SNACKS"},
+    {"kind": "sign",           "layer": "on",    "x": 517, "y": 489, "w": 14, "h": 5, "text": "DRINKS"},
+    {"kind": "sign",           "layer": "on",    "x": 567, "y": 489, "w": 14, "h": 5, "text": "PIZZA"},
+    {"kind": "sign",           "layer": "on",    "x": 617, "y": 489, "w": 14, "h": 5, "text": "PANTRY"},
+    {"kind": "coffee-machine", "layer": "on",    "x": 592, "y": 548, "w": 8,  "h": 8},
+    {"kind": "sign",           "layer": "on",    "x": 600, "y": 545.5, "w": 20, "h": 3, "text": "COFFEE"}
   ]
 }

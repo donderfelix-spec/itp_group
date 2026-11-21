@@ -124,6 +124,89 @@ Game.world = Game.world || {};
     return null;
   }
 
+  // ---- Rectangles and the art files (M2-1.4) ----------------------------
+
+  // How far a drawing may reach past its rectangle: outlines, a chair that
+  // overhangs its table, a shadow. Things are drawn when this much of a
+  // margin reaches into the area being drawn.
+  var DRAWING_OVERHANG = 4;
+
+  // True when the rectangle `thing`, with the overhang, reaches into `area`.
+  function reaches(thing, area) {
+    return thing.x - DRAWING_OVERHANG < area.x + area.w && thing.x + thing.w + DRAWING_OVERHANG > area.x
+      && thing.y - DRAWING_OVERHANG < area.y + area.h && thing.y + thing.h + DRAWING_OVERHANG > area.y;
+  }
+
+  // The part two rectangles have in common, or null when they do not meet.
+  function overlap(a, b) {
+    var left = Math.max(a.x, b.x);
+    var top = Math.max(a.y, b.y);
+    var right = Math.min(a.x + a.w, b.x + b.w);
+    var bottom = Math.min(a.y + a.h, b.y + b.h);
+    if (right <= left || bottom <= top) {
+      return null;
+    }
+    return { x: left, y: top, w: right - left, h: bottom - top };
+  }
+
+  // The smallest rectangle around a list of points.
+  function boundsOf(points) {
+    var xs = points.map(function (point) { return point.x; });
+    var ys = points.map(function (point) { return point.y; });
+    var left = Math.min.apply(null, xs);
+    var top = Math.min.apply(null, ys);
+    return { x: left, y: top, w: Math.max.apply(null, xs) - left, h: Math.max.apply(null, ys) - top };
+  }
+
+  // True when the point lies inside the polygon (the deck's outline): a line
+  // from the point to the right crosses the outline an odd number of times.
+  function insidePolygon(corners, x, y) {
+    var inside = false;
+    for (var i = 0, j = corners.length - 1; i < corners.length; j = i++) {
+      var a = corners[i];
+      var b = corners[j];
+      var crosses = (a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x;
+      if (crosses) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+
+  // The art files in js/world/art/ register their drawings in Game.world.art,
+  // in four groups: "kinds" (solids), "decor", "floors" and "faces". A
+  // drawing for one room is registered as "room-id:name" and wins over the
+  // drawing for every room ("name"). Returns null when nothing is registered.
+  function artFor(group, room, name) {
+    var art = Game.world.art;
+    if (!name || !art || !art[group]) {
+      return null;
+    }
+    var forThisRoom = room ? art[group][room.id + ":" + name] : null;
+    return forThisRoom || art[group][name] || null;
+  }
+
+  var artHasFailed = false; // warn once, not on every tile
+
+  // Runs one drawing of an art file. If it fails, the canvas is put back as
+  // it was and false is returned, so the caller can draw the plain version
+  // instead: a broken art file never hides a wall or stops the map.
+  function drawWithArt(ctx, drawing, thing, room, campus) {
+    ctx.save();
+    try {
+      drawing(ctx, thing, room, campus);
+      return true;
+    } catch (problem) {
+      if (!artHasFailed) {
+        artHasFailed = true;
+        console.warn("A drawing of the map failed; it is drawn plain.", problem);
+      }
+      return false;
+    } finally {
+      ctx.restore();
+    }
+  }
+
   // ---- Ground: lawn, beach, deck, rooms --------------------------------
 
   // `view` is the part of the world the camera shows. The lawn and the bands
@@ -173,7 +256,9 @@ Game.world = Game.world || {};
   }
 
   // The paved deck: its colour, with the joints between the tiles on top.
-  function drawDeck(ctx, campus) {
+  // When the map names a `deck_pattern` that an art file draws, that pattern
+  // takes the place of the plain joints.
+  function drawDeck(ctx, campus, area) {
     var corners = list(campus.deck);
     if (corners.length < 3) {
       return;
@@ -183,11 +268,10 @@ Game.world = Game.world || {};
     ctx.fill();
     ctx.save();
     ctx.clip(); // the joints are drawn across the whole map but show only on the deck
-    for (var x = PAVING_TILE; x < campus.width; x += PAVING_TILE) {
-      line(ctx, x, 0, x, campus.height, PAVING_LINE, 1.5);
-    }
-    for (var y = PAVING_TILE; y < campus.height; y += PAVING_TILE) {
-      line(ctx, 0, y, campus.width, y, PAVING_LINE, 1.5);
+    var pattern = artFor("floors", null, campus.deck_pattern);
+    var deckArea = overlap(area, boundsOf(corners));
+    if (!pattern || !deckArea || !drawWithArt(ctx, pattern, deckArea, null, campus)) {
+      drawPlainJoints(ctx, campus);
     }
     ctx.restore();
     // The deck's name has its own place in the map file, away from the spawn
@@ -198,11 +282,34 @@ Game.world = Game.world || {};
     }
   }
 
-  function drawRoomFloors(ctx, campus) {
+  function drawPlainJoints(ctx, campus) {
+    for (var x = PAVING_TILE; x < campus.width; x += PAVING_TILE) {
+      line(ctx, x, 0, x, campus.height, PAVING_LINE, 1.5);
+    }
+    for (var y = PAVING_TILE; y < campus.height; y += PAVING_TILE) {
+      line(ctx, 0, y, campus.width, y, PAVING_LINE, 1.5);
+    }
+  }
+
+  // Each room's floor colour, and on top its `pattern` (planks, tiles, ...)
+  // when an art file draws one. The pattern is only drawn where the room and
+  // `area` overlap, so a tile of the map does not draw the whole room.
+  function drawRoomFloors(ctx, campus, area) {
     var rooms = list(campus.rooms);
     for (var i = 0; i < rooms.length; i++) {
-      ctx.fillStyle = rooms[i].floor;
-      ctx.fillRect(rooms[i].x, rooms[i].y, rooms[i].w, rooms[i].h);
+      var room = rooms[i];
+      ctx.fillStyle = room.floor;
+      ctx.fillRect(room.x, room.y, room.w, room.h);
+      var pattern = artFor("floors", room, room.pattern);
+      var floorArea = overlap(area, room);
+      if (pattern && floorArea) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(room.x, room.y, room.w, room.h);
+        ctx.clip();
+        drawWithArt(ctx, pattern, floorArea, room, campus);
+        ctx.restore();
+      }
     }
   }
 
@@ -330,8 +437,14 @@ Game.world = Game.world || {};
   }
 
   // A kind this file does not know is still drawn, as a grey box: something
-  // the server treats as solid must never be invisible.
+  // the server treats as solid must never be invisible. When an art file
+  // (js/world/art/) draws the kind, its drawing is used instead.
   function drawSolid(ctx, solid, campus) {
+    var room = roomAt(campus, solid.x + solid.w / 2, solid.y + solid.h / 2);
+    var drawing = artFor("kinds", room, solid.kind);
+    if (drawing && drawWithArt(ctx, drawing, solid, room, campus)) {
+      return;
+    }
     var special = SPECIAL_KINDS[solid.kind];
     var simple = SIMPLE_KINDS[solid.kind];
     if (special) {
@@ -345,10 +458,252 @@ Game.world = Game.world || {};
     }
   }
 
-  function drawSolids(ctx, campus) {
+  // Only the solids that reach into `area` are drawn.
+  function drawSolids(ctx, campus, area) {
     var solids = list(campus.solids);
     for (var i = 0; i < solids.length; i++) {
-      drawSolid(ctx, solids[i], campus);
+      if (reaches(solids[i], area)) {
+        drawSolid(ctx, solids[i], campus);
+      }
+    }
+  }
+
+  // ---- Wall faces and decor (M2-1.4) -----------------------------------
+
+  // How far below its band a wall face may throw its shadow onto the floor.
+  var FACE_SHADOW = 4;
+
+  // The camera looks from the south, so below every wall running left to
+  // right the side of that wall is seen: a band `wall_face_height` units
+  // high, in the style the room (or the deck) names as `wall_face`. A face is
+  // only drawn, never solid. Walls running up and down show only their top.
+  function drawWallFaces(ctx, campus, area) {
+    var height = campus.wall_face_height;
+    if (typeof height !== "number" || height <= 0) {
+      return;
+    }
+    var rooms = list(campus.rooms);
+    for (var i = 0; i < rooms.length; i++) {
+      var room = rooms[i];
+      var face = artFor("faces", room, room.wall_face);
+      if (face && overlap(area, room)) {
+        drawFacesOf(ctx, campus, area, room, face, height, function (x, y) {
+          return y > room.y && y < room.y + room.h && x > room.x && x < room.x + room.w;
+        });
+      }
+    }
+    var corners = list(campus.deck);
+    var deckFace = artFor("faces", null, campus.deck_wall_face);
+    if (deckFace && corners.length >= 3) {
+      drawFacesOf(ctx, campus, area, null, deckFace, height, function (x, y) {
+        return insidePolygon(corners, x, y);
+      });
+    }
+  }
+
+  // Draws the face of every wall running left to right whose lower edge lies
+  // in one place (`isInside` asks about the point just below the middle of
+  // the wall), clipped to that place (the room, or the deck). Only faces that
+  // reach into `area` are drawn.
+  function drawFacesOf(ctx, campus, area, room, face, height, isInside) {
+    ctx.save();
+    ctx.beginPath();
+    if (room) {
+      ctx.rect(room.x, room.y, room.w, room.h);
+    } else {
+      traceDeck(ctx, list(campus.deck));
+    }
+    ctx.clip();
+    var solids = list(campus.solids);
+    for (var i = 0; i < solids.length; i++) {
+      var wall = solids[i];
+      var runsLeftToRight = wall.kind === "wall" && wall.w > wall.h;
+      var band = { x: wall.x, y: wall.y + wall.h, w: wall.w, h: height };
+      if (runsLeftToRight && reaches(band, area) && isInside(wall.x + wall.w / 2, wall.y + wall.h + 0.5)) {
+        // A face stays in its band, but for its shadow on the floor below.
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(band.x, band.y, band.w, band.h + FACE_SHADOW);
+        ctx.clip();
+        drawWithArt(ctx, face, band, room, campus);
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+
+  // Decor is only drawn: fittings the browser shows and the server ignores
+  // (signs, mats, a coffee machine on a counter). Each entry has a `layer`:
+  // "floor" lies flat on the floor, "wall" hangs on a wall or its face, "on"
+  // stands on a solid. A kind without a drawing is left out.
+  function drawDecor(ctx, campus, area, layer) {
+    var decor = list(campus.decor);
+    for (var i = 0; i < decor.length; i++) {
+      var item = decor[i];
+      if (item.layer !== layer || !reaches(item, area)) {
+        continue;
+      }
+      var room = roomAt(campus, item.x + item.w / 2, item.y + item.h / 2);
+      var drawing = artFor("decor", room, item.kind);
+      if (drawing) {
+        drawWithArt(ctx, drawing, item, room, campus);
+      }
+    }
+  }
+
+  // ---- The part of the map that never changes --------------------------
+
+  // Ground, floors, wall faces, furniture, decor and the room names: all of
+  // it inside `area` (in map units). The order matters: what is drawn later
+  // lies on top.
+  function drawStaticLayers(ctx, campus, area) {
+    drawGround(ctx, campus, area);
+    drawDeck(ctx, campus, area);
+    drawRoomFloors(ctx, campus, area);
+    drawDoors(ctx, campus);
+    drawDecor(ctx, campus, area, "floor");
+    drawWallFaces(ctx, campus, area);
+    drawRoomNames(ctx, campus);
+    drawSolids(ctx, campus, area);
+    drawDecor(ctx, campus, area, "wall");
+    drawDecor(ctx, campus, area, "on");
+  }
+
+  // The map is drawn on every frame, but most of it never changes. So the
+  // static part is drawn once into square tiles of TILE_PIXELS canvas pixels
+  // (at the current zoom), and each frame only copies the tiles it needs.
+  // Tiles sit on whole canvas pixels, so no seam shows between two of them.
+  // In a frame that needed no new tile, one tile just outside the picture is
+  // drawn ahead, so walking on seldom has to draw several tiles at once.
+  var TILE_PIXELS = 512;
+  // At least this many tiles are kept; more when the canvas is large.
+  var FEWEST_TILES_KEPT = 24;
+
+  var tiles = {
+    campus: null, // the map and the zoom the tiles were drawn for
+    scale: 0,
+    kept: new Map(), // "column,row" -> canvas; the most recently used last
+    drawn: 0, // how many tiles were drawn so far
+    unavailable: false // true when this browser cannot make tiles
+  };
+
+  function drawStaticPart(ctx, campus, view) {
+    if (!tiles.unavailable && canUseTiles(ctx)) {
+      ctx.save();
+      try {
+        drawFromTiles(ctx, campus);
+        return;
+      } catch (problem) {
+        tiles.unavailable = true;
+        console.warn("The map is drawn without tiles.", problem);
+      } finally {
+        ctx.restore();
+      }
+    }
+    // Without a page (tests in Node) or without tiles: draw it directly.
+    drawStaticLayers(ctx, campus, view);
+  }
+
+  // Tiles need a page that can make canvases and a camera that only scales
+  // and moves (no turning, the same scale both ways).
+  function canUseTiles(ctx) {
+    if (typeof document === "undefined" || typeof document.createElement !== "function") {
+      return false;
+    }
+    if (typeof ctx.getTransform !== "function" || typeof ctx.drawImage !== "function") {
+      return false;
+    }
+    if (!ctx.canvas || typeof ctx.canvas.width !== "number" || typeof ctx.canvas.height !== "number") {
+      return false;
+    }
+    var camera = ctx.getTransform();
+    var isPlainNumber = function (value) { return typeof value === "number" && isFinite(value); };
+    var allNumbers = camera && [camera.a, camera.b, camera.c, camera.d, camera.e, camera.f].every(isPlainNumber);
+    return Boolean(allNumbers) && camera.b === 0 && camera.c === 0 && camera.a === camera.d && camera.a > 0;
+  }
+
+  // Copies the tiles that cover the canvas. Tile (column, row) holds the map
+  // from column * TILE_PIXELS to (column + 1) * TILE_PIXELS canvas pixels,
+  // counted from the map's corner (0, 0) at this zoom.
+  function drawFromTiles(ctx, campus) {
+    var camera = ctx.getTransform();
+    var scale = camera.a;
+    if (tiles.campus !== campus || tiles.scale !== scale) {
+      tiles.kept.clear(); // a new map or a new zoom: every tile is out of date
+      tiles.campus = campus;
+      tiles.scale = scale;
+    }
+    // Where the map's corner lands on the canvas, rounded to a whole pixel.
+    var originX = Math.round(camera.e);
+    var originY = Math.round(camera.f);
+    var firstColumn = Math.floor(-originX / TILE_PIXELS);
+    var lastColumn = Math.floor((ctx.canvas.width - originX - 1) / TILE_PIXELS);
+    var firstRow = Math.floor(-originY / TILE_PIXELS);
+    var lastRow = Math.floor((ctx.canvas.height - originY - 1) / TILE_PIXELS);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    var tilesBefore = tiles.drawn;
+    for (var row = firstRow; row <= lastRow; row++) {
+      for (var column = firstColumn; column <= lastColumn; column++) {
+        var tile = tileAt(campus, scale, column, row);
+        ctx.drawImage(tile, originX + column * TILE_PIXELS, originY + row * TILE_PIXELS);
+      }
+    }
+    if (tiles.drawn === tilesBefore) {
+      drawOneTileAhead(campus, scale, firstColumn - 1, lastColumn + 1, firstRow - 1, lastRow + 1);
+    }
+    // Keep the tiles of the picture and of the ring around it, and as many
+    // again of those seen last.
+    var ring = (lastColumn - firstColumn + 3) * (lastRow - firstRow + 3);
+    forgetOldTiles(Math.max(FEWEST_TILES_KEPT, ring * 2));
+  }
+
+  // Draws the first missing tile of the ring around the picture, if any.
+  function drawOneTileAhead(campus, scale, firstColumn, lastColumn, firstRow, lastRow) {
+    for (var row = firstRow; row <= lastRow; row++) {
+      for (var column = firstColumn; column <= lastColumn; column++) {
+        var onTheRing = row === firstRow || row === lastRow || column === firstColumn || column === lastColumn;
+        if (onTheRing && !tiles.kept.has(column + "," + row)) {
+          tiles.kept.set(column + "," + row, drawTile(campus, scale, column, row));
+          return;
+        }
+      }
+    }
+  }
+
+  // The tile, from the store or drawn now.
+  function tileAt(campus, scale, column, row) {
+    var key = column + "," + row;
+    var tile = tiles.kept.get(key);
+    if (tile) {
+      tiles.kept.delete(key); // put it back at the end: used most recently
+    } else {
+      tile = drawTile(campus, scale, column, row);
+    }
+    tiles.kept.set(key, tile);
+    return tile;
+  }
+
+  function drawTile(campus, scale, column, row) {
+    tiles.drawn += 1;
+    var tile = document.createElement("canvas");
+    tile.width = TILE_PIXELS;
+    tile.height = TILE_PIXELS;
+    var tileCtx = typeof tile.getContext === "function" ? tile.getContext("2d") : null;
+    if (!tileCtx) {
+      throw new Error("A canvas for a tile of the map could not be made.");
+    }
+    tileCtx.setTransform(scale, 0, 0, scale, -column * TILE_PIXELS, -row * TILE_PIXELS);
+    tileCtx.lineJoin = "round";
+    var size = TILE_PIXELS / scale;
+    drawStaticLayers(tileCtx, campus, { x: column * size, y: row * size, w: size, h: size });
+    return tile;
+  }
+
+  // Keeps only the `count` tiles used most recently, so walking across the
+  // whole map does not fill the memory.
+  function forgetOldTiles(count) {
+    while (tiles.kept.size > count) {
+      tiles.kept.delete(tiles.kept.keys().next().value);
     }
   }
 
@@ -426,12 +781,7 @@ Game.world = Game.world || {};
     view = view || { x: 0, y: 0, w: campus.width, h: campus.height };
     ctx.save();
     ctx.lineJoin = "round";
-    drawGround(ctx, campus, view);
-    drawDeck(ctx, campus);
-    drawRoomFloors(ctx, campus);
-    drawDoors(ctx, campus);
-    drawRoomNames(ctx, campus);
-    drawSolids(ctx, campus);
+    drawStaticPart(ctx, campus, view);
     drawHidingSpots(ctx, campus);
     drawButton(ctx, campus);
     drawStations(ctx, campus);
