@@ -223,7 +223,11 @@ window.Game = window.Game || {};
     const card = container.querySelector('.minigame-window');
     card.querySelector('.minigame-body').remove();
     card.querySelector('.minigame-instructions').remove();
-    card.querySelector('.minigame-close').disabled = true;
+    // The window closes by itself in a moment, so the × goes (Felix,
+    // 2026-11-21). Hidden, it is out of the Tab order as well.
+    const closeButton = card.querySelector('.minigame-close');
+    closeButton.disabled = true;
+    closeButton.hidden = true;
     const doneText = element('p', 'minigame-done', DONE_TEXT);
     doneText.setAttribute('role', 'status');
     card.append(doneText);
