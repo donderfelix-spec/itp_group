@@ -38,17 +38,19 @@ CHARACTERS = (
 )
 
 # The modes that are built and can be chosen (S-91). Classic follows later.
-MODES = ("duel",)
+MODES = ("duel", "test")
 # The mode of a new lobby.
 DEFAULT_MODE = "duel"
 # The name of each mode as the players read it.
-MODE_NAMES = {"duel": "Duel", "classic": "Classic"}
+MODE_NAMES = {"duel": "Duel", "classic": "Classic", "test": "Test mode"}
 # How many players a round of each mode needs at least (S-53). The only place
 # on the server where these numbers stand.
-MIN_PLAYERS = {"duel": 2, "classic": 4}
+MIN_PLAYERS = {"duel": 2, "classic": 4, "test": 1}
 
-# A lobby is either waiting for its host to start, or its round is running.
+# A lobby is waiting for its host to start, counting down to the start of
+# the round (S-102), or its round is running.
 PHASE_LOBBY = "lobby"
+PHASE_COUNTDOWN = "countdown"
 PHASE_ROUND = "round"
 
 # Fixed texts for actions the server refuses because of the state of the game
@@ -66,6 +68,8 @@ REJECTIONS = {
     "character_taken": "That character is taken.",
     "not_host": "Only the host can do that.",
     "round_running": "This round has already started.",
+    # Guessing passwords or lobby codes (M1-2.6).
+    "too_many_attempts": "Too many attempts. Try again in a minute.",
     # The tasks at the stations (S-93).
     "not_in_round": "No round is running.",
     "no_station": "That station does not exist.",
@@ -75,6 +79,9 @@ REJECTIONS = {
     "no_task_open": "You have no task open.",
     "too_fast": "That was too fast. Try again.",
     "task_failed": "Something went wrong. Try again.",
+    # Statistics (S-40).
+    "guest_no_statistics": "Guests have no statistics. Sign up to keep yours.",
+    "statistics_unavailable": "Statistics are unavailable right now.",
 }
 
 
@@ -191,6 +198,10 @@ CLIENT_MESSAGES = {
     "open_station": {"station": _check_station},
     "close_station": {},
     "finish_station": {},
+    # Statistics (S-40). Neither carries a name: the profile is always the
+    # one of the account the connection is signed in with.
+    "get_profile": {},
+    "get_leaderboard": {},
 }
 
 
@@ -271,6 +282,16 @@ def lobby_state(code: str, host: str, players, mode: str = DEFAULT_MODE, phase: 
     }
 
 
+def countdown(seconds: int) -> dict:
+    """Sent to everybody in the lobby when the host has started the countdown (S-102).
+
+    `seconds` is how long it is until the round starts. The browser counts
+    its display down from it; the round itself starts only with the lobby's
+    state in phase "round".
+    """
+    return {"type": "countdown", "seconds": seconds}
+
+
 def left_lobby() -> dict:
     return {"type": "left_lobby"}
 
@@ -328,6 +349,37 @@ def duel_result(ranking, time_up: bool) -> dict:
         for row in ranking
     ]
     return {"type": "duel_result", "ranking": listed, "time_up": time_up}
+
+
+def profile(name: str, modes, best_duel_seconds) -> dict:
+    """Sent only to the account it is about (S-40).
+
+    `modes` is a list of (mode, rounds, wins) triples. The title of each
+    mode comes along, so the browser can show a mode it does not know yet.
+    """
+    listed = [
+        {"mode": mode, "title": MODE_NAMES[mode], "rounds": rounds, "wins": wins}
+        for mode, rounds, wins in modes
+    ]
+    return {"type": "profile", "name": name, "modes": listed, "best_duel_seconds": best_duel_seconds}
+
+
+def leaderboard(rows) -> dict:
+    """`rows` is the list from `statistics.leaderboard_rows`, best first.
+
+    Each field is copied by name, so nothing else that is known about an
+    account can end up in the message.
+    """
+    listed = [
+        {
+            "place": row["place"],
+            "name": row["name"],
+            "wins": row["wins"],
+            "best_duel_seconds": row["best_seconds"],
+        }
+        for row in rows
+    ]
+    return {"type": "leaderboard", "players": listed}
 
 
 def notice(message: str) -> dict:

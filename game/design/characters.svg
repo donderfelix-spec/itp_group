@@ -56,18 +56,18 @@
     <rect x="-27" y="36" width="54" height="36" rx="12" fill="#3E8FD0" stroke="#2E2A3B" stroke-width="2.5"/>
     <rect x="-13" y="74" width="11" height="18" rx="4" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><rect x="2" y="74" width="11" height="18" rx="4" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
     <rect x="-19" y="38" width="38" height="42" rx="11" fill="#F0569B" stroke="#2E2A3B" stroke-width="2.5"/>
-    <rect x="-18" y="70" width="36" height="12" rx="5" fill="#FFD23F" stroke="#2E2A3B" stroke-width="2"/>
-    <path d="M-12 39 V68 M12 39 V68" stroke="#2A6FA8" stroke-width="5"/>
-    <path d="M-6 40 L0 52 L6 40" fill="none" stroke="#2E2A3B" stroke-width="1.5"/><rect x="-4" y="52" width="8" height="10" rx="1.5" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="1.5"/>
-    <rect x="23" y="62" width="19" height="27" rx="3" fill="#2BB3A3" stroke="#2E2A3B" stroke-width="2"/>
-    <path d="M28 62 V48 H37 V62" fill="none" stroke="#2E2A3B" stroke-width="2"/>
-    <circle cx="29" cy="70" r="2.5" fill="#FFD23F"/><rect x="33" y="75" width="6" height="5" fill="#F2695C"/><circle cx="30" cy="82" r="2" fill="#FFFFFF"/>
-    <circle cx="27" cy="91" r="2.5" fill="#2E2A3B"/><circle cx="38" cy="91" r="2.5" fill="#2E2A3B"/>
-    <path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q30.5 47.5 32 47" fill="none" stroke="#2E2A3B" stroke-width="10.5"/><path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q30.5 47.5 32 47" fill="none" stroke="#F0569B" stroke-width="6.5"/>
-    <circle cx="-22" cy="65" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><circle cx="32" cy="50" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
+    <!-- Straps and lanyard come out from behind the outline of the body. -->
+    <clipPath id="exchange-body"><rect x="-19" y="38" width="38" height="42" rx="11"/></clipPath>
+    <g clip-path="url(#exchange-body)">
+      <path d="M-12 30 V54 Q-12 64 -24 68 M12 30 V54 Q12 64 24 68" fill="none" stroke="#2A6FA8" stroke-width="5"/>
+      <path d="M-7 36 L0 52 L7 36" fill="none" stroke="#2E2A3B" stroke-width="1.5"/><rect x="-4" y="52" width="8" height="10" rx="1.5" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="1.5"/>
+    </g>
+    <rect x="-19" y="38" width="38" height="42" rx="11" fill="none" stroke="#2E2A3B" stroke-width="2.5"/>
+    <path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q25.5 55.0 22 62" fill="none" stroke="#2E2A3B" stroke-width="10.5"/><path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q25.5 55.0 22 62" fill="none" stroke="#F0569B" stroke-width="6.5"/>
+    <circle cx="-22" cy="65" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><circle cx="22" cy="65" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
     <use href="#face"/>
-    <path d="M-15 13 Q-14 -4 0 -4 Q14 -4 15 13 Z" fill="#FFD23F" stroke="#2E2A3B" stroke-width="2"/>
-    <path d="M-23 14 Q0 8 23 14" fill="none" stroke="#2E2A3B" stroke-width="5.5"/><path d="M-23 14 Q0 8 23 14" fill="none" stroke="#FFD23F" stroke-width="2.5"/>
+    <path d="M-17 12 C-17 -1 -12.5 -5 0 -5 C12.5 -5 17 -1 17 12 Q0 7 -17 12 Z" fill="#FFD23F" stroke="#2E2A3B" stroke-width="2"/>
+    <path d="M-27 14.5 Q0 6.5 27 14.5" fill="none" stroke="#2E2A3B" stroke-width="5.5"/><path d="M-27 14.5 Q0 6.5 27 14.5" fill="none" stroke="#FFD23F" stroke-width="2.5"/>
     <text y="120" font-size="11.3" fill="#2E2A3B">The Exchange Student</text>
   </g>
 
@@ -79,12 +79,14 @@
     <rect x="-18" y="68" width="36" height="14" rx="5" fill="#F08A3C" stroke="#2E2A3B" stroke-width="2"/>
     <path d="M-9 41 Q0 50 9 41" fill="none" stroke="#2E2A3B" stroke-width="1.2"/>
     <circle cx="-5" cy="45" r="1.8" fill="#FFFFFF"/><circle cx="0" cy="46.5" r="1.8" fill="#FFFFFF"/><circle cx="5" cy="45" r="1.8" fill="#FFFFFF"/>
-    <path d="M-21 20 Q-22 -1 0 -1 Q22 -1 21 20 L22 40 Q16 45 12 36 L12 20 L-12 20 L-12 36 Q-16 45 -22 40 Z" fill="#F2D36B" stroke="#2E2A3B" stroke-width="2"/>
+    <path d="M-21 20 Q-22 -1 0 -1 Q22 -1 21 20 L22 40 Q16 45 12.5 37 Q14 31 15.5 25 L-15.5 25 Q-14 31 -12.5 37 Q-16 45 -22 40 Z" fill="#F2D36B" stroke="#2E2A3B" stroke-width="2"/>
     <ellipse cx="0" cy="57" rx="4.5" ry="9.5" transform="rotate(28 0 57)" fill="#FFD23F" stroke="#2E2A3B" stroke-width="1.5"/><path d="M-3.5 50.5 L3.5 63.5" stroke="#F2695C" stroke-width="1.5"/><path d="M-12 65 q3 -4 6 0 t6 0 t6 0 t6 0" fill="none" stroke="#FFFFFF" stroke-width="1.8"/>
     <path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q25.5 55.0 22 62" fill="none" stroke="#2E2A3B" stroke-width="10.5"/><path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q25.5 55.0 22 62" fill="none" stroke="#159A8C" stroke-width="6.5"/>
     <circle cx="-22" cy="65" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><circle cx="22" cy="65" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
     <use href="#face"/>
-    <path d="M-18 19 A18 18 0 0 1 18 19 Q7 9 -5 11 Q-13 12 -18 19 Z" fill="#F2D36B" stroke="#2E2A3B" stroke-width="2"/>
+    <!-- Fringe and front strands in one piece, drawn over the edge of the face. -->
+    <path d="M-21.85 37 L-21 20 Q-22 -1 0 -1 Q22 -1 21 20 L21.85 37 L12.5 37 Q14 31 15.5 25 L15.5 21 Q7 9 -5 11 Q-13 12 -15.5 21 L-15.5 25 Q-14 31 -12.5 37 Z" fill="#F2D36B"/>
+    <path d="M-21.85 37 L-21 20 Q-22 -1 0 -1 Q22 -1 21 20 L21.85 37 M12.5 37 Q14 31 15.5 25 L15.5 21 Q7 9 -5 11 Q-13 12 -15.5 21 L-15.5 25 Q-14 31 -12.5 37" fill="none" stroke="#2E2A3B" stroke-width="2"/>
     <text y="120" font-size="11.3" fill="#2E2A3B">The Surfer</text>
   </g>
 
@@ -113,7 +115,6 @@
     <polygon points="-8,39 8,39 0,56" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="1.5"/>
     <circle cx="0" cy="62" r="1.6" fill="#2E2A3B"/><circle cx="0" cy="70" r="1.6" fill="#2E2A3B"/>
     <rect x="7" y="54" width="24" height="30" rx="2.5" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="2"/>
-    <rect x="31" y="58" width="5" height="6" fill="#F2695C" stroke="#2E2A3B" stroke-width="1"/><rect x="31" y="66" width="5" height="6" fill="#FFD23F" stroke="#2E2A3B" stroke-width="1"/><rect x="31" y="74" width="5" height="6" fill="#6FA8F0" stroke="#2E2A3B" stroke-width="1"/>
     <path d="M11 61 h15 M11 67 h15 M11 73 h10" stroke="#B9B4A6" stroke-width="1.5"/>
     <text x="19" y="82" font-size="7" fill="#5FA86B">A+</text>
     <circle cx="0" cy="-3" r="8" fill="#5A3E2B" stroke="#2E2A3B" stroke-width="2"/>
@@ -129,18 +130,15 @@
   <!-- 7 Latecomer -->
   <g transform="translate(422,212) scale(1.15)">
     <use href="#base"/>
-    <path d="M-44 50 h10 M-46 60 h14 M-44 70 h10" stroke="#B9B4A6" stroke-width="2.5"/>
     <rect x="-13" y="74" width="11" height="18" rx="4" fill="#3F5F8A" stroke="#2E2A3B" stroke-width="2"/><rect x="2" y="74" width="11" height="18" rx="4" fill="#3F5F8A" stroke="#2E2A3B" stroke-width="2"/>
     <rect x="-19" y="38" width="38" height="42" rx="11" fill="#F08A3C" stroke="#2E2A3B" stroke-width="2.5"/>
     <rect x="-6" y="39" width="12" height="40" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="1.5"/>
-    <path d="M23 46 q-3 -4 0 -8 M29 47 q3 -4 0 -8" fill="none" stroke="#B9B4A6" stroke-width="1.8"/>
     <path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q27.0 56.0 25 64" fill="none" stroke="#2E2A3B" stroke-width="10.5"/><path d="M-17 45 Q-25.5 55.0 -22 62 M17 45 Q27.0 56.0 25 64" fill="none" stroke="#F08A3C" stroke-width="6.5"/>
     <polygon points="17,56 34,56 32,78 19,78" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="2"/>
     <rect x="16" y="52" width="19" height="5" rx="2" fill="#8A5A3B" stroke="#2E2A3B" stroke-width="1.5"/><rect x="19" y="63" width="13" height="7" fill="#C9A27A"/>
     <circle cx="-22" cy="65" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/><circle cx="25" cy="67" r="5" fill="#F6E7D0" stroke="#2E2A3B" stroke-width="2"/>
     <use href="#face"/>
     <path d="M-18 19 Q-23 7 -13 4 Q-15 -5 -5 0 Q-2 -9 4 -1 Q11 -8 13 3 Q23 5 18 19 Q10 9 0 11 Q-10 9 -18 19 Z" fill="#7A4B2A" stroke="#2E2A3B" stroke-width="2"/>
-    <path d="M24 14 q4 6 0 10 q-4 -4 0 -10 Z" fill="#6FB8E8" stroke="#2E2A3B" stroke-width="1.2"/>
     <text y="120" font-size="11.3" fill="#2E2A3B">The Latecomer</text>
   </g>
 
@@ -160,4 +158,10 @@
   </g>
 
   </g>
+
+  <!-- Note: these are the lobby portraits; the map uses a three-quarter view (S-105) -->
+  <text x="340" y="374" font-size="11" fill="#5E5A6B" text-anchor="middle">
+    <tspan x="340">Portraits from the front, as in the lobby list.</tspan>
+    <tspan x="340" dy="15">On the map the characters are drawn in a three-quarter view facing left or right (S-105).</tspan>
+  </text>
 </svg>

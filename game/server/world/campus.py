@@ -10,6 +10,7 @@ A broken map file must never start a game, so `check_campus` raises a
 
 import json
 import math
+import re
 from pathlib import Path
 
 from server.world.movement import is_free
@@ -18,7 +19,22 @@ from server.world.movement import is_free
 CAMPUS_FILE = Path(__file__).resolve().parents[2] / "client" / "js" / "world" / "campus.json"
 
 ROOM_COUNT = 5
-STATION_COUNT = 6
+STATION_COUNT = 12
+
+# The detail of the map (M2-1.4) is only drawn by the browser. The server
+# still checks it, so a typo in the map file is found when the server starts.
+# A wall's face may be at most this high: a player pressed against the wall
+# stands with the feet about 10 units below it.
+HIGHEST_WALL_FACE = 10
+# The layers of decor: flat on the floor, on a wall, standing on a solid.
+DECOR_LAYERS = ("floor", "wall", "on")
+# The keys a decor entry may have; any other key is a typo.
+DECOR_KEYS = {"kind", "layer", "x", "y", "w", "h", "text", "colour"}
+LONGEST_DECOR_TEXT = 40
+# Names of drawings (patterns, faces, kinds of decor): small letters, digits
+# and hyphens, such as "wood-slats".
+ART_NAME = re.compile(r"[a-z][a-z0-9-]{0,39}")
+COLOUR = re.compile(r"#[0-9A-Fa-f]{6}")
 
 
 class CampusError(ValueError):
@@ -57,6 +73,13 @@ def check_campus(campus) -> dict:
         _check_rectangle(room, f"rooms[{index}]", width, height)
         for key in ("id", "name", "floor"):
             _text(room, key, f"rooms[{index}]")
+        _check_room_label(room, f"rooms[{index}]")
+        for key in ("pattern", "wall_face"):
+            _optional_art_name(room, key, f"rooms[{index}]")
+    _check_deck_label(_entry(campus, "deck_label", "the map"), rooms, width, height)
+    for key in ("deck_pattern", "deck_wall_face"):
+        _optional_art_name(campus, key, "the map")
+    _check_wall_face_height(campus)
 
     deck = _list(campus, "deck")
     if len(deck) < 3:
@@ -77,6 +100,9 @@ def check_campus(campus) -> dict:
         _check_rectangle(solid, f"solids[{index}]", width, height)
         _check_whole_numbers(solid, f"solids[{index}]")
         _text(solid, "kind", f"solids[{index}]")
+        # Which drawing a solid shows, for kinds that have several (a sign
+        # totem with a basket or a cup): only drawn, optional.
+        _optional_art_name(solid, "icon", f"solids[{index}]")
         solid_id = _text(solid, "id", f"solids[{index}]")
         if solid_id in solid_ids:
             raise CampusError(f"solids[{index}] has the id \"{solid_id}\" of another solid.")
@@ -110,7 +136,62 @@ def check_campus(campus) -> dict:
     for index, band in enumerate(_list(campus, "bands")):
         _check_rectangle(band, f"bands[{index}]", width, height)
 
+    if "decor" in campus:
+        for index, item in enumerate(_list(campus, "decor")):
+            _check_decor(item, f"decor[{index}]", width, height)
+
     return campus
+
+
+# ---- The detail that only the browser draws (M2-1.4) -----------------------
+
+def _optional_art_name(container, key, where):
+    """A key that names a drawing may be missing; if it is there, it must be a name."""
+    if key in container:
+        _art_name(container, key, where)
+
+
+def _art_name(container, key, where):
+    value = _entry(container, key, where)
+    if not isinstance(value, str) or not ART_NAME.fullmatch(value):
+        raise CampusError(f"\"{key}\" of {where} must be a name of small letters, digits and hyphens, such as \"wood-slats\".")
+    return value
+
+
+def _check_wall_face_height(campus):
+    """How far below a wall its face is drawn: optional, above 0 and at most 10."""
+    if "wall_face_height" not in campus:
+        return
+    face_height = _number(campus, "wall_face_height", "the map")
+    if not 0 < face_height <= HIGHEST_WALL_FACE:
+        raise CampusError(f"\"wall_face_height\" of the map must be above 0 and at most {HIGHEST_WALL_FACE}.")
+
+
+def _check_decor(item, where, map_width, map_height):
+    """One thing that is only drawn: a sign, a mat, a coffee machine on a counter.
+
+    Its `layer` says where it is: "floor" (flat on the floor, players walk
+    over it), "wall" (on a wall) or "on" (standing on a solid). Whether a
+    "wall" entry really touches a wall and an "on" entry lies inside a solid
+    is checked by tests/test_campus_detail.py on the real map, not here: a
+    map without solids is still a map (tests/test_campus.py).
+    """
+    _check_rectangle(item, where, map_width, map_height)
+    unknown = sorted(set(item) - DECOR_KEYS)
+    if unknown:
+        raise CampusError(f"{where} has the unknown key \"{unknown[0]}\".")
+    _art_name(item, "kind", where)
+    layer = _entry(item, "layer", where)
+    if layer not in DECOR_LAYERS:
+        raise CampusError(f"\"layer\" of {where} must be \"floor\", \"wall\" or \"on\".")
+    if "text" in item:
+        words = _text(item, "text", where)
+        if len(words) > LONGEST_DECOR_TEXT:
+            raise CampusError(f"\"text\" of {where} is longer than {LONGEST_DECOR_TEXT} characters.")
+    if "colour" in item:
+        colour = item["colour"]
+        if not isinstance(colour, str) or not COLOUR.fullmatch(colour):
+            raise CampusError(f"\"colour\" of {where} must be a colour like \"#3E9B4F\".")
 
 
 def _check_rectangle(rectangle, where, map_width, map_height):
@@ -147,6 +228,39 @@ def _check_point(point, where, map_width, map_height):
     y = _number(point, "y", where)
     if not (0 <= x <= map_width and 0 <= y <= map_height):
         raise CampusError(f"{where} lies outside the map.")
+
+
+def _check_room_label(room, where):
+    """A room's name is drawn at its `label`, a point inside the room.
+
+    Labels are only drawn: nothing on the server walks or collides with them.
+    A point exactly on the room's edge still counts as inside:
+    `_is_in_room` counts the edge as inside, like `roomAt()` in draw.js.
+    """
+    label = _entry(room, "label", where)
+    label_where = f"the label of {where}"
+    if not isinstance(label, dict):
+        raise CampusError(f"{label_where} must be an object with x and y.")
+    x = _number(label, "x", label_where)
+    y = _number(label, "y", label_where)
+    if not _is_in_room(x, y, room):
+        raise CampusError(f"{label_where} lies outside its room.")
+
+
+def _check_deck_label(label, rooms, map_width, map_height):
+    """The deck's name: a text, drawn at a point on the map but in no room."""
+    if not isinstance(label, dict):
+        raise CampusError("deck_label must be an object with name, x and y.")
+    _text(label, "name", "deck_label")
+    _check_point(label, "deck_label", map_width, map_height)
+    for room in rooms:
+        if _is_in_room(label["x"], label["y"], room):
+            raise CampusError(f"deck_label lies inside the room \"{room['id']}\", not on the deck.")
+
+
+def _is_in_room(x, y, room):
+    """True if the point lies in the room's rectangle or on its edge."""
+    return room["x"] <= x <= room["x"] + room["w"] and room["y"] <= y <= room["y"] + room["h"]
 
 
 def _entry(container, key, where):

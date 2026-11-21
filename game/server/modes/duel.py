@@ -47,19 +47,78 @@ def route_length(route, distances) -> float:
 def draw_routes(names, stations_in_use, distances, rng) -> dict:
     """Draw a route for every player. Returns `{name: (first, second, third)}`.
 
-    One route is drawn at random. The others are drawn from the routes that
-    are about as long (see `routes_about_as_long`), so nobody has a much
-    longer way. No two players get the same route, and which player gets
-    which route is random as well.
+    One route is drawn at random. Each further route starts at a different
+    station: two players must never receive the same first task. Prefer
+    routes within 10 % of the first route, then the closest remaining
+    starting stations if that is not possible. Which player gets which
+    route is random as well.
     """
     if len(names) == 0:
         return {}
+    if len(names) > len(set(stations_in_use)):
+        raise ValueError("Each player needs a different starting station")
+    if len(set(stations_in_use)) < STATIONS_PER_ROUTE:
+        raise ValueError("A route needs three different stations")
     candidates = all_routes(stations_in_use)
     first = rng.choice(candidates)
-    others = routes_about_as_long(first, candidates, distances, len(names) - 1, rng)
+    if len(names) > 1:
+        lengths = {route: route_length(route, distances) for route in candidates}
+
+        def enough_close_starts(anchor):
+            wanted = lengths[anchor]
+            starts = set()
+            for route, length in lengths.items():
+                if abs(length - wanted) <= LENGTH_TOLERANCE * wanted:
+                    starts.add(route[0])
+                    if len(starts) >= len(names):
+                        return True
+            return False
+
+        if not enough_close_starts(first):
+            # A bad first draw must not force an unfair round when another
+            # anchor permits distinct starts within the usual tolerance.
+            alternatives = list(candidates)
+            rng.shuffle(alternatives)
+            first = next((route for route in alternatives if enough_close_starts(route)), first)
+    others = routes_with_different_starts(first, candidates, distances, len(names) - 1, rng)
     routes = [first] + others
     rng.shuffle(routes)
     return dict(zip(names, routes))
+
+
+def routes_with_different_starts(first, candidates, distances, count, rng) -> list:
+    """Choose one route per unused first station, keeping lengths close.
+
+    Fairness is compared between starting stations, not just full routes:
+    ten short routes to the same first task cannot serve ten players.
+    """
+    if count == 0:
+        return []
+    wanted = route_length(first, distances)
+    lengths = {route: route_length(route, distances) for route in candidates}
+    groups = {}
+    for route in candidates:
+        if route[0] != first[0]:
+            groups.setdefault(route[0], []).append(route)
+
+    def difference(route):
+        return abs(lengths[route] - wanted)
+
+    close = {station: [route for route in routes if difference(route) <= LENGTH_TOLERANCE * wanted]
+             for station, routes in groups.items()}
+    close_stations = [station for station, routes in close.items() if routes]
+    if len(close_stations) >= count:
+        return [rng.choice(close[station]) for station in rng.sample(close_stations, count)]
+
+    # Keep every available close starting station. Fill the remaining
+    # places from the stations whose best route is nearest in length.
+    result = [rng.choice(close[station]) for station in close_stations]
+    remaining = [station for station in groups if station not in close_stations]
+    remaining.sort(key=lambda station: min(difference(route) for route in groups[station]))
+    for station in remaining[:count - len(result)]:
+        nearest = min(difference(route) for route in groups[station])
+        result.append(rng.choice([route for route in groups[station] if difference(route) == nearest]))
+    return result
 
 
 def routes_about_as_long(first, candidates, distances, count, rng) -> list:

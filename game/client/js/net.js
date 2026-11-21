@@ -17,7 +17,11 @@ window.Game = window.Game || {};
   const LONGEST_RETRY_MS = 10000;
   const CONNECTION_EVENTS = ['open', 'close'];
   // Messages the server sends on its own. They answer no action of the player.
-  const NOT_ANSWERS = ['positions', 'notice'];
+  // (The host's "Start game" is answered by the `lobby_state` before `countdown`.)
+  // `welcome` answers only the `hello` probe of the walking diagnostic
+  // (diagnostic.js), which is sent with `send`, not `ask`: it must not end
+  // the wait for the answer to a real action of the player.
+  const NOT_ANSWERS = ['positions', 'notice', 'countdown', 'welcome'];
 
   // A Map and not a plain object: a message type like "constructor" would
   // find something in a plain object that is not a list of handlers.

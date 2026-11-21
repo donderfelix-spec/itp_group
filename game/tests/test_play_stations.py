@@ -133,11 +133,11 @@ def test_no_place_is_in_range_of_two_stations():
 
 def test_the_browser_gets_the_stations_and_the_range_with_the_map():
     # The browser decides what glows from this file; it must carry the same
-    # six stations and the same range the server uses.
+    # twelve stations and the same range the server uses.
     with TestClient(app) as client:
         answer = client.get("/js/world/campus.json")
     assert answer.status_code == 200
     sent = answer.json()
     assert sent["use_range"] == USE_RANGE
     assert [(s["id"], s["x"], s["y"]) for s in sent["stations"]] == [(s["id"], s["x"], s["y"]) for s in STATIONS]
-    assert sorted(s["id"] for s in sent["stations"]) == [1, 2, 3, 4, 5, 6]
+    assert sorted(s["id"] for s in sent["stations"]) == list(range(1, 13))

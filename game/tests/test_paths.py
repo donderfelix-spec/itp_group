@@ -173,8 +173,8 @@ def test_a_map_whose_station_cannot_be_reached_is_refused_with_a_clear_error():
 
 
 def test_a_station_that_is_not_on_the_map_is_refused_with_a_clear_error():
-    with pytest.raises(PathError, match="Station 9 is not on the map"):
-        station_distances(CAMPUS, [1, 9])
+    with pytest.raises(PathError, match="Station 13 is not on the map"):
+        station_distances(CAMPUS, [1, 13])
 
 
 # The real campus
@@ -268,5 +268,6 @@ def test_measuring_the_real_map_is_quick_enough_for_the_start_of_the_server():
 
 def test_the_server_keeps_the_distances_it_measured_at_the_start(real_distances):
     from server.main import app
+    from server.modes import minigames
 
-    assert app.state.distances == real_distances
+    assert app.state.distances == station_distances(CAMPUS, sorted(minigames.MINIGAMES))

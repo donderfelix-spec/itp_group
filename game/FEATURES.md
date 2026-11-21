@@ -26,15 +26,20 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Move the character with the keyboard (WASD or arrow keys) | M1 | Done |
 | Walls and furniture stop the character | M1 | Done |
 | Camera follows your own character | M1 | Done |
-| See other players with their names above the character | M1 | Done |
+| See other players with their names above the character; where name labels would cover each other only one is shown, the own name first (S-117) | M1 | Done |
 | Stations for tasks on the map | M2 | Done |
 | Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E done; R and Q come with Classic) | M2 | In progress |
 | Choose a character from the list of stereotypes | M2 | Done |
 | Display of the current room | M2 | Planned |
-| Nicer, more detailed map: floors, furniture and plants | M2 | In progress |
-| Larger characters | M2 | Planned |
-| Walking animation: moving feet, head turned in the walking direction | M2 | In progress |
-| Hair, buns and headwear follow the head when it turns in the walking direction | M2 | Planned |
+| Nicer, more detailed map: every room furnished from photos of the campus, floor patterns, wall faces, doors, drawn from tiles (S-122) | M2 | Done |
+| Larger characters in a three-quarter view, facing only left or right; held objects stay in the same hand | M2 | Done |
+| Walking animation: moving feet, head turned in the walking direction | M2 | Done |
+| Running animation: flight phase, small hop, pumping arms, legs fixed at the hips, steps tied to the distance covered | M2 | Done |
+| Hair, buns and headwear follow the head when it turns in the walking direction | M2 | Done |
+| Touch-ups of the characters: no suitcase, larger hat, headphones on the ear, clothes in the middle of the torso when turned | M2 | Done |
+| Smooth walking over the internet: characters and the camera keep moving when position messages come late or bunched (gaps up to 250 ms) | M2 | Done |
+| The own character and the camera keep walking through longer hold-ups of the connection (up to about 700 ms) and stop sooner after a key is released | M2 | Done |
+| Walking diagnostic for the team: with `?debug` in the address a panel measures the connection and the drawing while walking and copies the numbers as text | M2 | Done |
 | Limited view: You only see what is nearby and not behind a wall | M3 | Planned |
 | Show failed players as ghosts | M3 | Planned |
 | Four hiding spots in which you are visible only from close by | M3 | Planned |
@@ -51,10 +56,11 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Create an account with username and password, log in, log out | M1 | Done |
 | Play as a guest, without statistics and friends | M1 | Done |
 | Clear message when a name is taken, the password is wrong or the database is not reachable | M1 | Done |
-| Show or hide the password with an eye icon | M1 | Planned |
-| Limit on log-in attempts and lobby-code guessing | M1 | Planned |
-| Statistics per account: rounds and wins per mode, best Duel time | M2 | Planned |
-| Leaderboard of all accounts | M2 | Planned |
+| Show or hide the password with an eye icon | M1 | Done |
+| A player who is signed out because the account logged in somewhere else is told why | M1 | Done |
+| Limit on log-in attempts and lobby-code guessing | M1 | Done |
+| Statistics per account: rounds and wins per mode, best Duel time | M2 | Done |
+| Leaderboard of all accounts | M2 | Done |
 | Add friends by username, accept or decline a request | M4 | Planned |
 | See friends with the status “online” and “in a round” | M4 | Planned |
 | Invite friends to your own lobby | M4 | Planned |
@@ -64,9 +70,11 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Player list in the lobby, the creator is the host | M1 | Done |
 | Continuously synchronise the positions of all players, with smoothed movement of the others | M1 | Done |
 | Host chooses the mode and starts the round (settings: M4) | M2 | Done |
-| After the round back to the lobby, new round without a new code | M2 | In progress |
-| If someone leaves the game, the round continues, and the host changes if needed | M2 | In progress |
-| Players who were disconnected for a short time come back into their round | M3 | Planned |
+| Countdown of 5 seconds before every round, counted by the server | M2 | Done |
+| After the round back to the lobby, new round without a new code | M2 | Done |
+| If someone leaves the game, the round continues, and the host changes if needed | M2 | Done |
+| A player who lost the connection in a lobby is put back into it after signing in again, without typing the code (S-109) | M3 | Done |
+| Players who were disconnected for a short time come back into their running round | M4 | Later |
 | Each client gets only the information that its player is allowed to know | M3 | Planned |
 | Game reachable at a public URL, deployed automatically from `main` | M0 | Done |
 | Several lobbies at the same time | M1 | Done |
@@ -97,6 +105,7 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Feature | Milestone | Status |
 |---|---|---|
 | Frame for minigames: open at a station, close, report “done” | M2 | Done |
+| All minigames playable in narrow and low windows, from 320 px wide | M2 | Done |
 | Canteen: put four of six dishes from the order slip onto the tray | M2 | Done |
 | Mon Café: prepare a drink by recipe at the coffee machine | M2 | Done |
 | Lecture Hall: put slides into the right order | M2 | Done |
@@ -112,3 +121,24 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Mon Café: put chairs in rows for the event | M4 | Later |
 | Deadline mode: shared clock, progress bar, random disruptions | M4 | Planned |
 | Duel variants: best of 3, knockout rounds | M4 | Later |
+
+
+## User branch: Additional tasks and navigator
+
+These features are on `Minispiele-und-Modi`, awaiting validation and review; “Done” above continues to mean merged to `main`.
+
+| Feature | Status |
+|---|---|
+| Six funny illustrated tasks at six additional stations, retaining the original games | In progress |
+| Existing Duel assignment pool extended to eleven tasks; existing rules retained | In progress |
+| Private current-task station visibility and direct destination arrow, without a trail or step count | In progress |
+
+Branch validation complete: all six tasks and private navigation implemented and checked; 2,184 Python tests and the dependency audit passed. Status stays In progress here until the branch is merged.
+
+| Separate Test mode for solo testing, using existing round mechanics | In progress (implemented and validated on branch; merge pending) |
+
+| In-round player roster with public dead-state styling | In progress (implemented and validated on branch; merge pending) |
+
+| Canteen cleanup: compact overhead tray, 10 rice grains/3 vegetables/3 chicken pieces, 3/1/1 randomly discoloured | Implemented and validated on branch; merge pending |
+
+| Distinct first task station for each player; 0.5-second automatic Done window | Implemented and validated on branch; merge pending |
