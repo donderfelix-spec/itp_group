@@ -19,7 +19,7 @@ from server.world.movement import is_free
 CAMPUS_FILE = Path(__file__).resolve().parents[2] / "client" / "js" / "world" / "campus.json"
 
 ROOM_COUNT = 5
-STATION_COUNT = 6
+STATION_COUNT = 12
 
 # The detail of the map (M2-1.4) is only drawn by the browser. The server
 # still checks it, so a typo in the map file is found when the server starts.

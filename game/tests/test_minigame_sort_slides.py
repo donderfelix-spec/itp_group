@@ -137,13 +137,21 @@ def test_station_1_is_sort_the_slides():
 
 
 def test_the_other_stations_did_not_change():
-    titles = {station: minigame.title for station, minigame in minigames.MINIGAMES.items()}
+    titles = {station: minigames.MINIGAMES[station].title for station in range(1, 6)}
     assert titles == {
         1: "Sort the slides",
         2: "Brew the order",
         3: "Build the tray",
         4: "Shelve the books",
         5: "Self-checkout",
+    }
+    assert {station: minigame.title for station, minigame in minigames.MINIGAMES.items() if station > 5} == {
+        7: "De-buzzword the slides",
+        8: "Emergency caffeine protocol",
+        9: "Save the lunch",
+        10: "Decode the group chat",
+        11: "Expense the essentials",
+        12: "Seagull quality control",
     }
 
 

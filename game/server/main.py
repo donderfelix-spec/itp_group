@@ -329,7 +329,9 @@ async def handle_get_profile(websocket: WebSocket) -> dict:
     records = await ask_statistics_store(app.state.statistics_store.records_of, name)
     if records is None:
         return protocol.rejection("statistics_unavailable")
-    rows = statistics.profile_rows(records, protocol.MODES)
+    # Practice has no competitive record, even though it is selectable.
+    ranked_modes = [mode for mode in protocol.MODES if mode != "solo"]
+    rows = statistics.profile_rows(records, ranked_modes)
     return protocol.profile(name, rows, statistics.best_duel_seconds(records))
 
 
@@ -407,11 +409,15 @@ async def ask_statistics_store(method, *values):
 def duel_result_to_write(lobby, ranking):
     """What a finished Duel adds to the statistics, as `(mode, changes)`. Never raises.
 
-    Returns None when there is nothing to write (only guests played). Called
+    Returns None for Solo rounds or when only guests played. Called
     at the one place a round ends, so each round gives exactly one result.
     Nothing is written here: that happens later and off the event loop (see
     `write_result_later`), so the end of the round is not delayed.
     """
+    # Solo reuses the Duel engine, but practice must never add real
+    # Duel rounds, wins or best times to an account or the leaderboard.
+    if lobby.mode != "duel":
+        return None
     try:
         changes = statistics.changes_from_duel(ranking, account_names(lobby.names()))
         return (statistics.DUEL, changes) if changes else None
@@ -483,6 +489,8 @@ def rejection_for(name: str, rejection_code: str) -> dict:
     if rejection_code == "too_few_players":
         # The only rejection without a fixed text: it names the lobby's mode.
         return protocol.too_few_players(app.state.lobbies.lobby_of(name).mode)
+    if rejection_code == protocol.SOLO_NEEDS_ONE_PLAYER:
+        return protocol.solo_needs_one_player()
     return protocol.rejection(rejection_code)
 
 
@@ -1256,6 +1264,7 @@ def set_up_classic(lobby):
 ROUND_SETUPS = {
     "duel": set_up_duel,
     "classic": set_up_classic,
+    "solo": set_up_duel,
 }
 
 
