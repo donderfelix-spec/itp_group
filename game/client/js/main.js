@@ -23,8 +23,8 @@ window.Game = window.Game || {};
     too_many_attempts: 'attempts',
   };
 
-  // The original five stations and six new campus emergencies. Station 6 is reserved.
-  const STATIONS_IN_USE = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12];
+  // The stations with a minigame (1 to 5; station 6 is not in use yet).
+  const STATIONS_IN_USE = [1, 2, 3, 4, 5];
   // Errors after which no task is open on the server, so no window may stay.
   // `task_failed` is in the list because a fault while closing or finishing
   // is answered with this error only: no `station_closed` follows it.
@@ -89,7 +89,7 @@ window.Game = window.Game || {};
   // any other round the ones in use that this player has not finished yet.
   function usableStations() {
     if (!roundIsRunning) return [];
-    if (mode === 'duel' || mode === 'test') {
+    if (mode === 'duel' || mode === 'solo') {
       const next = Game.duel.nextStation();
       return next === null ? [] : [next];
     }

@@ -201,7 +201,7 @@ for (const exit of ['left_lobby', 'signed_out', 'close', 'end_round']) {
   assert.equal(env.rows()[0].querySelector('.player-roster-you').textContent, 'You');
 }
 
-for (const mode of ['duel', 'test']) {
+for (const mode of ['duel', 'solo']) {
   const env = environment();
   env.load('lobby/countdown.js');
   env.load('main.js');

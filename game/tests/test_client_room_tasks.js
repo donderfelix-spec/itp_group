@@ -263,7 +263,7 @@ for (const content of [null, {}, { puzzle: 'unknown' }, { puzzle: 'seagull', pag
   assert.equal(game.done(), 0);
 }
 
-for (const mode of ['duel', 'test']) {
+for (const mode of ['duel', 'solo']) {
   const env = environment();
   env.load('main.js');
   const emit = (type, payload) => env.handlers.get(type)(payload);
@@ -293,14 +293,14 @@ for (const mode of ['duel', 'test']) {
   assert.equal(env.ids.get('duel-next').textContent, 'Next: Seagull quality control (Main Deck)');
   env.Game.duel.showState({ next_station: 3, done: 1, total: 3 });
   assert.equal(env.ids.get('duel-next').textContent, 'Next: Build the tray (Canteen)');
-  env.Game.duel.noteLobby({ phase: 'lobby', mode: 'test' });
-  env.Game.duel.noteLobby({ phase: 'round', mode: 'test' });
+  env.Game.duel.noteLobby({ phase: 'lobby', mode: 'solo' });
+  env.Game.duel.noteLobby({ phase: 'round', mode: 'solo' });
   env.Game.duel.showState({ next_station: 12, done: 0, total: 3 });
-  assert.equal(env.Game.duel.nextStation(), 12, 'solo test uses the private server-assigned destination');
+  assert.equal(env.Game.duel.nextStation(), 12, 'Solo uses the private server-assigned destination');
   assert.equal(env.ids.get('duel-next').textContent, 'Next: Seagull quality control (Main Deck)');
-  assert.equal(env.ids.get('duel-panel').hidden, false, 'solo test must display the existing task HUD');
-  env.Game.duel.noteLobby({ phase: 'lobby', mode: 'test' });
-  assert.equal(env.Game.duel.nextStation(), null, 'test target clears when the round ends');
+  assert.equal(env.ids.get('duel-panel').hidden, false, 'Solo must display the existing task HUD');
+  env.Game.duel.noteLobby({ phase: 'lobby', mode: 'solo' });
+  assert.equal(env.Game.duel.nextStation(), null, 'solo target clears when the round ends');
   assert.equal(env.ids.get('duel-panel').hidden, true);
 }
 
@@ -311,17 +311,18 @@ for (const mode of ['duel', 'test']) {
   env.load('lobby/lobby.js');
   env.Game.lobby.setup();
   env.Game.lobby.setOwnName('Guest1');
-  const testButton = env.ids.get('lobby-modes').children.find((control) => control.textContent.includes('Test mode'));
-  assert.match(testButton.textContent, /Solo testing/);
-  testButton.click();
+  const soloButton = env.ids.get('lobby-modes').children.find((control) => control.textContent.includes('Solo'));
+  // Felix, 2026-11-21: the button reads only "Solo", without a note under it.
+  assert.equal(soloButton.textContent, 'Solo');
+  soloButton.click();
   assert.equal(requests.at(-1).type, 'choose_mode');
-  assert.equal(requests.at(-1).mode, 'test');
+  assert.equal(requests.at(-1).mode, 'solo');
   const state = { code: 'ABCD', host: 'Guest1', players: [{ name: 'Guest1', character: 'consultant' }], phase: 'lobby' };
-  env.Game.lobby.show({ ...state, mode: 'test' });
-  assert.equal(env.ids.get('lobby-start').disabled, false, 'one player may start the explicit test mode');
-  env.Game.lobby.show({ ...state, mode: 'test', phase: 'countdown' });
-  assert.equal(env.ids.get('lobby-start').disabled, true, 'solo test also respects the server countdown');
-  assert.equal(testButton.disabled, true, 'mode changes are disabled during the countdown');
+  env.Game.lobby.show({ ...state, mode: 'solo' });
+  assert.equal(env.ids.get('lobby-start').disabled, false, 'one player may start Solo');
+  env.Game.lobby.show({ ...state, mode: 'solo', phase: 'countdown' });
+  assert.equal(env.ids.get('lobby-start').disabled, true, 'Solo also respects the server countdown');
+  assert.equal(soloButton.disabled, true, 'mode changes are disabled during the countdown');
   env.Game.lobby.show({ ...state, mode: 'duel' });
   assert.equal(env.ids.get('lobby-start').disabled, true, 'normal Duel still requires a second player');
   assert.match(env.ids.get('lobby-start-hint').textContent, /Duel needs 1 more player/);
@@ -342,7 +343,7 @@ for (const mode of ['duel', 'test']) {
   assert.equal(env.ids.get('profile-name').textContent, 'Guest1');
   assert.equal(screens.at(-1), 'profile', 'upstream profile still opens from home');
   env.Game.screens.current = () => 'lobby';
-  emit('lobby_state', { code: 'ABCD', players: [{ name: 'Guest1' }], mode: 'test', phase: 'round' });
+  emit('lobby_state', { code: 'ABCD', players: [{ name: 'Guest1' }], mode: 'solo', phase: 'round' });
   assert.deepEqual(env.worldCalls.at(-1), ['target', 2]);
   const screenCount = screens.length;
   emit('profile', { name: 'Late response', modes: [], best_duel_seconds: null });
@@ -351,4 +352,4 @@ for (const mode of ['duel', 'test']) {
   assert.deepEqual(env.worldCalls.at(-1), ['target', 2], 'statistics leave private navigation intact');
 }
 
-console.log('Room task checks passed: six puzzles, wrong actions, one completion, minimum time, cancellation, malformed content, Main Deck labels, Duel and solo-test HUD/navigation, solo-test lobby gating and upstream statistics integration.');
+console.log('Room task checks passed: six puzzles, wrong actions, one completion, minimum time, cancellation, malformed content, Main Deck labels, Duel and Solo HUD/navigation, Solo lobby gating and upstream statistics integration.');

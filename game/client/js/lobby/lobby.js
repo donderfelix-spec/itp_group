@@ -17,7 +17,7 @@ window.Game = window.Game || {};
   // for the hint under the start button: the server checks it again (S-53).
   const MODES = [
     { id: 'duel', name: 'Duel', minPlayers: 2, isBuilt: true },
-    { id: 'test', name: 'Test mode', minPlayers: 1, isBuilt: true, note: 'Solo testing' },
+    { id: 'solo', name: 'Solo', minPlayers: 1, isBuilt: true },
     { id: 'classic', name: 'Classic', minPlayers: 4, isBuilt: false },
   ];
 
@@ -160,7 +160,6 @@ window.Game = window.Game || {};
     button.type = 'button';
     button.className = 'mode';
     button.appendChild(makeText('span', 'mode-name', mode.name));
-    if (mode.note) button.appendChild(makeText('span', 'mode-note', mode.note));
     if (!mode.isBuilt) {
       button.appendChild(makeText('span', 'mode-note', 'Coming with the next milestone'));
     }

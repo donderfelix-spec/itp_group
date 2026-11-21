@@ -38,14 +38,14 @@ CHARACTERS = (
 )
 
 # The modes that are built and can be chosen (S-91). Classic follows later.
-MODES = ("duel", "test")
+MODES = ("duel", "solo")
 # The mode of a new lobby.
 DEFAULT_MODE = "duel"
 # The name of each mode as the players read it.
-MODE_NAMES = {"duel": "Duel", "classic": "Classic", "test": "Test mode"}
+MODE_NAMES = {"duel": "Duel", "classic": "Classic", "solo": "Solo"}
 # How many players a round of each mode needs at least (S-53). The only place
 # on the server where these numbers stand.
-MIN_PLAYERS = {"duel": 2, "classic": 4, "test": 1}
+MIN_PLAYERS = {"duel": 2, "classic": 4, "solo": 1}
 
 # A lobby is waiting for its host to start, counting down to the start of
 # the round (S-102), or its round is running.

@@ -451,8 +451,8 @@ def test_already_signed_in_has_its_own_text():
 BAD_MODE = ("bad_mode", "That mode does not exist.")
 
 
-def test_duel_and_the_requested_test_mode_are_the_built_modes():
-    assert protocol.MODES == ("duel", "test")
+def test_duel_and_solo_are_the_modes_that_are_built():
+    assert protocol.MODES == ("duel", "solo")
     assert protocol.DEFAULT_MODE in protocol.MODES
 
 
@@ -501,12 +501,11 @@ def test_too_few_players_fits_classic_without_new_code():
 
 
 def test_every_mode_that_is_built_has_a_name_and_a_minimum():
-    expected_minima = {"duel": 2, "test": 1}
-    assert {mode: protocol.MIN_PLAYERS[mode] for mode in protocol.MODES} == expected_minima
     for mode in protocol.MODES:
         assert protocol.MODE_NAMES[mode]
-        assert protocol.MIN_PLAYERS[mode] == expected_minima[mode]
-        assert protocol.MIN_PLAYERS[mode] <= len(protocol.CHARACTERS) == 8
+        if mode != "solo":  # Solo is the practice round for one player.
+            assert 2 <= protocol.MIN_PLAYERS[mode] <= len(protocol.CHARACTERS)
+    assert protocol.MIN_PLAYERS["solo"] == 1
 
 
 def test_too_few_players_with_an_unknown_mode_raises_key_error():

@@ -194,7 +194,7 @@ window.Game = window.Game || {};
   // running: the Duel's own messages follow it at the start, and at the
   // end `duel_result` comes before the state with phase "lobby".
   function noteLobby(lobbyState) {
-    const isDuelRound = lobbyState.phase === 'round' && ['duel', 'test'].includes(lobbyState.mode);
+    const isDuelRound = lobbyState.phase === 'round' && ['duel', 'solo'].includes(lobbyState.mode);
     if (isDuelRound && !roundIsOn) {
       forgetRound(); // a new round: nothing of the old one is left
       hideRanking(); // also for a player who had not clicked it away

@@ -315,7 +315,7 @@ async def handle_get_profile(websocket: WebSocket) -> dict:
     if records is None:
         return protocol.rejection("statistics_unavailable")
     # Practice has no competitive record, even though it is selectable.
-    ranked_modes = [mode for mode in protocol.MODES if mode != "test"]
+    ranked_modes = [mode for mode in protocol.MODES if mode != "solo"]
     rows = statistics.profile_rows(records, ranked_modes)
     return protocol.profile(name, rows, statistics.best_duel_seconds(records))
 
@@ -394,12 +394,12 @@ async def ask_statistics_store(method, *values):
 def duel_result_to_write(lobby, ranking):
     """What a finished Duel adds to the statistics, as `(mode, changes)`. Never raises.
 
-    Returns None for test rounds or when only guests played. Called
+    Returns None for Solo rounds or when only guests played. Called
     at the one place a round ends, so each round gives exactly one result.
     Nothing is written here: that happens later and off the event loop (see
     `write_result_later`), so the end of the round is not delayed.
     """
-    # Test mode reuses the Duel engine, but practice must never add real
+    # Solo reuses the Duel engine, but practice must never add real
     # Duel rounds, wins or best times to an account or the leaderboard.
     if lobby.mode != "duel":
         return None
@@ -950,7 +950,7 @@ def set_up_duel(lobby):
 
 ROUND_SETUPS = {
     "duel": set_up_duel,
-    "test": set_up_duel,
+    "solo": set_up_duel,
 }
 
 
