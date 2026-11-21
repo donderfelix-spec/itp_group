@@ -908,15 +908,56 @@ Game.world = Game.world || {};
     var now = performance.now();
     rememberArrival(now);
     var delay = playbackDelay();
+    var listed = new Set();
     (Array.isArray(list) ? list : []).forEach(function (entry) {
       if (entry && isName(entry.name) && isNumber(entry.x) && isNumber(entry.y)) {
         var player = playerNamed(entry.name);
+        listed.add(entry.name);
         // Only the own character is bridged (M2-1.16); the others are
         // played from the queue as before.
         var receive = isOwn(player) && isBridging() ? receiveOwnPosition : receivePosition;
         receive(player, entry.x, entry.y, now, delay);
       }
     });
+    if (ownHidingCheck) {
+      players.forEach(function (player, name) {
+        // The server always lists the own player.
+        if (!listed.has(name) && !isOwn(player)) forgetPosition(player);
+      });
+    }
+  }
+
+  // While hiding is possible (a Classic round, see setOwnHidingCheck), a
+  // player the server left out of the positions is not drawn any more: a
+  // Free Rider hiding far away (M3-1.4) must not stay standing where he was
+  // last seen. Once he is listed again, his first position is drawn at once
+  // (see receivePosition), without a glide from the old place.
+  function forgetPosition(player) {
+    emptyQueue(player);
+    player.from = null;
+    player.to = null;
+    player.server = null;
+  }
+
+  // ---- The own Free Rider in a hiding spot (M3-1.4) --------------------
+
+  // For its round, Classic gives the world a check (client/js/classic/round.js):
+  // does the own character hide at (x, y)? The world asks it with the newest
+  // server position and the map's hiding spots, and draws the own character
+  // half transparent while the answer is yes. Outside a Classic round the
+  // check is null. Only drawing: the server alone decides who is sent whose
+  // position.
+  var HIDDEN_ALPHA = 0.5;
+  var ownHidingCheck = null;
+
+  function setOwnHidingCheck(check) {
+    ownHidingCheck = typeof check === "function" ? check : null;
+  }
+
+  function isOwnHidden() {
+    var own = ownPlayer();
+    if (!ownHidingCheck || !campus || !own || !own.server) return false;
+    return ownHidingCheck(own.server.x, own.server.y, campus.hiding_spots) === true;
   }
 
   // ---- Stations: which one is in range, and opening it -----------------
@@ -1501,6 +1542,7 @@ Game.world = Game.world || {};
     ctx.save();
     // A ghost (Classic) is drawn half transparent; only other ghosts see it.
     if (player.isGhost) ctx.globalAlpha = 0.38;
+    else if (isOwn(player) && isOwnHidden()) ctx.globalAlpha = HIDDEN_ALPHA;
     try {
       Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
       ctx.restore();
@@ -1806,6 +1848,7 @@ Game.world = Game.world || {};
   Game.world.bloodSheetIds = function () { return Array.from(bloodSheets.keys()); };
   Game.world.stationInRange = stationInRange;
   Game.world.setInputPaused = setInputPaused;
+  Game.world.setOwnHidingCheck = setOwnHidingCheck;
   Game.world.nearestStationInRange = nearestStationInRange;
   Game.world.ownDrawnPosition = ownDrawnPosition;
   Game.world.walkingDirection = walkingDirection;
