@@ -69,6 +69,8 @@ window.Game = window.Game || {};
   // (leaving, logging out, a lost connection) comes through here.
   function stopWorld() {
     Game.minigames.close(); // before the world stops, so its keys are not left paused
+    clearClassicLeftovers();
+    Game.classicRound.hide();
     Game.duel.reset();
     Game.countdown.reset();
     roundIsRunning = false;
@@ -78,8 +80,51 @@ window.Game = window.Game || {};
     callWorld('stop');
   }
 
+  // What a Classic round leaves in the browser belongs to that round only:
+  // the meeting window (and the stop it put on walking), the F-sheets, the
+  // time the red button unlocks, and the own Free Rider marker in the world,
+  // the lobby list, the meeting and the round's name label. Outside a round
+  // none of it may stay, or the lobby and the next round, also a Duel, would
+  // show it. The end screen is not part of this: it stays until the next
+  // countdown (S-101, see Game.classicRound.setLobby).
+  function clearClassicLeftovers() {
+    Game.classicMeeting.hide();
+    Game.classicRound.resetRoleMarker();
+    callWorld('clearClassicRound');
+  }
+
   function openStation(station) {
     Game.net.ask({ type: 'open_station', station: station });
+  }
+
+  function requestFail() {
+    if (mode === 'classic' && roundIsRunning) Game.net.send({ type: 'fail' });
+  }
+
+  function requestReport(sheetId, position) {
+    if (mode === 'classic' && roundIsRunning) {
+      Game.net.send({ type: 'report', sheet_id: sheetId, position: position });
+    }
+  }
+
+  function requestEmergency() {
+    if (mode === 'classic' && roundIsRunning) Game.net.send({ type: 'emergency' });
+  }
+
+  function whenClassicFail(message) {
+    if (mode === 'classic' && roundIsRunning) callWorld('addBloodSheet', message);
+  }
+
+  function whenClassicFailStatus(message) {
+    if (mode === 'classic' && roundIsRunning) callWorld('setFailStatus', message);
+  }
+
+  function whenClassicEmergencyStatus(message) {
+    if (mode === 'classic' && roundIsRunning) callWorld('setEmergencyStatus', message);
+  }
+
+  function whenClassicProgress(message) {
+    if (mode === 'classic' && roundIsRunning) callWorld('setEmergencyStatus', message);
   }
 
   // Which stations glow and can be used: outside a round none. In a Duel
@@ -111,6 +156,8 @@ window.Game = window.Game || {};
   function whenSignedIn(message) {
     Game.lobby.setOwnName(message.name);
     Game.duel.setOwnName(message.name);
+    Game.classicMeeting.setOwnName(message.name);
+    Game.classicRound.setOwnName(message.name);
     Game.statistics.setOwnName(message.name);
     callWorld('setOwnName', message.name);
     Game.forms.showSignedIn(message.name, message.guest);
@@ -182,8 +229,12 @@ window.Game = window.Game || {};
     startWorld(); // After the screen is visible, so the canvas has its size.
     // After the start: a world that stops forgets which stations were usable.
     noteThePhase(message.phase);
+    // After noteThePhase, which closes a minigame: the meeting may then let
+    // the character walk again (classicMeeting.hide).
+    if (message.phase !== 'round') clearClassicLeftovers();
     mode = message.mode;
     Game.duel.noteLobby(message);
+    Game.classicRound.setLobby(message);
     Game.countdown.noteLobby(message);
     showUsableStations();
   }
@@ -198,6 +249,12 @@ window.Game = window.Game || {};
     // After leaving a lobby a late message may still arrive. The map is
     // stopped then and must not be handed anything.
     if (worldIsRunning) callWorld('setPositions', message.players);
+  }
+
+  function whenClassicRoster(message) {
+    if (!message || !Array.isArray(message.players)) return;
+    Game.lobby.setPlayers(message.players);
+    callWorld('setPlayers', message.players);
   }
 
   function whenStationOpened(message) {
@@ -274,9 +331,14 @@ window.Game = window.Game || {};
   Game.forms.setup(askToLogOut);
   Game.lobby.setup();
   Game.duel.setup();
+  Game.classicMeeting.setup();
+  Game.classicRound.setup();
   Game.countdown.setup();
   Game.statistics.setup();
   callWorld('setUseHandler', openStation);
+  callWorld('setFailHandler', requestFail);
+  callWorld('setReportHandler', requestReport);
+  callWorld('setEmergencyHandler', requestEmergency);
 
   Game.net.on('open', Game.screens.hideMessage);
   Game.net.on('close', whenConnectionLost);
@@ -286,16 +348,22 @@ window.Game = window.Game || {};
   Game.net.on('countdown', Game.countdown.show);
   Game.net.on('left_lobby', whenLeftLobby);
   Game.net.on('positions', whenPositions);
+  Game.net.on('classic_roster', whenClassicRoster);
   Game.net.on('station_opened', whenStationOpened);
   Game.net.on('station_closed', Game.minigames.close);
   Game.net.on('station_done', whenStationDone);
   Game.net.on('duel_state', whenDuelState);
   Game.net.on('duel_progress', Game.duel.showProgress);
   Game.net.on('duel_result', whenDuelResult);
+  Game.net.on('classic_fail', whenClassicFail);
+  Game.net.on('classic_fail_status', whenClassicFailStatus);
+  Game.net.on('classic_emergency_status', whenClassicEmergencyStatus);
+  Game.net.on('classic_progress', whenClassicProgress);
   Game.net.on('profile', Game.statistics.showProfile);
   Game.net.on('leaderboard', Game.statistics.showLeaderboard);
   Game.net.on('notice', (message) => Game.screens.showMessage(message.message, false));
   Game.net.on('error', whenError);
+  Game.net.on('you_are_fr', () => Game.classicRound.setOwnFreeRider(true));
 
   Game.net.connect();
 })();

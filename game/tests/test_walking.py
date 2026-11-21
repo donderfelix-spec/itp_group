@@ -131,6 +131,20 @@ def test_a_player_walking_at_a_wall_stops_in_front_of_it():
     assert position_of(walkers, "Mara") == (140 - PLAYER_HALF_SIZE, 200)
 
 
+def test_ghost_can_walk_through_walls_while_living_player_still_stops():
+    walkers = walkers_with("Ghost", "Mara")
+    walkers.set_direction("Ghost", 1, 0)
+    walkers.set_direction("Mara", 1, 0)
+    walk_for_one_second_with_ghosts(walkers, field_with_a_wall(), {"Ghost"})
+    assert position_of(walkers, "Ghost")[0] > 140 + PLAYER_HALF_SIZE
+    assert position_of(walkers, "Mara") == (140 - PLAYER_HALF_SIZE, 200)
+
+
+def walk_for_one_second_with_ghosts(walkers, campus, ghosts):
+    for _ in range(TICKS_PER_SECOND):
+        walkers.advance(ONE_TICK, campus, ghosts=ghosts)
+
+
 def test_a_long_pause_does_not_become_a_long_jump():
     walkers = walkers_with("Mara")
     walkers.set_direction("Mara", 1, 0)

@@ -123,6 +123,12 @@ Game.world = Game.world || {};
   // section 4).
   var USE_KEY_CODE = "KeyE"; // `event.code` of the key in the E position
   var USE_BUTTON_TEXT = "E Use";
+  var FAIL_KEY_CODE = "KeyQ";
+  var FAIL_RANGE_TILES = 5;
+  var FAIL_COOLDOWN_SECONDS = 15;
+  var REPORT_KEY_CODE = "KeyR";
+  var REPORT_RANGE = 2;
+  var EMERGENCY_DELAY_SECONDS = 45;
 
   // ---- State -----------------------------------------------------------
 
@@ -135,6 +141,15 @@ Game.world = Game.world || {};
   var running = false;
   var frameRequest = 0; // id of the waiting requestAnimationFrame
   var ownName = null;
+  var ownIsFreeRider = false;
+  var failAvailable = false;
+  var failInRange = false;
+  var failCooldownUntil = null;
+  var failStatus = null;
+  var failStatusReceivedAt = 0;
+  var emergencyStatus = null;
+  var emergencyStatusReceivedAt = 0;
+  var ownIsGhost = false;
   var players = new Map(); // name -> player record, see newPlayer()
   var pressedKeys = {}; // event.code -> true while the key is held down
   var sentDirection = { dx: 0, dy: 0 }; // what the server heard last
@@ -143,7 +158,15 @@ Game.world = Game.world || {};
   var walkingSince = null;
   var usableStations = null; // ids of the stations that count, null = all
   var useHandler = null; // called with the id of the station that is opened
-  var useButton = null; // the button "E Use", while the world runs
+  var failHandler = null; // called when the player presses Q in Classic
+  var reportHandler = null; // called with an F-sheet id and position on R
+  var emergencyHandler = null; // called on E at the red button
+  var bloodSheets = new Map(); // sheet id -> map position
+  var useButton = null; // the button for E, while the world runs
+  // Whether `useButton` has the Free Rider's look (class "fail-button"). Kept
+  // here, so the class is taken off once and not touched on every frame.
+  var useButtonHasFailLook = false;
+  var reportButton = null;
   var inputPaused = false; // true while a minigame is open, see setInputPaused()
   // When the positions messages of the last GAP_MEMORY_MILLISECONDS arrived,
   // oldest first. One list for the world: every message lists all players.
@@ -829,13 +852,39 @@ Game.world = Game.world || {};
     ownName = isName(name) ? name : null;
   }
 
+  function setOwnFreeRider(value) {
+    ownIsFreeRider = value === true;
+    if (!ownIsFreeRider) {
+      failAvailable = false;
+      failInRange = false;
+      failCooldownUntil = null;
+      failStatus = null;
+      if (useButton && useButtonHasFailLook) useButton.classList.remove("fail-button");
+      useButtonHasFailLook = false;
+    }
+  }
+
+  function setFailStatus(message) {
+    if (!ownIsFreeRider || !message || message.type !== "classic_fail_status") return;
+    failAvailable = message.available === true;
+    failInRange = message.in_range === true;
+    failCooldownUntil = Number.isFinite(message.cooldown_until)
+      ? message.cooldown_until
+      : null;
+    failStatus = message;
+    failStatusReceivedAt = performance.now();
+  }
+
   // The players of the lobby with their characters: [{name, character}].
   // Whoever is not in the list any more disappears.
   function setPlayers(list) {
     var listed = new Set();
+    var ownEntry = null;
     (Array.isArray(list) ? list : []).forEach(function (entry) {
       if (entry && isName(entry.name)) {
         playerNamed(entry.name).character = entry.character;
+        playerNamed(entry.name).isGhost = entry.ghost === true;
+        if (entry.name === ownName) ownEntry = entry;
         listed.add(entry.name);
       }
     });
@@ -844,6 +893,7 @@ Game.world = Game.world || {};
         players.delete(name);
       }
     });
+    if (ownEntry) ownIsGhost = ownEntry.ghost === true;
   }
 
   // Positions from the server, in map units: [{name, x, y}]. They are not
@@ -963,6 +1013,98 @@ Game.world = Game.world || {};
     useHandler = typeof handler === "function" ? handler : null;
   }
 
+  function setFailHandler(handler) {
+    failHandler = typeof handler === "function" ? handler : null;
+  }
+
+  function setReportHandler(handler) {
+    reportHandler = typeof handler === "function" ? handler : null;
+  }
+
+  function setEmergencyHandler(handler) {
+    emergencyHandler = typeof handler === "function" ? handler : null;
+  }
+
+  function setEmergencyStatus(message) {
+    if (!message || !Number.isFinite(message.emergency_ready_at) || !Number.isFinite(message.server_time)) return;
+    emergencyStatus = message;
+    emergencyStatusReceivedAt = performance.now();
+  }
+
+  function addBloodSheet(message) {
+    if (!message || typeof message.sheet_id !== "string" || !message.position) return;
+    var x = message.position.x;
+    var y = message.position.y;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    bloodSheets.set(message.sheet_id, { x: x, y: y });
+  }
+
+  function clearBloodSheets() {
+    bloodSheets.clear();
+  }
+
+  function removeBloodSheet(sheetId) {
+    bloodSheets.delete(sheetId);
+  }
+
+  // Forgets what a Classic round left on the map: the F-sheets, the time the
+  // red button unlocks and the own Free Rider look. main.js calls it when the
+  // round is over, and stop() calls it too. Otherwise the lobby and the next
+  // round, also a Duel, would still draw the red button and show "Report",
+  // "E Emergency" or "Let fail".
+  function clearClassicRound() {
+    bloodSheets.clear();
+    emergencyStatus = null;
+    emergencyStatusReceivedAt = 0;
+    setOwnFreeRider(false);
+    // The buttons are put right at once, not only by the next frame.
+    updateUseButton(stationInRange());
+    updateReportButton();
+  }
+
+  function ownServerPosition() {
+    if (ownName === null || !players.has(ownName)) return null;
+    return players.get(ownName).to;
+  }
+
+  function nearestSheetInRange() {
+    var position = ownServerPosition();
+    if (!position) return null;
+    var nearest = null;
+    var nearestDistance = REPORT_RANGE;
+    bloodSheets.forEach(function (sheet, sheetId) {
+      var distance = Math.hypot(position.x - sheet.x, position.y - sheet.y);
+      if (distance <= nearestDistance) {
+        nearest = { sheet_id: sheetId, position: { x: position.x, y: position.y }, distance: distance };
+        nearestDistance = distance;
+      }
+    });
+    return nearest;
+  }
+
+  function isAtEmergencyButton() {
+    if (!campus || !campus.button || !emergencyHandler || !emergencyIsUnlocked()) return false;
+    var position = ownServerPosition();
+    if (!position) return false;
+    var button = campus.button;
+    return Math.hypot(position.x - button.x, position.y - button.y) <= (button.r || 0) + REPORT_RANGE;
+  }
+
+  function useActionInRange() {
+    if (inputPaused) return;
+    if (isAtEmergencyButton()) {
+      emergencyHandler();
+      return;
+    }
+    useStationInRange();
+  }
+
+  function reportSheetInRange() {
+    if (inputPaused || !reportHandler) return;
+    var sheet = nearestSheetInRange();
+    if (sheet) reportHandler(sheet.sheet_id, sheet.position);
+  }
+
   // Opens the station in range: with the key E or a click on the button.
   // Without a station in range or without a handler nothing happens, and
   // there is no message either (DESIGN.md, section 4).
@@ -987,6 +1129,14 @@ Game.world = Game.world || {};
     button.addEventListener("click", onUseButtonClick);
     canvas.parentNode.appendChild(button);
     useButton = button; // remembered only once it is on the page
+    useButtonHasFailLook = false; // a new button has no fail look yet
+    reportButton = document.createElement("button");
+    reportButton.type = "button";
+    reportButton.className = "button report-button";
+    reportButton.textContent = "Report";
+    reportButton.hidden = true;
+    reportButton.addEventListener("click", onReportButtonClick);
+    canvas.parentNode.appendChild(reportButton);
   }
 
   // A clicked button keeps the keyboard focus. Space and Enter would then
@@ -994,7 +1144,17 @@ Game.world = Game.world || {};
   // before the station opens.
   function onUseButtonClick() {
     useButton.blur();
-    useStationInRange();
+    if (ownIsFreeRider) {
+      if (isAtEmergencyButton()) emergencyHandler();
+      else if (isFailButtonActive() && typeof failHandler === "function") failHandler();
+    } else {
+      useActionInRange();
+    }
+  }
+
+  function onReportButtonClick() {
+    reportButton.blur();
+    reportSheetInRange();
   }
 
   function removeUseButton() {
@@ -1002,15 +1162,46 @@ Game.world = Game.world || {};
       useButton.remove();
       useButton = null;
     }
+    if (reportButton) {
+      reportButton.remove();
+      reportButton = null;
+    }
   }
 
   // Grey and switched off while it would do nothing, yellow otherwise. The
   // stylesheet gives the two looks.
   function updateUseButton(idInRange) {
-    var shouldBeDisabled = idInRange === null || inputPaused;
-    if (!useButton || useButton.disabled === shouldBeDisabled) {
+    if (!useButton) return;
+    if (ownIsFreeRider) {
+      var secondsLeft = failCooldownSeconds();
+      var fill = window.ClassicFailButton.fillFraction(
+        failStatus, failStatusReceivedAt, performance.now(), FAIL_COOLDOWN_SECONDS
+      );
+      useButton.classList.add("fail-button");
+      useButtonHasFailLook = true;
+      useButton.style.setProperty("--fail-fill", (fill * 100) + "%");
+      var emergencyNearby = isAtEmergencyButton();
+      useButton.textContent = emergencyNearby
+        ? "E Emergency"
+        : secondsLeft > 0
+        ? "Let fail (" + secondsLeft + " s)"
+        : (failInRange ? "Let fail (" + FAIL_RANGE_TILES + " tiles)" : "Let fail");
+      var shouldDisableFail = !isFailButtonActive() || inputPaused;
+      if (useButton.disabled !== shouldDisableFail) {
+        if (shouldDisableFail && document.activeElement === useButton) useButton.blur();
+        useButton.disabled = shouldDisableFail;
+      }
       return;
     }
+    if (useButtonHasFailLook) {
+      useButton.classList.remove("fail-button");
+      useButtonHasFailLook = false;
+    }
+    var emergencyNearby = isAtEmergencyButton();
+    var shouldBeDisabled = (idInRange === null && !emergencyNearby) || inputPaused;
+    if (!useButton) return;
+    useButton.textContent = emergencyNearby ? "E Emergency" : USE_BUTTON_TEXT;
+    if (useButton.disabled === shouldBeDisabled) return;
     // Some browsers swallow key events while a switched-off button has the
     // focus. A lost release of a walk key would leave the player walking,
     // so the focus goes first.
@@ -1018,6 +1209,39 @@ Game.world = Game.world || {};
       useButton.blur();
     }
     useButton.disabled = shouldBeDisabled;
+  }
+
+  function failCooldownSeconds() {
+    if (failStatus === null || failCooldownUntil === null) return 0;
+    return Math.ceil(window.ClassicFailButton.remainingSeconds(failStatus, failStatusReceivedAt, performance.now()));
+  }
+
+  function updateReportButton() {
+    if (!reportButton) return;
+    // Without js/classic/hud-actions.js there is no Classic: nothing to report.
+    if (!window.ClassicHudActions) {
+      reportButton.hidden = true;
+      return;
+    }
+    var sheet = nearestSheetInRange();
+    reportButton.hidden = !window.ClassicHudActions.reportVisible(
+      !ownIsGhost, sheet ? sheet.distance : Infinity, REPORT_RANGE
+    ) || inputPaused;
+  }
+
+  function emergencyIsUnlocked() {
+    // Without js/classic/hud-actions.js (a page or test that loads only the
+    // world) there is no Classic, so the button stays locked and hidden.
+    if (!window.ClassicHudActions) return false;
+    return window.ClassicHudActions.emergencyUnlocked(
+      emergencyStatus, emergencyStatusReceivedAt, performance.now()
+    );
+  }
+
+  function isFailButtonActive() {
+    return ownIsFreeRider && failInRange && (
+      failAvailable || (failCooldownUntil !== null && failCooldownSeconds() === 0)
+    );
   }
 
   // ---- Keyboard --------------------------------------------------------
@@ -1072,6 +1296,14 @@ Game.world = Game.world || {};
     return event.code === USE_KEY_CODE;
   }
 
+  function isFailKey(event) {
+    return event.code === FAIL_KEY_CODE;
+  }
+
+  function isReportKey(event) {
+    return event.code === REPORT_KEY_CODE;
+  }
+
   function onKeyDown(event) {
     if (isMetaKey(event)) {
       releaseAllKeys();
@@ -1092,10 +1324,16 @@ Game.world = Game.world || {};
     }
     if (isUseKey(event)) {
       // A key that is held down reports itself again and again: only the
-      // first press opens the station.
-      if (!event.repeat) {
-        useStationInRange();
-      }
+      // first press uses a station or calls the emergency meeting.
+      if (!event.repeat) useActionInRange();
+      return;
+    }
+    if (isReportKey(event)) {
+      if (!event.repeat) reportSheetInRange();
+      return;
+    }
+    if (isFailKey(event)) {
+      if (!event.repeat && isFailButtonActive() && typeof failHandler === "function") failHandler();
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(KEY_DIRECTIONS, event.code)) {
@@ -1261,6 +1499,8 @@ Game.world = Game.world || {};
     }
     var camera = ctx.getTransform();
     ctx.save();
+    // A ghost (Classic) is drawn half transparent; only other ghosts see it.
+    if (player.isGhost) ctx.globalAlpha = 0.38;
     try {
       Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
       ctx.restore();
@@ -1325,6 +1565,7 @@ Game.world = Game.world || {};
     var height = LABEL_HEIGHT + 2 * LABEL_OUTLINE;
     return {
       name: entry.player.name,
+      isFreeRider: ownIsFreeRider && isOwn(entry.player),
       x: entry.x,
       y: headTop - height / 2,
       width: ctx.measureText(entry.player.name).width + 6 + 2 * LABEL_OUTLINE,
@@ -1350,7 +1591,7 @@ Game.world = Game.world || {};
     ctx.strokeStyle = SURFACE;
     ctx.stroke();
 
-    ctx.fillStyle = OUTLINE;
+    ctx.fillStyle = label.isFreeRider ? "#C43E3E" : OUTLINE;
     ctx.fillText(label.name, label.x, label.y + 0.3);
   }
 
@@ -1366,6 +1607,25 @@ Game.world = Game.world || {};
     var choice = Game.world.chooseLabels(visible.map(labelAboveHead), hiddenNames);
     hiddenNames = choice.hidden;
     choice.shown.forEach(drawLabel);
+  }
+
+  function drawBloodSheets() {
+    bloodSheets.forEach(function (sheet) {
+      ctx.save();
+      ctx.translate(sheet.x, sheet.y);
+      ctx.rotate(-0.12);
+      ctx.fillStyle = "#FFFDF5";
+      ctx.strokeStyle = "#2E2A3B";
+      ctx.lineWidth = 0.65;
+      ctx.fillRect(-4.2, -5.5, 8.4, 11);
+      ctx.strokeRect(-4.2, -5.5, 8.4, 11);
+      ctx.fillStyle = "#C43E3E";
+      ctx.font = "bold 7px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("F", 0, 0.3);
+      ctx.restore();
+    });
   }
 
   // ---- The loop --------------------------------------------------------
@@ -1387,12 +1647,14 @@ Game.world = Game.world || {};
       return;
     }
     var view = aimCamera(cameraCentre(now));
-    Game.world.drawMap(ctx, campus, view);
+    Game.world.drawMap(ctx, campus, view, emergencyIsUnlocked());
+    drawBloodSheets();
     var idInRange = stationInRange();
     if (idInRange !== null) {
       Game.world.drawStationGlow(ctx, stationWithId(idInRange), now);
     }
     updateUseButton(idInRange);
+    updateReportButton();
     drawPlayers(now);
   }
 
@@ -1469,8 +1731,8 @@ Game.world = Game.world || {};
 
   // Stops the loop and the keyboard, takes the button "E Use" away and
   // forgets players (with their queued positions), the arrival times of
-  // the messages, hidden name labels, pressed keys and which stations were
-  // usable.
+  // the messages, hidden name labels, pressed keys, which stations were
+  // usable and everything of a Classic round (clearClassicRound).
   // Nothing is sent: whoever stops the world has left the lobby already.
   function stop() {
     if (running) {
@@ -1482,6 +1744,7 @@ Game.world = Game.world || {};
     running = false;
     usableStations = null; // the next lobby starts with all stations again
     players.clear();
+    clearClassicRound();
     arrivalTimes = [];
     hiddenNames = new Set(); // in the next lobby nobody counts as hidden before
     pressedKeys = {};
@@ -1525,11 +1788,22 @@ Game.world = Game.world || {};
   Game.world.start = start;
   Game.world.stop = stop;
   Game.world.setOwnName = setOwnName;
+  Game.world.setOwnFreeRider = setOwnFreeRider;
+  Game.world.setFailStatus = setFailStatus;
   Game.world.setPlayers = setPlayers;
   Game.world.setPositions = setPositions;
   Game.world.startOfRound = startOfRound;
   Game.world.setUsableStations = setUsableStations;
   Game.world.setUseHandler = setUseHandler;
+  Game.world.setFailHandler = setFailHandler;
+  Game.world.setReportHandler = setReportHandler;
+  Game.world.setEmergencyHandler = setEmergencyHandler;
+  Game.world.setEmergencyStatus = setEmergencyStatus;
+  Game.world.addBloodSheet = addBloodSheet;
+  Game.world.clearBloodSheets = clearBloodSheets;
+  Game.world.clearClassicRound = clearClassicRound;
+  Game.world.removeBloodSheet = removeBloodSheet;
+  Game.world.bloodSheetIds = function () { return Array.from(bloodSheets.keys()); };
   Game.world.stationInRange = stationInRange;
   Game.world.setInputPaused = setInputPaused;
   Game.world.nearestStationInRange = nearestStationInRange;

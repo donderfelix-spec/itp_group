@@ -135,6 +135,8 @@ page.Game = {
   duel: doesNothing,
   countdown: doesNothing,
   statistics: doesNothing,
+  classicMeeting: doesNothing,
+  classicRound: doesNothing,
   minigames: doesNothing,
 };
 vm.createContext(page);

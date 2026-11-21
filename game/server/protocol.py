@@ -10,6 +10,7 @@ area, so it is a team decision (see WORKFLOW.md, step 4).
 """
 
 import json
+import math
 import re
 
 from server.world.campus import STATION_COUNT
@@ -19,6 +20,7 @@ MAX_MESSAGE_BYTES = 2048
 
 NAME_PATTERN = re.compile(r"[A-Za-z0-9]{3,16}")
 LOBBY_CODE_PATTERN = re.compile(r"[A-Za-z]{4}")
+SHEET_ID_PATTERN = re.compile(r"f-sheet-[1-9][0-9]{0,8}")
 
 MIN_PASSWORD_LENGTH = 8
 MAX_PASSWORD_LENGTH = 64
@@ -38,7 +40,7 @@ CHARACTERS = (
 )
 
 # The modes that are built and can be chosen (S-91). Classic follows later.
-MODES = ("duel",)
+MODES = ("duel", "classic")
 # The mode of a new lobby.
 DEFAULT_MODE = "duel"
 # The name of each mode as the players read it.
@@ -79,6 +81,12 @@ REJECTIONS = {
     "no_task_open": "You have no task open.",
     "too_fast": "That was too fast. Try again.",
     "task_failed": "Something went wrong. Try again.",
+    "fr_cannot_task": "Free Riders cannot complete tasks.",
+    "fail_rejected": "You cannot fail a player right now.",
+    "chat_rejected": "You cannot send that chat message right now.",
+    "vote_rejected": "You cannot cast that vote right now.",
+    "report_rejected": "You cannot report that F-sheet right now. Stand at the sheet and try again.",
+    "emergency_rejected": "You cannot call an emergency meeting right now.",
     # Statistics (S-40).
     "guest_no_statistics": "Guests have no statistics. Sign up to keep yours.",
     "statistics_unavailable": "Statistics are unavailable right now.",
@@ -153,8 +161,7 @@ def _check_character(value):
 
 
 def _check_mode(value):
-    # A mode that is not built yet ("classic") is refused like one that does
-    # not exist, so no round without rules can start (S-91).
+    # Modes are enabled only when their round setup is registered.
     if not isinstance(value, str) or value not in MODES:
         raise ProtocolError("bad_mode", "That mode does not exist.")
     return value
@@ -181,6 +188,35 @@ def _check_station(value):
     return value
 
 
+def _check_sheet_id(value):
+    if not isinstance(value, str) or not SHEET_ID_PATTERN.fullmatch(value):
+        raise ProtocolError("bad_sheet_id", "That F-sheet could not be identified.")
+    return value
+
+
+def _check_position(value):
+    if not isinstance(value, dict) or set(value) != {"x", "y"}:
+        raise ProtocolError("bad_position", "That position could not be read.")
+    checked = {}
+    for axis in ("x", "y"):
+        coordinate = value[axis]
+        if (
+            isinstance(coordinate, bool)
+            or not isinstance(coordinate, (int, float))
+            or not math.isfinite(coordinate)
+        ):
+            raise ProtocolError("bad_position", "That position could not be read.")
+        checked[axis] = float(coordinate)
+    return checked
+
+
+def _check_chat_text(value):
+    """Chat text is short, readable UTF-8 and safe to echo to every player."""
+    if not isinstance(value, str) or not 1 <= len(value) <= 200 or not _is_safe_text(value):
+        raise ProtocolError("bad_chat", "Chat messages must contain 1–200 characters.")
+    return value
+
+
 # Each client message type with its required fields and the check for each field.
 CLIENT_MESSAGES = {
     "hello": {"name": _check_name},
@@ -198,6 +234,11 @@ CLIENT_MESSAGES = {
     "open_station": {"station": _check_station},
     "close_station": {},
     "finish_station": {},
+    "fail": {},
+    "report": {"sheet_id": _check_sheet_id, "position": _check_position},
+    "emergency": {},
+    "chat": {"text": _check_chat_text},
+    "vote": {"target_id": _check_name},
     # Statistics (S-40). Neither carries a name: the profile is always the
     # one of the account the connection is signed in with.
     "get_profile": {},

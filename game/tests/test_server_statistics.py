@@ -152,7 +152,8 @@ def leaderboard_for(connection):
 
 
 def profile(name, rounds, wins, best):
-    return protocol.profile(name, [("duel", rounds, wins)], best)
+    # Classic is built but writes no statistics yet, so its row is always 0/0.
+    return protocol.profile(name, [("duel", rounds, wins), ("classic", 0, 0)], best)
 
 
 def finished_duel(connect, clock, names, store):
@@ -443,7 +444,10 @@ def test_a_new_account_has_a_profile_of_zeros(connect):
     assert ask(mara, {"type": "get_profile"}) == {
         "type": "profile",
         "name": "Mara",
-        "modes": [{"mode": "duel", "title": "Duel", "rounds": 0, "wins": 0}],
+        "modes": [
+            {"mode": "duel", "title": "Duel", "rounds": 0, "wins": 0},
+            {"mode": "classic", "title": "Classic", "rounds": 0, "wins": 0},
+        ],
         "best_duel_seconds": None,
     }
 
