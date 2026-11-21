@@ -943,6 +943,9 @@ Game.world = Game.world || {};
 
   // Silhouettes already made: "station id/pixels per unit/growth/colour" -> canvas.
   var silhouettes = new Map();
+  // The zoom the kept silhouettes were made for. Only one zoom is kept: a
+  // window being resized passes many, and each would hold its own canvases.
+  var silhouetteScale = null;
 
   function newCanvas(size) {
     if (typeof document === "undefined" || typeof document.createElement !== "function") {
@@ -958,6 +961,10 @@ Game.world = Game.world || {};
   // canvas of the square around the station, at `scale` pixels per unit.
   // It is made once and kept: drawing it again each frame is cheap.
   function silhouette(station, drawObject, scale, growth, colour) {
+    if (scale !== silhouetteScale) {
+      silhouettes.clear();
+      silhouetteScale = scale;
+    }
     var key = station.id + "/" + scale + "/" + growth + "/" + colour;
     if (silhouettes.has(key)) {
       return silhouettes.get(key);
@@ -1132,5 +1139,7 @@ Game.world = Game.world || {};
   Game.world.drawMap = drawMap;
   Game.world.drawStationGlow = drawStationGlow;
   Game.world.roomAt = roomAt;
+  // How many outline silhouettes are kept, for tests/test_station_objects.js.
+  Game.world.outlineCacheSize = function () { return silhouettes.size; };
   Game.world.chooseLabels = chooseLabels;
 })();

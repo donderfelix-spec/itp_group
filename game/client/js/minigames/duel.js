@@ -32,6 +32,9 @@ window.Game = window.Game || {};
 
   let ownName = null;
   let roundIsOn = false; // a Duel is running in the lobby
+  // "Duel" or "Solo": the name of the round, for the panel and the ranking.
+  // Kept after the round, because `duel_result` can come after its end.
+  let roundName = 'Duel';
   let state = null; // the last readable `duel_state` of this round
   let progress = null; // the last readable `duel_progress` of this round
   let total = DEFAULT_TOTAL; // how many stations a route has
@@ -153,6 +156,8 @@ window.Game = window.Game || {};
     const hasSomething = roundIsOn && (state !== null || progress !== null);
     panel.hidden = !hasSomething;
     if (!hasSomething) return;
+    const heading = document.getElementById('duel-heading');
+    if (heading) heading.textContent = roundName;
     nextText.textContent = nextLine();
     nextText.classList.toggle('duel-next-finished', Boolean(state) && state.next_station === null);
     showClock();
@@ -186,6 +191,7 @@ window.Game = window.Game || {};
       hideRanking(); // also for a player who had not clicked it away
     }
     if (!isDuelRound) forgetRound();
+    if (isDuelRound) roundName = lobbyState.mode === 'solo' ? 'Solo' : 'Duel';
     roundIsOn = isDuelRound;
     showPanel();
   }
@@ -235,7 +241,7 @@ window.Game = window.Game || {};
     const card = element('section', 'duel-card');
     card.setAttribute('role', 'dialog');
     card.setAttribute('aria-labelledby', 'duel-ranking-title');
-    const heading = element('h2', 'duel-title', 'Duel ranking');
+    const heading = element('h2', 'duel-title', roundName + ' ranking');
     heading.id = 'duel-ranking-title';
     card.append(heading);
     if (message.time_up) card.append(element('p', 'duel-time-up', 'Time is up.'));

@@ -49,5 +49,6 @@ MINIGAMES = {
 }
 
 # Extra stations leave the original five minigames and the reserved wave
-# station (6) intact. Duel draws from the whole active registry.
+# station (6) intact. Duel, Solo and Classic draw from the whole active
+# registry (S-124).
 MINIGAMES.update(room_tasks.MINIGAMES)

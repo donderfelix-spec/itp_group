@@ -242,6 +242,30 @@ function check(condition, message) {
   check(env.Game.duel.progress() === null, 'nothing after leaving');
 }
 
+// The panel heading and the ranking say "Solo" in Solo and "Duel" in a Duel.
+for (const [mode, name] of [['solo', 'Solo'], ['duel', 'Duel']]) {
+  const env = environment();
+  env.Game.duel.setup();
+  inRound(env, ['Mara', 'Tiago'], mode);
+  env.emit('duel_progress', progress({ Mara: 0, Tiago: 0 }));
+  check(env.ids.get('duel-heading').textContent === name, mode + ': the panel heading is ' + name);
+  env.emit('duel_result', { ranking: [{ place: 1, name: 'Mara', seconds: 80.2, done: 3 }], time_up: false });
+  const title = env.ids.get('duel-ranking').querySelector('.duel-title');
+  check(title && title.textContent === name + ' ranking', mode + ': the ranking is headed "' + name + ' ranking"');
+  // After the round the ranking keeps its name; the next round names itself again.
+  env.emit('lobby_state', lobbyState(['Mara', 'Tiago'], mode, 'lobby'));
+  check(env.ids.get('duel-ranking').querySelector('.duel-title').textContent === name + ' ranking', mode + ': still named after the round');
+}
+{
+  const env = environment();
+  env.Game.duel.setup();
+  inRound(env, ['Mara'], 'solo');
+  env.emit('lobby_state', lobbyState(['Mara', 'Tiago'], 'duel', 'lobby'));
+  env.emit('lobby_state', lobbyState(['Mara', 'Tiago'], 'duel'));
+  env.emit('duel_progress', progress({ Mara: 0, Tiago: 0 }));
+  check(env.ids.get('duel-heading').textContent === 'Duel', 'a Duel after a Solo round is called Duel again');
+}
+
 // main.js around the round (from test_client_roster.js): the countdown, the
 // movement reset at the start of a round, and leaving.
 for (const mode of ['duel', 'solo']) {

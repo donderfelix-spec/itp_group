@@ -13,13 +13,16 @@ const campus = JSON.parse(fs.readFileSync(path.join(world, 'campus.json'), 'utf8
 const OBJECT_STATIONS = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12];
 const station = (id) => campus.stations.find((entry) => entry.id === id);
 
+// The zoom of the stand-in: pixels per map unit.
+let zoom = 2;
+
 // A context that writes down translations, circles, texts and images. The
 // small canvases draw.js makes for the outlines get one each, marked `offscreen`.
 function recordingContext(calls, offscreen) {
   const state = { globalAlpha: 1 };
   return new Proxy(state, {
     get(target, key) {
-      if (key === 'getTransform') return () => ({ a: 2, b: 0, c: 0, d: 2, e: 0, f: 0 });
+      if (key === 'getTransform') return () => ({ a: zoom, b: 0, c: 0, d: zoom, e: 0, f: 0 });
       if (key === 'createLinearGradient' || key === 'createRadialGradient') return () => ({ addColorStop() {} });
       if (key === 'measureText') return (text) => ({ width: String(text).length * 3 });
       if (key === 'translate') return (x, y) => { if (!offscreen) calls.translations.push([x, y]); };
@@ -126,6 +129,26 @@ function check(condition, message) {
   check(draw(world, [3], 700).images.every((image) => image.alpha > 0.99), 'at the high point all of it, fully');
   const between = draw(world, [3], 350).images.map((image) => image.alpha);
   check(between.length === 4 && Math.min(...between) > 0.3 && Math.min(...between) < 0.7, 'half way it is half see-through');
+}
+
+// The silhouettes are kept for one zoom only: resizing the window passes
+// many zooms, and the cache must not grow with them.
+{
+  const { world, made } = page();
+  const layers = 4;
+  draw(world, OBJECT_STATIONS, 700);
+  check(world.outlineCacheSize() === OBJECT_STATIONS.length * layers, 'eleven stations, four layers each');
+  const before = made.length;
+  zoom = 3;
+  draw(world, OBJECT_STATIONS, 700);
+  check(made.length > before, 'a new zoom makes new silhouettes');
+  check(world.outlineCacheSize() === OBJECT_STATIONS.length * layers, 'the old zoom is gone after one change');
+  for (let step = 0; step < 15; step += 1) {
+    zoom = 2 + step * 0.25;
+    draw(world, OBJECT_STATIONS, 700);
+    check(world.outlineCacheSize() <= OBJECT_STATIONS.length * layers, 'never more than stations x layers (zoom ' + zoom + ')');
+  }
+  zoom = 2;
 }
 
 // The station in range ("E Use"): the outline at full strength, the object on top.
