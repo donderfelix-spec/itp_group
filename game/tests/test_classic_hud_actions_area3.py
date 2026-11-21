@@ -41,7 +41,7 @@ def test_end_popup_and_lobby_button_share_the_same_leave_handler():
     classic_round = (ROOT / "client/js/classic/round.js").read_text()
     assert "function leaveLobby()" in lobby
     assert "addEventListener('click', leaveLobby)" in lobby
-    assert 'addEventListener("click", Game.lobby.leaveLobby)' in classic_round
+    assert 'addEventListener("click", hideResult)' in classic_round and "leaveLobby" not in classic_round
 
 
 def test_client_displays_report_and_meeting_trigger_and_dead_players():
