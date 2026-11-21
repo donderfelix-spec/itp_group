@@ -1,18 +1,21 @@
-// The task navigator only reads the public map and the player's own target.
-// The live arrow points directly at the assigned station, even when a wall
-// is in between. The route helpers below remain available for map checks.
-// Changing the target never changes a player's position.
+// The task navigator: an arrow beside the own character and a card with the
+// own next task (Lennart's request). It only reads the public map, the own
+// position and the own target; changing the target never moves anybody.
+// The live arrow points directly at the station, even through a wall. The
+// route search of `create` is not used by the page; tests check the map
+// with it (tests/test_task_navigation.js).
+//
+// main.js sets the target (`setTarget`), world.js calls `draw` once per
+// frame. The card is the element #task-card of index.html, so it stays out
+// of the canvas: under the room label and under the ?debug panel.
 "use strict";
 window.Game = window.Game || {};
-Game.world = Game.world || {};
 
 (function () {
   const STEP = 4;
   const HALF = 5;
   const YELLOW = '#FFD23F';
   const DARK = '#2E2A3B';
-  const CREAM = '#F4EFE3';
-  const GREEN = '#5FA86B';
   const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 
   // Small priority queue: the shortest unfinished distance comes out first.
@@ -238,40 +241,57 @@ Game.world = Game.world || {};
     arrow(ctx, position.x + Math.cos(angle) * 21, position.y + Math.sin(angle) * 21, angle, 5.8, YELLOW);
   }
 
-  function shorten(ctx, text, width) {
-    if (ctx.measureText(text).width <= width) return text;
-    while (text.length && ctx.measureText(text + '…').width > width) text = text.slice(0, -1);
-    return text + '…';
+  // ---- The task card ----------------------------------------------------
+
+  let target = null; // the station id of the own next task, or null
+  let shownCard = ''; // what the card shows now, so it is only changed on a change
+
+  // The three lines of the card for `guidance`, or null for no card.
+  function cardLines(guidance) {
+    if (!guidance) return null;
+    return [guidance.arrived ? 'E Use · YOUR TASK' : 'YOUR NEXT TASK', guidance.room, guidance.title];
   }
 
-  // Called last in screen pixels: it stays in the corner as the camera moves.
-  function drawOverlay(ctx, guidance, title, canvas) {
-    if (!guidance) return;
-    const density = window.devicePixelRatio || 1;
-    const width = Math.min(314, canvas.width / density - 24);
-    if (width < 150) return;
-    ctx.save();
-    ctx.setTransform(density, 0, 0, density, 0, 0);
-    ctx.fillStyle = DARK;
-    ctx.fillRect(15, 15, width, 74);
-    ctx.fillStyle = CREAM;
-    ctx.fillRect(12, 12, width, 74);
-    ctx.strokeStyle = DARK;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(12, 12, width, 74);
-    ctx.fillStyle = guidance.arrived ? GREEN : YELLOW;
-    ctx.fillRect(12, 12, 6, 74);
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = DARK;
-    ctx.font = 'bold 11px system-ui, sans-serif';
-    ctx.fillText(guidance.arrived ? 'E Use · YOUR TASK' : 'YOUR NEXT TASK', 28, 30);
-    ctx.font = 'bold 17px system-ui, sans-serif';
-    ctx.fillText(shorten(ctx, guidance.room, width - 34), 28, 51);
-    ctx.font = '12px system-ui, sans-serif';
-    ctx.fillText(shorten(ctx, title || guidance.title, width - 34), 28, 72);
-    ctx.restore();
+  // Shows the card for `guidance`, or hides it for null. Without the card in
+  // the page (a test, an old page) nothing happens.
+  function showCard(guidance) {
+    const card = document.getElementById('task-card');
+    if (!card) return;
+    const lines = cardLines(guidance);
+    const key = lines ? lines.join('\n') : '';
+    if (key === shownCard) return;
+    shownCard = key;
+    card.hidden = lines === null;
+    card.classList.toggle('task-card-arrived', Boolean(guidance && guidance.arrived));
+    ['task-card-kicker', 'task-card-room', 'task-card-title'].forEach((id, index) => {
+      const line = document.getElementById(id);
+      if (line) line.textContent = lines ? lines[index] : '';
+    });
   }
 
-  Game.world.navigation = { create: create, directGuidance: directGuidance, drawArrow: drawArrow, drawOverlay: drawOverlay };
+  // The station of the own next task, or null for none. From main.js.
+  function setTarget(stationId) {
+    target = Number.isInteger(stationId) ? stationId : null;
+    if (target === null) showCard(null);
+  }
+
+  // Once per frame from world.js, in map units and before the characters.
+  // `drawn` is where the own character is drawn (the arrow starts there),
+  // `server` the newest position from the server: like "E Use", the card
+  // says "E Use" only when the server counts the player in range.
+  function draw(ctx, campus, drawn, server, paused) {
+    const hasTask = target !== null && !paused;
+    const guidance = hasTask ? directGuidance(campus, server, target) : null;
+    showCard(guidance);
+    if (guidance && drawn) drawArrow(ctx, guidance, drawn);
+  }
+
+  Game.taskNavigation = {
+    create: create,
+    directGuidance: directGuidance,
+    drawArrow: drawArrow,
+    cardLines: cardLines,
+    setTarget: setTarget,
+    draw: draw,
+  };
 })();

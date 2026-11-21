@@ -889,62 +889,19 @@ Game.world = Game.world || {};
     }
   }
 
-  // A station exists visually only for its current assignee. Omitting the
-  // id means no station, including in the lobby and after the last task.
-  function drawStations(ctx, campus, visibleStationId) {
-    if (!Number.isInteger(visibleStationId)) return;
-    var station = list(campus.stations).find(function (entry) { return entry.id === visibleStationId; });
-    if (!station) return;
-    drawTaskStation(ctx, station);
-  }
-
-  function drawTaskStation(ctx, station) {
-    ctx.save();
-    ctx.translate(station.x, station.y);
-    box(ctx, { x: -10, y: -8, w: 23, h: 23 }, 5, OUTLINE, 0);
-    box(ctx, { x: -12, y: -11, w: 23, h: 23 }, 5, YELLOW, 1.6);
-    ctx.lineCap = "round";
-    if (station.room === "mon-cafe") {
-      box(ctx, { x: -6, y: -3, w: 10, h: 9 }, 2, "#FFFFFF", 1.2);
-      circle(ctx, 5, 0, 3, null, 1.5);
-      line(ctx, -6, 7, 7, 7, OUTLINE, 1.2);
-      line(ctx, -3, -6, -2, -8, CORAL, 1.2);
-      line(ctx, 1, -6, 2, -8, CORAL, 1.2);
-    } else if (station.room === "canteen") {
-      circle(ctx, 0, 0, 8, "#FFFFFF", 1.3);
-      circle(ctx, 0, 0, 5.8, "#F4EFE3", 0.5);
-      circle(ctx, -2, 0, 2.7, GREEN, 0.6);
-      circle(ctx, 3, -1.5, 2, CORAL, 0.6);
-      line(ctx, -3, 3, 2, 4, GREEN, 1.8);
-    } else if (station.room === "ctt") {
-      box(ctx, { x: -8, y: -7, w: 16, h: 12 }, 3, "#FFFFFF", 1.2);
-      line(ctx, -4, 5, -5, 8, OUTLINE, 1.2);
-      line(ctx, -5, 8, 0, 5, OUTLINE, 1.2);
-      [-4, 0, 4].forEach(function (x) { circle(ctx, x, -1, 1.1, OUTLINE, 0); });
-    } else if (station.room === "pingo-doce") {
-      box(ctx, { x: -6, y: -8, w: 12, h: 17 }, 1, "#FFFFFF", 1.2);
-      text(ctx, "€", 0, -2.5, 8);
-      [-3, 0, 3].forEach(function (x) { line(ctx, x, 4, x, 7, OUTLINE, 0.8); });
-    } else if (station.room === "lecture-hall") {
-      box(ctx, { x: -7, y: -8, w: 14, h: 16 }, 1, "#FFFFFF", 1.2);
-      line(ctx, -4, -4, 4, -4, OUTLINE, 1.3);
-      line(ctx, -4, 0, 4, 0, OUTLINE, 1.3);
-      line(ctx, -5, 6, 5, -2, CORAL, 2.2);
-    } else {
-      // The seagull with a stolen page, at the outdoor task station.
-      box(ctx, { x: 0, y: 1, w: 6, h: 7 }, 0.5, "#FFFFFF", 0.8);
-      circle(ctx, -1, -1, 4, "#FFFFFF", 1.1);
-      circle(ctx, 3, -4, 2.8, "#FFFFFF", 1.1);
-      circle(ctx, 4, -4.5, 0.5, OUTLINE, 0);
-      line(ctx, -4, -1, -9, -6, OUTLINE, 2);
-      line(ctx, -4, -1, -8, 2, OUTLINE, 2);
-      line(ctx, 5, -3.5, 8, -2.5, CORAL, 1.5);
+  // Task stations: yellow dots with their number. Only the stations in
+  // `shown` (a list of ids) are drawn, so a player sees only the stations
+  // they may use now; anything else draws none (Lennart's request).
+  function drawStations(ctx, campus, shown) {
+    var stations = list(campus.stations);
+    for (var i = 0; i < stations.length; i++) {
+      var station = stations[i];
+      if (list(shown).indexOf(station.id) === -1) {
+        continue;
+      }
+      circle(ctx, station.x, station.y, station.r, YELLOW, 2.5);
+      text(ctx, String(station.id), station.x, station.y + 0.5, station.r * 1.1);
     }
-    // Keep the station's own number (M2-1.10) on its private marker. This
-    // belongs to the station, never to a character standing over it.
-    circle(ctx, 10, 10, 4.6, "#F4EFE3", 0.9);
-    text(ctx, String(station.id), 10, 10, 5.5);
-    ctx.restore();
   }
 
   // How long one pulse of the glowing border takes, in milliseconds
@@ -984,8 +941,9 @@ Game.world = Game.world || {};
 
   // Draws the map in map units. `view` ({x, y, w, h}, optional) is the part
   // of the world that is visible; without it the whole map is assumed.
+  // `shownStations` is the list of station ids to draw (see drawStations).
   // The order matters: what is drawn later lies on top.
-  function drawMap(ctx, campus, view, visibleStationId) {
+  function drawMap(ctx, campus, view, shownStations) {
     if (!ctx || !campus || !campus.colours) {
       return;
     }
@@ -995,7 +953,7 @@ Game.world = Game.world || {};
     drawStaticPart(ctx, campus, view);
     drawHidingSpots(ctx, campus);
     drawButton(ctx, campus);
-    drawStations(ctx, campus, visibleStationId);
+    drawStations(ctx, campus, shownStations);
     ctx.restore();
   }
 

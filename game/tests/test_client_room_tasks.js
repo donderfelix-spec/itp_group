@@ -63,8 +63,9 @@ function environment() {
     statistics: { setup() {}, setOwnName() {}, showProfile() {}, showLeaderboard() {} },
     countdown: { setup() {}, noteLobby() {}, show() {}, reset() {} },
     roster: { setup() {}, setOwnName() {}, show() {}, reset() {} },
+    // The task card and arrow moved to minigames/task_navigation.js.
+    taskNavigation: { setTarget: (...args) => worldCalls.push(['target', ...args]) },
     world: { setOwnName() {}, setPlayers() {}, start() {}, setUseHandler() {}, stop() {},
-      setTaskTarget: (...args) => worldCalls.push(['target', ...args]),
       setUsableStations: (...args) => worldCalls.push(['usable', ...args]) },
     net: { connect() {}, ask: () => true, send() {}, on: (type, action) => handlers.set(type, action) },
   };

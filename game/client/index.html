@@ -181,6 +181,12 @@
     <section id="screen-lobby" class="screen screen-lobby" hidden>
       <div class="map-area">
         <canvas id="map" class="map" aria-label="Campus map"></canvas>
+        <!-- The own next task (minigames/task_navigation.js), below the room label. -->
+        <div id="task-card" class="task-card" aria-live="polite" hidden>
+          <span id="task-card-kicker" class="task-card-kicker"></span>
+          <span id="task-card-room" class="task-card-room"></span>
+          <span id="task-card-title" class="task-card-title"></span>
+        </div>
         <!-- Public players only: portraits, names and an explicit life status. -->
         <aside id="player-roster" class="player-roster" aria-label="Players in this round" hidden>
           <header class="player-roster-header">
@@ -252,7 +258,6 @@
   <script src="js/net.js"></script>
   <script src="js/world/characters.js"></script>
   <script src="js/world/draw.js"></script>
-  <script src="js/world/navigation.js"></script>
   <script src="js/world/art/common.js"></script>
   <script src="js/world/art/pingo_doce.js"></script>
   <script src="js/world/art/lecture_hall.js"></script>
@@ -276,6 +281,7 @@
   <script src="js/minigames/self_checkout.js"></script>
   <script src="js/minigames/duel.js"></script>
   <script src="js/minigames/room_tasks.js"></script>
+  <script src="js/minigames/task_navigation.js"></script>
   <script src="js/lobby/statistics.js"></script>
   <script src="js/main.js"></script>
 </body>

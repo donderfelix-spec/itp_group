@@ -1,6 +1,7 @@
-// Run with the browser JS runtime (or Node vm) after navigation.js has been
-// loaded: testTaskNavigation(Game.world.navigation, parsedCampusMap).
-// No browser, server, package or drawing stubs are needed for the route rules.
+// The task navigator (client/js/minigames/task_navigation.js) and its hooks
+// in world.js and draw.js. Run with: node game/tests/test_task_navigation.js
+// (pytest does it in tests/test_node_harnesses_area4.py). The runner at the
+// end loads the real files; no browser, server or package is needed.
 function testTaskNavigation(navigation, campus) {
   let checked = 0;
   function expect(condition, message) {
@@ -76,28 +77,32 @@ function testTaskNavigation(navigation, campus) {
 }
 
 
-// drawMap must never reveal stations belonging to another player's task.
+// drawMap draws exactly the stations it is given (world.js gives the ones
+// the player may use now) and never one of another player's task.
 // All non-station map details remain independently drawn by the real renderer.
 function testTaskStationVisibility(drawMap) {
   const stations = [{ id: 1, room: 'lecture-hall', x: 30, y: 40 },
     { id: 7, room: 'lecture-hall', x: 80, y: 40 }];
   const map = { width: 100, height: 100, colours: {}, stations: stations };
   let checked = 0;
-  function drawn(id) {
-    const translates = [];
-    const ctx = new Proxy({ translate: function (x, y) { translates.push([x, y]); } }, {
+  // Where the yellow circles of the stations are drawn.
+  function drawn(shown) {
+    const circles = [];
+    const ctx = new Proxy({ arc: function (x, y) { circles.push([x, y]); } }, {
       get: function (target, key) { return key in target ? target[key] : function () {}; }
     });
-    drawMap(ctx, map, null, id);
-    return JSON.stringify(translates);
+    drawMap(ctx, map, null, shown);
+    return JSON.stringify(circles);
   }
   function expect(condition, message) {
     if (!condition) throw new Error(message);
     checked += 1;
   }
-  expect(drawn(7) === '[[80,40]]', 'Only the assigned new station may be drawn');
-  expect(drawn(1) === '[[30,40]]', 'Only the assigned original station may be drawn');
-  for (const absent of [undefined, null, 999, '7', [1, 7]]) {
+  expect(drawn([7]) === '[[80,40]]', 'Only the assigned new station may be drawn');
+  expect(drawn([1]) === '[[30,40]]', 'Only the assigned original station may be drawn');
+  // Classic: several usable stations are all drawn, never none (brief A).
+  expect(drawn([1, 7]) === '[[30,40],[80,40]]', 'Every usable station must be drawn');
+  for (const absent of [undefined, null, 7, 999, '7', [], [999], ['7']]) {
     expect(drawn(absent) === '[]', 'No assignment must show no task markers');
   }
   return { assertions: checked };
@@ -161,28 +166,26 @@ function testDirectTaskNavigator(navigation, campus) {
     'Compass must update when the player or current task changes');
   const hidden = record();
   navigation.drawArrow(hidden.ctx, null, position);
-  navigation.drawOverlay(hidden.ctx, null, '', { width: 800 });
-  expect(hidden.calls.translations.length === 0 && hidden.calls.texts.length === 0,
+  expect(hidden.calls.translations.length === 0 && navigation.cardLines(null) === null,
     'No task must hide the compass and its card');
   for (const id of [null, undefined, 999]) expect(navigation.directGuidance(campus, position, id) === null, 'No assignment should mean no live guidance');
   expect(navigation.directGuidance(campus, { x: NaN, y: 0 }, target.id) === null, 'Invalid position must hide guidance');
 
-  const card = record();
-  navigation.drawOverlay(card.ctx, direct, target.name, { width: 800 });
-  expect(card.calls.texts.length === 3, 'The task card should have three lines');
-  expect(card.calls.texts.includes('CTT Student Hall') && card.calls.texts.includes(target.name), 'Room and task must remain visible');
-  expect(card.calls.texts.every((text) => !/trail|steps|about/i.test(text)), 'Trail and distance instructions must be removed');
-  expect(card.calls.rectangles.every((rect) => rect[3] === 74), 'The shorter task card should not retain a blank instruction row');
-  const arrivalCard = record();
-  navigation.drawOverlay(arrivalCard.ctx, arrived, target.name, { width: 800 });
-  expect(arrivalCard.calls.texts[0].includes('E Use'), 'Arrival should still explain how to open the task');
+  // The card is now an element of the page (#task-card); these are its lines.
+  const card = navigation.cardLines(direct);
+  expect(card.length === 3, 'The task card should have three lines');
+  expect(card.includes('CTT Student Hall') && card.includes(target.name), 'Room and task must remain visible');
+  expect(card.every((text) => !/trail|steps|about/i.test(text)), 'Trail and distance instructions must be removed');
+  expect(card.every((text) => typeof text === 'string' && text.length > 0), 'The shorter task card should not retain a blank instruction row');
+  expect(navigation.cardLines(arrived)[0].includes('E Use'), 'Arrival should still explain how to open the task');
   return { assertions: checked };
 }
 
 // A new server position may already be in range while its queued drawing
 // is still outside. The card and Use button follow the server; the arrow
-// stays beside the smoothly drawn character.
-async function testWorldTaskArrival(vm, worldSource, navigation, campus) {
+// stays beside the smoothly drawn character. Runs the real world.js and the
+// real task_navigation.js; only the drawing of the map is a stand-in.
+async function testWorldTaskArrival(vm, worldSource, navigationSource, campus) {
   let checked = 0;
   function expect(condition, message) {
     if (!condition) throw new Error(message);
@@ -190,79 +193,146 @@ async function testWorldTaskArrival(vm, worldSource, navigation, campus) {
   }
   let now = 0;
   let nextFrame = null;
-  let arrow = null;
-  let overlay = null;
-  let readPosition = null;
-  let visibleStation = null;
+  let shownStations = null;
   let glowingStation = null;
-  const labels = {};
+  let navigationCall = null; // the arguments of the last Game.taskNavigation.draw
+  let arrowPlaces = []; // ctx.translate during that call: only the arrow does it
+  let insideNavigation = false;
+  const labels = { 'aria-label': 'Campus map' };
   const target = campus.stations.find((station) => station.id === 8);
   const button = { disabled: true, addEventListener() {}, remove() {}, blur() {} };
-  const ctx = new Proxy({ measureText: (text) => ({ width: text.length * 3 }) }, {
-    get: (object, key) => key in object ? object[key] : function () {}
-  });
+  const ctx = new Proxy({
+    measureText: (text) => ({ width: text.length * 3 }),
+    translate: (x, y) => { if (insideNavigation) arrowPlaces.push({ x: x, y: y }); },
+  }, { get: (object, key) => key in object ? object[key] : function () {} });
   const canvas = { clientWidth: 1000, clientHeight: 700, width: 1000, height: 700,
     getContext: () => ctx, parentNode: { appendChild() {} },
     setAttribute: (key, value) => { labels[key] = value; }, getAttribute: (key) => labels[key] };
+  // The card of index.html: one element and its three lines.
+  const elements = {};
+  for (const id of ['task-card', 'task-card-kicker', 'task-card-room', 'task-card-title']) {
+    const classes = new Set();
+    elements[id] = { hidden: true, textContent: '', classList: {
+      toggle: (name, on) => { if (on) classes.add(name); else classes.delete(name); },
+      contains: (name) => classes.has(name) } };
+  }
+  const card = elements['task-card'];
   const page = { console: console, devicePixelRatio: 1,
     performance: { now: () => now }, requestAnimationFrame: (callback) => { nextFrame = callback; return 1; },
     cancelAnimationFrame: () => {}, setTimeout: () => 0, clearTimeout: () => {},
     addEventListener: () => {}, removeEventListener: () => {},
     fetch: () => Promise.resolve({ ok: true, json: () => Promise.resolve(campus) }),
     document: { hidden: false, activeElement: null, createElement: () => button,
+      getElementById: (id) => elements[id] || null,
       addEventListener: () => {}, removeEventListener: () => {} } };
   page.window = page;
   page.Game = { world: {
-    drawMap(context, map, view, id) { visibleStation = id; },
+    drawMap(context, map, view, shown) { shownStations = shown; },
     drawStationGlow(context, station) { glowingStation = station.id; },
     drawCharacter() {},
     chooseLabels: (entries) => ({ shown: entries, hidden: new Set() }),
-    navigation: {
-      directGuidance: (map, position, station) => {
-        readPosition = { x: position.x, y: position.y };
-        return navigation.directGuidance(map, position, station);
-      },
-      drawArrow: (context, guidance, position) => { arrow = { guidance: guidance, position: position }; },
-      drawOverlay: (context, guidance) => { overlay = guidance; }
-    } } };
+  } };
   vm.createContext(page);
+  vm.runInContext(navigationSource, page);
   vm.runInContext(worldSource, page);
+  const navigation = page.Game.taskNavigation;
+  const realDraw = navigation.draw;
+  navigation.draw = (...values) => {
+    navigationCall = values;
+    arrowPlaces = [];
+    insideNavigation = true;
+    try { realDraw(...values); } finally { insideNavigation = false; }
+  };
   const world = page.Game.world;
   world.setOwnName('Mara');
   world.start(canvas, () => {});
   world.setPlayers([{ name: 'Mara', character: 'consultant' }]);
   await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
   world.setUsableStations([target.id]);
-  world.setTaskTarget(target.id, target.name);
+  navigation.setTarget(target.id);
   world.setPositions([{ name: 'Mara', x: target.x, y: target.y + 26 }]);
   nextFrame(now);
   now = 66;
   world.setPositions([{ name: 'Mara', x: target.x, y: target.y + 20 }]);
   nextFrame(now);
-  expect(readPosition.y === target.y + 20, 'Arrival guidance must use the latest authoritative server position');
-  expect(overlay.arrived && !button.disabled && world.stationInRange() === target.id,
+  const [, , drawnPosition, serverPosition, paused] = navigationCall;
+  expect(serverPosition.y === target.y + 20, 'Arrival guidance must use the latest authoritative server position');
+  expect(!card.hidden && elements['task-card-kicker'].textContent.includes('E Use')
+    && card.classList.contains('task-card-arrived') && !button.disabled && world.stationInRange() === target.id,
     'Card, button and server range must agree while the drawing is queued');
-  expect(arrow.position.y !== readPosition.y, 'The test needs a queued drawing behind the server');
+  expect(elements['task-card-room'].textContent === 'Mon Café' && elements['task-card-title'].textContent === target.name,
+    'The card names the room and the task');
+  expect(drawnPosition.y !== serverPosition.y && paused === false, 'The test needs a queued drawing behind the server');
   const drawn = world.ownDrawnPosition(now);
-  expect(arrow.position.x === drawn.x && arrow.position.y === drawn.y, 'Arrow must follow the drawn position');
-  arrow = null; overlay = null;
+  expect(drawnPosition.x === drawn.x && drawnPosition.y === drawn.y, 'Arrow must follow the drawn position');
+  expect(arrowPlaces.length === 1 && Math.abs(Math.hypot(arrowPlaces[0].x - drawn.x, arrowPlaces[0].y - drawn.y) - 21) < 1e-8,
+    'Arrow must be drawn beside the drawn character');
   world.setInputPaused(true);
   nextFrame(now + 1);
-  expect(arrow === null && overlay === null, 'An open minigame must hide navigation');
+  expect(arrowPlaces.length === 0 && card.hidden, 'An open minigame must hide navigation');
   world.setInputPaused(false);
-  world.setTaskTarget(null);
   nextFrame(now + 2);
-  expect(arrow === null && overlay === null && labels['aria-label'] === 'Campus map',
+  expect(arrowPlaces.length === 1 && !card.hidden, 'Closing the minigame shows the navigation again');
+  navigation.setTarget(null);
+  expect(card.hidden, 'No navigator target hides the card at once, also when no frame follows');
+  nextFrame(now + 3);
+  expect(arrowPlaces.length === 0 && card.hidden && labels['aria-label'] === 'Campus map',
     'No navigator target must hide guidance and reset its accessible label');
-  expect(visibleStation === target.id && !button.disabled,
+  expect(JSON.stringify(shownStations) === JSON.stringify([target.id]) && !button.disabled,
     'A sole private usable station must remain visible without the optional navigator API');
-  for (const usable of [[], null, [target.id, 7]]) {
+  for (const usable of [[], null]) {
     world.setUsableStations(usable);
-    glowingStation = null;
-    nextFrame(now + 3);
-    expect(visibleStation === null && glowingStation === null && button.disabled,
-      'Missing or multiple private tasks must not reveal markers, glow or an active Use button');
+    nextFrame(now + 4);
+    expect(!Array.isArray(shownStations) || shownStations.length === 0, 'Without usable stations no marker is drawn');
   }
+  world.setUsableStations([]);
+  glowingStation = null;
+  nextFrame(now + 5);
+  expect(glowingStation === null && button.disabled, 'Without usable stations nothing glows and Use is off');
+  // Classic: several usable stations are all drawn, and the one in range glows.
+  world.setUsableStations([target.id, 7]);
+  glowingStation = null;
+  nextFrame(now + 6);
+  expect(JSON.stringify(shownStations) === JSON.stringify([target.id, 7]) && glowingStation === target.id && !button.disabled,
+    'Several usable stations must all be drawn, never none');
   world.stop();
   return { assertions: checked };
+}
+
+// ---- The runner -------------------------------------------------------------
+
+if (require.main === module) {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const vm = require('node:vm');
+  const client = path.join(__dirname, '..', 'client');
+  const campus = JSON.parse(fs.readFileSync(path.join(client, 'js', 'world', 'campus.json'), 'utf8'));
+  const navigationSource = fs.readFileSync(path.join(client, 'js', 'minigames', 'task_navigation.js'), 'utf8');
+  const worldSource = fs.readFileSync(path.join(client, 'js', 'world', 'world.js'), 'utf8');
+  const drawSource = fs.readFileSync(path.join(client, 'js', 'world', 'draw.js'), 'utf8');
+
+  // The real task_navigation.js and draw.js, each in a page of its own.
+  function load(sources) {
+    const page = { console: console, devicePixelRatio: 1, document: { getElementById: () => null } };
+    page.window = page;
+    vm.createContext(page);
+    sources.forEach((source) => vm.runInContext(source, page));
+    return page.Game;
+  }
+  const navigation = load([navigationSource]).taskNavigation;
+  const drawMap = load([drawSource]).world.drawMap;
+
+  (async () => {
+    const results = [
+      testTaskNavigation(navigation, campus),
+      testTaskStationVisibility(drawMap),
+      testDirectTaskNavigator(navigation, campus),
+      await testWorldTaskArrival(vm, worldSource, navigationSource, campus),
+    ];
+    const assertions = results.reduce((sum, result) => sum + result.assertions, 0);
+    console.log('Task navigation checks passed: ' + assertions + ' assertions.');
+  })().catch((problem) => {
+    console.error(problem);
+    process.exit(1);
+  });
 }

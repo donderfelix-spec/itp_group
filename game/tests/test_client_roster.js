@@ -55,8 +55,9 @@ function environment({ drawing = 'works', missingMarkup = false } = {}) {
     screens: { current: () => 'lobby', hideMessage() {}, showMessage() {}, showLastingMessage() {} },
     net: { connect() {}, on: (type, action) => handlers.set(type, action), send() {}, ask() {} },
     world: { setOwnName() {}, setPlayers() {}, start() {}, stop() {}, setUseHandler() {}, setPositions() {}, setUsableStations() {},
-      startOfRound: () => { roundStarts += 1; },
-      setTaskTarget: (station) => targets.push(station) },
+      startOfRound: () => { roundStarts += 1; } },
+    // The task card and arrow moved to minigames/task_navigation.js.
+    taskNavigation: { setTarget: (station) => targets.push(station) },
   };
   if (drawing !== 'missing') Game.world.drawCharacter = (ctx, character, x, y, size) => {
     if (drawing === 'throws') throw new Error('drawing failed');

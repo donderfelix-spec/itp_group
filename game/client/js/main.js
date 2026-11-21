@@ -71,7 +71,7 @@ window.Game = window.Game || {};
     Game.minigames.close(); // before the world stops, so its keys are not left paused
     Game.duel.reset();
     Game.roster.reset();
-    callWorld('setTaskTarget', null);
+    showTaskTarget(null);
     Game.countdown.reset();
     roundIsRunning = false;
     finishedStations = new Set();
@@ -99,7 +99,13 @@ window.Game = window.Game || {};
   function showUsableStations() {
     const stations = usableStations();
     callWorld('setUsableStations', stations);
-    callWorld('setTaskTarget', stations.length === 1 ? stations[0] : null);
+    showTaskTarget(stations.length === 1 ? stations[0] : null);
+  }
+
+  // The task card and arrow (minigames/task_navigation.js) show the one
+  // station this player has to go to next, or nothing.
+  function showTaskTarget(station) {
+    if (Game.taskNavigation) Game.taskNavigation.setTarget(station);
   }
 
   function noteThePhase(phase) {
