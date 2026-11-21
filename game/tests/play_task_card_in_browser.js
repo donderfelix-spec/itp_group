@@ -10,7 +10,7 @@
 //             stations, card lines, player rows, whether the old Duel list
 //             exists, and where card, own character and walking hint are
 //   solo      the panel heading of a Solo round started by one guest alone
-//   classic   per guest of a 4-guest Classic round: pulsing stations, card
+//   classic   per guest of a 4-guest Classic round: own list, pulsing stations, card
 //
 // The page is only watched: an init script wraps Game.world.drawMap and the
 // station drawings to read which stations pulse and which objects are drawn.
@@ -50,6 +50,7 @@ async function guest(browser, label, viewport) {
   page.on('websocket', (ws) => ws.on('framereceived', (f) => {
     let m; try { m = JSON.parse(f.payload); } catch (e) { return; }
     if (m.type === 'duel_state' && seen.firstStation === undefined) seen.firstStation = m.next_station;
+    if (m.type === 'classic_role') seen.ownList = m.task_stations;
   }));
   await page.goto(base + '/');
   await page.click('#start-guest');
@@ -151,7 +152,7 @@ async function modeButtons(g) {
     for (const g of four.slice(1)) await join(g, classicCode);
     await four[0].page.waitForTimeout(500);
     await startRound(four[0], 'Classic', four);
-    for (const g of four) out.classic.push(await look(g));
+    for (const g of four) out.classic.push({ ownList: g.seen.ownList, ...(await look(g)) });
   } finally {
     out.console = problems;
     console.log(JSON.stringify(out));
