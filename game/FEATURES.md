@@ -8,12 +8,13 @@ All features of the game with their status. Whoever finishes a feature or plans 
 - **In progress:** a branch for it is open.
 - **Planned:** listed as a to-do in [TODO.md](TODO.md).
 - **Later:** wanted, but no to-do yet.
+- **Playable with known defects:** on `main` and playable, with open defects listed as to-dos in [TODO.md](TODO.md).
 
 **Milestones**
 
 - **M1 Walking:** Several players meet in a lobby and walk across the campus together.
 - **M2 Duel:** Minigames and the Duel mode are playable.
-- **M3 Classic:** A complete Classic round with Free Rider, meeting and vote is playable.
+- **M3 Classic:** A complete Classic round with Free Rider, meeting and vote is playable. Status 2026-11-21: playable with known defects, see M3-3.9 to M3-3.18 in [TODO.md](TODO.md).
 - **M4 Extensions:** Sabotage, Deadline mode, finished characters, sound, phone.
 
 As of 2026-11-19. Milestone 1 is on `main` and deployed.
@@ -83,18 +84,18 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 
 | Feature | Milestone | Status |
 |---|---|---|
-| Assign roles at random at the start, the role is shown to each player individually | M3 | Planned |
-| Each High Performer gets their own list of tasks | M3 | Planned |
-| Shared progress bar of the group work | M3 | Planned |
-| Free Rider fails a nearby player, followed by a cooldown | M3 | Planned |
-| Find and report a failed player | M3 | Planned |
-| Emergency meeting with the red button on the Main Deck, limited per player | M3 | Planned |
-| Meeting with text chat and time limit | M3 | Planned |
-| Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie | M3 | Planned |
-| Result of the vote: character drifts out to sea, display whether it was a Free Rider | M3 | Planned |
-| Ghosts keep doing their tasks, but they do not talk and do not vote | M3 | Planned |
-| Check the win conditions and show the end screen that reveals the roles | M3 | Planned |
-| Free Riders can only fake tasks | M3 | Planned |
+| Assign roles at random at the start, the role is shown to each player individually | M3 | Done |
+| Each High Performer gets their own list of tasks | M3 | Playable with known defects (the list is not shown yet, M3-3.17) |
+| Shared progress bar of the group work | M3 | Done |
+| Free Rider fails a nearby player, followed by a cooldown | M3 | Playable with known defects (M3-3.9, M3-3.13, M3-3.15, M3-3.16) |
+| Find and report a failed player | M3 | Playable with known defects (M3-3.15) |
+| Emergency meeting with the red button on the Main Deck, limited per player | M3 | Playable with known defects (M3-3.15) |
+| Meeting with text chat and time limit | M3 | Playable with known defects (M3-3.10, M3-3.13) |
+| Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie | M3 | Playable with known defects (no Skip yet, M3-3.12) |
+| Result of the vote: character drifts out to sea, display whether it was a Free Rider | M3 | Playable with known defects (text only, no drifting yet, M3-3.5) |
+| Ghosts keep doing their tasks, but they do not talk and do not vote | M3 | Playable with known defects (M3-3.9) |
+| Check the win conditions and show the end screen that reveals the roles | M3 | Playable with known defects (M3-3.11, M3-3.14) |
+| Free Riders can only fake tasks | M3 | Planned (M3-3.17) |
 | Sabotage “WiFi down”: tasks locked until someone restarts the router | M4 | Planned |
 | Sabotage “Fire alarm”: Two players have to stand at two places in time, otherwise the Free Riders win | M4 | Planned |
 | Sabotage “Lights out”: view distance of the High Performers decreases | M4 | Later |
