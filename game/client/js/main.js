@@ -23,8 +23,8 @@ window.Game = window.Game || {};
     too_many_attempts: 'attempts',
   };
 
-  // The stations with a minigame (1 to 5; station 6 is not in use yet).
-  const STATIONS_IN_USE = [1, 2, 3, 4, 5];
+  // The original five stations and six new campus emergencies. Station 6 is reserved.
+  const STATIONS_IN_USE = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12];
   // Errors after which no task is open on the server, so no window may stay.
   // `task_failed` is in the list because a fault while closing or finishing
   // is answered with this error only: no `station_closed` follows it.
@@ -36,6 +36,7 @@ window.Game = window.Game || {};
   // The stations this player has finished in the running round. The server
   // keeps the real list; this one only decides which stations glow.
   let finishedStations = new Set();
+  let classicTask = null; // first of the own remaining stations sent privately
   // True from the moment this browser asked to log out until the server
   // answers. It tells a wanted `signed_out` from one that came unasked.
   let logOutWasAsked = false;
@@ -72,9 +73,12 @@ window.Game = window.Game || {};
     clearClassicLeftovers();
     Game.classicRound.hide();
     Game.duel.reset();
+    Game.roster.reset();
+    callWorld('setTaskTarget', null);
     Game.countdown.reset();
     roundIsRunning = false;
     finishedStations = new Set();
+    classicTask = null;
     if (!worldIsRunning) return;
     worldIsRunning = false;
     callWorld('stop');
@@ -132,7 +136,8 @@ window.Game = window.Game || {};
   // any other round the ones in use that this player has not finished yet.
   function usableStations() {
     if (!roundIsRunning) return [];
-    if (mode === 'duel') {
+    if (mode === 'classic') return classicTask === null ? [] : [classicTask];
+    if (mode === 'duel' || mode === 'test') {
       const next = Game.duel.nextStation();
       return next === null ? [] : [next];
     }
@@ -140,7 +145,9 @@ window.Game = window.Game || {};
   }
 
   function showUsableStations() {
-    callWorld('setUsableStations', usableStations());
+    const stations = usableStations();
+    callWorld('setUsableStations', stations);
+    callWorld('setTaskTarget', stations.length === 1 ? stations[0] : null);
   }
 
   function noteThePhase(phase) {
@@ -149,7 +156,10 @@ window.Game = window.Game || {};
       finishedStations = new Set();
       callWorld('startOfRound'); // everybody stands and faces right
     }
-    if (!isRound) Game.minigames.close(); // no round, no task
+    if (!isRound) {
+      Game.minigames.close(); // no round, no task
+      classicTask = null;
+    }
     roundIsRunning = isRound;
   }
 
@@ -159,6 +169,7 @@ window.Game = window.Game || {};
     Game.classicMeeting.setOwnName(message.name);
     Game.classicRound.setOwnName(message.name);
     Game.statistics.setOwnName(message.name);
+    Game.roster.setOwnName(message.name);
     callWorld('setOwnName', message.name);
     Game.forms.showSignedIn(message.name, message.guest);
     rejoinTheLostLobby(); // after showSignedIn, whose Home screen empties the join field
@@ -222,6 +233,7 @@ window.Game = window.Game || {};
     if (!isLobbyState(message)) return; // Unreadable: keep what is shown.
     lobbyCode = message.code;
     Game.lobby.show(message);
+    Game.roster.show(message);
     // Switching screens moves the keyboard focus, so it happens only on
     // entering the lobby and not on every change in it.
     if (Game.screens.current() !== 'lobby') Game.screens.show('lobby');
@@ -252,9 +264,25 @@ window.Game = window.Game || {};
   }
 
   function whenClassicRoster(message) {
-    if (!message || !Array.isArray(message.players)) return;
+    if (mode !== 'classic' || !roundIsRunning || !message || !Array.isArray(message.players)) return;
     Game.lobby.setPlayers(message.players);
     callWorld('setPlayers', message.players);
+    Game.roster.show({ phase: 'round', players: message.players.map((player) => ({
+      ...player, alive: player.ghost === true ? false : player.alive,
+    })) });
+  }
+
+  function rememberClassicTasks(message) {
+    const stations = message && message.task_stations;
+    if (mode !== 'classic' || !roundIsRunning || !Array.isArray(stations)
+        || stations.length > STATIONS_IN_USE.length || new Set(stations).size !== stations.length
+        || !stations.every((station) => Number.isInteger(station) && STATIONS_IN_USE.includes(station))) return;
+    classicTask = stations.length ? stations[0] : null;
+  }
+
+  function whenClassicRole(message) {
+    rememberClassicTasks(message);
+    showUsableStations();
   }
 
   function whenStationOpened(message) {
@@ -277,6 +305,7 @@ window.Game = window.Game || {};
 
   function whenStationDone(message) {
     finishedStations.add(message.station);
+    if (mode === 'classic') rememberClassicTasks(message);
     showUsableStations();
     Game.minigames.showDone();
   }
@@ -335,6 +364,7 @@ window.Game = window.Game || {};
   Game.classicRound.setup();
   Game.countdown.setup();
   Game.statistics.setup();
+  Game.roster.setup();
   callWorld('setUseHandler', openStation);
   callWorld('setFailHandler', requestFail);
   callWorld('setReportHandler', requestReport);
@@ -349,6 +379,7 @@ window.Game = window.Game || {};
   Game.net.on('left_lobby', whenLeftLobby);
   Game.net.on('positions', whenPositions);
   Game.net.on('classic_roster', whenClassicRoster);
+  Game.net.on('classic_role', whenClassicRole);
   Game.net.on('station_opened', whenStationOpened);
   Game.net.on('station_closed', Game.minigames.close);
   Game.net.on('station_done', whenStationDone);

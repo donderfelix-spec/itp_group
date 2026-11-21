@@ -16,7 +16,7 @@ import pytest
 
 from server import main, protocol
 from server.main import app
-from server.modes import duel, tasks
+from server.modes import duel, minigames, room_tasks, tasks
 from server.modes.duel import all_routes, route_length
 
 # `clock`, `client` and `connect` are fixtures; the placeholder at every
@@ -62,6 +62,13 @@ def fixed_routes(monkeypatch):
         return dict(zip(names, FIXED_ROUTES))
 
     monkeypatch.setattr(duel, "draw_routes", draw)
+
+
+@pytest.fixture
+def complete_station_pool(monkeypatch):
+    """The real pool has eleven starts; five placeholders cannot host eight unique starts."""
+    monkeypatch.setattr(minigames, "MINIGAMES", {**minigames.MINIGAMES, **room_tasks.MINIGAMES})
+    assert sorted(minigames.MINIGAMES) == [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
 
 
 # Helpers
@@ -209,7 +216,7 @@ def call_tick(connection):
 
 
 @pytest.mark.parametrize("player_count", [2, 3, 8])
-def test_at_the_start_everybody_gets_the_state_their_first_station_and_the_progress(connect, player_count):
+def test_at_the_start_everybody_gets_the_state_their_first_station_and_the_progress(connect, player_count, complete_station_pool):
     names = EIGHT_NAMES[:player_count]
     players, code = lobby_of(connect, names)
     told = start(players)
@@ -222,13 +229,15 @@ def test_at_the_start_everybody_gets_the_state_their_first_station_and_the_progr
 
 
 @pytest.mark.parametrize("player_count", [2, 3, 8])
-def test_every_player_has_a_route_of_three_different_stations_and_no_two_the_same(connect, player_count):
+def test_every_player_has_a_route_of_three_different_stations_and_no_two_the_same(connect, player_count, complete_station_pool):
     names = EIGHT_NAMES[:player_count]
     players, code = duel_of(connect, names)
     routes = [route_of(name) for name in names]
     assert len(set(routes)) == player_count
+    assert len({route[0] for route in routes}) == player_count
     for route in routes:
-        assert len(route) == 3 and len(set(route)) == 3 and set(route) <= set(IN_USE)
+        assert len(route) == 3 and len(set(route)) == 3
+        assert set(route) <= {1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12}
 
 
 @pytest.mark.parametrize("seed", range(12))

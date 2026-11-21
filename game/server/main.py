@@ -173,6 +173,8 @@ async def read_messages(websocket: WebSocket):
             await answer_chat_message(websocket, message)
         elif message["type"] == "vote":
             await answer_vote_message(websocket, message)
+        elif message["type"] == "skip_discussion":
+            await answer_skip_discussion_message(websocket)
 
 
 async def answer_account_message(websocket: WebSocket, message: dict):
@@ -329,7 +331,9 @@ async def handle_get_profile(websocket: WebSocket) -> dict:
     records = await ask_statistics_store(app.state.statistics_store.records_of, name)
     if records is None:
         return protocol.rejection("statistics_unavailable")
-    rows = statistics.profile_rows(records, protocol.MODES)
+    # Practice has no competitive record, even though it is selectable.
+    ranked_modes = [mode for mode in protocol.MODES if mode != "test"]
+    rows = statistics.profile_rows(records, ranked_modes)
     return protocol.profile(name, rows, statistics.best_duel_seconds(records))
 
 
@@ -407,11 +411,15 @@ async def ask_statistics_store(method, *values):
 def duel_result_to_write(lobby, ranking):
     """What a finished Duel adds to the statistics, as `(mode, changes)`. Never raises.
 
-    Returns None when there is nothing to write (only guests played). Called
+    Returns None for test rounds or when only guests played. Called
     at the one place a round ends, so each round gives exactly one result.
     Nothing is written here: that happens later and off the event loop (see
     `write_result_later`), so the end of the round is not delayed.
     """
+    # Test mode reuses the Duel engine, but practice must never add real
+    # Duel rounds, wins or best times to an account or the leaderboard.
+    if lobby.mode != "duel":
+        return None
     try:
         changes = statistics.changes_from_duel(ranking, account_names(lobby.names()))
         return (statistics.DUEL, changes) if changes else None
@@ -896,7 +904,11 @@ def handle_finish_station(lobby, name: str, message: dict) -> list:
     # station again, instead of being left with a station that the server
     # counts but the browser still shows as open.
     try:
-        return [protocol.station_done(station)] + count_for_the_mode(lobby, name, station, now)
+        answers = [protocol.station_done(station)] + count_for_the_mode(lobby, name, station, now)
+        if lobby.classic_round is not None:
+            # This reply goes only to its acting player, never the lobby.
+            answers[0]["task_stations"] = classic_task_stations(lobby.classic_round, name)
+        return answers
     except Exception:
         take_back_the_count(lobby, name, station)
         raise
@@ -920,6 +932,21 @@ def take_back_the_count(lobby, name: str, station: int):
     lobby.tasks.take_back(name, station)
     if lobby.duel is not None:
         lobby.duel.take_back(name, station)
+    if lobby.classic_round is not None:
+        lobby.classic_round.completed_tasks.get(name, set()).discard(str(station))
+
+
+def classic_task_stations(classic, name: str) -> list:
+    """Only this High Performer's ordered, unfinished task stations.
+
+    Free Riders cannot complete tasks in the upstream Classic rules, so
+    their private task list is empty. Other players' assignments never
+    enter this value, including when the viewer is a ghost.
+    """
+    if classic.roles.get(name) != "HP":
+        return []
+    finished = classic.completed_tasks.get(name, set())
+    return [int(station) for station in classic.tasks.get(name, ()) if station not in finished]
 
 
 TASK_HANDLERS = {
@@ -985,6 +1012,7 @@ async def answer_fail_message(websocket: WebSocket):
     event = {
         "type": "classic_fail",
         "target_id": target_id,
+        "character": lobby.character_of(target_id),
         "sheet_id": sheet_id,
         "position": {"x": target_position[0], "y": target_position[1]},
     }
@@ -1143,6 +1171,7 @@ async def tell_meeting_state(lobby, now=None):
     snapshot = classic_meeting.meeting_snapshot(
         lobby.meeting, seconds_now() if now is None else now
     )
+    snapshot["characters"] = dict(lobby.players())
     await asyncio.gather(*(send_to(name, snapshot) for name in lobby.names()))
 
 
@@ -1178,6 +1207,31 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
     farewells, result = end_round_if_over(lobby)
     if farewells:
         await tell_round_ended(lobby, farewells, result)
+
+
+async def answer_skip_discussion_message(websocket: WebSocket):
+    """Record a Skip ballot and publish the result if the threshold is met."""
+    name = app.state.sessions.name_of(websocket)
+    if name is None:
+        await websocket.send_json(protocol.rejection("not_signed_in"))
+        return
+    lobby = app.state.lobbies.lobby_of(name)
+    if lobby is None:
+        await websocket.send_json(protocol.rejection("not_in_lobby"))
+        return
+    if lobby.meeting is None:
+        await websocket.send_json(protocol.rejection("skip_discussion_rejected"))
+        return
+
+    now = seconds_now()
+    lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
+    sync_classic_after_meeting(lobby)
+    try:
+        lobby.meeting = classic_meeting.agree_to_skip_discussion(lobby.meeting, name, now)
+    except ValueError:
+        await websocket.send_json(protocol.rejection("skip_discussion_rejected"))
+    sync_classic_after_meeting(lobby)
+    await publish_meeting_and_round_result(lobby, now)
 
 
 # The round of each mode. The rules of Duel are in `server/modes/duel.py`
@@ -1251,6 +1305,7 @@ def set_up_classic(lobby):
 ROUND_SETUPS = {
     "duel": set_up_duel,
     "classic": set_up_classic,
+    "test": set_up_duel,
 }
 
 
@@ -1295,7 +1350,10 @@ async def tell_classic_start(name: str, lobby, classic):
         return
     reveal = classic.role_reveal(name)
     if reveal is not None:
-        await send_to(name, {"type": "classic_role", **reveal})
+        await send_to(name, {
+            "type": "classic_role", **reveal,
+            "task_stations": classic_task_stations(classic, name),
+        })
         if reveal["role"] == "FR":
             await send_to(name, {"type": "you_are_fr"})
             await tell_classic_fail_status(lobby, name)

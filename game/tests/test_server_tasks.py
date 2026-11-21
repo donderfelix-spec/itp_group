@@ -181,7 +181,7 @@ def test_station_6_is_not_in_use(connect):
     assert not lobby_named("Mara").tasks.has_open_task("Mara")
 
 
-@pytest.mark.parametrize("station", [0, 7, -1, 1.0, "1", True, None], ids=repr)
+@pytest.mark.parametrize("station", [0, 13, -1, 1.0, "1", True, None], ids=repr)
 def test_a_station_that_cannot_be_read_is_rejected_by_the_message_check(connect, station):
     mara, tiago, _ = running_round(connect)
     put_at_station("Mara", 1)

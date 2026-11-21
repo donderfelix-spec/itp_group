@@ -227,6 +227,8 @@ def can_report(
         return False
     if player_id in state["eliminated"] or state["roles"].get(player_id) not in ("HP", "FR"):
         return False
+    if f"report:{blood_sheet_id}" in state.get("meeting_triggers", ()):
+        return False
     sheet_position = state.get("f_sheets", {}).get(blood_sheet_id)
     if not _valid_position(position) or not _valid_position(sheet_position):
         return False
@@ -316,11 +318,7 @@ def start_meeting(
     updated_state["meeting_triggers"] = meeting_triggers
     updated_state.pop("pending_meeting_trigger", None)
 
-    if reason == "report":
-        remaining_sheets = dict(state.get("f_sheets", {}))
-        del remaining_sheets[blood_sheet_id]
-        updated_state["f_sheets"] = remaining_sheets
-    else:
+    if reason == "emergency":
         updated_state["emergency_used"] = set(state.get("emergency_used", ())) | {
             player_id
         }

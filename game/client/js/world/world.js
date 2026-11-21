@@ -172,6 +172,35 @@ Game.world = Game.world || {};
   // oldest first. One list for the world: every message lists all players.
   var arrivalTimes = [];
 
+  // Only the target assigned to this player is passed to the navigator.
+  var taskTarget = null;
+  var taskTitle = null;
+
+  function setTaskTarget(stationId, title) {
+    var next = Number.isInteger(stationId) ? stationId : null;
+    taskTarget = next;
+    taskTitle = typeof title === "string" ? title : null;
+    if (next === null && canvas && typeof canvas.setAttribute === "function") canvas.setAttribute("aria-label", "Campus map");
+  }
+
+  // The compass follows the direct destination vector on every frame,
+  // using only the latest position the server sent for this player.
+  function updateGuidance() {
+    if (taskTarget === null || inputPaused || !Game.world.navigation) return null;
+    var own = ownName !== null && players.has(ownName) ? players.get(ownName).server : null;
+    if (!own) return null;
+    var guidance = Game.world.navigation.directGuidance(campus, own, taskTarget);
+    if (guidance) {
+      var label = "Campus map. " + (taskTitle || guidance.title) + " in " + guidance.room + ". "
+        + (guidance.arrived ? "Press E to use." : "The arrow points to your task.");
+      if (typeof canvas.setAttribute === "function"
+        && (typeof canvas.getAttribute !== "function" || canvas.getAttribute("aria-label") !== label)) {
+        canvas.setAttribute("aria-label", label);
+      }
+    }
+    return guidance;
+  }
+
   // ---- Players and smoothing -------------------------------------------
 
   function newPlayer(name) {
@@ -992,8 +1021,8 @@ Game.world = Game.world || {};
     return null;
   }
 
-  // Which stations count as targets. The others are still drawn but never
-  // glow. Only `null` means all of them. An array or a Set is the list of
+  // Which stations count as targets. Only the current private target is
+  // drawn; the others have no marker or glow. Only `null` means all of them. An array or a Set is the list of
   // ids. Anything else (nothing at all, a number, a text, an object) is a
   // mistake of the caller and means no station: a mistake must never open
   // every station.
@@ -1036,15 +1065,16 @@ Game.world = Game.world || {};
     var x = message.position.x;
     var y = message.position.y;
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    bloodSheets.set(message.sheet_id, { x: x, y: y });
+    bloodSheets.set(message.sheet_id, { x: x, y: y, character: message.character });
   }
 
   function clearBloodSheets() {
     bloodSheets.clear();
   }
 
-  function removeBloodSheet(sheetId) {
-    bloodSheets.delete(sheetId);
+  function markBloodSheetReported(sheetId) {
+    var sheet = bloodSheets.get(sheetId);
+    if (sheet) sheet.reported = true;
   }
 
   // Forgets what a Classic round left on the map: the F-sheets, the time the
@@ -1073,6 +1103,7 @@ Game.world = Game.world || {};
     var nearest = null;
     var nearestDistance = REPORT_RANGE;
     bloodSheets.forEach(function (sheet, sheetId) {
+      if (sheet.reported) return;
       var distance = Math.hypot(position.x - sheet.x, position.y - sheet.y);
       if (distance <= nearestDistance) {
         nearest = { sheet_id: sheetId, position: { x: position.x, y: position.y }, distance: distance };
@@ -1619,11 +1650,18 @@ Game.world = Game.world || {};
       ctx.lineWidth = 0.65;
       ctx.fillRect(-4.2, -5.5, 8.4, 11);
       ctx.strokeRect(-4.2, -5.5, 8.4, 11);
+      var hasPortrait = typeof sheet.character === "string" && typeof Game.world.drawCharacter === "function";
+      if (hasPortrait) {
+        ctx.save();
+        ctx.globalAlpha = 0.78;
+        Game.world.drawCharacter(ctx, sheet.character, 0, 0.6, 7.6);
+        ctx.restore();
+      }
       ctx.fillStyle = "#C43E3E";
-      ctx.font = "bold 7px system-ui, sans-serif";
+      ctx.font = hasPortrait ? "bold 3.4px system-ui, sans-serif" : "bold 7px system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("F", 0, 0.3);
+      ctx.fillText("F", hasPortrait ? -2.55 : 0, hasPortrait ? -3.2 : 0.3);
       ctx.restore();
     });
   }
@@ -1647,15 +1685,24 @@ Game.world = Game.world || {};
       return;
     }
     var view = aimCamera(cameraCentre(now));
-    Game.world.drawMap(ctx, campus, view, emergencyIsUnlocked());
+    // The one private usable station is already the player's current task.
+    // Older callers need not also set the optional navigator target.
+    var visibleStation = Array.isArray(usableStations) && usableStations.length === 1
+      ? usableStations[0] : null;
+    Game.world.drawMap(ctx, campus, view, emergencyIsUnlocked(), visibleStation);
     drawBloodSheets();
     var idInRange = stationInRange();
+    if (idInRange !== visibleStation) idInRange = null;
     if (idInRange !== null) {
       Game.world.drawStationGlow(ctx, stationWithId(idInRange), now);
     }
     updateUseButton(idInRange);
+    var taskGuidance = updateGuidance();
+    var ownPosition = cameraCentre(now);
+    if (taskGuidance) Game.world.navigation.drawArrow(ctx, taskGuidance, ownPosition);
     updateReportButton();
     drawPlayers(now);
+    if (taskGuidance) Game.world.navigation.drawOverlay(ctx, taskGuidance, taskTitle, canvas);
   }
 
   // The browser calls this before every repaint of the screen, and not at
@@ -1743,6 +1790,7 @@ Game.world = Game.world || {};
     removeUseButton();
     running = false;
     usableStations = null; // the next lobby starts with all stations again
+    setTaskTarget(null);
     players.clear();
     clearClassicRound();
     arrivalTimes = [];
@@ -1787,6 +1835,7 @@ Game.world = Game.world || {};
 
   Game.world.start = start;
   Game.world.stop = stop;
+  Game.world.setTaskTarget = setTaskTarget;
   Game.world.setOwnName = setOwnName;
   Game.world.setOwnFreeRider = setOwnFreeRider;
   Game.world.setFailStatus = setFailStatus;
@@ -1802,7 +1851,7 @@ Game.world = Game.world || {};
   Game.world.addBloodSheet = addBloodSheet;
   Game.world.clearBloodSheets = clearBloodSheets;
   Game.world.clearClassicRound = clearClassicRound;
-  Game.world.removeBloodSheet = removeBloodSheet;
+  Game.world.markBloodSheetReported = markBloodSheetReported;
   Game.world.bloodSheetIds = function () { return Array.from(bloodSheets.keys()); };
   Game.world.stationInRange = stationInRange;
   Game.world.setInputPaused = setInputPaused;

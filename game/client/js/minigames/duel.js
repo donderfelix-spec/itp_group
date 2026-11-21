@@ -81,7 +81,7 @@ window.Game = window.Game || {};
     const rooms = new Map();
     (Array.isArray(campus.rooms) ? campus.rooms : []).forEach((room) => rooms.set(room.id, room.name));
     (Array.isArray(campus.stations) ? campus.stations : []).forEach((station) => {
-      const room = rooms.get(station.room);
+      const room = station.room === 'deck' ? 'Main Deck' : rooms.get(station.room);
       const isUsable = Number.isInteger(station.id) && typeof station.name === 'string' && typeof room === 'string';
       if (isUsable) stationNames.set(station.id, station.name + ' (' + room + ')');
     });
@@ -194,7 +194,7 @@ window.Game = window.Game || {};
   // running: the Duel's own messages follow it at the start, and at the
   // end `duel_result` comes before the state with phase "lobby".
   function noteLobby(lobbyState) {
-    const isDuelRound = lobbyState.phase === 'round' && lobbyState.mode === 'duel';
+    const isDuelRound = lobbyState.phase === 'round' && ['duel', 'test'].includes(lobbyState.mode);
     if (isDuelRound && !roundIsOn) {
       forgetRound(); // a new round: nothing of the old one is left
       hideRanking(); // also for a player who had not clicked it away

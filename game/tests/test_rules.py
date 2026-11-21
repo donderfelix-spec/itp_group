@@ -244,7 +244,7 @@ def test_report_starts_meeting_removes_sheet_and_cannot_be_repeated():
     assert updated["phase"] == "meeting"
     assert updated["meeting"]["active"] is True
     assert updated["meeting"]["reason"] == "report"
-    assert "sheet-1" not in updated["f_sheets"]
+    assert updated["f_sheets"]["sheet-1"] == state["f_sheets"]["sheet-1"]
     assert not can_report(updated, "fr", "sheet-1", (3.0, 4.0))
     with pytest.raises(ValueError, match="cannot report"):
         report_sheet(updated, "fr", "sheet-1", (3.0, 4.0))

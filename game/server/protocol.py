@@ -39,15 +39,15 @@ CHARACTERS = (
     "library_local",
 )
 
-# The modes that are built and can be chosen (S-91). Classic follows later.
-MODES = ("duel", "classic")
+# The modes that are built and can be chosen (S-91), plus solo practice.
+MODES = ("duel", "classic", "test")
 # The mode of a new lobby.
 DEFAULT_MODE = "duel"
 # The name of each mode as the players read it.
-MODE_NAMES = {"duel": "Duel", "classic": "Classic"}
+MODE_NAMES = {"duel": "Duel", "classic": "Classic", "test": "Test mode"}
 # How many players a round of each mode needs at least (S-53). The only place
 # on the server where these numbers stand.
-MIN_PLAYERS = {"duel": 2, "classic": 4}
+MIN_PLAYERS = {"duel": 2, "classic": 4, "test": 1}
 
 # A lobby is waiting for its host to start, counting down to the start of
 # the round (S-102), or its round is running.
@@ -85,6 +85,7 @@ REJECTIONS = {
     "fail_rejected": "You cannot fail a player right now.",
     "chat_rejected": "You cannot send that chat message right now.",
     "vote_rejected": "You cannot cast that vote right now.",
+    "skip_discussion_rejected": "You cannot skip this discussion right now.",
     "report_rejected": "You cannot report that F-sheet right now. Stand at the sheet and try again.",
     "emergency_rejected": "You cannot call an emergency meeting right now.",
     # Statistics (S-40).
@@ -239,6 +240,7 @@ CLIENT_MESSAGES = {
     "emergency": {},
     "chat": {"text": _check_chat_text},
     "vote": {"target_id": _check_name},
+    "skip_discussion": {},
     # Statistics (S-40). Neither carries a name: the profile is always the
     # one of the account the connection is signed in with.
     "get_profile": {},

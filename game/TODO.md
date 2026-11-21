@@ -116,8 +116,11 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M2-4.7a** A fault after a task was counted takes the count back, in the frame and in the Duel, so the server never counts a station the browser was not told about (solved with M2-4.7)
 - [x] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard (S-94). In the pull request after #26
 - [ ] **M2-4.8** Play test: two players play a Duel through to the leaderboard (Lennart). A scripted run with two browsers and the real minigames exists from the building of M2-4.7 (both finish, ranking, second round, time running out). Left to do: two people on two computers on the deployed server, and write down what gets in the way
-- [ ] **M2-4.9** After a solved minigame the “Done” window stays for one second and the walking keys are ignored during it; a key that is already held only counts again when the window has closed. In a Duel that is three seconds of standing per route and feels like lag (found in the play test of M2-2.2, after Felix reported lag). Let a held or newly pressed walking key take effect at once, or shorten the window (Lennart)
+- [x] **M2-4.9** After a solved minigame, show “Done” for 0.5 seconds and then close the window automatically (Lennart, user request 2026-11-21).
 - [x] **M2-4.12** All five minigames fit narrow and low windows: from 320 px wide, a body under 420 px gets its own layout (slides in two columns, brew buttons that wrap, the tray slip above the counter, books on two boards of three, checkout with Target above Total and two products per row); the card scrolls, nothing is cut off and nothing scrolls sideways. The self-checkout message brings itself into view when the belt is taller than the window, and the bagging row never moves when it appears. At 1280x800 every game looks exactly as before (Lennart's area, done by Felix's session). Found when "Brew the order" was cut off at 320 px; two code reviews, played to "Done" with two players in Chromium at 320x568, 320x700, 600x700, 920x700 and 1280x800, also with live resizing (2026-11-20)
+
+- [ ] **M2-4.12** Make the minigames more exciting (Lennart). Revisit challenge, pacing and feedback, including the issues in K15.
+- [x] **M2-4.13** Show the other players in a corner at the top of the game screen (Lennart).
 
 **Known and open after the Duel**
 
@@ -148,6 +151,9 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M3-3.2** Failing someone, with range and cooldown (Laurin). Built and played; known defects in M3-3.13, M3-3.15 and M3-3.16 (2026-11-21)
 - [x] **M3-3.3** Reporting and emergency meeting (Laurin). Built and played; the emergency button unlocks 45 seconds after the start (S-123); known defects in M3-3.15 (2026-11-21)
 - [x] **M3-3.4** Meeting screen with chat and time limit (Laurin). Built and played: 45 s chat, ghosts read only, 30 s vote; known defect M3-3.10 (2026-11-21)
+- [x] **M3-3.4a** After someone reports a player, voting is available immediately during the conversation phase; every living player can also agree to end that phase early, and only unanimous agreement advances the phase directly. Emergency meetings keep their discussion before voting (2026-11-21).
+- [x] **M3-3.4b** When the meeting timer ends without anyone being ejected, the browser shows the result for 1.8 seconds, then forcibly hides the meeting window and resumes the round (2026-11-21).
+- [x] **M3-3.5a** After a player casts a vote, their selected player remains highlighted in yellow until the vote result; every confirmed vote is public as the voter's character icon beside its target (2026-11-21).
 - [ ] **M3-3.5** Vote and result (Laurin). Built so far: voting for a living player, a tie votes nobody out, “Mara was (not) a Free Rider.” Missing: “Skip” (M3-3.12), the result when the vote ends the round (M3-3.13), the number of votes and the drift out to sea (DESIGN.md, screen 9)
 - [x] **M3-3.6** Progress bar, role display, end screen (Laurin). Built and played; its defects of M3-3.14 are fixed (2026-11-21)
 - [ ] **M3-3.8** When so many players leave a running Classic round that the ratio of High Performers to Free Riders no longer fits (S-48: one Free Rider with 4 or 5 players, two with 6 to 8), the round is stopped: everybody returns to the lobby with a clear message (Laurin, with Felix for the leaving). Requested by Felix on 2026-11-19. To decide while building: the exact limit, and the text for DESIGN.md, section 9
@@ -169,6 +175,8 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 **Area 4 (Lennart)**
 
 - [ ] **M3-4.1** Connect the minigames to the task list of the Classic mode (Lennart). The frame asks a function which stations a player needs (`needed_stations` in `server/modes/tasks.py`); Duel passes “only the next one”, Classic passes the player's task list
+
+- [ ] **M3-4.2** Introduce an emergency meeting button (Lennart). Coordinate with Laurin's reporting and emergency-meeting rules in M3-3.3.
 
 ## M4: Extension
 
@@ -207,3 +215,33 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 - [x] **M0-2.4** Project skeleton: server, start page, message validation, 51 tests, CI with tests, dependency check and syntax check (2026-11-18)
 - [x] **M0-1.1** Floor plan of the map as a sketch (`design/map.svg`)
 - [x] Planning: feature overview, decision log, to-do list, workflow of the agents (2026-11-18)
+
+
+## User branch: Additional tasks and navigator (`Minispiele-und-Modi`)
+
+- [x] **CT-1** Six funny illustrated minigames at additional locations: buzzwords, emergency coffee, mouldy lunch, group-chat excuses, student budget and a project-stealing seagull. Preserve the original five games.
+- [x] **CT-2** Add the six stations to the existing Duel assignment pool; preserve all existing mode and round rules. No solo mode.
+- [x] **CT-3** Navigator with destination and direct direction arrow; no trail or step count. Draw only the station that is the local player's current task.
+- [x] **CT-4** Rule/integration tests, full suite and dependency audit, browser checks with several players. Human review and merge are still pending.
+
+These branch tasks implement Lennart's direct request and clarifications; Classic's roles and meetings remain separately planned.
+
+Branch validation: 2,184 Python tests passed, dependency audit clean, renderer checks passed, 18,010 navigation assertions and 7 private-marker checks passed. All six new puzzles were solved in the browser; two actual browser players received different private targets and their own navigators.
+
+- [x] **TM-1** Separate Test mode that starts with one player, preserving ordinary Duel rules; verify solo start/completion/restart and navigator.
+
+Test mode validation: 2,193 Python tests passed; dependency audit clean; client regression and independent review passed; one guest started Test mode alone in the browser with private current task and navigator.
+
+Main integration validated on Minispiele-und-Modi: upstream main 493ccdd, 2,398 Python tests passed, dependency audit clean, merged renderer/client tests and browser checks passed. Practice rounds do not affect competitive statistics.
+
+M2-4.13 branch validation: round player roster implemented; current members, portraits and own marker checked with two real browser clients. Eight-player fixture including explicit public alive:false displays Dead with cross, faded portrait and struck name; small600x450 layout and scrolling verified. No death mechanic is introduced.
+
+Main refresh validation (2026-11-21): integrated main d2be14d into Minispiele-und-Modi while retaining private tasks, the direct target arrow, solo Test mode and player roster. Full suite with Node enabled: 4,036 passed, 3 skipped. Dependency audit clean; independent review found no issues. Two real browser clients completed the five-second countdown and entered a round with different private tasks and the correct player roster. Additional station locations were adjusted to preserve all upstream furniture and room labels.
+
+- [x] **CT-5** Revise Save the lunch into an overhead tray with individually removable mouldy rice, vegetables and chicken (Lennart, user request 2026-11-21).
+
+CT-5 validation: 778 focused Python tests passed, including original minigames, narrow layouts and server task integration; dependency-free client harness and independent review passed. Browser preview using the real frame/module and server content completed after five removals; fresh-food clicks preserved the meal. The 360 by 220 px tray and all sixteen controls were checked at normal size and 320 by 568 without overlap or horizontal overflow. Dependencies unchanged; audit rerun was unavailable because pypi.org DNS could not resolve (last full audit clean).
+
+- [x] **CT-6** Give every player a different first station at round start (Lennart, user request 2026-11-21).
+
+Branch push validation (2026-11-21): complete Node-enabled suite 4,047 passed, 3 skipped; room-task client harness passed. Distinct first stations tested across 2–8 players over 300 random seeds each; Done window uses the existing automatic close timer at 500 ms.

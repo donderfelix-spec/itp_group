@@ -75,7 +75,7 @@ def test_report_message_starts_meeting_and_websocket_scenario_a_wins_for_hp(name
     meeting = receive_broadcast(connections, "meeting_state")
     assert meeting["phase"] == "discussion"
     assert ghost_id in meeting["ghosts"]
-    assert sheet_id not in round_state.f_sheets
+    assert sheet_id in round_state.f_sheets
     assert round_state.meeting["reason"] == "report"
 
     connections[reporter_id].send_json({"type": "chat", "text": "I found the sheet."})

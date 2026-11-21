@@ -131,12 +131,13 @@ VALID_MESSAGES = [
     {"type": "emergency"},
     {"type": "chat", "text": "Hello there."},
     {"type": "vote", "target_id": "Mara"},
+    {"type": "skip_discussion"},
     {"type": "get_profile"},
     {"type": "get_leaderboard"},
 ]
 MESSAGES_WITHOUT_FIELDS = [
     "guest", "log_out", "create_lobby", "leave_lobby", "start_game", "close_station", "finish_station", "fail",
-    "get_profile", "get_leaderboard",
+    "get_profile", "get_leaderboard", "skip_discussion",
 ]
 
 
@@ -391,6 +392,7 @@ REJECTION_TEXTS = {
     "fail_rejected": "You cannot fail a player right now.",
     "chat_rejected": "You cannot send that chat message right now.",
     "vote_rejected": "You cannot cast that vote right now.",
+    "skip_discussion_rejected": "You cannot skip this discussion right now.",
     "report_rejected": "You cannot report that F-sheet right now. Stand at the sheet and try again.",
     "emergency_rejected": "You cannot call an emergency meeting right now.",
     "guest_no_statistics": "Guests have no statistics. Sign up to keep yours.",
@@ -473,8 +475,8 @@ def test_already_signed_in_has_its_own_text():
 BAD_MODE = ("bad_mode", "That mode does not exist.")
 
 
-def test_duel_and_classic_are_built_modes():
-    assert protocol.MODES == ("duel", "classic")
+def test_duel_classic_and_the_requested_test_mode_are_the_built_modes():
+    assert protocol.MODES == ("duel", "classic", "test")
     assert protocol.DEFAULT_MODE in protocol.MODES
 
 
@@ -527,9 +529,12 @@ def test_too_few_players_fits_classic_without_new_code():
 
 
 def test_every_mode_that_is_built_has_a_name_and_a_minimum():
+    expected_minima = {"duel": 2, "classic": 4, "test": 1}
+    assert {mode: protocol.MIN_PLAYERS[mode] for mode in protocol.MODES} == expected_minima
     for mode in protocol.MODES:
         assert protocol.MODE_NAMES[mode]
-        assert 2 <= protocol.MIN_PLAYERS[mode] <= len(protocol.CHARACTERS)
+        assert protocol.MIN_PLAYERS[mode] == expected_minima[mode]
+        assert protocol.MIN_PLAYERS[mode] <= len(protocol.CHARACTERS) == 8
 
 
 def test_too_few_players_with_an_unknown_mode_raises_key_error():
@@ -555,7 +560,7 @@ def test_an_accepted_station_is_a_real_int():
 
 @pytest.mark.parametrize(
     "station",
-    [0, 7, -1, 100, 1.0, 1.5, "1", "one", True, False, None, [1], {"id": 1}, 10**30],
+    [0, 13, -1, 100, 1.0, 1.5, "1", "one", True, False, None, [1], {"id": 1}, 10**30],
     ids=repr,
 )
 def test_anything_that_is_not_a_station_number_is_rejected(station):
@@ -597,4 +602,6 @@ def test_station_closed_and_station_done_carry_only_the_station():
 def test_the_station_numbers_follow_the_map():
     from server.world.campus import STATION_COUNT, load_campus
 
-    assert len(load_campus()["stations"]) == STATION_COUNT == 6
+    stations = load_campus()["stations"]
+    assert len(stations) == STATION_COUNT == 12
+    assert {station["id"] for station in stations} == set(range(1, 13))

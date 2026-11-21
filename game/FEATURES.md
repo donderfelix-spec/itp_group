@@ -90,8 +90,8 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Free Rider fails a nearby player, followed by a cooldown | M3 | Playable with known defects (M3-3.9, M3-3.13, M3-3.15, M3-3.16) |
 | Find and report a failed player | M3 | Playable with known defects (M3-3.15) |
 | Emergency meeting with the red button on the Main Deck, limited per player | M3 | Playable with known defects (M3-3.15) |
-| Meeting with text chat and time limit | M3 | Playable with known defects (M3-3.10, M3-3.13) |
-| Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie | M3 | Playable with known defects (no Skip yet, M3-3.12) |
+| Meeting with text chat, time limit, immediate voting after a report and unanimous report-discussion skip | M3 | Playable with known defects (M3-3.10, M3-3.13) |
+| Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie | M3 | Playable with known defects (no Skip yet, M3-3.12); confirmed votes show the voter's character icon at the yellow-highlighted target |
 | Result of the vote: character drifts out to sea, display whether it was a Free Rider | M3 | Playable with known defects (text only, no drifting yet, M3-3.5) |
 | Ghosts keep doing their tasks, but they do not talk and do not vote | M3 | Playable with known defects (M3-3.9) |
 | Check the win conditions and show the end screen that reveals the roles | M3 | Playable with known defects (M3-3.11) |
@@ -122,3 +122,24 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Mon Café: put chairs in rows for the event | M4 | Later |
 | Deadline mode: shared clock, progress bar, random disruptions | M4 | Planned |
 | Duel variants: best of 3, knockout rounds | M4 | Later |
+
+
+## User branch: Additional tasks and navigator
+
+These features are on `Minispiele-und-Modi`, awaiting validation and review; “Done” above continues to mean merged to `main`.
+
+| Feature | Status |
+|---|---|
+| Six funny illustrated tasks at six additional stations, retaining the original games | In progress |
+| Existing Duel assignment pool extended to eleven tasks; existing rules retained | In progress |
+| Private current-task station visibility and direct destination arrow, without a trail or step count | In progress |
+
+Branch validation complete: all six tasks and private navigation implemented and checked; 2,184 Python tests and the dependency audit passed. Status stays In progress here until the branch is merged.
+
+| Separate Test mode for solo testing, using existing round mechanics | In progress (implemented and validated on branch; merge pending) |
+
+| In-round player roster with public dead-state styling | In progress (implemented and validated on branch; merge pending) |
+
+| Canteen cleanup: compact overhead tray, 10 rice grains/3 vegetables/3 chicken pieces, 3/1/1 randomly discoloured | Implemented and validated on branch; merge pending |
+
+| Distinct first task station for each player; 0.5-second automatic Done window | Implemented and validated on branch; merge pending |

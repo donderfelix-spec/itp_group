@@ -38,6 +38,7 @@ def start_discussion(
         "messages": [],
         "last_message_at": {},
         "votes": {},
+        "skip_votes": set(),
         "reason": (round_state or {}).get("meeting_reason"),
         "trigger_player_id": (round_state or {}).get("meeting_trigger_player_id"),
     }
@@ -70,19 +71,52 @@ def send_chat(meeting: dict, player_id: str, text: str, now: float) -> dict:
     return updated
 
 
+def agree_to_skip_discussion(meeting: dict, player_id: str, now: float) -> dict:
+    """Toggle a Skip ballot and end the meeting at 75% agreement."""
+    if not _valid_time(now):
+        raise ValueError("Meeting time must be a finite number.")
+    living = meeting.get("living", ())
+    if not voting_is_open(meeting):
+        raise ValueError("Voting is not open.")
+    if player_id not in living:
+        raise ValueError("Only living players may skip a discussion.")
+    if now >= meeting.get("deadline", -math.inf):
+        raise ValueError("This discussion has already ended.")
+    updated = deepcopy(meeting)
+    skips = updated.setdefault("skip_votes", set())
+    if player_id in skips:
+        skips.remove(player_id)
+        return updated
+    updated["votes"].pop(player_id, None)
+    skips.add(player_id)
+    if 4 * len(updated["skip_votes"]) >= 3 * len(living):
+        updated["phase"] = "result"
+        updated["deadline"] = float(now)
+        return resolve_vote_result(updated)
+    return updated
+
+
+def voting_is_open(state: dict) -> bool:
+    return state.get("phase") == "voting" or (
+        state.get("phase") == "discussion" and state.get("reason") == "report"
+    )
+
+
 def cast_vote(state: dict, voter_id: str, target_id: str) -> dict:
-    """Return a new state with one final vote from a living voter."""
+    """Toggle a target or replace the voter's previous ballot."""
     living = state.get("living", ())
-    if state.get("phase") != "voting":
+    if not voting_is_open(state):
         raise ValueError("Voting is not open.")
     if voter_id not in living:
         raise ValueError("Only living players may vote.")
     if target_id not in living:
         raise ValueError("Votes must target a living player.")
-    if voter_id in state.get("votes", {}):
-        raise ValueError("A player's vote is final.")
     updated = deepcopy(state)
-    updated["votes"][voter_id] = target_id
+    updated.setdefault("skip_votes", set()).discard(voter_id)
+    if updated["votes"].get(voter_id) == target_id:
+        del updated["votes"][voter_id]
+    else:
+        updated["votes"][voter_id] = target_id
     return updated
 
 
@@ -101,6 +135,9 @@ def tally_votes(state: dict) -> EjectResult:
 
     counts = {player_id: valid_votes.count(player_id) for player_id in set(valid_votes)}
     most_votes = max(counts.values())
+    skips = len(living.intersection(state.get("skip_votes", ())))
+    if skips >= most_votes:
+        return EjectResult(None, skips == most_votes, None)
     leaders = [player_id for player_id, count in counts.items() if count == most_votes]
     if len(leaders) != 1:
         return EjectResult(None, True, None)
@@ -161,9 +198,13 @@ def meeting_snapshot(meeting: dict, now: float) -> dict:
             {"player_id": item["player_id"], "text": item["text"]}
             for item in current["messages"]
         ],
-        # Who has voted is public, but the selected target stays hidden until
-        # the result is calculated and is never sent to the clients.
+        # Votes are public in the meeting UI: every player can see which
+        # character voted for which target, as requested for the game flow.
         "voted": list(current.get("votes", {})),
+        "vote_targets": dict(current.get("votes", {})),
+        # Skip agreements are public, like the fact that someone has voted;
+        # they never reveal a vote target.
+        "skip_voted": list(current.get("skip_votes", ())),
         "ejected_id": (
             current["vote_result"].ejected_id
             if current.get("vote_result") is not None

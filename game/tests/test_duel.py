@@ -95,7 +95,7 @@ def test_the_length_of_a_route_starts_at_the_spawn_and_follows_the_order():
 # Routes: drawing, accepted
 
 
-@pytest.mark.parametrize("player_count", [1, 2, 3, 4, 5, 6, 7, 8])
+@pytest.mark.parametrize("player_count", [1, 2, 3, 4, 5])
 def test_every_player_gets_a_route_of_their_own(player_count):
     names = EIGHT_NAMES[:player_count]
     for seed in SEEDS:
@@ -108,12 +108,12 @@ def test_every_player_gets_a_route_of_their_own(player_count):
 
 @pytest.mark.parametrize("player_count", [2, 3, 4])
 def test_on_the_real_map_all_routes_are_within_ten_percent_of_one_of_them(player_count):
-    # Every route of the real map has at least three others within 10 %, so
-    # with up to four players the tolerance always holds. Which route was
-    # drawn first is not told, so the test looks for one that fits.
+    # If the first random anchor lacks enough distinct close starts, the
+    # drawer tries another anchor before relaxing the fairness tolerance.
     names = EIGHT_NAMES[:player_count]
     for seed in SEEDS:
         routes = list(draw_routes(names, IN_USE, REAL_DISTANCES, random.Random(seed)).values())
+        assert len({route[0] for route in routes}) == player_count
         assert any(
             all(is_within_tolerance(route, first, REAL_DISTANCES) for route in routes)
             for first in routes
@@ -146,14 +146,14 @@ def test_the_longest_route_of_all_is_never_given_next_to_the_shortest():
     by_length = sorted(all_routes(IN_USE), key=lambda route: route_length(route, REAL_DISTANCES))
     shortest, longest = by_length[0], by_length[-1]
     for seed in SEEDS:
-        routes = draw_routes(EIGHT_NAMES, IN_USE, REAL_DISTANCES, random.Random(seed)).values()
+        routes = draw_routes(EIGHT_NAMES[:len(IN_USE)], IN_USE, REAL_DISTANCES, random.Random(seed)).values()
         assert not (shortest in routes and longest in routes)
 
 
 def test_the_same_seed_gives_the_same_routes():
     for seed in range(20):
-        first = draw_routes(EIGHT_NAMES, IN_USE, REAL_DISTANCES, random.Random(seed))
-        second = draw_routes(EIGHT_NAMES, IN_USE, REAL_DISTANCES, random.Random(seed))
+        first = draw_routes(EIGHT_NAMES[:len(IN_USE)], IN_USE, REAL_DISTANCES, random.Random(seed))
+        second = draw_routes(EIGHT_NAMES[:len(IN_USE)], IN_USE, REAL_DISTANCES, random.Random(seed))
         assert first == second
 
 
@@ -219,16 +219,17 @@ def test_the_fallback_does_not_depend_on_chance():
     assert one == other
 
 
-def test_eight_players_get_eight_routes_even_when_none_are_close():
+def test_five_players_get_distinct_starts_even_when_no_routes_are_close():
     for seed in range(50):
-        routes = draw_routes(EIGHT_NAMES, IN_USE, SPREAD_OUT, random.Random(seed))
-        assert len(set(routes.values())) == 8
+        routes = draw_routes(EIGHT_NAMES[:len(IN_USE)], IN_USE, SPREAD_OUT, random.Random(seed))
+        assert len(set(routes.values())) == len(IN_USE)
+        assert len({route[0] for route in routes.values()}) == len(IN_USE)
 
 
 def test_with_equal_distances_every_route_is_close_and_any_can_be_drawn():
     seen = set()
     for seed in SEEDS:
-        seen.update(draw_routes(EIGHT_NAMES, IN_USE, ALL_EQUAL, random.Random(seed)).values())
+        seen.update(draw_routes(EIGHT_NAMES[:len(IN_USE)], IN_USE, ALL_EQUAL, random.Random(seed)).values())
     assert seen == set(all_routes(IN_USE))
 
 
