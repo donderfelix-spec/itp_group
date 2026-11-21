@@ -167,16 +167,19 @@ Game.world = Game.world || {};
   // a keypad), a kettle and a small sink.
   art.kinds["microwave-counter"] = function (ctx, counter) {
     util.box(ctx, counter.x, counter.y, counter.w, counter.h, 0.8, STEEL_LIGHT, 1);
+    // The microwaves leave a strip at the back of the counter free for the
+    // sign that stands there (decor "sign").
+    var height = counter.h - 4.4;
     var microwaves = Math.max(1, Math.floor((counter.w - 20) / 12));
     for (var i = 0; i < microwaves; i++) {
       var left = counter.x + 1 + i * 12;
-      util.box(ctx, left, counter.y + 0.8, 11, counter.h - 1.6, 0.8, "#F7F7F5", 0.7);
-      util.box(ctx, left + 1, counter.y + 1.8, 6.6, counter.h - 3.6, 0.4, "#3A3646", 0.4);
+      util.box(ctx, left, counter.y + 0.6, 11, height, 0.8, "#F7F7F5", 0.7);
+      util.box(ctx, left + 1, counter.y + 1.3, 6.6, height - 1.4, 0.4, "#3A3646", 0.4);
       ctx.fillStyle = "rgba(255, 210, 120, 0.45)";
-      ctx.fillRect(left + 1.6, counter.y + 2.4, 2.4, counter.h - 4.8);
-      for (var key = 0; key < 3; key++) {
+      ctx.fillRect(left + 1.6, counter.y + 1.7, 2.4, height - 2.2);
+      for (var key = 0; key < 2; key++) {
         ctx.fillStyle = "#9AA1AC";
-        ctx.fillRect(left + 8.4, counter.y + 2 + key * 1.6, 1.8, 0.9);
+        ctx.fillRect(left + 8.4, counter.y + 1.4 + key * 1.6, 1.8, 0.9);
       }
     }
     var after = counter.x + 1 + microwaves * 12;

@@ -613,12 +613,22 @@ Game.world = Game.world || {};
   // it inside `area` (in map units). The order matters: what is drawn later
   // lies on top.
   function drawStaticLayers(ctx, campus, area) {
+    drawLowerLayers(ctx, campus, area);
+    drawUpperLayers(ctx, campus, area);
+  }
+
+  // The two halves of drawStaticLayers(): a tile drawn ahead is drawn one
+  // half per frame, so no frame has to draw a whole tile.
+  function drawLowerLayers(ctx, campus, area) {
     drawGround(ctx, campus, area);
     drawDeck(ctx, campus, area);
     drawRoomFloors(ctx, campus, area);
     drawDoors(ctx, campus, area);
     drawDecor(ctx, campus, area, "floor");
     drawWallFaces(ctx, campus, area);
+  }
+
+  function drawUpperLayers(ctx, campus, area) {
     drawRoomNames(ctx, campus, area);
     drawSolids(ctx, campus, area);
     drawDecor(ctx, campus, area, "wall");
@@ -630,9 +640,11 @@ Game.world = Game.world || {};
   // static part is drawn once into square tiles of TILE_PIXELS canvas pixels
   // (at the current zoom), and each frame only copies the tiles it needs.
   // Tiles sit on whole canvas pixels, so no seam shows between two of them.
-  // In a frame that needed no new tile, one tile of the ring just outside the
-  // picture is drawn ahead: the one nearest to where the camera is heading.
-  // So walking on seldom has to draw a tile while the player waits.
+  // In a frame that needed no new tile, a tile of the ring just outside the
+  // picture is drawn ahead: the one nearest to where the camera is heading,
+  // half of it in one frame and the other half in the next. So walking on
+  // seldom has to draw a tile while the player waits, and no frame draws
+  // more than half a tile ahead.
   var TILE_PIXELS = 512;
   // At least this many tiles are kept; more when the canvas is large.
   var FEWEST_TILES_KEPT = 24;
@@ -642,7 +654,9 @@ Game.world = Game.world || {};
     scale: 0,
     kept: new Map(), // "column,row" -> canvas; the most recently used last
     spare: [], // canvases of forgotten tiles, to draw new tiles into
-    drawn: 0, // how many tiles were drawn so far
+    drawn: 0, // how many tiles were started so far
+    work: 0, // how many halves of tiles were drawn so far
+    pending: null, // a tile drawn ahead whose upper half is still missing
     lastOrigin: null, // where the map's corner was on the canvas last frame
     heading: { x: 0, y: 0 }, // the way the camera moved last, in canvas pixels
     unavailable: false // true when this browser cannot make tiles
@@ -692,6 +706,7 @@ Game.world = Game.world || {};
     if (tiles.campus !== campus || tiles.scale !== scale) {
       tiles.kept.clear(); // a new map or a new zoom: every tile is out of date
       tiles.spare = [];
+      tiles.pending = null;
       tiles.campus = campus;
       tiles.scale = scale;
     }
@@ -704,14 +719,17 @@ Game.world = Game.world || {};
     var firstRow = Math.floor(-originY / TILE_PIXELS);
     var lastRow = Math.floor((ctx.canvas.height - originY - 1) / TILE_PIXELS);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    var tilesBefore = tiles.drawn;
+    var workBefore = tiles.work;
     for (var row = firstRow; row <= lastRow; row++) {
       for (var column = firstColumn; column <= lastColumn; column++) {
         var tile = tileAt(campus, scale, column, row);
         ctx.drawImage(tile, originX + column * TILE_PIXELS, originY + row * TILE_PIXELS);
       }
     }
-    if (tiles.drawn === tilesBefore) {
+    if (tiles.work === workBefore && tiles.pending) {
+      var finished = tiles.pending;
+      tiles.kept.set(finished.key, finishTile(campus, finished));
+    } else if (tiles.work === workBefore) {
       drawOneTileAhead(campus, scale, ctx.canvas, originX, originY, firstColumn - 1, lastColumn + 1, firstRow - 1, lastRow + 1);
     }
     // Keep the tiles of the picture and of the ring around it, and as many
@@ -754,7 +772,7 @@ Game.world = Game.world || {};
       }
     }
     if (best) {
-      tiles.kept.set(best.column + "," + best.row, drawTile(campus, scale, best.column, best.row));
+      tiles.pending = startTile(campus, scale, best.column, best.row);
     }
   }
 
@@ -764,15 +782,20 @@ Game.world = Game.world || {};
     var tile = tiles.kept.get(key);
     if (tile) {
       tiles.kept.delete(key); // put it back at the end: used most recently
+    } else if (tiles.pending && tiles.pending.key === key) {
+      tile = finishTile(campus, tiles.pending); // half drawn ahead: finish it now
     } else {
-      tile = drawTile(campus, scale, column, row);
+      tile = finishTile(campus, startTile(campus, scale, column, row));
     }
     tiles.kept.set(key, tile);
     return tile;
   }
 
-  function drawTile(campus, scale, column, row) {
+  // Starts a tile: makes (or reuses) its canvas and draws the lower half of
+  // the layers. Returns what finishTile() needs.
+  function startTile(campus, scale, column, row) {
     tiles.drawn += 1;
+    tiles.work += 1;
     // A canvas of a forgotten tile is used again: making a new one costs more
     // than drawing into an old one. The lawn drawn first covers it all.
     var tile = tiles.spare.pop();
@@ -788,8 +811,19 @@ Game.world = Game.world || {};
     tileCtx.setTransform(scale, 0, 0, scale, -column * TILE_PIXELS, -row * TILE_PIXELS);
     tileCtx.lineJoin = "round";
     var size = TILE_PIXELS / scale;
-    drawStaticLayers(tileCtx, campus, { x: column * size, y: row * size, w: size, h: size });
-    return tile;
+    var area = { x: column * size, y: row * size, w: size, h: size };
+    drawLowerLayers(tileCtx, campus, area);
+    return { key: column + "," + row, canvas: tile, ctx: tileCtx, area: area };
+  }
+
+  // Draws the upper half of the layers of a started tile. Returns its canvas.
+  function finishTile(campus, started) {
+    tiles.work += 1;
+    if (tiles.pending === started) {
+      tiles.pending = null;
+    }
+    drawUpperLayers(started.ctx, campus, started.area);
+    return started.canvas;
   }
 
   // Keeps only the `count` tiles used most recently, so walking across the

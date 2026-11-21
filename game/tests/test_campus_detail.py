@@ -147,7 +147,7 @@ def test_every_room_names_a_floor_pattern_and_a_wall_face():
 
 def test_the_deck_has_a_pattern_a_wall_face_and_faces_are_at_most_10_high():
     assert CAMPUS["deck_pattern"] == "paving"
-    assert CAMPUS["deck_wall_face"] == "facade"
+    assert CAMPUS["deck_wall_face"] == "taupe-slats"
     assert 0 < CAMPUS["wall_face_height"] <= 10
 
 
@@ -201,9 +201,44 @@ def test_the_canteen_has_a_microwave_corner_and_its_other_fittings():
     assert kinds == ["fridge", "microwave-counter", "recycling-bins", "tray-rack", "water-fountain"]
 
 
-def test_every_new_solid_lies_in_one_of_the_rooms_built_so_far():
+def on_the_deck(solid):
+    """The solid lies in no room: on the deck or in its corridor."""
+    return not any(touches(solid, room) for room in CAMPUS["rooms"])
+
+
+def test_every_new_solid_lies_in_a_room_or_on_the_deck():
     rooms = ["pingo-doce", "mon-cafe", "lecture-hall", "ctt", "canteen"]
-    assert sum(len(new_solids_in(room)) for room in rooms) == len(NEW_SOLIDS)
+    on_deck = [solid for solid in NEW_SOLIDS if on_the_deck(solid)]
+    assert sum(len(new_solids_in(room)) for room in rooms) + len(on_deck) == len(NEW_SOLIDS)
+
+
+def test_the_deck_and_its_corridor_have_their_new_furniture():
+    kinds = sorted(solid["kind"] for solid in NEW_SOLIDS if on_the_deck(solid))
+    assert kinds == sorted(["staircase", "sofa", "sofa", "cube-divider", "cube-divider", "black-column",
+                            "deck-bench", "deck-bench", "deck-bench", "lamp-post", "lamp-post", "lamp-post",
+                            "lamp-post", "bike-rack", "surfboard-rack"])
+
+
+@pytest.mark.parametrize("door", [door for door in CAMPUS["doors"]], ids=lambda door: door["room"])
+def test_the_corridor_leaves_20_units_free_in_front_of_every_door(door):
+    # The strip in front of the door, on the deck's side, 20 units deep.
+    wall_line = door["y"] + door["h"] / 2
+    room = next(room for room in CAMPUS["rooms"] if room["id"] == door["room"])
+    room_is_below = room["y"] + room["h"] / 2 > wall_line
+    front = {"x": door["x"], "w": door["w"], "h": 20,
+             "y": wall_line - 3 - 20 if room_is_below else wall_line + 3}
+    for solid in SOLIDS:
+        overlaps = (solid["x"] < front["x"] + front["w"] and front["x"] < solid["x"] + solid["w"]
+                    and solid["y"] < front["y"] + front["h"] and front["y"] < solid["y"] + solid["h"])
+        assert not overlaps, (door["room"], solid["id"])
+
+
+def test_nothing_new_lies_beside_the_hedge_where_the_emergency_button_goes():
+    zone = {"x": 556, "y": 230, "w": 680 - 556, "h": 40}
+    for solid in NEW_SOLIDS:
+        assert not touches(solid, zone), solid["id"]
+    for item in CAMPUS["decor"]:
+        assert not touches(item, zone), item
 
 
 def test_every_decor_on_a_solid_lies_inside_a_solid():
@@ -274,23 +309,24 @@ def test_the_new_furniture_of_pingo_doce_changes_no_walking_distance_of_the_duel
         assert after[pair] == pytest.approx(distance, abs=0.001), pair
 
 
-def test_only_the_ways_to_station_2_and_station_4_changed_and_not_by_much():
-    # Measured for this to-do: every way to station 2 grew by 4.7 units
-    # (Mon Café's furniture; spawn to 2: 327.2 -> 331.9), every way to
-    # station 4 became 62.6 units shorter (the central aisle of the CTT;
-    # spawn to 4: 783.1 -> 720.5). No other way changed.
+def test_the_walking_distances_changed_only_a_little():
+    # Measured for this to-do, against the map before it:
+    # - every way to station 4 became about 62 units shorter (the central
+    #   aisle of the CTT; spawn to 4: 783.1 -> 720.5);
+    # - every way to station 2 grew by 4.7 units (Mon Café's furniture);
+    # - the sofas and dividers along the corridor made the ways between the
+    #   doors of the top rooms up to 6.7 units longer (1 to 2: 598.4).
+    # Nothing may get more than 2.5 % longer (2 to 3 has both: +2.2 %),
+    # nothing but the ways to
+    # station 4 shorter.
     stations = sorted(minigames.MINIGAMES)
     before = station_distances(as_before_this_to_do(CAMPUS), stations)
     after = station_distances(CAMPUS, stations)
     for pair, distance in before.items():
-        if 2 in pair and 4 in pair:
-            assert distance * 0.9 <= after[pair] <= distance, pair
-        elif 2 in pair:
-            assert distance <= after[pair] <= distance * 1.02, pair
-        elif 4 in pair:
-            assert distance * 0.9 <= after[pair] < distance, pair
+        if 4 in pair:
+            assert distance * 0.9 <= after[pair] <= distance * 1.025, pair
         else:
-            assert after[pair] == pytest.approx(distance, abs=0.001), pair
+            assert distance - 0.001 <= after[pair] <= distance * 1.025, pair
 
 
 # Accepted: edge cases
@@ -567,15 +603,17 @@ def test_walking_across_the_whole_map_keeps_a_bounded_number_of_tiles():
 
 @needs_node
 def test_tiles_ahead_are_drawn_in_the_way_the_camera_moves_first():
-    # The camera moves right (the map's corner moves left on the canvas) for
-    # two frames, then stands still: the first tile drawn ahead lies on the
-    # right-hand side of the ring.
+    # The camera moves right (the map's corner moves left on the canvas), not
+    # far enough to need a new tile: the tile started ahead in that frame
+    # lies on the right-hand side of the ring, and the next frame finishes it
+    # without starting another one.
     start = {"scale": 9.846, "e": -3456.0, "f": -2211.0, "width": 2560, "height": 1600}
     moved = dict(start, e=start["e"] - 40)
     frames = tiles_frames([start, moved, moved])
-    right_edge = max(copy_["x"] for copy_ in frames[2]["copies"]) + 512
-    [ahead] = frames[2]["drawnAt"]
+    right_edge = max(copy_["x"] for copy_ in frames[1]["copies"]) + 512
+    [ahead] = frames[1]["drawnAt"]
     assert ahead["x"] == right_edge
+    assert frames[2]["drawnAt"] == []
 
 
 @needs_node
@@ -583,8 +621,8 @@ def test_tiles_ahead_follow_the_camera_moving_up_too():
     start = {"scale": 9.846, "e": -3456.0, "f": -2211.0, "width": 2560, "height": 1600}
     moved = dict(start, f=start["f"] + 40)  # the corner moves down: the camera moves up
     frames = tiles_frames([start, moved, moved])
-    top_edge = min(copy_["y"] for copy_ in frames[2]["copies"]) - 512
-    [ahead] = frames[2]["drawnAt"]
+    top_edge = min(copy_["y"] for copy_ in frames[1]["copies"]) - 512
+    [ahead] = frames[1]["drawnAt"]
     assert ahead["y"] == top_edge
 
 
