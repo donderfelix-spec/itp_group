@@ -4,8 +4,9 @@
 //
 // Input (stdin): JSON {calls, steps}
 //   calls   [[name, ...arguments]]: functions of Game.world.bridge to call.
-//           An argument that is an object with "campus": "real" gets the
-//           real map of the game (client/js/world/campus.json) instead.
+//           The argument "real campus" is replaced by the real map of the
+//           game (client/js/world/campus.json), and so is "campus": "real"
+//           inside an argument that is an object.
 //           The script also checks that a call left its arguments as they
 //           were (output `changedArguments`: the names of calls that did not).
 //   steps   [[x, y, dx, dy, seconds], ...]: each is one call of step() on
@@ -31,6 +32,7 @@ vm.runInContext(fs.readFileSync(file, 'utf8'), page, { filename: file });
 const bridge = page.Game.world.bridge;
 
 function withRealCampus(value) {
+  if (value === 'real campus') return campus;
   if (value && typeof value === 'object' && value.campus === 'real') {
     return Object.assign({}, value, { campus: campus });
   }

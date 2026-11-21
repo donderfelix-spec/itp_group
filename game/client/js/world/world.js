@@ -635,7 +635,7 @@ Game.world = Game.world || {};
   // The server's position (x, y) takes the place of the oldest waiting
   // bridged step. Where they differ, the bridge was wrong from there on.
   function replaceBridgedStep(player, walk, x, y, now, tally) {
-    var result = bridge.takeServerPosition(walk.waiting, x, y);
+    var result = bridge.takeServerPosition(walk.waiting, x, y, campus, TICK_MILLISECONDS);
     walk.waiting = result.waiting;
     tally.replaced += 1;
     if (result.size === "none") {
@@ -729,7 +729,7 @@ Game.world = Game.world || {};
     startGlide(player, step.x, step.y, step.startAt, milliseconds);
     // Later server positions are scheduled behind this glide.
     player.queueEndsAt = step.endAt;
-    walk.waiting = walk.waiting.concat([{ x: step.x, y: step.y }]);
+    walk.waiting = walk.waiting.concat([{ x: step.x, y: step.y, dx: step.dx, dy: step.dy }]);
     walk.lastBridgedEndsAt = step.endAt;
     walk.mayBeOffServer = true;
     tally.steps += 1;

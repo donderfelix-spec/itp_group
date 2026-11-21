@@ -306,9 +306,9 @@ Game.world = Game.world || {};
   //   history           the direction history, see rememberDirection()
   //   inputLag          see inputLag(), in ms
   //   tickMilliseconds  the length of one tick of the server
-  // Returns null, or the step {x, y, startAt, endAt}: the glide to (x, y)
-  // starts at the end of the glide before, not at `now`, so the pace stays
-  // even on every screen.
+  // Returns null, or the step {x, y, dx, dy, startAt, endAt}: the glide to
+  // (x, y) starts at the end of the glide before, not at `now`, so the pace
+  // stays even on every screen. (dx, dy) is the direction it walked.
   function nextStep(situation) {
     if (!isReady(situation) || !continuesAWalk(situation)) {
       return null;
@@ -321,14 +321,26 @@ Game.world = Game.world || {};
     if (isStanding(wanted)) {
       return null;
     }
-    var campus = situation.campus;
-    var seconds = situation.tickMilliseconds / 1000;
     var from = situation.from;
-    var place = step(from.x, from.y, wanted.dx, wanted.dy, seconds, campus.solids, campus.width, campus.height);
+    var place = oneTickOn(from, wanted, situation.campus, situation.tickMilliseconds);
     if (place.x === from.x && place.y === from.y) {
       return null; // against a wall the character stands, like on the server
     }
-    return { x: place.x, y: place.y, startAt: startAt, endAt: startAt + situation.tickMilliseconds };
+    return {
+      x: place.x,
+      y: place.y,
+      dx: wanted.dx,
+      dy: wanted.dy,
+      startAt: startAt,
+      endAt: startAt + situation.tickMilliseconds
+    };
+  }
+
+  // Where a player at `from` {x, y} is after one tick in the direction
+  // `wanted` {dx, dy}, by the server's rule on the map `campus`.
+  function oneTickOn(from, wanted, campus, tickMilliseconds) {
+    var seconds = tickMilliseconds / 1000;
+    return step(from.x, from.y, wanted.dx, wanted.dy, seconds, campus.solids, campus.width, campus.height);
   }
 
   // May the own character be bridged at all right now?
@@ -374,13 +386,15 @@ Game.world = Game.world || {};
   // the first position after the queue ran dry belongs to the oldest
   // waiting bridged step, the next one to the next: by count.
   //
-  // `waiting` is the list of bridged steps [{x, y}], oldest first, and
-  // (x, y) the server's position. Returns
-  //   waiting   the steps still waiting: without the oldest, and all moved
-  //             by the difference, because the bridge was wrong from there on
+  // `waiting` is the list of bridged steps [{x, y, dx, dy}], oldest first,
+  // and (x, y) the server's position. Returns
+  //   waiting   the steps still waiting: without the oldest. If the server
+  //             is at another place, the bridge was wrong from there on,
+  //             and the steps are walked again from the server's place,
+  //             see walkAgain()
   //   distance  how far the server's position is from the bridged step
   //   size      "none" (the same place), "small" or "large", see SMALL_CORRECTION
-  function takeServerPosition(waiting, x, y) {
+  function takeServerPosition(waiting, x, y, campus, tickMilliseconds) {
     var oldest = waiting[0];
     var rest = waiting.slice(1);
     var server = { x: x, y: y };
@@ -391,17 +405,30 @@ Game.world = Game.world || {};
     var dy = y - oldest.y;
     var isLarge = Math.abs(dx) > SMALL_CORRECTION || Math.abs(dy) > SMALL_CORRECTION;
     return {
-      waiting: moveSteps(rest, dx, dy),
+      waiting: walkAgain(rest, server, campus, tickMilliseconds),
       distance: Math.sqrt(dx * dx + dy * dy),
       size: isLarge ? "large" : "small"
     };
   }
 
-  // The same steps, each moved by (dx, dy), as a new list.
-  function moveSteps(steps, dx, dy) {
-    return steps.map(function (one) {
-      return { x: one.x + dx, y: one.y + dy };
+  // The same steps, walked again from the place `from` with the server's
+  // rule, as a new list. In the open that moves every step by the same
+  // difference. It is not done by adding the difference: next to a wall
+  // that could put a step inside the wall, and a player inside a solid is
+  // not stopped by it (see step()), so the bridge would walk through. A
+  // step that no longer moves is dropped: for a tick against a wall the
+  // server sends no position either.
+  function walkAgain(steps, from, campus, tickMilliseconds) {
+    var again = [];
+    var place = from;
+    steps.forEach(function (one) {
+      var next = oneTickOn(place, one, campus, tickMilliseconds);
+      if (next.x !== place.x || next.y !== place.y) {
+        again.push({ x: next.x, y: next.y, dx: one.dx, dy: one.dy });
+        place = next;
+      }
     });
+    return again;
   }
 
   // How long the glide of a correction lasts: the time the glide had left,
@@ -432,7 +459,7 @@ Game.world = Game.world || {};
       // When the last own position arrived, and the last one that had moved.
       lastArrivalAt: -Infinity,
       lastMoveArrivedAt: -Infinity,
-      // Bridged steps waiting for the server, oldest first: [{x, y}].
+      // Bridged steps waiting for the server, oldest first: [{x, y, dx, dy}].
       waiting: [],
       lastBridgedEndsAt: -Infinity, // the end of the last bridged glide
       forgottenAt: -Infinity, // when waiting steps were last forgotten

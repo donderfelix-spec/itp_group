@@ -51,6 +51,8 @@ FIRST_TICK = 13.0
 # In every scenario the player stands on the spawn and presses the first key now.
 KEY_AT = 1000
 
+FIRST_FRAME = 5.0
+
 # Which way the walk keys go: (dx, dy).
 KEY_DIRECTIONS = {"KeyD": (1, 0), "KeyA": (-1, 0), "KeyW": (0, -1), "KeyS": (0, 1)}
 
@@ -73,19 +75,29 @@ FELIX_BAD_SECOND = trace("felix_2026-11-20_bad_second.json")  # gaps of 201 and 
 # ---- How late the messages arrive -------------------------------------------------
 
 
+# Each of these returns a function (number, sent_at) -> extra delay in ms:
+# `number` counts the messages the server sent after the placement, from 0,
+# and `sent_at` is the time of the server's tick.
+
+
 def on_time():
-    return lambda number: 0
+    return lambda number, sent_at: 0
 
 
 def looped(delays, first=0):
     """Message `first` gets the first delay of the list; the list is used in a loop."""
-    return lambda number: delays[(number - first) % len(delays)] if number >= first else 0
+    return lambda number, sent_at: delays[(number - first) % len(delays)] if number >= first else 0
 
 
 def held(**hold_ups):
-    """`held(m30=600)`: message 30 of the walk is held 600 ms; all others are on time."""
+    """`held(m30=600)`: message 30 is held 600 ms; all others are on time."""
     by_number = {int(name[1:]): milliseconds for name, milliseconds in hold_ups.items()}
-    return lambda number: by_number.get(number, 0)
+    return lambda number, sent_at: by_number.get(number, 0)
+
+
+def held_from(time, milliseconds):
+    """The message of the server's first tick at `time` or later is held; all others are on time."""
+    return lambda number, sent_at: milliseconds if time <= sent_at < time + SERVER_TICK else 0
 
 
 # ---- The server ----------------------------------------------------------------------
@@ -138,7 +150,7 @@ class Scenario:
     """A walk of the own player on a connection, ready to be played in the browser's code.
 
     keys          [(time, "down" or "up", code)]: what the player does
-    delays        a function from the number of a message to its extra delay in ms
+    delays        how late each message is: a function (number, sent_at) -> ms, see on_time()
     until         the scenario ends at this time
     start         where the own player stands at the beginning
     other         a function from the tick number to the place of a second player, or None
@@ -181,7 +193,7 @@ class Scenario:
         messages = []
         last = -math.inf
         for number, (sent_at, players) in enumerate(self.sent[1:]):
-            last = max(sent_at + WAY_DOWN + delays(number), last)
+            last = max(sent_at + WAY_DOWN + delays(number, sent_at), last)
             messages.append((last, players, sent_at))
         return [(0, self.sent[0][1], -WAY_DOWN)] + messages
 
@@ -223,10 +235,14 @@ class Scenario:
         events = [(time, 0, ["key", time, up_or_down, code]) for time, up_or_down, code in self.keys]
         events += [(arrives_at, 1, ["positions", arrives_at, players]) for arrives_at, players, _ in self.messages]
         events += [(step[1], 2, list(step)) for step in self.steps]
-        frame = 5.0  # the frames start a little after the first message
-        while frame <= self.until:
+        # The frames start a little after the first message. Each time is
+        # worked out on its own (not added up), so a frame that exists at
+        # two frame rates has the same time at both.
+        number = 0
+        while FIRST_FRAME + number * 1000 / fps <= self.until:
+            frame = FIRST_FRAME + number * 1000 / fps
             events.append((frame, 3, ["frame", frame]))
-            frame += 1000 / fps
+            number += 1
         # At the same moment: the key, then the message, then the frame.
         events.sort(key=lambda event: (event[0], event[1]))
         players = [{"name": OWN, "character": OWN_CHARACTER}]
@@ -264,6 +280,41 @@ def longest_open_run():
             best = max(best, (end - x, (x, float(y))))
             x = end + 1
     return best[1], best[0]
+
+
+def open_square(size):
+    """The top left corner (x, y) of a square of the map without any solid, `size` units wide.
+
+    A player can walk anywhere inside it, also right up to its edges.
+    """
+    half = movement.PLAYER_HALF_SIZE
+
+    def is_clear(x, y):
+        return not any(
+            x + size + half > solid["x"] and x - half < solid["x"] + solid["w"]
+            and y + size + half > solid["y"] and y - half < solid["y"] + solid["h"]
+            for solid in SOLIDS
+        )
+
+    for y in range(half, HEIGHT - size - half + 1, 3):
+        for x in range(half, WIDTH - size - half + 1, 3):
+            if is_clear(x, y):
+                return (float(x), float(y))
+    raise AssertionError(f"the map has no open square of {size} units")
+
+
+def distance_to_path(point, path):
+    """How far `point` is from the line through the places of `path`, in map units."""
+    best = math.inf
+    for a, b in zip(path, path[1:]):
+        length_squared = (b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2
+        share = 0.0
+        if length_squared > 0:
+            share = ((point[0] - a[0]) * (b[0] - a[0]) + (point[1] - a[1]) * (b[1] - a[1])) / length_squared
+            share = max(0.0, min(1.0, share))
+        nearest = (a[0] + (b[0] - a[0]) * share, a[1] + (b[1] - a[1]) * share)
+        best = min(best, math.dist(point, nearest))
+    return best
 
 
 def walk_right(delays, until=7000, release_at=None, **more):

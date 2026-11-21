@@ -28,6 +28,7 @@ import pytest
 
 from server.main import TICKS_PER_SECOND, app
 from server.world import movement
+from bridge_helpers import OPEN_START
 
 TESTS = Path(__file__).resolve().parent
 BRIDGE_IN_NODE = TESTS / "bridge_in_node.js"
@@ -371,6 +372,7 @@ def test_in_the_open_with_the_key_held_a_step_is_made():
     expected = movement.step(*SPAWN, 1, 0, 1 / 15, SOLIDS, WIDTH, HEIGHT)
     assert (step["x"], step["y"]) == pytest.approx(expected)
     assert step["x"] == pytest.approx(SPAWN[0] + STEP)
+    assert (step["dx"], step["dy"]) == (1, 0)  # the direction it walked is kept with it
 
 
 def test_the_step_starts_at_the_end_of_the_glide_before_and_lasts_one_tick():
@@ -487,7 +489,18 @@ def test_without_a_place_to_start_from_no_step_is_made():
 
 # ---- When the server's position arrives ---------------------------------------------
 
-WAITING = [{"x": 106, "y": 50}, {"x": 112, "y": 50}, {"x": 118, "y": 50}]
+# Three bridged steps to the right in the open, waiting for the server. The
+# own player walked from the left end of the map's longest open way.
+OPEN = OPEN_START
+WAITING = [{"x": OPEN[0] + STEP * number, "y": OPEN[1], "dx": 1, "dy": 0} for number in (1, 2, 3)]
+
+
+def take(waiting, x, y):
+    return call("takeServerPosition", waiting, x, y, "real campus", TICK)
+
+
+def places(steps):
+    return [(step["x"], step["y"]) for step in steps]
 
 
 def test_differs_by_more_than_a_hair_on_an_axis():
@@ -500,37 +513,67 @@ def test_differs_by_more_than_a_hair_on_an_axis():
 
 
 def test_a_server_position_on_the_oldest_bridged_step_takes_its_place():
-    result = call("takeServerPosition", WAITING, 106.04, 50)
+    result = take(WAITING, WAITING[0]["x"] + 0.04, OPEN[1])
     assert result == {"waiting": WAITING[1:], "distance": 0, "size": "none"}
 
 
-def test_a_server_position_a_little_off_moves_the_steps_still_waiting():
+def test_a_server_position_a_little_off_moves_the_steps_still_waiting_by_the_difference():
     # The server walks 6.1 units per tick, the bridge 6.0.
-    result = call("takeServerPosition", WAITING, 106.1, 50)
+    result = take(WAITING, WAITING[0]["x"] + 0.1, OPEN[1])
     assert result["size"] == "small"
     assert result["distance"] == pytest.approx(0.1)
-    assert [(step["x"], step["y"]) for step in result["waiting"]] == [pytest.approx((112.1, 50)), pytest.approx((118.1, 50))]
+    assert places(result["waiting"]) == [pytest.approx((step["x"] + 0.1, OPEN[1])) for step in WAITING[1:]]
+    # They keep the direction they walked.
+    assert [(step["dx"], step["dy"]) for step in result["waiting"]] == [(1, 0), (1, 0)]
 
 
 def test_a_server_position_far_off_is_a_wrong_guess():
     # The server stood: its position is a whole step behind the bridge.
-    result = call("takeServerPosition", WAITING, 100, 50)
+    result = take(WAITING, OPEN[0], OPEN[1])
     assert result["size"] == "large"
-    assert result["distance"] == pytest.approx(6)
-    assert [(step["x"], step["y"]) for step in result["waiting"]] == [(106, 50), (112, 50)]
-    # The server went down instead of right.
-    result = call("takeServerPosition", WAITING, 100, 56)
-    assert result["distance"] == pytest.approx(math.hypot(6, 6))
-    assert [(step["x"], step["y"]) for step in result["waiting"]] == [(106, 56), (112, 56)]
+    assert result["distance"] == pytest.approx(STEP)
+    assert places(result["waiting"]) == [pytest.approx((step["x"] - STEP, OPEN[1])) for step in WAITING[1:]]
+    # The server went up instead of right.
+    result = take(WAITING, OPEN[0], OPEN[1] - STEP)
+    assert result["distance"] == pytest.approx(math.hypot(STEP, STEP))
+    assert places(result["waiting"]) == [pytest.approx((step["x"] - STEP, OPEN[1] - STEP)) for step in WAITING[1:]]
 
 
 def test_small_and_large_are_divided_at_one_and_a_half_units_on_an_axis():
-    results = calls(["takeServerPosition", WAITING, 107.5, 51.5], ["takeServerPosition", WAITING, 106, 48.49])
+    first = WAITING[0]
+    results = [take(WAITING, first["x"] + 1.5, OPEN[1] - 1.5), take(WAITING, first["x"], OPEN[1] - 1.51)]
     assert [result["size"] for result in results] == ["small", "large"]
 
 
 def test_the_last_waiting_step_leaves_nothing_waiting():
-    assert call("takeServerPosition", WAITING[:1], 109, 50)["waiting"] == []
+    assert take(WAITING[:1], WAITING[0]["x"] + 3, OPEN[1])["waiting"] == []
+
+
+def test_next_to_a_wall_the_waiting_steps_are_walked_again_and_never_put_inside_it():
+    # Three bridged steps to the right; the last one ends touching a wall.
+    # The server is a little further on than the first of them. Moved by
+    # that difference, the last step would lie inside the wall, and a player
+    # inside a solid is not stopped by it. Walked again with the rule, it
+    # ends touching the wall.
+    wall = against(1, 0)
+    waiting = [{"x": wall["x"] - STEP * number, "y": wall["y"], "dx": 1, "dy": 0} for number in (2, 1, 0)]
+    result = take(waiting, waiting[0]["x"] + 0.5, wall["y"])
+    assert result["size"] == "small"
+    assert places(result["waiting"]) == [pytest.approx((wall["x"] - STEP + 0.5, wall["y"])), (wall["x"], wall["y"])]
+    for x, y in places(result["waiting"]):
+        assert not any(movement.overlaps(x, y, solid) for solid in SOLIDS)
+
+
+def test_a_waiting_step_that_no_longer_moves_is_dropped():
+    # The server already touches the wall: it sends no position for the
+    # steps into the wall, so nothing waits for them.
+    wall = against(1, 0)
+    waiting = [{"x": wall["x"] - 4, "y": wall["y"], "dx": 1, "dy": 0}, {"x": wall["x"], "y": wall["y"], "dx": 1, "dy": 0}]
+    assert take(waiting, wall["x"], wall["y"])["waiting"] == []
+    # A diagonal still slides along the wall, like on the server.
+    waiting[1]["dy"] = 1
+    slid = take(waiting, wall["x"], wall["y"])["waiting"]
+    assert places(slid) == [movement.step(wall["x"], wall["y"], 1, 1, TICK / 1000, SOLIDS, WIDTH, HEIGHT)]
 
 
 def test_a_correction_lasts_the_time_the_glide_had_left_but_at_least_50_ms():
