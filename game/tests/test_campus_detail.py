@@ -45,12 +45,44 @@ OLD_KINDS = {
 }
 NEW_SOLIDS = [solid for solid in SOLIDS if solid["kind"] not in OLD_KINDS]
 
-# The three round tables of Mon Café before M2-1.4 grew them.
-OLD_CAFE_TABLES = {
+# Every solid of the map before M2-1.4 that this to-do moved or resized,
+# with its place on main.
+OLD_PLACES = {
+    "lecture-hall-bench-1": {"x": 40, "y": 60, "w": 170, "h": 9},
+    "lecture-hall-bench-2": {"x": 40, "y": 81, "w": 170, "h": 9},
+    "lecture-hall-bench-3": {"x": 40, "y": 102, "w": 170, "h": 9},
+    "lecture-hall-bench-4": {"x": 40, "y": 123, "w": 170, "h": 9},
+    "mon-cafe-counter": {"x": 268, "y": 30, "w": 92, "h": 14},
+    "mon-cafe-coffee-machine": {"x": 388, "y": 29, "w": 40, "h": 18},
+    "mon-cafe-column-1": {"x": 278, "y": 75, "w": 14, "h": 14},
+    "mon-cafe-column-2": {"x": 408, "y": 75, "w": 14, "h": 14},
+    "mon-cafe-column-3": {"x": 278, "y": 125, "w": 14, "h": 14},
+    "mon-cafe-column-4": {"x": 408, "y": 125, "w": 14, "h": 14},
     "mon-cafe-table-1": {"x": 343, "y": 97, "w": 14, "h": 14},
     "mon-cafe-table-2": {"x": 311, "y": 59, "w": 14, "h": 14},
     "mon-cafe-table-3": {"x": 375, "y": 119, "w": 14, "h": 14},
+    "canteen-table-1": {"x": 492, "y": 66, "w": 24, "h": 24},
+    "canteen-table-2": {"x": 553, "y": 66, "w": 24, "h": 24},
+    "canteen-table-3": {"x": 614, "y": 80, "w": 24, "h": 24},
+    "canteen-table-4": {"x": 492, "y": 108, "w": 24, "h": 24},
+    "canteen-table-5": {"x": 553, "y": 108, "w": 24, "h": 24},
+    "ctt-table-row-1": {"x": 40, "y": 264, "w": 92, "h": 13},
+    "ctt-table-row-2": {"x": 40, "y": 296, "w": 92, "h": 13},
+    "ctt-table-row-3": {"x": 40, "y": 328, "w": 92, "h": 13},
+    "ctt-table-row-4": {"x": 40, "y": 360, "w": 92, "h": 13},
+    "ctt-table-row-5": {"x": 40, "y": 392, "w": 92, "h": 13},
+    "ctt-table-row-6": {"x": 40, "y": 424, "w": 92, "h": 13},
+    "ctt-table-row-7": {"x": 40, "y": 456, "w": 92, "h": 13},
+    "ctt-table-row-8": {"x": 40, "y": 488, "w": 92, "h": 13},
+    "pingo-doce-shelf-1": {"x": 466, "y": 440, "w": 16, "h": 56},
+    "pingo-doce-shelf-2": {"x": 516, "y": 440, "w": 16, "h": 56},
+    "pingo-doce-shelf-3": {"x": 566, "y": 440, "w": 16, "h": 56},
+    "pingo-doce-shelf-4": {"x": 616, "y": 440, "w": 16, "h": 56},
+    "pingo-doce-checkout": {"x": 456, "y": 528, "w": 56, "h": 13},
 }
+
+# The three round tables of Mon Café before M2-1.4 grew them.
+OLD_CAFE_TABLES = {key: value for key, value in OLD_PLACES.items() if key.startswith("mon-cafe-table")}
 
 
 # A gap a player (10 units wide) could just squeeze into (S-111).
@@ -167,8 +199,8 @@ def test_mon_cafe_has_its_new_furniture_and_still_three_round_tables():
     assert kinds == ["grid-shelf", "high-table"]
     tables = [solid for solid in SOLIDS if solid["kind"] == "round-table"]
     # Grown from 14 to 30, so that a table with four chairs at the scale of
-    # the characters fits inside (round 9).
-    assert [(table["w"], table["h"]) for table in tables] == [(30, 30)] * 3
+    # the characters fits inside (round 9), and to 34 (round 10).
+    assert [(table["w"], table["h"]) for table in tables] == [(34, 34)] * 3
 
 
 def test_the_lecture_hall_has_a_lectern_on_the_stage():
@@ -290,13 +322,11 @@ def test_the_spawn_reaches_every_station():
 
 
 def as_before_this_to_do(campus):
-    """The map without anything M2-1.4 added, with the old café tables and
-    the old rows of the CTT, which went across the whole room."""
+    """The map as it was on main before M2-1.4: nothing added, and every old
+    solid back in its old place."""
     old = without_new_things(campus)
     for solid in old["solids"]:
-        solid.update(OLD_CAFE_TABLES.get(solid["id"], {}))
-        if solid["kind"] == "table-row":
-            solid.update(x=40, w=92)
+        solid.update(OLD_PLACES.get(solid["id"], {}))
     return old
 
 
@@ -325,8 +355,10 @@ def test_the_walking_distances_changed_only_a_little():
     #   of the CTT; spawn to 4: 783.1 -> 718.1);
     # - the ways to station 3 became up to 3.2 % longer (the larger canteen
     #   tables; 1 to 3: 800.7 -> 826.7); the others changed by less.
+    # - round 10 (tables 10-15 % larger again): 1 to 3 is now 3.8 % longer
+    #   than on main (800.7 -> 831.4).
     # The ways to station 4 may be up to 10 % shorter and never longer; all
-    # other ways stay between 2 % shorter and 3.5 % longer.
+    # other ways stay between 2 % shorter and 4 % longer.
     stations = sorted(minigames.MINIGAMES)
     before = station_distances(as_before_this_to_do(CAMPUS), stations)
     after = station_distances(CAMPUS, stations)
@@ -334,7 +366,7 @@ def test_the_walking_distances_changed_only_a_little():
         if 4 in pair:
             assert distance * 0.9 <= after[pair] <= distance, pair
         else:
-            assert distance * 0.98 <= after[pair] <= distance * 1.035, pair
+            assert distance * 0.98 <= after[pair] <= distance * 1.04, pair
 
 
 # Accepted: edge cases

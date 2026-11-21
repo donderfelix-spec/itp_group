@@ -85,17 +85,31 @@ Game.world = Game.world || {};
     util.foliage(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2 - 2, bed.w * 0.4, util.LEAVES, 7);
   };
 
-  // The hedge: a row of leafy clumps with volume, inside its rectangle.
-  art.kinds.hedge = function (ctx, hedge) {
-    util.box(ctx, hedge.x + 1, hedge.y + hedge.h * 0.35, hedge.w - 2, hedge.h * 0.6, 4, "#3F7F4E", 1.2);
-    var radius = hedge.h * 0.42;
-    var count = Math.max(2, Math.round((hedge.w - radius) / (radius * 1.3)));
-    var step = (hedge.w - 2 * radius) / (count - 1);
-    for (var i = 0; i < count; i++) {
-      var x = hedge.x + radius + i * step;
-      var y = hedge.y + hedge.h / 2 + (i % 2 === 0 ? -1 : 1);
-      util.foliage(ctx, x, y, radius, util.LEAVES, 5);
+  // The hedge, drawn as a planted green bed of campus landscaping: lawn in a
+  // low stone border, three rounded shrubs with volume and a few flowers.
+  art.kinds.hedge = function (ctx, bed) {
+    util.shadowBelow(ctx, bed.x + 2, bed.y + bed.h, bed.w - 4, 1.6);
+    util.box(ctx, bed.x, bed.y, bed.w, bed.h, 4, "#D9D2C2", 1.2);
+    util.box(ctx, bed.x + 2.2, bed.y + 2.2, bed.w - 4.4, bed.h - 4.4, 3, "#8CC56F", 0.6);
+    // Short strokes of grass.
+    util.strokeAll(ctx, "#76B05C", 0.4, function () {
+      for (var i = 0; i < 24; i++) {
+        var x = bed.x + 4 + util.noise(i, bed.x) * (bed.w - 8);
+        var y = bed.y + 4 + util.noise(bed.y, i) * (bed.h - 8);
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + 0.5, y - 1.2);
+      }
+    });
+    var flowers = ["#F2695C", "#F2C53D", "#FFFFFF", "#E8A0B4"];
+    for (var f = 0; f < 10; f++) {
+      var fx = bed.x + 5 + util.noise(f * 3.1, bed.y) * (bed.w - 10);
+      var fy = bed.y + bed.h * 0.65 + util.noise(bed.x, f * 1.7) * (bed.h * 0.2);
+      util.circle(ctx, fx, fy, 0.9, flowers[f % flowers.length], 0.3);
     }
+    var radius = bed.h * 0.3;
+    [0.2, 0.5, 0.8].forEach(function (share, index) {
+      util.foliage(ctx, bed.x + bed.w * share, bed.y + bed.h * (index === 1 ? 0.42 : 0.5), radius * (index === 1 ? 1.15 : 1), util.LEAVES, 6);
+    });
   };
 
   // ---- The glass front and the beach -----------------------------------
@@ -170,15 +184,21 @@ Game.world = Game.world || {};
     }
   }
 
-  // A rack of surfboards standing upright, near "Catch the wave".
+  // A low wooden rack near "Catch the wave" with surfboards lying on it,
+  // each longer than a person is tall.
   art.kinds["surfboard-rack"] = function (ctx, rack) {
-    util.shadowBelow(ctx, rack.x, rack.y + rack.h, rack.w, 1);
-    util.box(ctx, rack.x, rack.y + rack.h - 3, rack.w, 3, 0.6, "#9B6B45", 0.7);
-    var colours = ["#F2695C", "#4FC1C1", "#F2C53D", "#FFFFFF"];
-    var boards = colours.length;
-    var spacing = rack.w / boards;
+    util.shadowBelow(ctx, rack.x + 1, rack.y + rack.h, rack.w - 2, 1.4);
+    util.box(ctx, rack.x, rack.y, rack.w, rack.h, 1, "#C99662", 0.9);
+    util.strokeAll(ctx, "#9B6B45", 0.5, function () {
+      ctx.moveTo(rack.x + rack.w * 0.2, rack.y + 1);
+      ctx.lineTo(rack.x + rack.w * 0.2, rack.y + rack.h - 1);
+      ctx.moveTo(rack.x + rack.w * 0.8, rack.y + 1);
+      ctx.lineTo(rack.x + rack.w * 0.8, rack.y + rack.h - 1);
+    });
+    var colours = ["#F2695C", "#4FC1C1"];
+    var lane = rack.h / colours.length;
     colours.forEach(function (colour, index) {
-      surfboard(ctx, rack.x + spacing * (index + 0.5), rack.y + rack.h / 2 - 1, rack.h / 2 - 1, spacing * 0.36, colour, true);
+      surfboard(ctx, rack.x + rack.w / 2, rack.y + lane * (index + 0.5), rack.w / 2 - 1.2, lane / 2 - 1, colour, false);
     });
   };
 
@@ -213,16 +233,19 @@ Game.world = Game.world || {};
     util.circle(ctx, x, y, lamp.w * 0.25, "#FFF1B8", 0);
   };
 
-  // A bike rack against a wall, with two bikes.
+  // A bike rack against a wall: a steel rail, and bikes parked in it, seen
+  // from above (two wheels, the frame, the handlebar).
   art.kinds["bike-rack"] = function (ctx, rack) {
-    util.box(ctx, rack.x, rack.y, rack.w, rack.h, 0.6, "#C3C7CF", 0.6);
-    var colours = ["#E8574B", "#4C8FD6"];
+    util.box(ctx, rack.x, rack.y, 2, rack.h, 0.6, "#9AA1AC", 0.6);
+    var colours = ["#E8574B", "#4C8FD6", "#5FA86B"];
+    var lane = rack.h / colours.length;
     colours.forEach(function (colour, index) {
-      var y = rack.y + rack.h * (index + 1) / 3;
-      util.circle(ctx, rack.x + 2, y, 1.6, null, 0.5);
-      util.circle(ctx, rack.x + rack.w - 1.4, y, 1.6, null, 0.5);
-      util.line(ctx, rack.x + 2, y, rack.x + rack.w - 1.4, y, colour, 0.9);
-      util.line(ctx, rack.x + rack.w - 2.4, y - 1.6, rack.x + rack.w - 0.8, y - 1.6, util.OUTLINE, 0.6);
+      var y = rack.y + lane * (index + 0.5);
+      var wheel = Math.min(lane * 0.42, rack.w * 0.22);
+      util.ellipse(ctx, rack.x + 2.5 + wheel, y, wheel, wheel * 0.35, "#3A3646", 0.5);
+      util.ellipse(ctx, rack.x + rack.w - 0.5 - wheel, y, wheel, wheel * 0.35, "#3A3646", 0.5);
+      util.line(ctx, rack.x + 2.5 + wheel, y, rack.x + rack.w - 0.5 - wheel, y, colour, 1.4);
+      util.line(ctx, rack.x + rack.w - 0.5 - wheel, y - wheel * 0.9, rack.x + rack.w - 0.5 - wheel, y + wheel * 0.9, util.OUTLINE, 0.8);
     });
   };
 
@@ -365,28 +388,65 @@ Game.world = Game.world || {};
 
   // ---- The NOVA sign ---------------------------------------------------
 
-  // The word NOVA in heavy geometric capitals, set into the paving: dark
-  // letters with a light edge where the paving meets them, and below them a
-  // smaller line with the school's name.
+  var NAVY = "#1E2A4A";
+
+  // The word NOVA set into the paving: N, V and A as heavy capitals; the O
+  // as in the school's sign, a thick ring (its stroke about as thick as its
+  // hole is wide) raised above a short bar of the same thickness, ring and
+  // bar together as tall as the capitals.
   art.kinds.logo = function (ctx, logo) {
-    var wordHeight = logo.h * 0.72;
-    var x = logo.x + logo.w / 2;
-    var wordY = logo.y + wordHeight / 2;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    var size = wordHeight * 1.32;
-    ctx.font = "900 " + size + "px system-ui, sans-serif";
-    if (typeof ctx.measureText === "function") {
-      var width = ctx.measureText("NOVA").width;
-      if (typeof width === "number" && width > logo.w) {
-        size = size * logo.w / width;
-        ctx.font = "900 " + size + "px system-ui, sans-serif";
-      }
+    var size = logo.h * 1.25;
+    var font = function () { return "900 " + size + "px system-ui, sans-serif"; };
+    ctx.font = font();
+    var measure = function (letter) {
+      var width = typeof ctx.measureText === "function" ? ctx.measureText(letter).width : NaN;
+      return typeof width === "number" && isFinite(width) ? width : size * 0.7;
+    };
+    var capital = size * 0.72; // the height of a capital letter
+    var gap = size * 0.06;
+    var widths = { N: measure("N"), V: measure("V"), A: measure("A") };
+    var ringWidth = capital * 6 / 9; // the ring is 6 of 9 parts of the height
+    var total = widths.N + ringWidth + widths.V + widths.A + 3 * gap;
+    if (total > logo.w) {
+      var shrink = logo.w / total;
+      size *= shrink;
+      capital *= shrink;
+      gap *= shrink;
+      ringWidth *= shrink;
+      widths = { N: widths.N * shrink, V: widths.V * shrink, A: widths.A * shrink };
+      total = logo.w;
+      ctx.font = font();
     }
-    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.fillText("NOVA", x - 0.5, wordY - 0.6);
-    ctx.fillStyle = util.OUTLINE;
-    ctx.fillText("NOVA", x, wordY);
-    util.text(ctx, "School of Business & Economics", x, logo.y + logo.h * 0.88, logo.h * 0.16, util.OUTLINE, logo.w * 0.95);
+    var baseline = logo.y + (logo.h + capital) / 2;
+    var x = logo.x + (logo.w - total) / 2;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    var letter = function (text) {
+      ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+      ctx.fillText(text, x - 0.5, baseline - 0.6);
+      ctx.fillStyle = NAVY;
+      ctx.fillText(text, x, baseline);
+      x += widths[text] + gap;
+    };
+    letter("N");
+    ringAndBar(ctx, x, baseline - capital, ringWidth, capital);
+    x += ringWidth + gap;
+    letter("V");
+    letter("A");
   };
+
+  // The O: nine parts of the height are the ring (6: a hole of 2 and a
+  // stroke of 2 on each side), a gap (1) and the bar (2).
+  function ringAndBar(ctx, left, top, width, height) {
+    var part = height / 9;
+    var middleX = left + width / 2;
+    var ringY = top + 3 * part;
+    ctx.beginPath();
+    ctx.arc(middleX, ringY, 3 * part, 0, Math.PI * 2);
+    ctx.moveTo(middleX + part, ringY);
+    ctx.arc(middleX, ringY, part, 0, Math.PI * 2, true);
+    ctx.fillStyle = NAVY;
+    ctx.fill("evenodd");
+    ctx.fillRect(left, top + 7 * part, width, 2 * part);
+  }
 })();

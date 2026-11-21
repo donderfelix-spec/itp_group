@@ -141,15 +141,17 @@ Game.world = Game.world || {};
   // A square table with a mint chair on each side (overhanging the table's
   // square by at most 2 units) and, on some tables, trays with plates.
   art.kinds.table = function (ctx, table) {
-    var inset = table.w * 0.17;
+    var inset = Math.min(table.w, table.h) * 0.17;
     var chairSize = Math.min(table.w, table.h) * 0.28;
     var x = table.x + table.w / 2;
     var y = table.y + table.h / 2;
-    var reach = table.w / 2 + 0.6 - chairSize / 2;
-    util.chair(ctx, x, y - reach, chairSize, CHAIR, "up");
-    util.chair(ctx, x, y + reach, chairSize, CHAIR, "down");
-    util.chair(ctx, x - reach, y, chairSize, CHAIR, "left");
-    util.chair(ctx, x + reach, y, chairSize, CHAIR, "right");
+    // The chairs stand at the table's edges, inside its rectangle.
+    var reachX = table.w / 2 + 0.6 - chairSize / 2;
+    var reachY = table.h / 2 + 0.6 - chairSize / 2;
+    util.chair(ctx, x, y - reachY, chairSize, CHAIR, "up");
+    util.chair(ctx, x, y + reachY, chairSize, CHAIR, "down");
+    util.chair(ctx, x - reachX, y, chairSize, CHAIR, "left");
+    util.chair(ctx, x + reachX, y, chairSize, CHAIR, "right");
     var top = { x: table.x + inset, y: table.y + inset, w: table.w - 2 * inset, h: table.h - 2 * inset };
     util.shadowBelow(ctx, top.x, top.y + top.h, top.w, 0.8);
     util.box(ctx, top.x, top.y, top.w, top.h, 1.4, "#F4EBDA", 1);
