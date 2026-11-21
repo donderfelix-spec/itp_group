@@ -449,4 +449,44 @@ Game.world = Game.world || {};
     ctx.fill("evenodd");
     ctx.fillRect(left, top + 7 * part, width, 2 * part);
   }
+
+  // ---- The doors from the corridor to the deck ------------------------
+
+  // A wide opening in the wall between the corridor and the deck (the
+  // entry's rectangle is the opening in the wall line): a threshold between
+  // metal sills, dark posts at both ends, and glass leaves standing open
+  // flat on the wall's face on the deck side. "deck-door-one-leaf" has only
+  // the leaf on its left: its right end meets the deck's outer wall.
+  function deckDoor(ctx, item, leaves) {
+    var faceHeight = 8;
+    var leafWidth = 12;
+    ctx.fillStyle = "#E6E0D4";
+    ctx.fillRect(item.x, item.y, item.w, item.h);
+    ctx.fillStyle = "#C3C7CF";
+    ctx.fillRect(item.x, item.y, item.w, 0.8);
+    ctx.fillRect(item.x, item.y + item.h - 0.8, item.w, 0.8);
+    var faceTop = item.y + item.h;
+    var places = leaves === 2 ? [item.x - 1.5 - leafWidth, item.x + item.w + 1.5] : [item.x - 1.5 - leafWidth];
+    places.forEach(function (leafX, index) {
+      util.box(ctx, leafX, faceTop + 0.4, leafWidth, faceHeight - 0.9, 0.4, "rgba(170, 216, 234, 0.7)", 0.5);
+      ctx.strokeStyle = "#E4E8EE";
+      ctx.lineWidth = 0.6;
+      ctx.strokeRect(leafX + 0.6, faceTop + 1, leafWidth - 1.2, faceHeight - 2.1);
+      util.line(ctx, leafX + 2, faceTop + faceHeight - 1.4, leafX + 4.5, faceTop + 1.8, "rgba(255, 255, 255, 0.9)", 0.5);
+      var handleX = index === 0 ? leafX + leafWidth - 1.6 : leafX + 1.6;
+      util.line(ctx, handleX, faceTop + faceHeight * 0.35, handleX, faceTop + faceHeight * 0.7, util.OUTLINE, 0.6);
+    });
+    var posts = leaves === 2 ? [item.x - 1.5, item.x + item.w - 1.5] : [item.x - 1.5];
+    posts.forEach(function (postX) {
+      util.box(ctx, postX, item.y - 1, 3, item.h + faceHeight + 1, 0.6, "#4A4560", 0.6);
+    });
+  }
+
+  art.decor["deck-door"] = function (ctx, item) {
+    deckDoor(ctx, item, 2);
+  };
+
+  art.decor["deck-door-one-leaf"] = function (ctx, item) {
+    deckDoor(ctx, item, 1);
+  };
 })();

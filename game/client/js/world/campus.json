@@ -144,6 +144,8 @@
     {"id": "deck-tree-6",             "kind": "tree",  "x": 386, "y": 426, "w": 28, "h": 28},
     {"id": "deck-hedge",              "kind": "hedge", "x": 556, "y": 236, "w": 68, "h": 26},
     {"id": "deck-logo",               "kind": "logo",  "x": 229, "y": 463, "w": 142, "h": 40},
+    {"id": "corridor-wall-1",         "kind": "wall",          "x": 163, "y": 227, "w": 177, "h": 6},
+    {"id": "corridor-wall-2",         "kind": "wall",          "x": 390, "y": 227, "w": 86,  "h": 6},
     {"id": "corridor-stairs",         "kind": "staircase",     "x": 37,  "y": 173, "w": 28, "h": 40},
     {"id": "corridor-sofa-1",            "kind": "sofa",        "x": 175, "y": 173, "w": 40, "h": 14},
     {"id": "corridor-divider-1",         "kind": "cube-divider", "x": 294, "y": 173, "w": 26, "h": 8},
@@ -153,8 +155,8 @@
     {"id": "deck-bench-1",               "kind": "deck-bench",  "x": 229, "y": 298, "w": 40, "h": 10},
     {"id": "deck-bench-2",               "kind": "deck-bench",  "x": 444, "y": 316, "w": 36, "h": 10},
     {"id": "deck-bench-3",               "kind": "deck-bench",  "x": 236, "y": 518, "w": 40, "h": 10},
-    {"id": "deck-lamp-1",             "kind": "lamp-post",     "x": 280, "y": 245, "w": 4,  "h": 4},
-    {"id": "deck-lamp-2",             "kind": "lamp-post",     "x": 446, "y": 245, "w": 4,  "h": 4},
+    {"id": "deck-lamp-1",             "kind": "lamp-post",     "x": 280, "y": 247, "w": 4,  "h": 4},
+    {"id": "deck-lamp-2",             "kind": "lamp-post",     "x": 446, "y": 247, "w": 4,  "h": 4},
     {"id": "deck-lamp-3",             "kind": "lamp-post",     "x": 180, "y": 500, "w": 4,  "h": 4},
     {"id": "deck-lamp-4",             "kind": "lamp-post",     "x": 418, "y": 525, "w": 4,  "h": 4},
     {"id": "deck-bike-rack",             "kind": "bike-rack",   "x": 163, "y": 320, "w": 20, "h": 34},
@@ -187,6 +189,8 @@
   ],
 
   "decor": [
+    {"kind": "deck-door",          "layer": "wall",  "x": 340, "y": 227, "w": 50,  "h": 6},
+    {"kind": "deck-door-one-leaf", "layer": "wall",  "x": 476, "y": 227, "w": 181, "h": 6},
     {"kind": "terrazzo", "layer": "floor", "x": 23, "y": 173, "w": 634, "h": 54, "colour": "#E6D9C3"},
     {"kind": "light-pool", "layer": "floor", "x": 168, "y": 188, "w": 26, "h": 26},
     {"kind": "light-pool", "layer": "floor", "x": 268, "y": 188, "w": 26, "h": 26},

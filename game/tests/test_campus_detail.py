@@ -43,7 +43,10 @@ OLD_KINDS = {
     "wall", "glass", "pool", "tree", "hedge", "logo", "bench", "board", "counter", "machine",
     "column", "round-table", "table", "table-row", "bookshelf", "shelf", "checkout",
 }
-NEW_SOLIDS = [solid for solid in SOLIDS if solid["kind"] not in OLD_KINDS]
+# The walls between the corridor and the deck are new too (round 10), though
+# of an old kind.
+NEW_WALL_IDS = {"corridor-wall-1", "corridor-wall-2"}
+NEW_SOLIDS = [solid for solid in SOLIDS if solid["kind"] not in OLD_KINDS or solid["id"] in NEW_WALL_IDS]
 
 # Every solid of the map before M2-1.4 that this to-do moved or resized,
 # with its place on main.
@@ -115,7 +118,8 @@ def without_new_things(campus):
     for room in old["rooms"]:
         for key in ROOM_STYLE_KEYS:
             room.pop(key, None)
-    old["solids"] = [solid for solid in old["solids"] if solid["kind"] in OLD_KINDS]
+    old["solids"] = [solid for solid in old["solids"]
+                     if solid["kind"] in OLD_KINDS and solid["id"] not in NEW_WALL_IDS]
     return old
 
 
@@ -248,7 +252,7 @@ def test_every_new_solid_lies_in_a_room_or_on_the_deck():
 
 def test_the_deck_and_its_corridor_have_their_new_furniture():
     kinds = sorted(solid["kind"] for solid in NEW_SOLIDS if on_the_deck(solid))
-    assert kinds == sorted(["staircase", "sofa", "sofa", "cube-divider", "cube-divider", "black-column",
+    assert kinds == sorted(["wall", "wall", "staircase", "sofa", "sofa", "cube-divider", "cube-divider", "black-column",
                             "deck-bench", "deck-bench", "deck-bench", "lamp-post", "lamp-post", "lamp-post",
                             "lamp-post", "bike-rack", "surfboard-rack"])
 
@@ -272,6 +276,11 @@ def test_nothing_new_lies_beside_the_hedge_where_the_emergency_button_goes():
     for solid in NEW_SOLIDS:
         assert not touches(solid, zone), solid["id"]
     for item in CAMPUS["decor"]:
+        # The threshold of the wide opening in the corridor wall lies flat on
+        # the wall line (y 227-233) and may cross the zone's top edge.
+        if item["kind"].startswith("deck-door"):
+            assert item["y"] + item["h"] <= 233, item
+            continue
         assert not touches(item, zone), item
 
 
@@ -357,8 +366,11 @@ def test_the_walking_distances_changed_only_a_little():
     #   tables; 1 to 3: 800.7 -> 826.7); the others changed by less.
     # - round 10 (tables 10-15 % larger again): 1 to 3 is now 3.8 % longer
     #   than on main (800.7 -> 831.4).
+    # - round 10, the wall between corridor and deck: the ways from the
+    #   spawn to station 2 and from 2 and 4 to 5 are longer, spawn to 2 by
+    #   5.7 % (327.2 -> 346.0).
     # The ways to station 4 may be up to 10 % shorter and never longer; all
-    # other ways stay between 2 % shorter and 4 % longer.
+    # other ways stay between 2 % shorter and 6 % longer.
     stations = sorted(minigames.MINIGAMES)
     before = station_distances(as_before_this_to_do(CAMPUS), stations)
     after = station_distances(CAMPUS, stations)
@@ -366,7 +378,7 @@ def test_the_walking_distances_changed_only_a_little():
         if 4 in pair:
             assert distance * 0.9 <= after[pair] <= distance, pair
         else:
-            assert distance * 0.98 <= after[pair] <= distance * 1.04, pair
+            assert distance * 0.98 <= after[pair] <= distance * 1.06, pair
 
 
 # Accepted: edge cases
