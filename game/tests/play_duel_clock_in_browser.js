@@ -56,7 +56,7 @@ async function leave(g) {
 
 async function startRound(host, mode) {
   await host.page.click(`#lobby-modes .mode:has-text("${mode}")`);
-  await host.page.waitForTimeout(300);
+  await host.page.waitForSelector(`#lobby-modes .mode[aria-pressed="true"]:has-text("${mode}")`, { timeout: 5000 });
   await host.page.click('#lobby-start');
   await host.page.waitForFunction(() => !document.getElementById('countdown').hidden, null, { timeout: 5000 });
   await host.page.waitForFunction(() => document.getElementById('countdown').hidden, null, { timeout: 15000 });
@@ -70,7 +70,40 @@ async function waitForClock(g) {
 
 async function resize(g, size) {
   await g.page.setViewportSize(size);
-  await g.page.waitForTimeout(300);
+  await g.page.waitForFunction(
+    (want) => window.innerWidth === want.width && window.innerHeight === want.height, size, { timeout: 5000 });
+  await waitForSteadyPanel(g);
+}
+
+// Waits until the parts of the panel's middle have stood still for three
+// animation frames in a row (after a resize or a change of the round), at
+// most 300 frames, about five seconds.
+async function waitForSteadyPanel(g) {
+  await g.page.evaluate(() => new Promise((resolve, reject) => {
+    const where = () => JSON.stringify([...document.querySelectorAll('.panel-middle > *')].map((el) => {
+      const r = el.getBoundingClientRect();
+      return [r.top, r.bottom, r.left, r.right];
+    }));
+    let last = where();
+    let steadyFrames = 0;
+    let frames = 0;
+    const step = () => {
+      const now = where();
+      steadyFrames = now === last ? steadyFrames + 1 : 0;
+      last = now;
+      frames += 1;
+      if (steadyFrames >= 3) resolve();
+      else if (frames > 300) reject(new Error('The panel did not stand still.'));
+      else requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }));
+}
+
+async function waitForPlayers(g, count) {
+  await g.page.waitForFunction(
+    (want) => document.querySelectorAll('#lobby-players .player').length === want, count, { timeout: 5000 });
+  await waitForSteadyPanel(g);
 }
 
 // Where the parts of the side panel stand, in CSS pixels of the window. The
@@ -136,7 +169,7 @@ const look = (g) => g.page.evaluate(measurePanel);
       await join(g, code);
       others.push(g);
     }
-    await host.page.waitForTimeout(800);
+    await waitForPlayers(host, 8);
     out.lobby = await look(host);
 
     const watcher = others[0];
@@ -166,9 +199,10 @@ const look = (g) => g.page.evaluate(measurePanel);
 
     const classicCode = await createLobby(host);
     for (const g of others.slice(0, 3)) await join(g, classicCode);
-    await host.page.waitForTimeout(500);
+    await waitForPlayers(host, 4);
     await startRound(host, 'Classic');
-    await host.page.waitForTimeout(4000); // the role reveal
+    await host.page.waitForSelector('#classic-progress:not([hidden])', { timeout: 10000 });
+    await waitForSteadyPanel(host);
     out.classic = await look(host);
   } finally {
     out.console = problems;

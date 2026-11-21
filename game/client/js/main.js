@@ -66,6 +66,8 @@ window.Game = window.Game || {};
     // On the way out of the lobby: a walking key released now must send
     // nothing. The server may have taken the player out already and would
     // answer "You are not in a lobby." (M2-2.12)
+    // world.js still updates its own direction and prediction for about one
+    // round trip; harmless, because the world stops at `left_lobby`.
     if (leaveWasAsked) return;
     Game.net.send({ type: 'move', dx: dx, dy: dy });
   }

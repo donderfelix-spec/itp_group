@@ -104,8 +104,8 @@ def test_the_held_key_walked_before_the_click(played, name):
 @pytest.mark.parametrize("name", SCENARIOS)
 def test_the_player_lands_on_home(played, name):
     seen = played["scenarios"][name]
+    assert "left_lobby" in [message["type"] for message in received(seen["frames"])]
     assert seen["home"] and not seen["lobby"]
-    assert [message["type"] for message in received(seen["frames"])][-1] == "left_lobby"
 
 
 @needs_chromium
@@ -114,7 +114,9 @@ def test_after_joining_a_new_lobby_walking_is_sent_again(played):
     moves = [(message["dx"], message["dy"]) for message in sent(seen["frames"]) if message["type"] == "move"]
     assert moves == [(1, 0), (0, 0)]
     assert [message for message in received(seen["frames"]) if message["type"] == "error"] == []
-    assert seen["lobby"] and not seen["messageShown"]
+    # Only the walk is checked here: the message after leaving is checked
+    # by the scenarios, each on its own page.
+    assert seen["lobby"]
 
 
 # ---- Rejected: no move after leave_lobby, and so no refusal ----

@@ -8,14 +8,17 @@
 //              received from the creation of the lobby on, the screen and
 //              the message shown at the end, and whether the Home screen
 //              was already shown when the keys were released
-//   again      after joining a new lobby: what one short walk sent
+//   again      on a page that has just left with a key held, after joining a
+//              new lobby: what one short walk sent
 //   refused    a `move` sent by hand on the Home screen: the answer and the
 //              message shown
 //
-// The WebSocket of the page is routed through this script, which writes
-// down every message both ways. While a scenario asks for it, the answer
-// `left_lobby` is held back for HOLD_MS, so keys can be released for sure
-// before it arrives.
+// Every scenario has its own guest on its own page, with its own log, so a
+// message shown in one scenario cannot be seen in the next. The WebSocket
+// of each page is routed through this script, which writes down every
+// message both ways. While a scenario asks for it, the answer `left_lobby`
+// is held back for HOLD_MS, so keys can be released for sure before it
+// arrives.
 const { chromium } = require('playwright');
 
 const base = process.argv[2];
@@ -34,23 +37,37 @@ const SCENARIOS = {
   no_key_held: { keys: [], hold: false, released: [] },
 };
 
-const log = []; // { way: 'sent' | 'received', message }
-let holdLeftLobby = false;
+// A new guest on its own page. `guest.log` holds { way: 'sent' | 'received',
+// message } for its WebSocket; `guest.holdLeftLobby` holds the answer back.
+async function newGuest(browser, label) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  const page = await context.newPage();
+  const guest = { page, log: [], holdLeftLobby: false };
+  page.on('console', (m) => {
+    if (m.type() === 'error' || m.type() === 'warning') problems.push(`${label} ${m.type()}: ${m.text()}`);
+  });
+  page.on('pageerror', (e) => problems.push(`${label} page error: ${e.message}`));
+  await routeSocket(guest);
+  await page.goto(base + '/');
+  await page.click('#start-guest');
+  await page.waitForSelector('#screen-home:not([hidden])');
+  return guest;
+}
 
-async function routeSocket(page) {
-  await page.routeWebSocket(/\/ws$/, (ws) => {
+async function routeSocket(guest) {
+  await guest.page.routeWebSocket(/\/ws$/, (ws) => {
     const server = ws.connectToServer();
     ws.onMessage((text) => {
-      log.push({ way: 'sent', message: JSON.parse(text) });
+      guest.log.push({ way: 'sent', message: JSON.parse(text) });
       server.send(text);
     });
     server.onMessage((text) => {
       const message = JSON.parse(text);
       const forward = () => {
-        log.push({ way: 'received', message });
+        guest.log.push({ way: 'received', message });
         ws.send(text);
       };
-      if (message.type === 'left_lobby' && holdLeftLobby) setTimeout(forward, HOLD_MS);
+      if (message.type === 'left_lobby' && guest.holdLeftLobby) setTimeout(forward, HOLD_MS);
       else forward();
     });
   });
@@ -82,58 +99,49 @@ async function releaseKeys(page, scenario, when) {
   }
 }
 
-async function play(page, scenario) {
+async function play(guest, scenario) {
+  const page = guest.page;
   await createLobby(page);
-  const start = log.length;
+  const start = guest.log.length;
   for (const key of scenario.keys) {
     await page.keyboard.down(key);
     await page.waitForTimeout(250);
   }
-  holdLeftLobby = scenario.hold;
+  guest.holdLeftLobby = scenario.hold;
   await page.click('#lobby-leave');
   await releaseKeys(page, scenario, 'before');
   const homeAtRelease = (await screenAndMessage(page)).home;
   await page.waitForSelector('#screen-home:not([hidden])', { timeout: 5000 });
   await releaseKeys(page, scenario, 'after');
   await page.waitForTimeout(600); // time for a refusal to come back, if one were caused
-  holdLeftLobby = false;
-  return { homeAtRelease, frames: log.slice(start), ...(await screenAndMessage(page)) };
+  guest.holdLeftLobby = false;
+  return { homeAtRelease, frames: guest.log.slice(start), ...(await screenAndMessage(page)) };
 }
 
 (async () => {
   const browser = await chromium.launch();
   const out = { scenarios: {}, again: null, refused: null };
   try {
-    const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-    const page = await context.newPage();
-    page.on('console', (m) => {
-      if (m.type() === 'error' || m.type() === 'warning') problems.push(`${m.type()}: ${m.text()}`);
-    });
-    page.on('pageerror', (e) => problems.push(`page error: ${e.message}`));
-    await routeSocket(page);
-    await page.goto(base + '/');
-    await page.click('#start-guest');
-    await page.waitForSelector('#screen-home:not([hidden])');
+    for (const [name, scenario] of Object.entries(SCENARIOS)) {
+      out.scenarios[name] = await play(await newGuest(browser, name), scenario);
+    }
 
-    for (const [name, scenario] of Object.entries(SCENARIOS)) out.scenarios[name] = await play(page, scenario);
-
-    // A new lobby after all those: a short walk is sent again.
-    await createLobby(page);
-    let start = log.length;
-    await page.keyboard.down('KeyD');
-    await page.waitForTimeout(300);
-    await page.keyboard.up('KeyD');
-    await page.waitForTimeout(400);
-    out.again = { frames: log.slice(start), ...(await screenAndMessage(page)) };
-    await page.click('#lobby-leave');
-    await page.waitForSelector('#screen-home:not([hidden])');
-    await page.waitForTimeout(300);
+    // Leaving with a key held, then a new lobby: a short walk is sent again.
+    const walker = await newGuest(browser, 'again');
+    await play(walker, SCENARIOS.release_before_answer);
+    await createLobby(walker.page);
+    const start = walker.log.length;
+    await walker.page.keyboard.down('KeyD');
+    await walker.page.waitForTimeout(300);
+    await walker.page.keyboard.up('KeyD');
+    await walker.page.waitForTimeout(400);
+    out.again = { frames: walker.log.slice(start), ...(await screenAndMessage(walker.page)) };
 
     // The server still refuses a real `move` outside a lobby.
-    start = log.length;
-    await page.evaluate(() => window.Game.net.send({ type: 'move', dx: 1, dy: 0 }));
-    await page.waitForFunction(() => !document.getElementById('message').hidden, null, { timeout: 3000 });
-    out.refused = { frames: log.slice(start), ...(await screenAndMessage(page)) };
+    const refused = await newGuest(browser, 'refused');
+    await refused.page.evaluate(() => window.Game.net.send({ type: 'move', dx: 1, dy: 0 }));
+    await refused.page.waitForFunction(() => !document.getElementById('message').hidden, null, { timeout: 3000 });
+    out.refused = { frames: refused.log.slice(), ...(await screenAndMessage(refused.page)) };
   } finally {
     // The refusal above is wanted; a console error is still not.
     out.console = problems;
