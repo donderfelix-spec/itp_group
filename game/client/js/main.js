@@ -69,9 +69,8 @@ window.Game = window.Game || {};
   // (leaving, logging out, a lost connection) comes through here.
   function stopWorld() {
     Game.minigames.close(); // before the world stops, so its keys are not left paused
-    Game.classicMeeting.hide();
+    clearClassicLeftovers();
     Game.classicRound.hide();
-    Game.classicRound.resetRoleMarker();
     Game.duel.reset();
     Game.countdown.reset();
     roundIsRunning = false;
@@ -79,6 +78,19 @@ window.Game = window.Game || {};
     if (!worldIsRunning) return;
     worldIsRunning = false;
     callWorld('stop');
+  }
+
+  // What a Classic round leaves in the browser belongs to that round only:
+  // the meeting window (and the stop it put on walking), the F-sheets, the
+  // time the red button unlocks, and the own Free Rider marker in the world,
+  // the lobby list, the meeting and the round's name label. Outside a round
+  // none of it may stay, or the lobby and the next round, also a Duel, would
+  // show it. The end screen is not part of this: it stays until the next
+  // countdown (S-101, see Game.classicRound.setLobby).
+  function clearClassicLeftovers() {
+    Game.classicMeeting.hide();
+    Game.classicRound.resetRoleMarker();
+    callWorld('clearClassicRound');
   }
 
   function openStation(station) {
@@ -217,6 +229,9 @@ window.Game = window.Game || {};
     startWorld(); // After the screen is visible, so the canvas has its size.
     // After the start: a world that stops forgets which stations were usable.
     noteThePhase(message.phase);
+    // After noteThePhase, which closes a minigame: the meeting may then let
+    // the character walk again (classicMeeting.hide).
+    if (message.phase !== 'round') clearClassicLeftovers();
     mode = message.mode;
     Game.duel.noteLobby(message);
     Game.classicRound.setLobby(message);

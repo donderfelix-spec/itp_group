@@ -1047,6 +1047,21 @@ Game.world = Game.world || {};
     bloodSheets.delete(sheetId);
   }
 
+  // Forgets what a Classic round left on the map: the F-sheets, the time the
+  // red button unlocks and the own Free Rider look. main.js calls it when the
+  // round is over, and stop() calls it too. Otherwise the lobby and the next
+  // round, also a Duel, would still draw the red button and show "Report",
+  // "E Emergency" or "Let fail".
+  function clearClassicRound() {
+    bloodSheets.clear();
+    emergencyStatus = null;
+    emergencyStatusReceivedAt = 0;
+    setOwnFreeRider(false);
+    // The buttons are put right at once, not only by the next frame.
+    updateUseButton(stationInRange());
+    updateReportButton();
+  }
+
   function ownServerPosition() {
     if (ownName === null || !players.has(ownName)) return null;
     return players.get(ownName).to;
@@ -1716,8 +1731,8 @@ Game.world = Game.world || {};
 
   // Stops the loop and the keyboard, takes the button "E Use" away and
   // forgets players (with their queued positions), the arrival times of
-  // the messages, hidden name labels, pressed keys and which stations were
-  // usable.
+  // the messages, hidden name labels, pressed keys, which stations were
+  // usable and everything of a Classic round (clearClassicRound).
   // Nothing is sent: whoever stops the world has left the lobby already.
   function stop() {
     if (running) {
@@ -1729,7 +1744,7 @@ Game.world = Game.world || {};
     running = false;
     usableStations = null; // the next lobby starts with all stations again
     players.clear();
-    bloodSheets.clear();
+    clearClassicRound();
     arrivalTimes = [];
     hiddenNames = new Set(); // in the next lobby nobody counts as hidden before
     pressedKeys = {};
@@ -1786,6 +1801,7 @@ Game.world = Game.world || {};
   Game.world.setEmergencyStatus = setEmergencyStatus;
   Game.world.addBloodSheet = addBloodSheet;
   Game.world.clearBloodSheets = clearBloodSheets;
+  Game.world.clearClassicRound = clearClassicRound;
   Game.world.removeBloodSheet = removeBloodSheet;
   Game.world.bloodSheetIds = function () { return Array.from(bloodSheets.keys()); };
   Game.world.stationInRange = stationInRange;

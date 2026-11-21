@@ -54,7 +54,7 @@ Game.classicMeeting = Game.classicMeeting || {};
     if (!isMeetingState(message)) return;
     state = message;
     // The server removed this sheet when the meeting started. The other
-    // sheets stay on the map until the round ends (Game.world.stop).
+    // sheets stay on the map until the round ends (Game.world.clearClassicRound).
     if (
       message.reason === "report" &&
       typeof message.reported_sheet_id === "string" &&

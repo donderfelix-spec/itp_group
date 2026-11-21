@@ -30,7 +30,9 @@ Game.classicRound = Game.classicRound || {};
     progressTrack = progressPanel.querySelector('[role="progressbar"]');
     progressFill = document.getElementById("classic-progress-fill");
     ownNameLabel = document.getElementById("classic-own-name");
-    document.getElementById("classic-back-lobby").addEventListener("click", Game.lobby.leaveLobby);
+    // "Back to the lobby" only closes the end screen: the player stays in the
+    // lobby, as with the Duel ranking's "Back to lobby" (S-101).
+    document.getElementById("classic-back-lobby").addEventListener("click", hideResult);
     newRound.addEventListener("click", startNewRound);
     Game.net.on("classic_role", showRole);
     Game.net.on("classic_progress", showProgress);
@@ -48,6 +50,10 @@ Game.classicRound = Game.classicRound || {};
     isHost = message.host === ownName;
     if (message.mode === "classic" && message.phase === "round") progressPanel.hidden = false;
     else if (message.phase !== "round") progressPanel.hidden = true;
+    // The end screen stays in the lobby, so the players can read the result
+    // (S-101). A countdown or a round takes it away: a Duel would otherwise
+    // run underneath it and could not be played.
+    if (message.phase === "countdown" || message.phase === "round") hideResult();
     if (!endScreen.hidden) updateHostAction();
   }
 
@@ -148,7 +154,12 @@ Game.classicRound = Game.classicRound || {};
     hideResult();
   }
 
-  function hideResult() { endScreen.hidden = true; }
+  function hideResult() {
+    // The focus goes back to the page, so the walking keys work at once.
+    var focused = document.activeElement;
+    if (focused && endScreen.contains(focused)) focused.blur();
+    endScreen.hidden = true;
+  }
 
   function hide() {
     if (roleTimer !== null) window.clearTimeout(roleTimer);
