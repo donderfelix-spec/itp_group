@@ -183,7 +183,7 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 
 - [ ] **M3-4.1** Connect the minigames to the task list of the Classic mode (Lennart). The frame asks a function which stations a player needs (`needed_stations` in `server/modes/tasks.py`); Duel passes “only the next one”, Classic passes the player's task list
 
-- [ ] **M3-4.2** Introduce an emergency meeting button (Lennart). Coordinate with Laurin's reporting and emergency-meeting rules in M3-3.3.
+- [ ] **M3-4.2** Test the emergency button Classic already has (S-123) in play (Lennart): it unlocks 45 seconds into the round, the server checks range and use (see M3-3.15), and a ghost sees the hint of M3-3.19. Report every bug to Laurin; no second button is built.
 
 ## M4: Extension
 
