@@ -28,8 +28,9 @@ drawn furniture and in no wall, the boxes pinned here (also those of the
 room names) are the real drawings, every outline fits into the square it is
 grown in, and the map draws without a console error or warning. In Node:
 draw.js puts each shadow and each number tag at its default place, or where
-the station's drawing says (a shadow can also be left out), and no drawing
-strokes a line wider than 1.
+the station's drawing says (a shadow can also be left out), no drawing
+strokes a line wider than 1, and the outline needs the same work at every
+zoom.
 """
 
 import contextlib
@@ -348,17 +349,17 @@ def test_a_lamp_post_10_from_a_wall_is_too_far():
 # Since the follow-up of M2-1.20 (Felix, 2026-11-22) the objects are drawn
 # smaller and stand against a wall or a piece of furniture (art/stations.js).
 STATION_BOXES = {
-    1: (-12, -20, 18, 5),
-    2: (-8, -13, 16, 13),
-    3: (-19, -17, 8, 5),
-    4: (-15, -5, 15, 18),
-    5: (-20, -15, 5, 13),
-    7: (-8, -20, 17, 7),
-    8: (-15, -19, 7, 4),
-    9: (-14, -12, 14, 11),
-    10: (-12, -4, 12, 18),
-    11: (-12, -10, 11, 11),
-    12: (-11, -14, 12, 12),
+    1: (-11, -20, 17, 5),
+    2: (-8, -12, 16, 12),
+    3: (-19, -17, 7, 4),
+    4: (-14, -3, 14, 20),
+    5: (-20, -14, 5, 12),
+    7: (-7, -20, 16, 7),
+    8: (-14, -19, 6, 3),
+    9: (-13, -11, 13, 11),
+    10: (-12, -3, 12, 17),
+    11: (-12, -10, 10, 10),
+    12: (-11, -13, 11, 11),
 }
 
 # The box of each object alone, measured the same way: at most the size the
@@ -366,8 +367,8 @@ STATION_BOXES = {
 OBJECT_BOXES = {
     1: (-7, -15, 13, 0),
     2: (-3, -8, 11, 8),
-    3: (-14, -13, 3, 0),
-    4: (-10, 0, 10, 13),
+    3: (-15, -13, 3, 0),
+    4: (-10, 2, 10, 15),
     5: (-15, -10, 0, 8),
     7: (-3, -15, 12, 2),
     8: (-10, -14, 0, -2),
@@ -393,21 +394,22 @@ SIZE_ALLOWANCE = 2
 # smaller difference because it is faint; where the number tag covers it,
 # the tag's box counts). Every drawing gives its own place, along its foot.
 SHADOW_BOXES = {
-    1: (-1, -1, 7, 2), 2: (-2, 7, 6, 10), 3: (-13, -1, -1, 2), 4: (-8, 10, 5, 13),
-    5: (-14, 7, -4, 10), 7: (-1, 1, 7, 4), 8: (-8, -3, -4, 0), 9: (-7, 4, 4, 7),
-    10: (-6, 9, 2, 12), 11: (-6, 5, 2, 8), 12: (-5, 6, 2, 9),
+    1: (-1, -1, 7, 2), 2: (-2, 7, 8, 10), 3: (-13, -1, 0, 2), 4: (-8, 12, 5, 15),
+    5: (-14, 7, -2, 10), 7: (-1, 1, 8, 4), 8: (-8, -3, -3, 0), 9: (-7, 4, 4, 7),
+    10: (-6, 9, 3, 12), 11: (-6, 5, 3, 8), 12: (-5, 6, 4, 9),
 }
 # The shadow at draw.js's default place (no own place), and the old round
 # shadow there (until this follow-up).
 DEFAULT_SHADOW_BOX = (-9, 10, 9, 13)
 OLD_DEFAULT_SHADOW_BOX = (-10, 7, 8, 14)
 
-# The number tag at the lower right of each object. (Station 2's tag keeps
-# 1.8 units off the café's wall at x 447, station 8's off table 2.)
+# The number tag at the lower right of each object (radius 3.5 since this
+# follow-up, was 4.2). Station 2's tag ends 3 units before the café's wall
+# at x 447, station 8's before table 2.
 TAG_BOXES = {
-    1: (7, -6, 17, 3), 2: (5, 1, 14, 11), 3: (-2, -7, 7, 3), 4: (4, 7, 14, 17),
-    5: (-5, 1, 4, 11), 7: (6, -4, 16, 5), 8: (-4, -8, 5, 2), 9: (3, 0, 13, 10),
-    10: (2, 6, 11, 16), 11: (1, 0, 10, 9), 12: (1, 0, 11, 10),
+    1: (8, -6, 16, 2), 2: (5, 2, 13, 10), 3: (-2, -6, 6, 2), 4: (5, 10, 13, 18),
+    5: (-5, 2, 3, 10), 7: (7, -4, 15, 4), 8: (-4, -7, 4, 1), 9: (4, 1, 12, 9),
+    10: (2, 7, 10, 15), 11: (1, 0, 9, 8), 12: (2, 1, 10, 9),
 }
 
 # The drawn box of each room's name, in map units (x0, y0, x1, y1), measured
@@ -469,11 +471,11 @@ def test_every_station_outline_keeps_1_unit_clear_of_every_room_name(station_id)
 
 
 def test_station_10_keeps_clear_of_the_ctt_name_and_of_study_table_2():
-    # Edge case: the laptop's desk stands 2 units in front of study table 2
-    # (its outline), and 12 below the name.
+    # Edge case: the outline round the laptop's desk ends 3 units before
+    # study table 2, and 13 below the name.
     box = station_box(10)
-    assert box["y"] - ROOM_NAME_BOXES["ctt"][3] == 12
-    assert solid_called("ctt-study-table-2")["y"] - (box["y"] + box["h"]) == 2
+    assert box["y"] - ROOM_NAME_BOXES["ctt"][3] == 13
+    assert solid_called("ctt-study-table-2")["y"] - (box["y"] + box["h"]) == 3
 
 
 def test_station_10_drawn_in_its_old_place_touched_the_ctt_name():
@@ -523,8 +525,8 @@ def gap_between_boxes(first, second):
 
 
 # Stations 9 and 12 stand in the open, drawn as things that stand free (a
-# trolley, a bin). Station 9: table 3 lies 24 above its outline, the tray
-# return 26 to the right behind the hiding spot, and any place nearer to them
+# trolley, a bin). Station 9: table 3 lies 25 above its outline, the tray
+# return 27 to the right behind the hiding spot, and any place nearer to them
 # makes a way of the Duel longer. Station 12: the nearest solid, bush 4, lies
 # 33 to the left; beside it the station would glow within a second's walk of
 # the spawn, and a place further from the spawn makes ways longer (below).
@@ -541,7 +543,7 @@ def test_every_object_stands_against_a_wall_or_a_piece_of_furniture(station_id):
 
 def test_station_9_has_no_wall_or_furniture_within_reach():
     box = station_box(9)
-    assert min(gap_between_boxes(box, solid) for solid in SOLIDS) == 24
+    assert min(gap_between_boxes(box, solid) for solid in SOLIDS) == 25
 
 
 def test_station_12_has_no_wall_or_furniture_within_reach():
@@ -560,8 +562,41 @@ def test_station_12_beside_the_bush_would_glow_within_a_second_of_the_spawn():
     assert math.hypot(station["x"] - spawn["x"], station["y"] - spawn["y"]) > PLAYER_SPEED + USE_RANGE
 
 
+def test_no_two_station_objects_overlap():
+    for first, second in itertools.combinations(sorted(STATION_BOXES), 2):
+        assert not overlap(station_box(first), station_box(second)), (first, second)
+
+
+def hiding_square(spot):
+    """The square around a hiding spot's circle."""
+    return {"x": spot["x"] - spot["r"], "y": spot["y"] - spot["r"], "w": spot["r"] * 2, "h": spot["r"] * 2}
+
+
+@pytest.mark.parametrize("station_id", sorted(STATION_BOXES))
+def test_no_station_object_or_its_outline_lies_on_a_hiding_spot(station_id):
+    # Station 9 stands beside the Canteen's hiding spot at (636, 128).
+    box = station_box(station_id)
+    assert [spot for spot in CAMPUS["hiding_spots"] if overlap(box, hiding_square(spot))] == []
+
+
+def test_station_9_in_its_old_place_lay_on_the_tray_return_and_the_wall():
+    # Rejected: the box check finds what M2-1.20 moved station 9 away from.
+    left, top, right, bottom = STATION_BOXES[9]
+    old = {"x": 650 + left, "y": 144 + top, "w": right - left, "h": bottom - top}
+    assert {solid["id"] for solid in SOLIDS if overlap(old, solid)} >= {
+        "canteen-tray-return", "canteen-wall-right", "canteen-water-fountain",
+    }
+
+
 def test_a_station_box_that_only_touches_a_solid_is_free():
-    # Edge case: station 11's box begins exactly where shelf 3 ends.
+    # Edge cases: station 3's box ends where it may, above table 3 (since
+    # this follow-up 6 units above it: the tray stand stands at the counter's
+    # end, and its outline cannot touch the counter either, 1 unit away,
+    # without its soft edge lying on the counter's drawn edge). Station 4's
+    # box ends exactly where the bookshelf begins, station 11's begins
+    # exactly where shelf 3 ends.
+    assert station_box(3)["y"] + station_box(3)["h"] <= solid_called("canteen-table-3")["y"]
+    assert station_box(4)["y"] + station_box(4)["h"] == solid_called("ctt-bookshelf")["y"]
     shelf = solid_called("pingo-doce-shelf-3")
     assert station_box(11)["x"] == shelf["x"] + shelf["w"]
     assert not overlap(station_box(11), shelf)
@@ -902,15 +937,24 @@ def test_a_drawing_without_its_own_shadow_place_gets_the_default_shadow():
         assert drawn[station_id] == [on_map(station_id, DEFAULT_SHADOW)], station_id
 
 
+# The shadow place each drawing gives (left, top, width, from the station's
+# centre), as art/stations.js says: along the whole foot, 1 in from each
+# side, or under the narrower foot (the tripod of 1, the easel of 7, the
+# cart's body between its wheels, the café table's foot, the trolley's and
+# the desk's body, the bin).
+OWN_SHADOWS = {
+    1: (-1, -1, 8), 2: (-1.5, 7, 11), 3: (-13, -1, 14), 4: (-8, 12.5, 16), 5: (-13.5, 7, 12),
+    7: (-0.5, 1, 10), 8: (-7.5, -3, 7), 9: (-7, 4, 14), 10: (-5.5, 9, 11), 11: (-6, 5, 10),
+    12: (-4.5, 6, 9),
+}
+
+
 @needs_node
-def test_every_station_draws_its_shadow_along_the_foot_of_its_object():
-    # The places art/stations.js gives (left, top, width, from the centre):
-    # the projector's tripod, the book cart between its wheels, the tray
-    # stand along its whole foot (1 in from each side).
-    drawn = shadows_drawn([1, 3, 4])
-    assert drawn[1] == [on_map(1, (-1, -1, 8))]
-    assert drawn[3] == [on_map(3, (-12.5, -1, 14))]
-    assert drawn[4] == [on_map(4, (-8, 10.5, 16))]
+def test_every_station_draws_its_shadow_at_its_own_place_along_its_foot():
+    assert set(OWN_SHADOWS) == set(STATION_BOXES)
+    drawn = shadows_drawn(sorted(OWN_SHADOWS))
+    for station_id, place in OWN_SHADOWS.items():
+        assert drawn[station_id] == [pytest.approx(on_map(station_id, place))], station_id
 
 
 @needs_node
@@ -940,16 +984,22 @@ def test_a_drawing_without_its_own_tag_place_gets_the_tag_at_the_old_place():
         assert drawn[station_id] == [on_map(station_id, DEFAULT_TAG)], station_id
 
 
+# The tag place each drawing gives (its middle, from the station's centre):
+# 0.35 left of and 1.35 above the object's lower right corner, or a little
+# further in where a wall or a table is close (2, 8, 11).
+OWN_TAGS = {
+    1: (11.65, -1.85), 2: (9.15, 5.65), 3: (1.65, -2.35), 4: (8.65, 13.65), 5: (-0.85, 5.65),
+    7: (10.65, 0.15), 8: (0.15, -3.35), 9: (7.65, 4.65), 10: (6.15, 10.65), 11: (5.15, 4.15),
+    12: (5.65, 4.65),
+}
+
+
 @needs_node
 def test_every_tag_sits_at_the_lower_right_of_its_object():
-    # The tag's middle lies on the object's lower right corner (1 above its
-    # foot), or a little inside it where a wall or a table is close (2, 8, 11).
-    drawn = tags_drawn([1, 2, 3, 8, 11])
-    assert drawn[1] == [on_map(1, (12, -1.5))]
-    assert drawn[2] == [on_map(2, (9.5, 6))]
-    assert drawn[3] == [on_map(3, (2.5, -2))]
-    assert drawn[8] == [on_map(8, (0.5, -3))]
-    assert drawn[11] == [on_map(11, (5.5, 4.5))]
+    assert set(OWN_TAGS) == set(STATION_BOXES)
+    drawn = tags_drawn(sorted(OWN_TAGS))
+    for station_id, place in OWN_TAGS.items():
+        assert drawn[station_id] == [pytest.approx(on_map(station_id, place))], station_id
 
 
 @needs_node
@@ -1000,3 +1050,66 @@ def test_every_station_drawing_has_an_outline_as_fine_as_the_furniture():
     for station_id in STATION_BOXES:
         outline = [width for width, colour in drawn[station_id]["strokes"] if colour == OUTLINE_COLOUR]
         assert 0.6 <= max(outline) <= 0.8, station_id
+
+
+# The cost of the pulsing outline (draw.js, grownBy): its four layers grow
+# from each other in passes of at most GROW_PASS_UNITS map units, so a
+# station needs the same work at every zoom. Counted in pixels (2.5 per
+# pass, the first try of this follow-up) a station needed about 48 passes at
+# 10 pixels per unit, and the first frame with eleven outlines took 5-6 s.
+
+PASSES_IN_NODE = Path(__file__).with_name("station_outline_passes_in_node.js")
+GROW_PASS_UNITS = 1.5
+GROW_DIRECTIONS = 16
+# The growth of each layer in map units, narrowest first (OUTLINE_GROWTH).
+LAYER_GROWTHS = (1.6, 2.6, 3.1, 4.2)
+
+
+def passes_for(growth, pass_size):
+    """How many passes grow a shape by `growth` in passes of at most `pass_size`."""
+    return max(1, math.ceil(round(growth / pass_size, 9)))
+
+
+def copies_per_station(pass_size=GROW_PASS_UNITS):
+    """drawImage calls for one station's four layers: each pass copies the
+    shape once in place and once per direction, and each layer is drawn over
+    itself twice at the end (to make its edge solid)."""
+    passes = 0
+    grown = 0
+    for growth in LAYER_GROWTHS:
+        passes += passes_for(growth - grown, pass_size)
+        grown = growth
+    return passes * (1 + GROW_DIRECTIONS) + 2 * len(LAYER_GROWTHS)
+
+
+def test_four_layers_grown_from_each_other_need_five_passes():
+    # 1.6 in two passes, then 1.0, 0.5 and 1.1 in one each.
+    assert copies_per_station() == 5 * 17 + 8
+
+
+def test_passes_counted_in_pixels_would_grow_with_the_zoom():
+    # Rejected: 2.5 pixels per pass at 4 and at 10 pixels per unit.
+    assert copies_per_station(2.5 / 4) < copies_per_station(2.5 / 10)
+
+
+def outline_work(station_ids, zooms):
+    stations = [station_called(station_id) for station_id in station_ids]
+    finished = subprocess.run(
+        [NODE, str(PASSES_IN_NODE)],
+        input=json.dumps({"stations": stations, "zooms": zooms}),
+        capture_output=True, text=True, timeout=120, check=False,
+    )
+    assert finished.returncode == 0, finished.stderr
+    return json.loads(finished.stdout)
+
+
+@needs_node
+def test_the_outline_needs_the_same_work_at_every_zoom():
+    # Edge cases: the smallest zoom draw.js uses (0.5) and a large one (16).
+    zooms = [0.5, 2, 4, 10, 16]
+    work = outline_work(sorted(STATION_BOXES), zooms)
+    for zoom in zooms:
+        for station_id in STATION_BOXES:
+            counted = work[str(zoom)][str(station_id)]
+            # Nine canvases: the shape, and two that take turns for each layer.
+            assert counted == {"copies": copies_per_station(), "canvases": 9}, (zoom, station_id)

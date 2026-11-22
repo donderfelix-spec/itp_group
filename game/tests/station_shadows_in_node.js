@@ -20,7 +20,7 @@ const vm = require('node:vm');
 
 const world = path.join(__dirname, '..', 'client', 'js', 'world');
 const SHADOW_COLOUR = 'rgba(46, 42, 59, 0.10)';
-const TAG_RADIUS = 4.2;
+const TAG_RADIUS = 3.5;
 
 // A context that keeps track of translate, scale, save and restore, and
 // writes down the shadows, the tags and the strokes.
