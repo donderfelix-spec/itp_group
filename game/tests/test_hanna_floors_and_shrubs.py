@@ -18,6 +18,8 @@ of S-141 and S-144 without changing what blocks:
 - the study area (Hanna's commit a916099, the `pool` kind of deck-pool):
   her two tables with chairs stand on a terrace as large as the solid, at
   least 90 % of it drawn and nothing outside it;
+- the corridor's name "Academic Hall" stands in the game's ink on free
+  corridor floor (Felix, 2026-11-22), readable on the terrazzo;
 - the page draws the map without a console error or warning.
 
 The browser part is hanna_floors_and_shrubs_in_browser.js.
@@ -129,12 +131,34 @@ HANNAS_FLOORS = {
 }
 
 
+# Felix, 2026-11-22: "Academic Hall" is to stand "in schwarzer Schrift auf
+# dem Flur" (in black letters on the corridor floor), no longer in white on
+# the slat wall. This one decor entry differs from main; the digest is taken
+# with main's entry put back.
+ACADEMIC_HALL_ON_MAIN = {"kind": "lettering", "layer": "wall", "x": 412, "y": 173, "w": 88, "h": 8, "text": "ACADEMIC HALL"}
+ACADEMIC_HALL = {"kind": "lettering", "layer": "floor", "x": 300, "y": 198, "w": 92, "h": 13, "text": "Academic Hall"}
+
+
+def with_mains_academic_hall(campus):
+    """A copy of the map with main's "ACADEMIC HALL" on the slat wall."""
+    copy = json.loads(json.dumps(campus))
+    copy["decor"] = [dict(ACADEMIC_HALL_ON_MAIN) if item == ACADEMIC_HALL else item for item in copy["decor"]]
+    return copy
+
+
 def test_the_map_has_mains_number_of_solids_decor_stations_spots_and_doors():
     assert counts(current_map()) == MAIN_COUNTS
 
 
-def test_the_map_is_mains_apart_from_floor_colours_and_patterns():
-    assert digest(current_map()) == MAIN_DIGEST
+def test_the_map_is_mains_apart_from_floor_colours_patterns_and_the_corridor_name():
+    assert ACADEMIC_HALL in current_map()["decor"]
+    assert digest(with_mains_academic_hall(current_map())) == MAIN_DIGEST
+
+
+def test_any_other_change_to_the_corridor_name_changes_the_digest():
+    changed = current_map()
+    next(item for item in changed["decor"] if item == ACADEMIC_HALL)["y"] += 1
+    assert digest(with_mains_academic_hall(changed)) != MAIN_DIGEST
 
 
 def test_the_rooms_have_hannas_floors():
@@ -328,6 +352,94 @@ def test_a_contrast_exactly_at_the_limit_is_readable():
     assert hard_to_read([a_room("#FFFFFF")], least=contrast(NAME_COLOUR, "#FFFFFF")) == []
 
 
+# ---- The corridor's name on the floor -------------------------------------
+
+# The corridor's floor: the terrazzo below the slat wall's face (the face of
+# the wall at y 167-173 is 8 high) down to the corridor wall at y 227.
+CORRIDOR_FLOOR = {"x": 23, "y": 181, "w": 634, "h": 46}
+# A station's object and its outline are drawn within this many units of
+# its centre (OBJECT_HALF_SIZE in draw.js).
+STATION_REACH = 20
+
+
+def overlaps(first, second):
+    """True when two rectangles share more than an edge."""
+    return (first["x"] < second["x"] + second["w"] and second["x"] < first["x"] + first["w"]
+            and first["y"] < second["y"] + second["h"] and second["y"] < first["y"] + first["h"])
+
+
+def inside(inner, outer):
+    return (outer["x"] <= inner["x"] and inner["x"] + inner["w"] <= outer["x"] + outer["w"]
+            and outer["y"] <= inner["y"] and inner["y"] + inner["h"] <= outer["y"] + outer["h"])
+
+
+def in_the_way(name, campus):
+    """What a floor name's rectangle would lie on: solids, doors, station
+    objects, hiding spots and every decor but the terrazzo it is written on
+    (and but the corridor's name itself, which `name` may stand in for)."""
+    found = [solid["id"] for solid in campus["solids"] if overlaps(name, solid)]
+    found += [f"door of {door['room']}" for door in campus["doors"] if overlaps(name, door)]
+    for station in campus["stations"]:
+        reach = {"x": station["x"] - STATION_REACH, "y": station["y"] - STATION_REACH,
+                 "w": 2 * STATION_REACH, "h": 2 * STATION_REACH}
+        if overlaps(name, reach):
+            found.append(f"station {station['id']}")
+    for spot in campus["hiding_spots"]:
+        circle = {"x": spot["x"] - spot["r"], "y": spot["y"] - spot["r"], "w": 2 * spot["r"], "h": 2 * spot["r"]}
+        if overlaps(name, circle):
+            found.append("hiding spot")
+    found += [item["kind"] for item in campus["decor"]
+              if item.get("text") != name.get("text") and item["kind"] != "terrazzo" and overlaps(name, item)]
+    return found
+
+
+def corridor_name():
+    return next(item for item in current_map()["decor"] if item.get("text") == "Academic Hall")
+
+
+def test_the_corridor_name_is_floor_decor_in_title_case():
+    name = corridor_name()
+    assert (name["kind"], name["layer"]) == ("lettering", "floor")
+    assert not any(item.get("text") == "ACADEMIC HALL" for item in current_map()["decor"])
+
+
+def test_the_corridor_name_lies_on_the_corridor_floor():
+    assert inside(corridor_name(), CORRIDOR_FLOOR)
+
+
+def test_the_corridor_name_lies_on_nothing():
+    # Not on a solid, a door, a station, a hiding spot, a light pool or the
+    # door leaves of the corridor wall.
+    assert in_the_way(corridor_name(), current_map()) == []
+
+
+def test_the_corridor_name_stands_between_two_light_pools_below_the_cafe_door():
+    name = corridor_name()
+    pools = sorted(item["x"] for item in current_map()["decor"]
+                   if item["kind"] == "light-pool" and overlaps(item, CORRIDOR_FLOOR))
+    assert pools[1] + 26 <= name["x"] and name["x"] + name["w"] <= pools[2]
+
+
+def test_the_name_in_its_old_place_on_the_wall_is_not_on_the_floor():
+    # Rejected: main's place on the slat wall's face.
+    assert not inside(ACADEMIC_HALL_ON_MAIN, CORRIDOR_FLOOR)
+
+
+def test_a_name_over_a_sofa_or_a_light_pool_is_found():
+    # Rejected: in front of the sofas, and one unit further left, onto the
+    # second light pool.
+    campus = current_map()
+    over_sofa = dict(ACADEMIC_HALL, x=180, y=178)
+    onto_pool = dict(ACADEMIC_HALL, x=293)
+    assert "corridor-sofa-1" in in_the_way(over_sofa, campus)
+    assert in_the_way(onto_pool, campus) == ["light-pool"]
+
+
+def test_a_name_that_only_touches_a_light_pool_is_free():
+    # Edge case: touching an edge is not lying on it.
+    assert in_the_way(dict(ACADEMIC_HALL, x=294), current_map()) == []
+
+
 # ---- In Chromium ----------------------------------------------------------
 
 needs_chromium = pytest.mark.skipif(not playwright_works(), reason="Node with Playwright and Chromium is needed")
@@ -457,6 +569,28 @@ def test_the_dashed_circle_of_the_hiding_spot_stands_out_on_the_hedge(drawn):
 @needs_chromium
 def test_every_room_name_is_readable_on_its_new_floor_and_pattern(drawn):
     assert hard_to_read(drawn["rooms"]) == []
+
+
+@needs_chromium
+def test_the_corridor_name_is_drawn_inside_its_entry_and_on_the_corridor_floor(drawn):
+    name = drawn["corridorName"]
+    assert name["entry"] == ACADEMIC_HALL
+    assert inside(name["box"], ACADEMIC_HALL)
+    assert inside(name["box"], CORRIDOR_FLOOR)
+    # About as large as the room names (13 units high letters, 90 wide).
+    assert name["box"]["w"] >= 80 and name["box"]["h"] >= 9
+
+
+@needs_chromium
+def test_the_corridor_name_is_drawn_in_the_games_ink(drawn):
+    assert contrast(drawn["corridorName"]["ink"], NAME_COLOUR) < 1.1
+
+
+@needs_chromium
+def test_the_corridor_name_is_readable_on_the_terrazzo(drawn):
+    behind = drawn["corridorName"]["behind"]
+    assert contrast(NAME_COLOUR, behind["darkest"]) >= LEAST_TEXT_CONTRAST
+    assert contrast(NAME_COLOUR, behind["lightest"]) >= LEAST_TEXT_CONTRAST
 
 
 @needs_chromium

@@ -1,8 +1,9 @@
 // The art of the Main Deck and the corridor (M2-1.4): the study tables on
-// their terrace, leafy bushes, the hedge, benches, lamp posts, a bike rack, drains, the glass front, the
-// beach with towels, parasols and surfboards and a surfboard rack; in the
-// corridor a terrazzo floor, the taupe slat wall with "ACADEMIC HALL",
-// ceiling lights, sofas, wire-grid dividers, a black column and stairs.
+// their terrace, leafy bushes, the hedge, benches, lamp posts, a bike rack,
+// drains, the glass front, the beach with towels, parasols and surfboards
+// and a surfboard rack; in the corridor a terrazzo floor with its name
+// "Academic Hall", the taupe slat wall, ceiling lights, sofas, wire-grid
+// dividers, a black column and stairs.
 // Places and sizes come from campus.json; see art/common.js for the rules.
 
 "use strict";
@@ -402,9 +403,18 @@ Game.world = Game.world || {};
     util.line(ctx, band.x, band.y + band.h, band.x + band.w, band.y + band.h, util.OUTLINE, 0.8);
   };
 
-  // Raised white letters on the slat wall, with a little shadow.
+  // The size of the room names and of "Main Deck" (drawRoomNames in draw.js).
+  var NAME_SIZE = 13;
+
+  // Lettering: on the floor, a name in the game's ink, like the room names
+  // (the corridor's "Academic Hall": Felix, 2026-11-22, wanted it in black
+  // on the floor); on a wall, raised white letters with a little shadow.
   art.decor.lettering = function (ctx, item) {
     if (!item.text) {
+      return;
+    }
+    if (item.layer === "floor") {
+      util.text(ctx, item.text, item.x + item.w / 2, item.y + item.h / 2, NAME_SIZE, util.OUTLINE, item.w);
       return;
     }
     var size = item.h * 0.62;

@@ -14,6 +14,9 @@
 //   spot      the hedge's hiding spot: the colour of its dashed outline, of
 //             the disc inside it and of the hedge outside it
 //   floorPatterns  the names of the floor patterns the art files draw
+//   corridorName  the decor entry "Academic Hall", the box of its drawn
+//             letters in map units, the colour of the letters, and the
+//             darkest and lightest colour of the floor behind them
 //
 // How it is measured: the page's own Game.world.drawMap draws the map at 4
 // pixels per unit, as in play_map_polish_in_browser.js. A unit counts as
@@ -149,7 +152,36 @@ function measure(checked) {
       around.push(pixel(withSpot, ...at(spot.r + 2)));
     }
     const floorPatterns = Object.keys(Game.world.art.floors).sort();
-    return { solids, rooms, spot: { x: spot.x, y: spot.y, dashes, disc, around }, floorPatterns };
+
+    // The corridor's name "Academic Hall" (Felix, 2026-11-22): the map with
+    // and without its decor entry; the pixels that differ are its letters.
+    const nameEntry = campus.decor.find((item) => item.text === 'Academic Hall');
+    let corridorName = null;
+    if (nameEntry) {
+      const withoutName = render({ ...noStations, decor: campus.decor.filter((item) => item !== nameEntry) });
+      let box = null; const ink = [];
+      for (let y = 0; y < H * S; y++) {
+        for (let x = 0; x < W * S; x++) {
+          const i = (y * W * S + x) * 4;
+          if (!differs(plain, withoutName, i)) continue;
+          if (!box) box = { x0: x, y0: y, x1: x + 1, y1: y + 1 };
+          box.x0 = Math.min(box.x0, x); box.y0 = Math.min(box.y0, y);
+          box.x1 = Math.max(box.x1, x + 1); box.y1 = Math.max(box.y1, y + 1);
+          ink.push([plain[i], plain[i + 1], plain[i + 2]]);
+        }
+      }
+      const light = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+      ink.sort((first, second) => light(first) - light(second));
+      const drawnBox = { x: box.x0 / S, y: box.y0 / S, w: (box.x1 - box.x0) / S, h: (box.y1 - box.y0) / S };
+      corridorName = {
+        entry: nameEntry, box: drawnBox,
+        // The colour of the letters: the middle of their darker half (the
+        // edges of the letters are blended with the floor).
+        ink: ink[Math.floor(ink.length / 4)],
+        behind: extremes(withoutName, drawnBox),
+      };
+    }
+    return { solids, rooms, spot: { x: spot.x, y: spot.y, dashes, disc, around }, floorPatterns, corridorName };
   })();
 }
 
