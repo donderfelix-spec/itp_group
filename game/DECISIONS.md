@@ -229,3 +229,7 @@ Hanna replaced the simple-circle request with a natural lobed bush outline and l
 ## Main Deck shrub refinement, 2026-11-22
 
 Hanna requested that the Main Deck shrubs follow her reference photo more closely. Smaller, overlapping olive-green leaves, bright tips and slender shoots give each shrub a looser outline. A shared ground shadow connects the hedge crowns visually. The same campus objects define their positions and footprints.
+
+## Main Deck study area
+
+Hanna asked to replace the Main Deck reflecting pool with an outdoor study area. Two white communal tables with black chairs occupy the existing deck-pool footprint.

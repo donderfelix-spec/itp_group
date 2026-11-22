@@ -259,3 +259,7 @@ Human character verification: 300 character, running-pose, running and character
 ## Main Deck shrub refinement, 2026-11-22
 
 - [x] Refine the Main Deck bushes and hedge from Hanna's shrub reference, with foliage down to the ground and fine shoots at the edges.
+
+## Main Deck study area
+
+- [x] Replace the Main Deck pool artwork with two outdoor study tables and black chairs.

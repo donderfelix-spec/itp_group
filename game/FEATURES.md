@@ -176,3 +176,7 @@ The Main Deck bushes and hedge now have denser, layered foliage down to the grou
 ## Room floors, 2026-11-22
 
 Five distinct floor finishes for the campus rooms: implemented on the Campus and Characters branch.
+
+## Main Deck study area
+
+Outdoor study area on the Main Deck with white tables and black chairs: implemented locally.
