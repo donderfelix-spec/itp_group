@@ -2310,6 +2310,10 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 /* Place and spacing come from .round-panel, like the Duel panel's. */
 .classic-own-name { font-weight: 800; }
+/* "Group progress" under the own tasks: a heading of the panel, not of the page. */
+.round-panel h3 { margin: 0; }
+/* Classic's own tasks: one station per line, in the card of Duel's "Next: ...". */
+.round-task { white-space: pre-line; }
 .classic-progress-track { height: 18px; overflow: hidden; border: var(--outline); border-radius: 999px; background: white; }
 .classic-progress-fill { width: 0; height: 100%; background: var(--green); transition: width 180ms ease-out; }
 .classic-overlay { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(46, 42, 59, 0.78); }

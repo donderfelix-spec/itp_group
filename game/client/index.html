@@ -226,10 +226,14 @@
             <p id="duel-next" class="duel-next" role="status"></p>
             <p id="duel-clock" class="duel-clock" aria-label="Time left"></p>
           </div>
-          <!-- Classic: the group progress, filled by js/classic/round.js. -->
+          <!-- Classic, built like the Duel panel: the mode, the own name (the
+               role, js/classic/round.js), the own tasks (js/lobby/lobby.js,
+               from main.js) and the group progress (js/classic/round.js). -->
           <div id="classic-progress" class="classic-progress round-panel" hidden aria-live="polite">
-            <h2 class="panel-heading">Group progress</h2>
+            <h2 class="panel-heading">Classic</h2>
             <p id="classic-own-name" class="classic-own-name"></p>
+            <p id="classic-task" class="duel-next round-task" role="status" hidden></p>
+            <h3 class="panel-heading">Group progress</h3>
             <p id="classic-progress-label">0% complete</p>
             <div class="classic-progress-track" role="progressbar" aria-label="Group task progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
               <div id="classic-progress-fill" class="classic-progress-fill"></div>

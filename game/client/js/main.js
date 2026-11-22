@@ -43,6 +43,9 @@ window.Game = window.Game || {};
   // (`task_stations`). A Free Rider's list is empty: no station pulses for
   // them and "E Use" lights up nowhere; they fake tasks by standing at one.
   let classicTasks = [];
+  // The own Classic role from `classic_role`, "HP" or "FR"; null outside a
+  // Classic round. Only for the own task card (showClassicTasks).
+  let classicRole = null;
   // True from the moment this browser asked to log out until the server
   // answers. It tells a wanted `signed_out` from one that came unasked.
   let logOutWasAsked = false;
@@ -100,6 +103,8 @@ window.Game = window.Game || {};
     roundIsRunning = false;
     finishedStations = new Set();
     classicTasks = [];
+    classicRole = null;
+    showClassicTasks();
     if (!worldIsRunning) return;
     worldIsRunning = false;
     callWorld('stop');
@@ -198,6 +203,8 @@ window.Game = window.Game || {};
     if (!isRound) {
       Game.minigames.close(); // no round, no task
       classicTasks = [];
+      classicRole = null;
+      showClassicTasks();
     }
     roundIsRunning = isRound;
   }
@@ -316,7 +323,19 @@ window.Game = window.Game || {};
 
   function whenClassicRole(message) {
     rememberClassicTasks(message);
+    const isOwnRole = mode === 'classic' && roundIsRunning && ['HP', 'FR'].includes(message && message.role);
+    if (isOwnRole) classicRole = message.role;
     showUsableStations();
+    showClassicTasks();
+  }
+
+  // The card with the own remaining Classic tasks in the panel. The same
+  // list as the stations that glow; a ghost keeps its tasks (DESIGN, rule 9).
+  function showClassicTasks() {
+    // Like callWorld: a page put together without this part keeps working.
+    if (typeof Game.lobby.showClassicTasks !== 'function') return;
+    const remaining = classicTasks.filter((station) => !finishedStations.has(station));
+    Game.lobby.showClassicTasks(classicRole, remaining);
   }
 
   function whenStationOpened(message) {
@@ -341,6 +360,7 @@ window.Game = window.Game || {};
     finishedStations.add(message.station);
     if (mode === 'classic') rememberClassicTasks(message);
     showUsableStations();
+    if (mode === 'classic') showClassicTasks();
     Game.minigames.showDone();
   }
 

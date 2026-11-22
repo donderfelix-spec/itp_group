@@ -10,14 +10,19 @@
 //   solo      the panel of one guest alone in a Solo round, per window size
 //   classic   per window size: the panel of the host and of one other guest
 //             in a Classic round with five players
+//   classicCards  per Classic page: its role and own list (as received),
+//             Duel's names of those stations, the card's text and colour,
+//             and all text of the page
+//   classicDone   the card of one High Performer after each `station_done`
 //   classicWithHint  the other guest's Classic panel at 1280x800 with one
 //             more paragraph at the end of #classic-progress, put there by
 //             this script (as the "Hidden" hint of another branch will be)
 //
 // Every panel is measured by `measurePanel` below; nothing is clicked in it
 // except what starts, leaves and joins rounds. With a screenshot folder,
-// duel<suffix>.png (1024x700), solo<suffix>.png and classic<suffix>.png
-// (1280x800) are saved from a player who is not the host where there is one.
+// duel<suffix>.png, solo<suffix>.png, classic<suffix>.png, classic_hp<suffix>.png
+// and classic_fr<suffix>.png (1280x800) are saved, from a player who is not
+// the host where there is one (the Free Rider may be the host).
 const { chromium } = require('playwright');
 
 const base = process.argv[2];
@@ -38,10 +43,23 @@ async function guest(browser, label, viewport) {
     if (m.type() === 'error' || m.type() === 'warning') problems.push(`${label} ${m.type()}: ${m.text()}`);
   });
   page.on('pageerror', (e) => problems.push(`${label} page error: ${e.message}`));
+  // The WebSocket goes through this script: it notes every `classic_role`
+  // and `task_stations` the page receives, and can hand the page a message
+  // as if the server had sent it (`inject`).
+  const g = { page, label, received: [], inject: null };
+  await page.routeWebSocket(/\/ws$/, (ws) => {
+    const server = ws.connectToServer();
+    g.inject = (message) => ws.send(JSON.stringify(message));
+    server.onMessage((text) => {
+      const message = JSON.parse(text);
+      if (message.type === 'classic_role' || 'task_stations' in message) g.received.push(message);
+      ws.send(text);
+    });
+  });
   await page.goto(base + '/');
   await page.click('#start-guest');
   await page.waitForSelector('#screen-home:not([hidden])');
-  return { page, label };
+  return g;
 }
 
 async function createLobby(g) {
@@ -171,8 +189,17 @@ function measurePanel() {
     roundHeading: rect(roundHeading),
     roundHeadingStyle: headingStyle(roundHeading),
     playersHeadingStyle: headingStyle(playersHeading),
-    classicParts: ['classic-own-name', 'classic-progress-label'].map((id) => rect(byId(id)))
+    classicParts: ['classic-own-name', 'classic-task', 'classic-progress-label'].map((id) => rect(byId(id)))
       .concat([rect(document.querySelector('#classic-progress h2')), rect(document.querySelector('.classic-progress-track'))]),
+    // From the top: heading, own name, task card, "Group progress", label, bar.
+    classicOrder: [
+      document.querySelector('#classic-progress h2'), byId('classic-own-name'), byId('classic-task'),
+      document.querySelector('#classic-progress h3'), byId('classic-progress-label'),
+      document.querySelector('.classic-progress-track'),
+    ].map((el) => (rect(el) ? rect(el).top : null)),
+    classicHeadingText: (document.querySelector('#classic-progress h2') || {}).textContent || null,
+    classicTaskText: byId('classic-task') ? byId('classic-task').innerText : null,
+    classicTaskGreen: byId('classic-task') ? byId('classic-task').classList.contains('duel-next-finished') : null,
     classicOwnNameText: byId('classic-own-name').textContent,
     extraParagraph: rect(byId('test-extra-paragraph')),
     classicTrack: rect(document.querySelector('.classic-progress-track')),
@@ -211,7 +238,7 @@ async function shoot(g, name) {
       await resize(host, size);
       await resize(watcher, size);
       out.duel[name] = { host: await look(host), guest: await look(watcher) };
-      if (size.width === 1024) await shoot(watcher, 'duel');
+      if (size.width === 1280) await shoot(watcher, 'duel');
     }
 
     // Everybody leaves the Duel. One guest plays Solo alone, the host and
@@ -246,6 +273,42 @@ async function shoot(g, name) {
       out.classic[`${size.width}x${size.height}`] = { host: await look(host), guest: await look(classicWatcher) };
       if (size.width === 1280) await shoot(classicWatcher, 'classic');
     }
+    // Every Classic page: its role, the own list it was sent, and its card.
+    const classicPages = [host, ...classicGuests];
+    out.classicCards = [];
+    for (const g of classicPages) {
+      await resize(g, SIZES[0]);
+      const role = (g.received.find((message) => message.type === 'classic_role') || {}).role || null;
+      const sent = g.received.filter((message) => 'task_stations' in message).map((message) => message.task_stations);
+      const own = sent.length ? sent[sent.length - 1] : null;
+      const names = await g.page.evaluate((stations) => (stations || []).map((id) => (typeof window.Game.duel.stationName === 'function' ? window.Game.duel.stationName(id) : null)), own);
+      const seen = await look(g);
+      out.classicCards.push({ label: g.label, isHost: g === host, role, taskStations: own, names,
+        cardText: seen.classicTaskText, cardGreen: seen.classicTaskGreen, pageText: await g.page.innerText('body') });
+    }
+    const highPerformer = classicPages.find((g, i) => g !== host && out.classicCards[i].role === 'HP');
+    const freeRider = classicPages.find((g, i) => out.classicCards[i].role === 'FR');
+    if (highPerformer) await shoot(highPerformer, 'classic_hp');
+    if (freeRider) await shoot(freeRider, 'classic_fr');
+
+    // A High Performer finishes its stations: the page is handed the
+    // `station_done` the server sends then (same shape, with the own list).
+    out.classicDone = [];
+    if (highPerformer) {
+      const card = out.classicCards[classicPages.indexOf(highPerformer)];
+      const remaining = (card.taskStations || []).slice();
+      while (remaining.length) {
+        const station = remaining.shift();
+        const before = (await look(highPerformer)).classicTaskText;
+        highPerformer.inject({ type: 'station_done', station, task_stations: remaining.slice() });
+        // Until the card has changed; a card that never does is reported as it is.
+        await highPerformer.page.waitForFunction((text) => document.getElementById('classic-task').innerText !== text,
+          before, { timeout: 3000 }).catch(() => {});
+        const seen = await look(highPerformer);
+        out.classicDone.push({ station, left: remaining.slice(), cardText: seen.classicTaskText, cardGreen: seen.classicTaskGreen });
+      }
+    }
+
     await resize(classicWatcher, SIZES[0]);
     await classicWatcher.page.evaluate(() => {
       const extra = document.createElement('p');

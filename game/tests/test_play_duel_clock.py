@@ -11,7 +11,11 @@ Checked in Chromium (skipped when Node, Playwright or Chromium is missing),
 with the real server: eight guests in one lobby, the host starts a Duel;
 the host and one other guest are measured at 1280x800, 1024x700 and
 320x640. Then one guest plays Solo alone, and five guests play Classic,
-measured the same way.
+measured the same way. In Classic the panel reads "Classic", the own name,
+the own task card (S-154), "Group progress" with label and bar, then
+"Players". Each Classic page's card is compared with the own list it was
+sent; one High Performer's page is then handed the `station_done` messages
+the server sends for its four stations.
 """
 
 import contextlib
@@ -202,6 +206,69 @@ def test_duel_solo_and_classic_headings_look_like_the_players_heading(played, si
     panels = [played["duel"][size]["guest"], played["solo"][size], played["classic"][size]["guest"]]
     for panel in panels:
         assert panel["roundHeadingStyle"] == panel["playersHeadingStyle"]
+
+
+@needs_chromium
+@pytest.mark.parametrize("size", ALL_SIZES)
+@pytest.mark.parametrize("who", WHO)
+def test_the_classic_panel_reads_classic_name_tasks_progress_then_players(played, size, who):
+    panel = played["classic"][size][who]
+    assert panel["classicHeadingText"] == "Classic"
+    order = panel["classicOrder"]  # heading, own name, card, "Group progress", label, bar
+    assert None not in order and order == sorted(order) and len(set(order)) == len(order)
+    assert panel["classicTrack"]["bottom"] <= panel["playersHeading"]["top"]
+
+
+# ---- Classic: the own task card (S-154) ----
+
+FAKE_TASKS = "Fake tasks: stand at a station to look busy."
+ALL_DONE = "All your tasks are done."
+
+
+def cards_of(played, role):
+    return [card for card in played["classicCards"] if card["role"] == role]
+
+
+@needs_chromium
+def test_five_classic_players_have_one_free_rider_and_four_high_performers(played):
+    assert len(played["classicCards"]) == 5
+    assert len(cards_of(played, "FR")) == 1 and len(cards_of(played, "HP")) == 4
+
+
+@needs_chromium
+def test_a_high_performer_card_lists_exactly_its_own_stations_by_name_and_room(played):
+    for card in cards_of(played, "HP"):
+        assert len(card["taskStations"]) == 4
+        assert all(name.endswith(")") and " (" in name for name in card["names"])
+        assert card["cardText"].split("\n") == card["names"]
+        assert not card["cardGreen"]
+
+
+@needs_chromium
+def test_a_finished_station_leaves_the_card_and_at_the_end_all_is_done(played):
+    done = played["classicDone"]
+    hp = next(card for card in cards_of(played, "HP") if not card["isHost"])
+    name_of = dict(zip(hp["taskStations"], hp["names"]))
+    assert [step["station"] for step in done] == hp["taskStations"]
+    for step in done[:-1]:
+        assert step["cardText"].split("\n") == [name_of[station] for station in step["left"]]
+        assert not step["cardGreen"]
+    assert done[-1]["left"] == [] and done[-1]["cardText"] == ALL_DONE and done[-1]["cardGreen"]
+
+
+@needs_chromium
+def test_the_free_rider_card_fakes_and_shows_nothing_of_the_others(played):
+    (free_rider,) = cards_of(played, "FR")
+    assert free_rider["taskStations"] == [] and free_rider["names"] == []
+    assert free_rider["cardText"] == FAKE_TASKS and not free_rider["cardGreen"]
+    for card in cards_of(played, "HP"):
+        assert not any(name in free_rider["pageText"] for name in card["names"])
+
+
+@needs_chromium
+def test_no_high_performer_page_shows_the_free_rider_text(played):
+    for card in cards_of(played, "HP"):
+        assert FAKE_TASKS not in card["pageText"]
 
 
 @needs_chromium

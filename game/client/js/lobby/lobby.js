@@ -448,6 +448,33 @@ window.Game = window.Game || {};
     showCharacters(players);
   }
 
+  // ---- The own Classic tasks (S-154), in the card of Duel's "Next: ..." ----
+
+  // The lines of the card, one per remaining station. `role` is "HP" or
+  // "FR"; `stations` are the own unfinished stations; `nameOf(id)` gives
+  // "Station name (Room)". A Free Rider has no real tasks (S-154).
+  function classicTaskLines(role, stations, nameOf) {
+    if (role === 'FR') return ['Fake tasks: stand at a station to look busy.'];
+    if (stations.length === 0) return ['All your tasks are done.'];
+    return stations.map(nameOf);
+  }
+
+  // From main.js whenever the own list changes. Without a role (outside a
+  // Classic round) the card is hidden.
+  function showClassicTasks(role, stations) {
+    const card = document.getElementById('classic-task');
+    const hasRole = role === 'HP' || role === 'FR';
+    card.hidden = !hasRole;
+    card.textContent = hasRole ? classicTaskLines(role, stations, stationName).join('\n') : '';
+    card.classList.toggle('duel-next-finished', role === 'HP' && stations.length === 0);
+  }
+
+  // Duel's names (minigames/duel.js); "Station 7" until the map file is read.
+  function stationName(station) {
+    const hasNames = Game.duel && typeof Game.duel.stationName === 'function';
+    return hasNames ? Game.duel.stationName(station) : 'Station ' + station;
+  }
+
   function leaveLobby() {
     // `ask` sends nothing while another answer is awaited: then the player
     // is not leaving yet and may go on walking.
@@ -462,6 +489,8 @@ window.Game = window.Game || {};
     setPlayers: setPlayers,
     showProgress: showProgress,
     leaveLobby: leaveLobby,
+    classicTaskLines: classicTaskLines,
+    showClassicTasks: showClassicTasks,
     show: show
   };
 })();
