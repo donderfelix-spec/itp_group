@@ -47,7 +47,7 @@ window.Game = window.Game || {};
   // Classic round. Only for the own task card (showClassicTasks).
   let classicRole = null;
   // The own list as `classic_role` gave it at the start of the round. The
-  // card keeps every task in this order and crosses the finished ones out.
+  // card keeps every task in this order and fades the finished ones.
   let classicStartTasks = [];
   // True from the moment this browser asked to log out until the server
   // answers. It tells a wanted `signed_out` from one that came unasked.
