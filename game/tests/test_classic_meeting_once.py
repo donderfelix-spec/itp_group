@@ -98,6 +98,7 @@ def ticks(connections, count=3):
 def start_emergency(connections, caller, clock):
     """`caller` presses the emergency button (it unlocks 45 s after the start)."""
     clock.wait(46)
+    put(caller, (app.state.campus["button"]["x"], app.state.campus["button"]["y"]))
     connections[caller].send_json({"type": "emergency"})
     for connection in connections.values():
         assert connection.receive_json()["type"] == "meeting_state"
@@ -266,6 +267,7 @@ def test_a_second_meeting_can_start_after_the_first(connect, clock):
     everybody_skips(connections, lobby, clock)
     ticks(connections)
 
+    put(second_caller, (app.state.campus["button"]["x"], app.state.campus["button"]["y"]))
     connections[second_caller].send_json({"type": "emergency"})
     snapshots = [read_until(connection, "meeting_state")[-1] for connection in connections.values()]
 

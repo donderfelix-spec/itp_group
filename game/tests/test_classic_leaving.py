@@ -114,6 +114,7 @@ def fail(connections, fr, victim):
 
 def start_emergency(connections, caller, clock):
     clock.wait(46)  # the button unlocks 45 seconds after the start
+    put(caller, (app.state.campus["button"]["x"], app.state.campus["button"]["y"]))
     connections[caller].send_json({"type": "emergency"})
     drain(connections)
 
@@ -488,6 +489,7 @@ def test_a_leaver_gets_no_more_news_of_the_round(connect, clock):
     for conn in connections.values():
         wait_until(conn, lambda messages: "classic_progress" in types_of(messages))
     clock.wait(46)  # the emergency button unlocks 45 seconds after the start
+    put(caller, (app.state.campus["button"]["x"], app.state.campus["button"]["y"]))
     connections[caller].send_json({"type": "emergency"})
     for conn in connections.values():
         wait_until(conn, lambda messages: "meeting_state" in types_of(messages))
