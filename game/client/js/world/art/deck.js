@@ -218,6 +218,31 @@ Game.world = Game.world || {};
     });
   };
 
+  // The hiding spot in the hedge (M3-1.5): a hollow in the foliage, dark
+  // inside, with leaves hanging over its rim. The hedge is walkable (S-98).
+  // Registered as "spot" for the deck, the place without a room.
+  var HOLLOW_LEAVES = 16;
+
+  art.hiding.spot = function (ctx, spot) {
+    var x = spot.x;
+    var y = spot.y;
+    var r = spot.r;
+    var hollow = ctx.createRadialGradient(x, y + r * 0.15, 0, x, y, r);
+    hollow.addColorStop(0, "rgba(20, 29, 13, 0.95)");
+    hollow.addColorStop(0.55, "rgba(29, 44, 20, 0.78)");
+    hollow.addColorStop(1, "rgba(41, 64, 29, 0)");
+    util.ellipse(ctx, x, y, r, r * 0.9, hollow, 0);
+    for (var i = 0; i < HOLLOW_LEAVES; i++) {
+      var angle = (i + util.noise(x, i) * 0.6) / HOLLOW_LEAVES * Math.PI * 2;
+      var reach = r * (0.72 + util.noise(i, y) * 0.18);
+      var leafX = x + Math.cos(angle) * reach;
+      var leafY = y + Math.sin(angle) * reach * 0.9;
+      var length = r * (0.2 + util.noise(y, i) * 0.12);
+      var palette = Math.sin(angle) < 0 ? sunlitLeaves : shadowLeaves;
+      bushLeaf(ctx, leafX, leafY, angle + Math.PI + (util.noise(i, x) - 0.5) * 0.8, length, util.pick(palette, i, x));
+    }
+  };
+
   // ---- The glass front and the beach -----------------------------------
 
   // The glass front to the beach: panes in light frames with posts, and

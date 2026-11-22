@@ -157,4 +157,24 @@ Game.world = Game.world || {};
       util.text(ctx, item.text, item.x + item.w / 2, item.y + item.h / 2 + 0.2, item.h * 0.45, "#FFFFFF", item.w - 2);
     }
   };
+
+  // ---- The hiding spot by the bookshelf (M3-1.5) ------------------------
+
+  // A reading corner: a beanbag and two books on the floor, in the shade of
+  // the bookshelf. Only drawn: players walk through it.
+  art.hiding["ctt:spot"] = function (ctx, spot) {
+    var x = spot.x;
+    var y = spot.y;
+    var k = spot.r / 9; // the drawing is made for a spot of radius 9
+    var colour = "#2F9C8F";
+    util.hidingShade(ctx, x, y, spot.r);
+    var bagX = x + 1.8 * k;
+    var bagY = y + 0.6 * k;
+    util.ellipse(ctx, bagX + 0.6 * k, bagY + 5 * k, 6.2 * k, 1.5 * k, "rgba(46, 42, 59, 0.16)", 0);
+    util.ellipse(ctx, bagX, bagY, 6.4 * k, 5.6 * k, colour, 0.7);
+    util.ellipse(ctx, bagX - 0.6 * k, bagY - 0.4 * k, 3.4 * k, 2.7 * k, util.darker(colour, 0.22), 0);
+    util.ellipse(ctx, bagX - 3.4 * k, bagY - 3 * k, 1.5 * k, 0.8 * k, util.lighter(colour, 0.4), 0);
+    util.box(ctx, x - 8 * k, y + 1.6 * k, 4 * k, 5.4 * k, 0.4 * k, "#F2C53D", 0.5);
+    util.box(ctx, x - 7.3 * k, y + 0.4 * k, 4 * k, 5.4 * k, 0.4 * k, "#E8574B", 0.5);
+  };
 })();

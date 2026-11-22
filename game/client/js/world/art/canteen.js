@@ -239,4 +239,19 @@ Game.world = Game.world || {};
     ctx.fillStyle = "rgba(242, 197, 61, 0.6)";
     ctx.fillRect(item.x, item.y + item.h - 0.6, item.w, 0.6);
   };
+
+  // ---- The hiding spot in the corner (M3-1.5) ---------------------------
+
+  // A big potted plant in the corner by the tray return, in its own shade.
+  // Only drawn: players walk through it.
+  art.hiding["canteen:spot"] = function (ctx, spot) {
+    var x = spot.x;
+    var y = spot.y;
+    var k = spot.r / 9; // the drawing is made for a spot of radius 9
+    util.hidingShade(ctx, x, y, spot.r);
+    var plantX = x + 2.6 * k;
+    var plantY = y + 1.2 * k;
+    util.circle(ctx, plantX, plantY + 3.2 * k, 3 * k, "#B8643A", 0.6);
+    util.foliage(ctx, plantX, plantY - 0.8 * k, 5.6 * k, util.LEAVES, 7);
+  };
 })();
