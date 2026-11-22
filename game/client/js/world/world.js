@@ -128,7 +128,6 @@ Game.world = Game.world || {};
   var FAIL_COOLDOWN_SECONDS = 15;
   var REPORT_KEY_CODE = "KeyR";
   var REPORT_RANGE = 8;
-  var EMERGENCY_RANGE = 2;
   var EMERGENCY_DELAY_SECONDS = 45;
 
   // ---- State -----------------------------------------------------------
@@ -1144,7 +1143,7 @@ Game.world = Game.world || {};
     var position = ownServerPosition();
     if (!position) return false;
     var button = campus.button;
-    return Math.hypot(position.x - button.x, position.y - button.y) <= (button.r || 0) + EMERGENCY_RANGE;
+    return Math.hypot(position.x - button.x, position.y - button.y) <= (button.r || 0) + REPORT_RANGE;
   }
 
   function useActionInRange() {
