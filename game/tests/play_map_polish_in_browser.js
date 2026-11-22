@@ -6,9 +6,11 @@
 //   stations   for every station with an object, for each part of its
 //              drawing (the object alone, the object with its outline at the
 //              low and at the high point of the pulse, and the shadow and
-//              number tag that draw.js adds): the box of the part as offsets
-//              from the station's centre in whole map units, and the units
-//              where a pixel of the part lies on drawn furniture or a wall
+//              number tag that draw.js adds, together and each alone): the
+//              box of the part as offsets from the station's centre in whole
+//              map units, and the units where a pixel of the part lies on
+//              drawn furniture or a wall
+//   roomNames  for every room the box of its drawn name, in map units
 //
 // How it is measured: the page's own Game.world.drawMap draws the map at 4
 // pixels per unit, the same way as play_campus_detail_in_browser.js:
@@ -47,12 +49,22 @@ function stationCheck() {
       return ctx.getImageData(0, 0, W * S, H * S).data;
     }
 
-    // The map with every station's drawing replaced by nothing: only the
+    // The map with every station's drawing replaced by nothing (with the
+    // same shadow place): only the
     // shadow and the number tag that draw.js adds are left. No outline is
     // drawn here, so no outline is made (and kept) from the empty drawings.
-    function renderShadowsAndTags() {
+    // With `withShadows` false the empty drawings say they have no shadow
+    // (draw.js), so only the tags are left.
+    function renderShadowsAndTags(withShadows) {
       const kept = {};
-      ids.forEach((id) => { kept[id] = drawings[id]; if (drawings[id]) drawings[id] = function () {}; });
+      ids.forEach((id) => {
+        kept[id] = drawings[id];
+        if (!drawings[id]) return;
+        const empty = function () {};
+        if (!withShadows) empty.shadow = null;
+        else if ('shadow' in kept[id]) empty.shadow = kept[id].shadow;
+        drawings[id] = empty;
+      });
       try {
         return render(campus);
       } finally {
@@ -88,7 +100,8 @@ function stationCheck() {
 
     const walls = campus.solids.filter((solid) => solid.kind === 'wall');
     const withStations = render(campus);
-    const shadowsAndTags = renderShadowsAndTags();
+    const shadowsAndTags = renderShadowsAndTags(true);
+    const tagsOnly = renderShadowsAndTags(false);
     const lowOutline = render(campus, ids, LOW_PULSE);
     const highOutline = render(campus, ids, HIGH_PULSE);
     const noStations = render({ ...campus, stations: [] });
@@ -109,6 +122,8 @@ function stationCheck() {
       objectAndLowOutline: [lowOutline, shadowsAndTags],
       objectAndHighOutline: [highOutline, shadowsAndTags],
       shadowAndTag: [shadowsAndTags, noStations],
+      shadow: [shadowsAndTags, tagsOnly],
+      tag: [tagsOnly, noStations],
     };
     const furniture = pixelDifference(noStations, bare);
     const inWall = new Uint8Array(W * S * H * S);
@@ -170,7 +185,22 @@ function stationCheck() {
       }
       return result;
     });
-    return { stations };
+    // The box of each room's name: the map with and without the names.
+    const noNames = render({ ...campus, stations: [], rooms: campus.rooms.map((room) => ({ ...room, label: null })) });
+    const names = difference(noStations, noNames);
+    const roomNames = campus.rooms.map((room) => {
+      let box = null;
+      for (let y = Math.max(0, room.label.y - 15); y < Math.min(H, room.label.y + 15); y++) {
+        for (let x = Math.max(0, room.label.x - 90); x < Math.min(W, room.label.x + 90); x++) {
+          if (!names[y * W + x]) continue;
+          if (!box) box = { x0: x, y0: y, x1: x + 1, y1: y + 1 };
+          box.x0 = Math.min(box.x0, x); box.y0 = Math.min(box.y0, y);
+          box.x1 = Math.max(box.x1, x + 1); box.y1 = Math.max(box.y1, y + 1);
+        }
+      }
+      return { id: room.id, box };
+    });
+    return { stations, roomNames };
   })();
 }
 

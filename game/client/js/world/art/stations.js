@@ -79,6 +79,8 @@ Game.world = Game.world || {};
     line(ctx, -9, -1, -1, -1, "#7A8CA8", 1.4);
     box(ctx, 3, -9, 6, 7, 0.5, "#9FC5E8", 0.7);
   };
+  // Its shadow lies under the short stand, off the first row's desk (draw.js).
+  stations[1].shadow = { x: 1, y: 6.5 };
 
   // 2 Brew the order: an espresso machine with a cup under the spout.
   // Drawn 5 units low and 1 to the left, so that its outline stays off the
@@ -107,6 +109,8 @@ Game.world = Game.world || {};
     circle(ctx, 5.5, -4, 4.5, WHITE, 0.9);
     circle(ctx, 5.5, -4, 2.5, GREEN, 0);
   };
+  // Its shadow lies under the raised tray, off table 3 (draw.js).
+  stations[3].shadow = { x: 1, y: 4.5 };
 
   // 4 Shelve the books: a book cart with a row of books.
   stations[4] = function (ctx) {
@@ -136,6 +140,8 @@ Game.world = Game.world || {};
   stations[7] = function (ctx) {
     shifted(ctx, 4.5, -2, 0.88, flipChart);
   };
+  // Its shadow moves with the flip chart, off the wall on its left (draw.js).
+  stations[7].shadow = { x: 5, y: 8 };
 
   function flipChart(ctx) {
     line(ctx, -7, 11, -3.5, -1, WOOD, 1.8);
@@ -176,15 +182,20 @@ Game.world = Game.world || {};
     circle(ctx, -3, 3.5, 1.1, "#7C8F3A", 0); // a mouldy spot
   };
 
-  // 10 Decode the group chat: an open laptop with chat bubbles.
+  // 10 Decode the group chat: an open laptop with chat bubbles. Drawn 3
+  // units low, so that its outline stays clear of the room's name above it.
   stations[10] = function (ctx) {
+    shifted(ctx, 0, 3, 1, laptopWithChat);
+  };
+
+  function laptopWithChat(ctx) {
     box(ctx, -11, -12, 22, 15, 1.5, DARK_STEEL, 1.4);
     box(ctx, -9, -10, 18, 11, 0.5, WHITE, 0);
     box(ctx, -8, -9, 9, 3.5, 1.5, "#CDE7C8", 0);
     box(ctx, -1, -4.5, 9, 3.5, 1.5, "#D6E4F5", 0);
     box(ctx, -13, 3, 26, 6, 1.5, STEEL, 1.4); // the keyboard
     line(ctx, -4, 6, 4, 6, OUTLINE, 0.8);
-  };
+  }
 
   // 11 Expense the essentials: a red shopping basket with two products.
   // Drawn smaller and in the middle of the aisle (2 units to the right), so

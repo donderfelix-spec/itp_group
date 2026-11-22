@@ -17,9 +17,11 @@ With the real map and the real walking rule (`step`, `is_free`):
 - no way of the Duel (spawn and stations 1-5 and 7-12) became longer.
 
 In Chromium (skipped when Node, Playwright or Chromium is missing): the
-pixels of each station's object and outline lie on no drawn furniture and
-in no wall, the boxes pinned here are the real drawings, and the map draws
-without a console error or warning.
+pixels of each station's object, outline, shadow and number tag lie on no
+drawn furniture and in no wall, the boxes pinned here (also those of the
+room names) are the real drawings, and the map draws without a console
+error or warning. In Node: draw.js puts each shadow at its default place,
+or where the station's drawing says, or leaves it out.
 """
 
 import contextlib
@@ -332,8 +334,8 @@ def test_a_lamp_post_10_from_a_wall_is_too_far():
 # pulse, as offsets from the station's centre (left, top, right, bottom), in
 # whole map units. Measured in Chromium with the page's own drawing
 # (play_map_polish_in_browser.js); the browser test below checks that the
-# drawing still lies inside these boxes. The shadow and the number tag that
-# draw.js adds below and beside every object are not part of it.
+# drawing still has exactly these boxes. The shadow and the number tag that
+# draw.js adds below and beside every object have boxes of their own below.
 STATION_BOXES = {
     1: (-17, -18, 17, 11),
     2: (-17, -12, 15, 19),
@@ -343,16 +345,52 @@ STATION_BOXES = {
     7: (-8, -19, 17, 12),
     8: (-11, -18, 15, 17),
     9: (-17, -14, 17, 14),
-    10: (-18, -17, 18, 14),
+    10: (-18, -14, 18, 17),
     11: (-12, -14, 16, 12),
     12: (-16, -20, 16, 15),
 }
 
 
-def station_box(station_id):
+# The soft shadow below each object, measured the same way (where the
+# number tag covers it, the tag's box counts). Most lie at draw.js's default
+# place; stations 1, 3 and 7 give their own (art/stations.js) so that the
+# shadow stays off row 1's desk, off table 3 and off the Lecture Hall's wall.
+DEFAULT_SHADOW_BOX = (-10, 7, 8, 14)
+SHADOW_BOXES = {station_id: DEFAULT_SHADOW_BOX for station_id in STATION_BOXES}
+SHADOW_BOXES.update({1: (-10, 3, 9, 10), 3: (-10, 1, 12, 8), 7: (-6, 4, 8, 12)})
+
+# The number tag at the lower right of each object. At station 2 the tag's
+# dark rim (to x 447.7) meets the café's dark wall (from x 447): it cannot be
+# told apart from the wall there, so its measured box ends a unit earlier.
+TAG_BOXES = {station_id: (6, 4, 16, 14) for station_id in STATION_BOXES}
+TAG_BOXES[2] = (6, 4, 15, 14)
+
+# The drawn box of each room's name, in map units (x0, y0, x1, y1), measured
+# in Chromium; a station's outline keeps at least 1 unit away from it.
+ROOM_NAME_BOXES = {
+    "lecture-hall": (88, 146, 162, 156),
+    "mon-cafe": (320, 146, 380, 156),
+    "canteen": (539, 146, 591, 156),
+    "ctt": (37, 242, 143, 252),
+    "pingo-doce": (579, 415, 650, 428),
+}
+NAME_MARGIN = 1
+
+
+def box_at(station_id, offsets):
+    """A box of offsets from the station's centre, as a rectangle on the map."""
     station = station_called(station_id)
-    left, top, right, bottom = STATION_BOXES[station_id]
+    left, top, right, bottom = offsets
     return {"x": station["x"] + left, "y": station["y"] + top, "w": right - left, "h": bottom - top}
+
+
+def station_box(station_id):
+    return box_at(station_id, STATION_BOXES[station_id])
+
+
+def name_box(room_id, margin=0):
+    x0, y0, x1, y1 = ROOM_NAME_BOXES[room_id]
+    return {"x": x0 - margin, "y": y0 - margin, "w": x1 - x0 + 2 * margin, "h": y1 - y0 + 2 * margin}
 
 
 def overlap(first, second):
@@ -370,6 +408,41 @@ def test_every_station_with_an_object_has_a_box():
 def test_no_station_object_or_its_outline_lies_on_a_solid(station_id):
     box = station_box(station_id)
     assert [solid["id"] for solid in SOLIDS if overlap(box, solid)] == []
+
+
+@pytest.mark.parametrize("station_id", sorted(STATION_BOXES))
+def test_no_station_shadow_or_number_tag_lies_on_a_solid(station_id):
+    for offsets in (SHADOW_BOXES[station_id], TAG_BOXES[station_id]):
+        box = box_at(station_id, offsets)
+        assert [solid["id"] for solid in SOLIDS if overlap(box, solid)] == []
+
+
+@pytest.mark.parametrize("station_id", sorted(STATION_BOXES))
+def test_every_station_outline_keeps_1_unit_clear_of_every_room_name(station_id):
+    box = station_box(station_id)
+    assert [room for room in ROOM_NAME_BOXES if overlap(box, name_box(room, NAME_MARGIN))] == []
+
+
+def test_station_10_keeps_clear_of_the_ctt_name_and_of_study_table_2():
+    # Edge case: the laptop is drawn 3 lower; 2 units to the name, 3 to the table.
+    box = station_box(10)
+    assert box["y"] - ROOM_NAME_BOXES["ctt"][3] == 2
+    assert solid_called("ctt-study-table-2")["y"] - (box["y"] + box["h"]) == 3
+
+
+def test_station_10_drawn_in_its_old_place_touched_the_ctt_name():
+    # Rejected: the outline then reached up to y 251, inside the name's margin.
+    old = box_at(10, (-18, -17, 18, 14))
+    assert overlap(old, name_box("ctt", NAME_MARGIN))
+
+
+def test_stations_1_3_and_7_with_the_default_shadow_would_lie_on_a_solid():
+    # Rejected: at the default place the shadow reaches row 1's desk (y 58),
+    # table 3 (y 58) and, measured where the tag does not cover it, the wall
+    # left of station 7 (ending at x 23; the shadow reaches x 22).
+    assert overlap(box_at(1, DEFAULT_SHADOW_BOX), solid_called("lecture-hall-bench-1"))
+    assert overlap(box_at(3, (-10, 7, 12, 14)), solid_called("canteen-table-3"))
+    assert overlap(box_at(7, (-10, 7, 8, 14)), solid_called("lecture-hall-wall-left"))
 
 
 def test_no_two_station_objects_overlap():
@@ -504,12 +577,6 @@ def test_a_way_one_unit_longer_is_found_and_one_as_long_is_not():
 GAME = Path(__file__).resolve().parents[1]
 BROWSER_SCRIPT = Path(__file__).with_name("play_map_polish_in_browser.js")
 
-# Known and reported (M2-1.20): the soft shadow that draw.js puts below every
-# object (an ellipse 22 by 7 units at 10.5 below the centre) reaches onto
-# the desk of the first lecture row below station 1. Station 1 may not move
-# (Duel), and the shadow is drawn by draw.js, outside this to-do's files.
-SHADOWS_ON_FURNITURE = {1}
-
 needs_chromium = pytest.mark.skipif(not playwright_works(), reason="Node with Playwright and Chromium is needed")
 
 
@@ -569,15 +636,76 @@ def test_the_pinned_box_is_the_drawn_object_with_its_outline(drawn, station_id):
 
 
 @needs_chromium
-@pytest.mark.parametrize("station_id", sorted(set(STATION_BOXES) - SHADOWS_ON_FURNITURE))
+@pytest.mark.parametrize("station_id", sorted(STATION_BOXES))
 def test_the_shadow_and_number_tag_lie_on_no_drawn_furniture_and_in_no_wall(drawn, station_id):
     assert drawn["stations"][station_id]["shadowAndTag"]["onFurnitureOrWall"] == []
 
 
 @needs_chromium
-def test_only_the_known_shadow_of_station_1_lies_on_the_first_lecture_row(drawn):
-    # Edge case: the known overlap stays below the object, on row 1's desk.
-    row = solid_called("lecture-hall-bench-1")
-    units = drawn["stations"][1]["shadowAndTag"]["onFurnitureOrWall"]
-    assert units != []
-    assert all(row["x"] <= x < row["x"] + row["w"] and row["y"] - 1 <= y < row["y"] + 3 for x, y in units)
+@pytest.mark.parametrize("station_id", sorted(STATION_BOXES))
+def test_the_pinned_shadow_and_tag_boxes_are_the_drawn_ones(drawn, station_id):
+    row = drawn["stations"][station_id]
+    for part, pinned in (("shadow", SHADOW_BOXES), ("tag", TAG_BOXES)):
+        box = row[part]["box"]
+        assert (box["left"], box["top"], box["right"], box["bottom"]) == pinned[station_id], part
+
+
+@needs_chromium
+def test_the_pinned_room_name_boxes_are_the_drawn_names(drawn):
+    measured = {row["id"]: row["box"] for row in drawn["roomNames"]}
+    assert {room: (box["x0"], box["y0"], box["x1"], box["y1"]) for room, box in measured.items()} == ROOM_NAME_BOXES
+
+
+# The shadow's place in draw.js (with Node, the real drawing files)
+
+SHADOWS_IN_NODE = Path(__file__).with_name("station_shadows_in_node.js")
+needs_node = pytest.mark.skipif(NODE is None, reason="Node is needed")
+
+
+def shadows_drawn(station_ids, shadows=None):
+    """Where draw.js draws the shadow of each station: {id: [(x, y), ...]}."""
+    stations = [station_called(station_id) for station_id in station_ids]
+    finished = subprocess.run(
+        [NODE, str(SHADOWS_IN_NODE)],
+        input=json.dumps({"stations": stations, "shadows": shadows or {}}),
+        capture_output=True, text=True, timeout=60, check=False,
+    )
+    assert finished.returncode == 0, finished.stderr
+    return {int(key): [tuple(place) for place in places] for key, places in json.loads(finished.stdout).items()}
+
+
+@needs_node
+def test_a_drawing_without_its_own_shadow_place_gets_the_default_shadow():
+    others = sorted(set(STATION_BOXES) - {1, 3, 7})
+    drawn = shadows_drawn(others)
+    for station_id in others:
+        station = station_called(station_id)
+        assert drawn[station_id] == [(station["x"] + 1, station["y"] + 10.5)], station_id
+
+
+@needs_node
+def test_stations_1_3_and_7_draw_their_shadow_at_their_own_place():
+    drawn = shadows_drawn([1, 3, 7])
+    for station_id, (dx, dy) in {1: (1, 6.5), 3: (1, 4.5), 7: (5, 8)}.items():
+        station = station_called(station_id)
+        assert drawn[station_id] == [(station["x"] + dx, station["y"] + dy)], station_id
+
+
+@needs_node
+def test_a_drawing_that_says_it_has_no_shadow_gets_none():
+    assert shadows_drawn([4], {4: None}) == {4: []}
+
+
+@needs_node
+def test_without_its_own_place_station_1_gets_the_default_shadow_again():
+    station = station_called(1)
+    assert shadows_drawn([1], {1: "default"}) == {1: [(station["x"] + 1, station["y"] + 10.5)]}
+
+
+@needs_node
+@pytest.mark.parametrize("shadow", [{"x": "1", "y": 2}, {"x": 1}, "below", 5, [1, 2], True],
+                         ids=["text", "no y", "word", "number", "list", "true"])
+def test_a_shadow_place_that_is_not_two_numbers_gives_the_default_shadow(shadow):
+    # Edge cases: a broken place never moves or hides the shadow.
+    station = station_called(4)
+    assert shadows_drawn([4], {4: shadow}) == {4: [(station["x"] + 1, station["y"] + 10.5)]}

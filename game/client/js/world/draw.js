@@ -919,14 +919,40 @@ Game.world = Game.world || {};
     return 0.5 - 0.5 * Math.cos((Number(now) || 0) / PULSE_MILLISECONDS * Math.PI * 2);
   }
 
+  // Where the soft shadow below an object lies: the middle of the ellipse,
+  // from the station's centre in map units.
+  var DEFAULT_SHADOW = { x: 1, y: 10.5 };
+
+  // The shadow of a drawing from art/stations.js (M2-1.20). A drawing may
+  // say where its shadow lies with `drawing.shadow = {x, y}`, or that it has
+  // none with `drawing.shadow = null`, so that the shadow stays off the
+  // furniture next to it. Without it (or with anything else) the shadow
+  // lies at DEFAULT_SHADOW.
+  function shadowOf(drawObject) {
+    if (!("shadow" in drawObject)) {
+      return DEFAULT_SHADOW;
+    }
+    var shadow = drawObject.shadow;
+    if (shadow === null) {
+      return null;
+    }
+    var isPlace = typeof shadow === "object"
+      && typeof shadow.x === "number" && isFinite(shadow.x)
+      && typeof shadow.y === "number" && isFinite(shadow.y);
+    return isPlace ? shadow : DEFAULT_SHADOW;
+  }
+
   // The object of a station, its soft shadow and its number tag.
   function drawStationObject(ctx, station, drawObject) {
     ctx.save();
     ctx.translate(station.x, station.y);
-    ctx.fillStyle = "rgba(46, 42, 59, 0.16)";
-    ctx.beginPath();
-    ctx.ellipse(1, 10.5, 11, 3.5, 0, 0, Math.PI * 2);
-    ctx.fill();
+    var shadow = shadowOf(drawObject);
+    if (shadow) {
+      ctx.fillStyle = "rgba(46, 42, 59, 0.16)";
+      ctx.beginPath();
+      ctx.ellipse(shadow.x, shadow.y, 11, 3.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     drawObject(ctx);
     ctx.restore();
     drawNumberTag(ctx, station);
