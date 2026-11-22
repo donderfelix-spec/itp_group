@@ -884,11 +884,23 @@ Game.world = Game.world || {};
     ctx.setLineDash([]);
   }
 
-  // The red button for the emergency meeting.
+  // An emergency stop switch with a yellow safety plate and raised red cap.
   function drawButton(ctx, campus, visible) {
-    if (visible && campus.button) {
-      circle(ctx, campus.button.x, campus.button.y, campus.button.r, CORAL, 2.5);
-    }
+    if (!visible || !campus.button) return;
+    var button = campus.button;
+    var x = button.x;
+    var y = button.y;
+    var r = button.r;
+    var half = r * 0.86;
+    var plate = { x: x - half, y: y - half, w: 2 * half, h: 2 * half };
+
+    box(ctx, { x: plate.x, y: plate.y + r * 0.14, w: plate.w, h: plate.h },
+      r * 0.22, OUTLINE, 0);
+    box(ctx, plate, r * 0.22, YELLOW, r * 0.12);
+    circle(ctx, x, y, r * 0.69, "#9E352E", r * 0.12);
+    circle(ctx, x, y - r * 0.12, r * 0.54, CORAL, 0);
+    line(ctx, x, y - r * 0.41, x, y - r * 0.04, CREAM, r * 0.15);
+    circle(ctx, x, y + r * 0.15, r * 0.087, CREAM, 0);
   }
 
   // ---- Task stations (Felix, 2026-11-21) -------------------------------
