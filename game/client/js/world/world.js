@@ -1139,11 +1139,11 @@ Game.world = Game.world || {};
   }
 
   function isAtEmergencyButton() {
-    if (!campus || !campus.button || !emergencyHandler || !emergencyIsUnlocked()) return false;
+    if (ownIsGhost || !campus || !campus.button || !emergencyHandler || !emergencyIsUnlocked()) return false;
     var position = ownServerPosition();
     if (!position) return false;
     var button = campus.button;
-    return Math.hypot(position.x - button.x, position.y - button.y) <= (button.r || 0) + REPORT_RANGE;
+    return Math.hypot(position.x - button.x, position.y - button.y) <= campus.use_range;
   }
 
   function useActionInRange() {
@@ -1228,7 +1228,8 @@ Game.world = Game.world || {};
   // stylesheet gives the two looks.
   function updateUseButton(idInRange) {
     if (!useButton) return;
-    if (ownIsFreeRider) {
+    var emergencyNearby = isAtEmergencyButton();
+    if (ownIsFreeRider && !emergencyNearby) {
       var secondsLeft = failCooldownSeconds();
       var fill = window.ClassicFailButton.fillFraction(
         failStatus, failStatusReceivedAt, performance.now(), FAIL_COOLDOWN_SECONDS
@@ -1236,10 +1237,7 @@ Game.world = Game.world || {};
       useButton.classList.add("fail-button");
       useButtonHasFailLook = true;
       useButton.style.setProperty("--fail-fill", (fill * 100) + "%");
-      var emergencyNearby = isAtEmergencyButton();
-      useButton.textContent = emergencyNearby
-        ? "E Emergency"
-        : secondsLeft > 0
+      useButton.textContent = secondsLeft > 0
         ? "Let fail (" + secondsLeft + " s)"
         : (failInRange ? "Let fail (" + FAIL_RANGE_TILES + " tiles)" : "Let fail");
       var shouldDisableFail = !isFailButtonActive() || inputPaused;
@@ -1253,9 +1251,7 @@ Game.world = Game.world || {};
       useButton.classList.remove("fail-button");
       useButtonHasFailLook = false;
     }
-    var emergencyNearby = isAtEmergencyButton();
     var shouldBeDisabled = (idInRange === null && !emergencyNearby) || inputPaused;
-    if (!useButton) return;
     useButton.textContent = emergencyNearby ? "E Emergency" : USE_BUTTON_TEXT;
     if (useButton.disabled === shouldBeDisabled) return;
     // Some browsers swallow key events while a switched-off button has the
