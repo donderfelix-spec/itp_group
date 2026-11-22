@@ -13,6 +13,9 @@
 //   roomNames  for every room the box of its drawn name, in map units
 //   coverage   for every solid other than a wall: its id, kind and the share
 //              of its rectangle that is drawn
+//   reach      for every station with an object: how far its drawing alone
+//              reaches from the station's centre (left, top, right, bottom),
+//              in map units, to the last pixel it touches
 //
 // How it is measured: the page's own Game.world.drawMap draws the map at 4
 // pixels per unit, the same way as play_campus_detail_in_browser.js:
@@ -21,8 +24,9 @@
 //   - without the stations,
 //   - without the stations and with only the walls as solids (and without
 //     the decor that stands on solids).
-// A pixel counts when it differs clearly between two of these pictures, a
-// unit (for the boxes) when 6 of its 16 pixels do. The last two pictures
+// A pixel counts when it differs clearly between two of these pictures (for
+// the soft shadow, which is faint like the furniture's, a little), a unit
+// (for the boxes) when 6 of its 16 pixels do. The last two pictures
 // give the drawn furniture; a wall is the rectangle of a wall solid.
 const { chromium } = require('playwright');
 
@@ -52,7 +56,7 @@ function stationCheck() {
     }
 
     // The map with every station's drawing replaced by nothing (with the
-    // same shadow place): only the
+    // same shadow and tag places): only the
     // shadow and the number tag that draw.js adds are left. No outline is
     // drawn here, so no outline is made (and kept) from the empty drawings.
     // With `withShadows` false the empty drawings say they have no shadow
@@ -65,6 +69,7 @@ function stationCheck() {
         const empty = function () {};
         if (!withShadows) empty.shadow = null;
         else if ('shadow' in kept[id]) empty.shadow = kept[id].shadow;
+        if ('tag' in kept[id]) empty.tag = kept[id].tag;
         drawings[id] = empty;
       });
       try {
@@ -74,26 +79,31 @@ function stationCheck() {
       }
     }
 
+    // How much two pixels must differ (red + green + blue) to count. The
+    // soft shadow is the furniture's: it differs from the floor by only
+    // about 25, so for the shadow alone a smaller difference counts.
+    const CLEAR = 60; const FAINT = 12;
+
     // 1 for every pixel where the two pictures differ clearly, else 0.
-    function pixelDifference(first, second) {
+    function pixelDifference(first, second, least = CLEAR) {
       const pixels = new Uint8Array(W * S * H * S);
       for (let p = 0; p < pixels.length; p++) {
         const i = p * 4;
         const d = Math.abs(first[i] - second[i]) + Math.abs(first[i + 1] - second[i + 1]) + Math.abs(first[i + 2] - second[i + 2]);
-        pixels[p] = d > 60 ? 1 : 0;
+        pixels[p] = d > least ? 1 : 0;
       }
       return pixels;
     }
 
     // 1 for every unit where the two pictures differ, else 0.
-    function difference(first, second) {
+    function difference(first, second, least = CLEAR) {
       const units = new Uint8Array(W * H);
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         let differing = 0;
         for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
           const i = ((y * S + py) * W * S + x * S + px) * 4;
           const d = Math.abs(first[i] - second[i]) + Math.abs(first[i + 1] - second[i + 1]) + Math.abs(first[i + 2] - second[i + 2]);
-          if (d > 60) differing++;
+          if (d > least) differing++;
         }
         units[y * W + x] = differing >= 6 ? 1 : 0;
       }
@@ -120,12 +130,12 @@ function stationCheck() {
     // add to the shadow and the tag; the shadow and the tag are what draw.js
     // adds to the map.
     const parts = {
-      object: [withStations, shadowsAndTags],
-      objectAndLowOutline: [lowOutline, shadowsAndTags],
-      objectAndHighOutline: [highOutline, shadowsAndTags],
-      shadowAndTag: [shadowsAndTags, noStations],
-      shadow: [shadowsAndTags, tagsOnly],
-      tag: [tagsOnly, noStations],
+      object: [withStations, shadowsAndTags, CLEAR],
+      objectAndLowOutline: [lowOutline, shadowsAndTags, CLEAR],
+      objectAndHighOutline: [highOutline, shadowsAndTags, CLEAR],
+      shadowAndTag: [shadowsAndTags, noStations, FAINT],
+      shadow: [shadowsAndTags, tagsOnly, FAINT],
+      tag: [tagsOnly, noStations, CLEAR],
     };
     const furniture = pixelDifference(noStations, bare);
     const inWall = new Uint8Array(W * S * H * S);
@@ -136,9 +146,9 @@ function stationCheck() {
     }
 
     const unitMasks = {}; const pixelMasks = {};
-    for (const [name, [first, second]] of Object.entries(parts)) {
-      unitMasks[name] = difference(first, second);
-      pixelMasks[name] = pixelDifference(first, second);
+    for (const [name, [first, second, least]] of Object.entries(parts)) {
+      unitMasks[name] = difference(first, second, least);
+      pixelMasks[name] = pixelDifference(first, second, least);
     }
 
     function unitsAround(station, visit) {
@@ -213,7 +223,30 @@ function stationCheck() {
       }
       return { id: solid.id, kind: solid.kind, share: count / (solid.w * solid.h) };
     });
-    return { stations, roomNames, coverage };
+    // How far each drawing reaches from its station's centre (left, top,
+    // right, bottom), to the last pixel it touches at all, drawn alone at 8
+    // pixels per unit: its outline grows from there and must fit into the
+    // square of 2 x OBJECT_HALF_SIZE (20) units that draw.js grows it in.
+    const reach = {};
+    for (const id of ids.filter((stationId) => drawings[stationId])) {
+      const P = 8; const HALF = 30;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 2 * HALF * P;
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(P, 0, 0, P, HALF * P, HALF * P);
+      drawings[id](ctx);
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      let left = Infinity; let top = Infinity; let right = -Infinity; let bottom = -Infinity;
+      for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+          if (!data[(y * canvas.width + x) * 4 + 3]) continue;
+          left = Math.min(left, x); right = Math.max(right, x + 1);
+          top = Math.min(top, y); bottom = Math.max(bottom, y + 1);
+        }
+      }
+      reach[id] = [left / P - HALF, top / P - HALF, right / P - HALF, bottom / P - HALF];
+    }
+    return { stations, roomNames, coverage, reach };
   })();
 }
 
