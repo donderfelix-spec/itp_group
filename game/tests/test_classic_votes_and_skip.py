@@ -329,6 +329,18 @@ def test_the_protocol_rejects_skip_discussion_with_fields(extra):
         protocol.parse_client_message(json.dumps({"type": "skip_discussion", **extra}))
 
 
+# Kept from tests/test_classic_skip_vote.py: they check the vote message, not S-151.
+@pytest.mark.parametrize("target", [" ", None, 0, False, [], "  Mara"])
+def test_the_protocol_rejects_other_empty_or_wrong_targets(target):
+    with pytest.raises(protocol.ProtocolError):
+        protocol.parse_client_message(json.dumps({"type": "vote", "target_id": target}))
+
+
+def test_the_protocol_still_needs_a_target():
+    with pytest.raises(protocol.ProtocolError):
+        protocol.parse_client_message('{"type": "vote"}')
+
+
 def test_skip_discussion_rejected_has_its_text_from_design():
     assert protocol.rejection("skip_discussion_rejected")["message"] == "You cannot skip this discussion right now."
 
