@@ -617,7 +617,9 @@ def is_member(name: str, lobby) -> bool:
 def state_of(lobby, viewer=None) -> dict:
     players = lobby.players()
     classic = lobby.classic_round
-    if classic is not None and classic.phase == "round" and viewer not in classic.eliminated:
+    # In every phase of a Classic round (also in a meeting and its result)
+    # the living are not sent the ghosts (M3-3.20). Ghosts see everybody.
+    if classic is not None and viewer not in classic.eliminated:
         players = [pair for pair in players if pair[0] not in classic.eliminated]
     return protocol.lobby_state(lobby.code, lobby.host, players, lobby.mode, lobby.phase)
 
@@ -787,7 +789,9 @@ def tell_positions(lobby):
         taking_positions.add(connection)
         positions = lobby.walkers.positions()
         classic = lobby.classic_round
-        if classic is not None and classic.phase == "round" and name not in classic.eliminated:
+        # In every phase of a Classic round (also in a meeting and its result)
+        # the living are not sent where the ghosts are (M3-3.20).
+        if classic is not None and name not in classic.eliminated:
             positions = [entry for entry in positions if entry[0] not in classic.eliminated]
         if classic is not None:
             # On top of that, a Free Rider in a hiding spot is only sent to
