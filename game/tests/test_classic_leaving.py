@@ -228,6 +228,7 @@ def test_the_last_free_rider_leaving_lets_the_high_performers_win():
 def a_meeting_in_the_vote():
     meeting = meeting_rules.start_discussion(["Ana", "Bo", "Cy", "Dan"], ["Eve"], 100.0)
     meeting["phase"] = "voting"
+    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
     meeting["votes"] = {"Ana": "Bo", "Bo": "Dan", "Cy": SKIP, "Dan": "Bo"}
     return meeting
 
@@ -238,6 +239,7 @@ def test_meeting_remove_player_takes_the_leaver_and_the_votes_for_him_out():
     updated = meeting_rules.remove_player(meeting, "Bo")
 
     assert updated["living"] == ("Ana", "Cy", "Dan")
+    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
     assert updated["votes"] == {"Cy": SKIP}
     # The meeting given is not changed.
     assert meeting["living"] == ("Ana", "Bo", "Cy", "Dan")
@@ -258,6 +260,7 @@ def test_meeting_remove_player_of_somebody_else_changes_no_list():
 
 def test_a_vote_for_the_leaver_ejects_nobody():
     meeting = a_meeting_in_the_vote()
+    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
     meeting["votes"] = {"Ana": "Bo", "Cy": "Bo", "Dan": "Bo"}
     updated = meeting_rules.remove_player(meeting, "Bo")
 
@@ -382,6 +385,7 @@ def test_a_leaver_in_the_vote_is_gone_from_the_voters_and_so_are_the_votes_for_h
     connections, lobby, [fr], [caller, leaver, other, last] = classic_round(connect)
     start_emergency(connections, caller, clock)
     clock.wait(DISCUSSION_SECONDS)
+    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
     connections[leaver].send_json({"type": "vote", "target_id": caller})
     connections[caller].send_json({"type": "vote", "target_id": leaver})
     connections[other].send_json({"type": "vote", "target_id": leaver})
@@ -395,6 +399,7 @@ def test_a_leaver_in_the_vote_is_gone_from_the_voters_and_so_are_the_votes_for_h
         snapshot = of_type(messages, "meeting_state")[-1]
         assert snapshot["phase"] == "voting"
         assert leaver not in snapshot["living"]
+        # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
         assert snapshot["voted"] == []
 
     # The vote ends by its time: a vote for the leaver ejects nobody.

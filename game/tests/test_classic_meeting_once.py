@@ -98,6 +98,7 @@ def start_emergency(connections, caller, clock):
         assert connection.receive_json()["type"] == "meeting_state"
 
 
+# Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
 def everybody_votes(connections, lobby, clock, target_of, last="positions"):
     """After the discussion every living player votes `target_of(voter)`.
 
@@ -151,6 +152,7 @@ def count_applications(monkeypatch):
 def test_a_failure_after_a_meeting_stays_failed_across_ticks(connect, clock):
     connections, lobby, fr, [caller, victim, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
+    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
     everybody_votes(connections, lobby, clock, lambda voter: SKIP)
     assert lobby.meeting["applied"] is True
 
@@ -166,6 +168,7 @@ def test_an_ejection_is_applied_once(connect, clock, monkeypatch):
     connections, lobby, _fr, [caller, ejected, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
 
+    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
     told = everybody_votes(connections, lobby, clock, lambda voter: ejected if voter != ejected else caller)
     ticks(connections)
 
@@ -181,6 +184,7 @@ def test_the_result_of_an_early_end_is_sent_once(connect, clock):
     connections, lobby, _fr, [caller, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
 
+    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
     told = everybody_votes(connections, lobby, clock, lambda voter: SKIP)
     ticks(connections)
     clock.wait(VOTING_SECONDS)
@@ -221,6 +225,7 @@ def test_a_vote_that_comes_after_the_time_ran_out_gets_the_result_sent_once(conn
     start_emergency(connections, caller, clock)
     clock.wait(DISCUSSION_SECONDS + VOTING_SECONDS)  # no tick in between
 
+    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
     connections[voter].send_json({"type": "vote", "target_id": SKIP})
     assert connections[voter].receive_json()["code"] == "vote_rejected"
     told = everybody_until(connections, "classic_roster")  # the result, then the roster
@@ -235,6 +240,7 @@ def test_a_vote_that_comes_after_the_time_ran_out_gets_the_result_sent_once(conn
 def test_a_second_meeting_can_start_after_the_first(connect, clock):
     connections, lobby, _fr, [first_caller, second_caller, *_] = classic_round(connect)
     start_emergency(connections, first_caller, clock)
+    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
     everybody_votes(connections, lobby, clock, lambda voter: SKIP)
     ticks(connections)
 
@@ -252,6 +258,7 @@ def test_a_vote_that_ejects_the_free_rider_still_ends_the_round(connect, clock):
     connections, lobby, fr, [caller, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
 
+    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
     told = everybody_votes(connections, lobby, clock, lambda voter: fr if voter != fr else caller, last="lobby_state")
 
     assert lobby.classic_round is None and lobby.meeting is None  # the round ended
@@ -268,12 +275,14 @@ def test_chat_and_vote_after_the_meeting_are_refused_and_apply_nothing_again(con
     calls = count_applications(monkeypatch)
     connections, lobby, fr, [caller, other, victim, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
+    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
     everybody_votes(connections, lobby, clock, lambda voter: SKIP)
     fail(connections, fr, victim)
 
     connections[other].send_json({"type": "chat", "text": "Too late?"})
     assert connections[other].receive_json()["code"] == "chat_rejected"
     read_until(connections[other], "meeting_state")  # the meeting's result, sent again with the refusal
+    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
     connections[other].send_json({"type": "vote", "target_id": SKIP})
     assert connections[other].receive_json()["code"] == "vote_rejected"
     ticks(connections)
