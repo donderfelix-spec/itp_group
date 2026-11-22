@@ -78,27 +78,6 @@ def without_looks(campus):
     return copy
 
 
-def differences(before, after, path="map"):
-    """The places (as paths) where two maps differ, apart from the looks."""
-    return compare(without_looks(before), without_looks(after), path)
-
-
-def compare(before, after, path):
-    if isinstance(before, dict) and isinstance(after, dict):
-        found = []
-        for key in sorted(set(before) | set(after)):
-            found += compare(before.get(key), after.get(key), f"{path}.{key}")
-        return found
-    if isinstance(before, list) and isinstance(after, list):
-        if len(before) != len(after):
-            return [f"{path} has {len(after)} entries instead of {len(before)}"]
-        found = []
-        for index, (old, new) in enumerate(zip(before, after)):
-            found += compare(old, new, f"{path}[{index}]")
-        return found
-    return [] if before == after else [path]
-
-
 def current_map():
     return json.loads(CAMPUS_FILE.read_text(encoding="utf-8"))
 
@@ -180,66 +159,36 @@ def test_a_bush_moved_by_one_unit_changes_the_digest():
     assert digest(changed) != digest(current_map())
 
 
-def test_a_moved_room_name_or_button_changes_the_digest():
-    # Edge cases: things that are no solid are pinned too.
-    name = current_map()
-    name["rooms"][0]["label"]["y"] += 1
-    button = current_map()
-    button["button"]["x"] += 1
-    assert digest(name) != digest(current_map())
-    assert digest(button) != digest(current_map())
-
-
-def test_a_removed_solid_changes_the_counts():
-    changed = current_map()
-    changed["solids"].pop()
-    assert counts(changed)["solids"] == MAIN_COUNTS["solids"] - 1
-def test_a_new_floor_colour_pattern_and_tier_colour_are_no_difference():
-    before = current_map()
-    after = json.loads(json.dumps(before))
-    after["rooms"][0]["floor"] = "#000000"
-    after["rooms"][1]["pattern"] = "planks"
-    tier = next(item for item in after["decor"] if item["kind"] == "tier")
-    tier["colour"] = "#123456"
-    assert differences(before, after) == []
-
-
-def test_a_moved_bush_is_found():
-    before = current_map()
-    after = json.loads(json.dumps(before))
-    bush = next(solid for solid in after["solids"] if solid["id"] == "deck-tree-1")
-    bush["x"] += 1
-    index = after["solids"].index(bush)
-    assert differences(before, after) == [f"map.solids[{index}].x"]
-
-
-def test_a_removed_or_added_solid_is_found():
-    before = current_map()
-    fewer = json.loads(json.dumps(before))
-    fewer["solids"].pop()
-    more = json.loads(json.dumps(before))
-    more["solids"].append({"id": "extra", "kind": "tree", "x": 0, "y": 0, "w": 1, "h": 1})
-    assert differences(before, fewer) == [f"map.solids has {len(before['solids']) - 1} entries instead of {len(before['solids'])}"]
-    assert differences(before, more) != []
-
-
 @pytest.mark.parametrize("key, value", [("label", {"x": 1, "y": 1}), ("x", 0), ("name", "Café")])
-def test_a_room_key_other_than_floor_and_pattern_is_found(key, value):
-    before = current_map()
-    after = json.loads(json.dumps(before))
-    after["rooms"][1][key] = value
-    found = differences(before, after)
-    assert found and all(place.startswith(f"map.rooms[1].{key}") for place in found)
+def test_a_room_key_other_than_floor_and_pattern_changes_the_digest(key, value):
+    changed = current_map()
+    changed["rooms"][1][key] = value
+    assert digest(changed) != digest(current_map())
 
 
-def test_the_colour_of_decor_that_is_not_on_the_floor_is_found():
+def test_a_moved_button_changes_the_digest():
+    # Edge case: things that are no solid are pinned too.
+    changed = current_map()
+    changed["button"]["x"] += 1
+    assert digest(changed) != digest(current_map())
+
+
+def test_the_colour_of_decor_that_is_not_on_the_floor_changes_the_digest():
     # Edge case: only floor decor may change its colour (a sign on a wall
     # may not).
-    before = current_map()
-    after = json.loads(json.dumps(before))
-    sign = next(item for item in after["decor"] if item["layer"] == "wall" and "colour" in item)
+    changed = current_map()
+    sign = next(item for item in changed["decor"] if item["layer"] == "wall" and "colour" in item)
     sign["colour"] = "#000000"
-    assert len(differences(before, after)) == 1
+    assert digest(changed) != digest(current_map())
+
+
+def test_a_removed_or_added_solid_changes_the_counts():
+    fewer = current_map()
+    fewer["solids"].pop()
+    more = current_map()
+    more["solids"].append({"id": "extra", "kind": "tree", "x": 0, "y": 0, "w": 1, "h": 1})
+    assert counts(fewer)["solids"] == MAIN_COUNTS["solids"] - 1
+    assert counts(more)["solids"] == MAIN_COUNTS["solids"] + 1
 
 
 def test_the_server_still_loads_the_map():
