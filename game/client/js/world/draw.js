@@ -907,9 +907,10 @@ Game.world = Game.world || {};
   var OUTLINE_GROWTH = { low: { dark: 2.6, yellow: 1.6 }, high: { dark: 4.2, yellow: 3.1 } };
   // Half the size of the square an object (and its outline) is drawn into.
   var OBJECT_HALF_SIZE = 20;
-  // How the outline grows (see grownBy): in passes of at most this many
-  // pixels, each in this many directions.
-  var GROW_PASS_PIXELS = 2.5;
+  // How the outline grows (see grownBy): in passes of at most this many map
+  // units, each in this many directions. Counted in map units, a station
+  // needs the same 2 or 3 passes per layer at every zoom.
+  var GROW_PASS_UNITS = 1.5;
   var GROW_DIRECTIONS = 16;
 
   function stationObject(station) {
@@ -934,7 +935,10 @@ Game.world = Game.world || {};
   // The middle of the number tag, from the station's centre in map units,
   // for a drawing without a place of its own.
   var DEFAULT_TAG = { x: 11, y: 9 };
-  var TAG_RADIUS = 4.2;
+  // The tag (the lead, 2026-11-22: smaller than before, 4.2 with a ring of 1).
+  var TAG_RADIUS = 3.5;
+  var TAG_RING = 0.7;
+  var TAG_FONT = 4.2;
 
   function isNumber(value) {
     return typeof value === "number" && isFinite(value);
@@ -985,8 +989,8 @@ Game.world = Game.world || {};
 
   // The station's number in a small cream tag at (x, y) on the map.
   function drawNumberTag(ctx, station, x, y) {
-    circle(ctx, x, y, TAG_RADIUS, CREAM, 1);
-    text(ctx, String(station.id), x, y + 0.3, 5);
+    circle(ctx, x, y, TAG_RADIUS, CREAM, TAG_RING);
+    text(ctx, String(station.id), x, y + 0.25, TAG_FONT);
   }
 
   // ---- The outline: the object's shape, grown a little -----------------
@@ -1007,46 +1011,75 @@ Game.world = Game.world || {};
     return made;
   }
 
+  // The four layers of an outline, from the narrowest to the widest.
+  var OUTLINE_LAYERS = [
+    { growth: OUTLINE_GROWTH.low.yellow, colour: YELLOW },
+    { growth: OUTLINE_GROWTH.low.dark, colour: OUTLINE },
+    { growth: OUTLINE_GROWTH.high.yellow, colour: YELLOW },
+    { growth: OUTLINE_GROWTH.high.dark, colour: OUTLINE }
+  ];
+
+  function silhouetteKey(station, scale, growth, colour) {
+    return station.id + "/" + scale + "/" + growth + "/" + colour;
+  }
+
   // The object drawn in one colour and grown by `growth` map units, as a
   // canvas of the square around the station, at `scale` pixels per unit.
-  // It is made once and kept: drawing it again each frame is cheap.
+  // The four layers of a station are made together, once, and kept:
+  // drawing them again each frame is cheap.
   function silhouette(station, drawObject, scale, growth, colour) {
     if (scale !== silhouetteScale) {
       silhouettes.clear();
       silhouetteScale = scale;
     }
-    var key = station.id + "/" + scale + "/" + growth + "/" + colour;
-    if (silhouettes.has(key)) {
-      return silhouettes.get(key);
+    var key = silhouetteKey(station, scale, growth, colour);
+    if (!silhouettes.has(key)) {
+      makeSilhouettes(station, drawObject, scale);
     }
+    return silhouettes.get(key) || null;
+  }
+
+  // Makes the four layers of a station's outline. Each layer grows from
+  // the one before it (only the shape counts, not its colour), so the widest
+  // needs only what the narrower one lacks: five short passes in all.
+  function makeSilhouettes(station, drawObject, scale) {
     var size = Math.ceil(OBJECT_HALF_SIZE * 2 * scale);
     var shape = newCanvas(size);
     if (!shape) {
-      return null;
+      return;
     }
     var shapeCtx = shape.getContext("2d");
     shapeCtx.setTransform(scale, 0, 0, scale, size / 2, size / 2);
     drawObject(shapeCtx);
-    var grown = grownBy(shape, growth * scale, size);
-    if (!grown) {
-      return null;
+    var source = shape;
+    var grownSoFar = 0;
+    for (var i = 0; i < OUTLINE_LAYERS.length; i++) {
+      var layer = OUTLINE_LAYERS[i];
+      var grown = grownBy(source, layer.growth - grownSoFar, scale, size);
+      if (!grown) {
+        return;
+      }
+      var grownCtx = grown.getContext("2d");
+      grownCtx.globalCompositeOperation = "source-in";
+      grownCtx.fillStyle = layer.colour;
+      grownCtx.fillRect(0, 0, size, size);
+      silhouettes.set(silhouetteKey(station, scale, layer.growth, layer.colour), grown);
+      source = grown;
+      grownSoFar = layer.growth;
     }
-    var grownCtx = grown.getContext("2d");
-    grownCtx.globalCompositeOperation = "source-in";
-    grownCtx.fillStyle = colour;
-    grownCtx.fillRect(0, 0, size, size);
-    silhouettes.set(key, grown);
-    return grown;
   }
 
-  // The shape on the canvas `source` grown by `reach` pixels, on a new
-  // canvas. It grows in small passes: each pass draws the shape of the last
-  // pass in GROW_DIRECTIONS directions, at most GROW_PASS_PIXELS away. Small
-  // passes keep the edge smooth at every zoom, also round the tip of a thin
-  // leg or handle (M2-1.20); one wide pass left a fringe of stripes there.
-  // Two canvases take turns, so a pass never draws onto the shape it reads.
-  function grownBy(source, reach, size) {
-    var passes = Math.max(1, Math.ceil(reach / GROW_PASS_PIXELS));
+  // The shape on the canvas `source` grown by `growth` map units (drawn at
+  // `scale` pixels per unit), on a new canvas. It grows in small passes:
+  // each pass draws the shape of the last pass in GROW_DIRECTIONS
+  // directions, at most GROW_PASS_UNITS away. The copies then lie close
+  // enough together (0.55 units) that the tip of a thin leg or handle (0.7
+  // units) grows round; one wide pass left a fringe of stripes there
+  // (M2-1.20). Two canvases take turns, so a pass never draws onto the shape
+  // it reads.
+  function grownBy(source, growth, scale, size) {
+    var passes = growPasses(growth);
+    var step = growth / passes * scale; // in pixels
     var canvases = [newCanvas(size), newCanvas(size)];
     if (!canvases[0] || !canvases[1]) {
       return null;
@@ -1057,9 +1090,9 @@ Game.world = Game.world || {};
       var nextCtx = next.getContext("2d");
       nextCtx.clearRect(0, 0, size, size);
       nextCtx.drawImage(current, 0, 0);
-      for (var step = 0; step < GROW_DIRECTIONS; step++) {
-        var angle = step / GROW_DIRECTIONS * Math.PI * 2;
-        nextCtx.drawImage(current, Math.cos(angle) * reach / passes, Math.sin(angle) * reach / passes);
+      for (var direction = 0; direction < GROW_DIRECTIONS; direction++) {
+        var angle = direction / GROW_DIRECTIONS * Math.PI * 2;
+        nextCtx.drawImage(current, Math.cos(angle) * step, Math.sin(angle) * step);
       }
       current = next;
     }
@@ -1069,6 +1102,12 @@ Game.world = Game.world || {};
     currentCtx.drawImage(current, 0, 0);
     currentCtx.drawImage(current, 0, 0);
     return current;
+  }
+
+  // How many passes the outline grows `growth` map units in: the same at
+  // every zoom.
+  function growPasses(growth) {
+    return Math.max(1, Math.ceil(growth / GROW_PASS_UNITS));
   }
 
   // Pixels per map unit of the drawing now, rounded so that zooming a
