@@ -121,6 +121,8 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 
 **Area 4 (Lennart)**
 
+- [x] **M3-4.29** Exactly one random active task per High Performer in Classic. Only that task is shown, usable and targeted by the arrow; completion reveals the next of the four randomly ordered assignments. Free Riders receive none (Lennart, 2026-11-22, local Minispiele-und-Modi).
+
 - [x] **M2-4.7a** A fault after a task was counted takes the count back, in the frame and in the Duel, so the server never counts a station the browser was not told about (solved with M2-4.7)
 - [x] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard (S-94). In the pull request after #26
 - [ ] **M2-4.8** Play test: two players play a Duel through to the leaderboard (Lennart). A scripted run with two browsers and the real minigames exists from the building of M2-4.7 (both finish, ranking, second round, time running out). Left to do: two people on two computers on the deployed server, and write down what gets in the way

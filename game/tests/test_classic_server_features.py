@@ -107,7 +107,7 @@ def test_free_rider_cannot_open_or_finish_a_minigame_and_hp_task_advances_progre
     clock.wait(1.1)
     assert ask(connections[hp_id], {"type": "finish_station"}) == {
         "type": "station_done", "station": hp_station,
-        "task_stations": [int(station) for station in round_state.tasks[hp_id] if int(station) != hp_station],
+        "task_stations": [int(round_state.tasks[hp_id][1])],
     }
     assert round_state.progress() == pytest.approx(1 / 12)
 

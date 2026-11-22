@@ -92,7 +92,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Find and report a failed player | M3 | Playable with known defects (M3-3.15) |
 | Emergency meeting with the red button in the centre of the Main Deck (S-147), drawn as an alarm switch (S-149), limited per player, range checked by the server, hint only for the living (S-170) | M3 | Playable with known defects (M3-3.15: the wording “E Call meeting”) |
 | Meeting with text chat and time limit; the window closes after the result (S-153) | M3 | Playable with known defects (M3-3.13) |
-| Own task list per player, only its stations pulse; the Free Rider has none (S-154) | M3 | Done |
+| One random active Classic task per High Performer, next revealed after completion; only the current station pulses and opens, and the arrow leads to it; the Free Rider has none | M3 | In progress on Minispiele-und-Modi |
 | Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie; votes are public and can be changed, after a report already during the discussion, 75 % Skip ends the meeting (S-160 to S-162) | M3 | Done |
 | Result of the vote: character drifts out to sea, display whether it was a Free Rider | M3 | Playable with known defects (text only, no drifting yet, M3-3.5) |
 | Ghosts keep doing their tasks, but they do not talk and do not vote; ghosts see the dead as “Dead” in the Players list (S-164) | M3 | Done (M3-3.9, M3-3.20, 2026-11-22) |
@@ -125,7 +125,7 @@ Stations 7, 10 and 12 use chart reconstruction from survey evidence, a chat dedu
 | Duel: every player starts at a different station, up to 8 players (S-126) | M2 | Done |
 | Stations as objects with a pulsing outline when they matter (S-128) | M2 | Done |
 | Card at the top left with room and next task, direction arrow (S-129) | M2 | Done |
-| Classic: the direction arrow points at the nearest own open task (S-145) | M3 | Done |
+| Classic: the direction arrow points at the single active task | M3 | In progress on Minispiele-und-Modi |
 | Lobby: modes outside their player range (Classic below 4) locked, all in one grey, the chosen one marked by frame and shadow; smaller “?” with even gaps (S-146) | M2 | Done |
 | “Done” for 0.5 s without a close button (S-127) | M2 | Done |
 | Duel: leaderboard with times at the end | M2 | Done |

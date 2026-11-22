@@ -10,6 +10,8 @@ As of 2026-11-19. On 2026-11-18 the team confirmed all entries except those with
 
 ## Game idea
 
+Lennart's single-task request (2026-11-22): in Classic every High Performer has one active task. The server draws each player's four assignments in random order at round start, reveals only the first unfinished one and permits only that station. Finishing it unlocks the next task in that random order. Reads do not redraw a task, and a rolled-back completion restores the same active assignment. The card, station pulse and arrow use the same private single-station list. The finite four-task quota and the existing ghost-task rule remain; Free Riders receive no active tasks.
+
 Lennart's minigame redesign (2026-11-22): stations 7, 10 and 12 replace their answer-labelled clicking puzzles with chart reconstruction, chat deduction and timed three-lane rescue. The user requested more variety and challenge. Older campus_task packets retain their renderer; new openings use campus_challenge.
 
 | No. | Date | Decision | Reason | By |
