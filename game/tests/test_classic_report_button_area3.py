@@ -1,4 +1,4 @@
-"""Area 3: the Report button stays for a living Free Rider near a sheet after a meeting.
+"""Area 3: the Report button stays for a living player near a sheet after a meeting.
 
 Bug: client/js/classic/meeting.js cleared every F-sheet of the client when a
 meeting snapshot arrived. A living player standing next to a sheet that was
@@ -7,8 +7,8 @@ had the sheet.
 
 The test drives the real client files (draw.js, hud-actions.js, world.js,
 meeting.js) in a Node vm with a small DOM stub; only the map and character
-drawing are stand-ins. Sheet A is reported in a meeting, sheet B
-stays on the map, and the living player stands next to sheet B.
+drawing are stand-ins. Sheet A is reported in a meeting, sheet B is not;
+both stay on the map (S-150), and the living player stands next to sheet B.
 """
 
 import json
