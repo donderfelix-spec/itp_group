@@ -158,4 +158,5 @@ def test_report_button_stays_for_a_living_player_next_to_a_sheet_after_a_meeting
     assert outcome["buttonFound"] is True
     assert outcome["hiddenBeforeMeeting"] is False
     assert outcome["hiddenAfterMeeting"] is False
-    assert outcome["sheetsAfter"] == ["f-sheet-2"]
+    # S-150: a reported sheet (f-sheet-1) stays on the map until the round ends.
+    assert outcome["sheetsAfter"] == ["f-sheet-1", "f-sheet-2"]
