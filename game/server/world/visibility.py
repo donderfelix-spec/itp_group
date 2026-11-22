@@ -1,13 +1,15 @@
-"""Who is sent whose position: the hiding spots (S-62, M3-1.4).
+"""Who is sent whose position: line of sight and hiding spots.
 
-Plain functions: no network, no clock. The server leaves a hidden player out
-of the `positions` message, so a living High Performer never learns where
-that player is, however near (S-192; the reveal range of 35 is gone).
-Those who may still see him (himself, the other Free Riders, ghosts) are
-told that he hides (`told_hidden`), so their pages draw him as hidden.
+Plain functions: no network, no clock. The server leaves a player out of the
+`positions` message when he is outside the viewer's sight (S-185) or hidden
+from him, so a browser never learns where that player is. A living High
+Performer is never sent a hidden player, however near (S-192; the reveal
+range of 35 is gone). Those who may still see him (himself, the other Free
+Riders within their sight, ghosts) are told that he hides (`told_hidden`),
+so their pages draw him as hidden.
 
-Only a living Free Rider hides (S-132), and only during a Classic round
-(S-131). Everybody else is sent as anywhere on the map.
+Limited vision applies to living Classic players. The hiding-spot rules
+additionally conceal a hiding Free Rider from every living High Performer.
 """
 
 from math import hypot
@@ -16,6 +18,47 @@ from math import hypot
 # others. Since M3-1.6 (S-191) a meeting ends hiding, so in practice nobody
 # is hidden in the phase "meeting"; who hides is `ClassicRound.hidden`.
 HIDING_PHASES = ("round", "meeting")
+
+DEFAULT_VISION_RANGE = 120
+
+
+def _wall_blocks(start, end, wall):
+    """Intersect the open sight segment with the solid wall rectangle."""
+    near, far = 0.0, 1.0
+    for origin, target, edge, size in zip(
+        start, end, (wall["x"], wall["y"]), (wall["w"], wall["h"])
+    ):
+        delta = target - origin
+        if delta == 0:
+            if not edge <= origin <= edge + size:
+                return False
+            continue
+        first = (edge - origin) / delta
+        last = (edge + size - origin) / delta
+        near = max(near, min(first, last))
+        far = min(far, max(first, last))
+        if near > far:
+            return False
+    return near < 1 and far > 0
+
+
+def positions_in_sight(positions, viewer, campus):
+    """Keep the viewer and nearby players visible through clear space."""
+    own = next((entry for entry in positions if entry[0] == viewer), None)
+    if own is None:
+        return []
+    _, x, y = own
+    origin = (x, y)
+    vision_range = campus.get("classic_vision_range", DEFAULT_VISION_RANGE)
+    walls = [solid for solid in campus["solids"] if solid["kind"] == "wall"]
+    return [
+        entry
+        for entry in positions
+        if entry[0] == viewer or (
+            hypot(entry[1] - x, entry[2] - y) <= vision_range
+            and not any(_wall_blocks(origin, entry[1:], wall) for wall in walls)
+        )
+    ]
 
 
 def hiding_spot(campus, x, y):

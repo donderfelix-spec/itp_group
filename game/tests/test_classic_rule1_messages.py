@@ -41,6 +41,10 @@ FAR_PLACES = [(100.0, 330.0), (300.0, 330.0), (300.0, 400.0), (200.0, 300.0), (4
 FAIL_PLACE = (500.0, 450.0)
 SHEET_PLACE = (FAIL_PLACE[0] + 1, FAIL_PLACE[1])  # where the victim stands
 HEDGE = (float(app.state.campus["hiding_spots"][0]["x"]), float(app.state.campus["hiding_spots"][0]["y"]))
+# 45 units right of the hedge, in clear sight of it (S-185) but beyond the
+# reveal range of 35: who stands here sees the hider only by rule, never by
+# being close.
+HEDGE_WATCHER = (HEDGE[0] + 45.0, HEDGE[1])
 
 WAIT_SECONDS = 10.0  # the longest a step waits for the messages it expects
 SIGN_UP_SECONDS = 30.0  # hashing a password takes a while, more so with several test runs at once
@@ -573,8 +577,22 @@ def free_rider_tries_a_task(rec, free_rider):
 
 
 def walk(rec, name, hidden_free_rider=None):
-    """The tick sends everybody the positions; `hidden_free_rider` stands in the hedge and hides with E."""
-    rec.place({hidden_free_rider: HEDGE} if hidden_free_rider else {})
+    """The tick sends everybody the positions; `hidden_free_rider` stands in the hedge and hides with E.
+
+    Since S-185 a living player only gets the positions in his sight. So the
+    other living Free Riders and one living High Performer watch the hedge
+    from HEDGE_WATCHER: the checks of S-133 and S-137 then depend on the
+    hiding rules alone, not on walls or distance. Since S-192 the High
+    Performer must not get him even there.
+    """
+    special = {}
+    if hidden_free_rider:
+        special[hidden_free_rider] = HEDGE
+        living = [name for name in rec.connections if name != hidden_free_rider and name not in rec.ghosts]
+        watchers = [name for name in living if rec.roles[name] == "FR"]
+        watchers += [name for name in living if rec.roles[name] == "HP"][:1]
+        special.update({name: HEDGE_WATCHER for name in watchers})
+    rec.place(special)
     if hidden_free_rider and not classic_for(hidden_free_rider).is_hidden(hidden_free_rider):
         rec.connections[hidden_free_rider].send_json({"type": "hide"})
         rec.step(f"{hidden_free_rider} presses E in the hedge", {hidden_free_rider: ["classic_hiding"]}, actor=hidden_free_rider)

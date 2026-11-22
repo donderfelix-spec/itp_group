@@ -65,7 +65,7 @@ from server.net.attempts import AttemptLimits
 from server.net.lobbies import Lobbies
 from server.net.repeated_faults import RepeatedFaults
 from server.net.sessions import Sessions
-from server.world import paths
+from server.world import paths, visibility
 from server.world.movement import is_free
 
 CAMPUS = app.state.campus
@@ -364,13 +364,21 @@ def walk_to(browser, label, name, goal, within=5):
     raise AssertionError(f"{name} did not get to {goal}, stands at {position(name)}")
 
 
-def free_place_at(centre, distance, near=None):
-    """A free place `distance` units from `centre` (in a direction near `near`, if given)."""
+def in_sight(origin, target):
+    """Keep these hiding tests independent of ordinary sight occlusion."""
+    entries = [("viewer", *origin), ("target", *target)]
+    return len(visibility.positions_in_sight(entries, "viewer", CAMPUS)) == 2
+
+
+def free_place_at(centre, distance, near=None, sight_to=()):
+    """A free place around `centre`, optionally with sight of other points."""
     places = []
     for step_ in range(72):
         angle = step_ * math.pi / 36
         place = (round(centre[0] + distance * math.cos(angle)), round(centre[1] + distance * math.sin(angle)))
-        if is_free(place[0], place[1], SOLIDS, WIDTH, HEIGHT) and GRID.nearest_free_point(*place, 2) is not None:
+        if (is_free(place[0], place[1], SOLIDS, WIDTH, HEIGHT)
+                and GRID.nearest_free_point(*place, 2) is not None
+                and all(in_sight(place, target) for target in sight_to)):
             places.append(place)
     assert places, f"no free place {distance} units from {centre}"
     if near is None:
@@ -493,7 +501,7 @@ def play_one_spot(browser, spot_name, fr, far, near, others):
     # The far High Performer first, and the Free Rider at the entry: he is
     # seen there by the far one, which shows the far one would draw him.
     start, direction = entry_for(spot)
-    far_place = free_place_at(centre, 55, near=start)
+    far_place = free_place_at(centre, 55, near=start, sight_to=(start, centre))
     put(names[far], far_place)
     put(names[fr], start)
     standing_still(names[fr])
@@ -514,8 +522,8 @@ def play_one_spot(browser, spot_name, fr, far, near, others):
     browser.shot(far, f"{spot_name}_2_far_high_performer")
 
     # The near High Performer walks from 55 units to within 35 and back out.
-    near_from = free_place_at(centre, 55, near=far_place if spot_name != "hedge" else (595, 300))
-    near_to = free_place_at(centre, 22, near=near_from)
+    near_from = free_place_at(centre, 55, near=far_place, sight_to=(centre,))
+    near_to = free_place_at(centre, 22, near=near_from, sight_to=(centre,))
     put(names[near], near_from)
     standing_still(names[near])
     walk_start = browser.now(near)
@@ -695,10 +703,13 @@ def classic(server):
             put(names[other2], (SPAWN[0] - 60, SPAWN[1]))
             seen["spots"].append(play_one_spot(browser, spot_name, fr, far, near, [other1, other2]))
 
-        # A High Performer in a spot: everybody gets him, nobody sees "Hidden".
+        # A High Performer in a spot: everybody in sight gets him.
         spot = SPOTS["pingo-doce"]
-        put(names[fr], free_place_at((spot["x"], spot["y"]), 55))
-        put(names[far], SPAWN)
+        centre = (spot["x"], spot["y"])
+        start, _ = entry_for(spot)
+        watcher = free_place_at(centre, 55, near=start, sight_to=(centre, start))
+        for label in (fr, far, other1, other2):
+            put(names[label], watcher)
         mark = {label: browser.now(label) for label in LABELS}
         hp_at, _ = walk_into(browser, near, names[near], spot)
         time.sleep(0.5)
@@ -1042,7 +1053,7 @@ def test_walking_out_of_the_spot_shows_him_at_once_at_his_new_place(classic, spo
     assert record["fr_hint_after_leaving"] is False
 
 
-def test_a_high_performer_in_a_spot_is_sent_to_everybody_and_sees_no_hidden(classic):
+def test_a_high_performer_in_a_spot_is_sent_to_everybody_in_sight_and_sees_no_hidden(classic):
     record = classic["hp_in_spot"]
     assert all(record["listed_by"].values()), record
     assert max(record["distances"].values()) > REVEAL_RANGE

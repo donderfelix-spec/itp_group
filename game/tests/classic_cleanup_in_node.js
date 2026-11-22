@@ -232,6 +232,7 @@ const minigames = {
 let emergencyButtonDrawn = null;
 // The characters drawn in the last frame: {character, x, alpha}.
 let charactersDrawn = [];
+let fallenCharactersDrawn = [];
 // The stations the last frame let pulse (the fifth argument of drawMap).
 let pulsingStations = null;
 
@@ -290,7 +291,12 @@ page.Game = {
     // the world then draws a circle in its place.
     drawCharacter(ctx, character, x) {
       if (character === 'broken') throw new Error('This character cannot be drawn.');
-      charactersDrawn.push({ character: character, x: x, alpha: ctx.globalAlpha });
+      if (ctx === element('map').getContext()) {
+        charactersDrawn.push({ character: character, x: x, alpha: ctx.globalAlpha });
+      }
+    },
+    drawFallenCharacter(ctx, character, x, y) {
+      fallenCharactersDrawn.push({ character: character, x: x, y: y });
     },
     chooseLabels: (labels) => ({ shown: labels, hidden: new Set() }),
   },
@@ -329,6 +335,7 @@ function runFrame() {
   context.texts = [];
   context.strokes = [];
   charactersDrawn = [];
+  fallenCharactersDrawn = [];
   try {
     frame(clock);
   } catch (problem) {
@@ -489,6 +496,7 @@ const STEPS = {
   lookAtDrawing() {
     drawings.push({
       charactersDrawn: charactersDrawn,
+      fallenCharactersDrawn: fallenCharactersDrawn,
       // How many crossed-out eyes the last frame drew (their coral strokes).
       hiddenSymbols: element('map').getContext().strokes.filter((colour) => colour === FREE_RIDER_RED).length,
       hiddenHintShown: everyElementBelow(element('classic-progress'))

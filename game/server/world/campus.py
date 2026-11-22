@@ -138,6 +138,8 @@ def check_campus(campus) -> dict:
         # Performer at any distance. A map that still names it is refused,
         # so the old range cannot quietly come back.
         raise CampusError("hide_reveal_range is no longer used (S-192); remove it from the map.")
+    if "classic_vision_range" in campus and _number(campus, "classic_vision_range", "the map") <= 0:
+        raise CampusError("classic_vision_range must be above 0.")
     for index, spot in enumerate(_list(campus, "hiding_spots")):
         _check_point(spot, f"hiding_spots[{index}]", width, height)
         if _number(spot, "r", f"hiding_spots[{index}]") <= 0:

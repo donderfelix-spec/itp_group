@@ -45,7 +45,7 @@ OWN_CHARACTER = "c1"  # Ana's character in PLAYERS
 OTHER = "Bo"
 OTHER_CHARACTER = "c2"
 HIDDEN_ALPHA = 0.5
-GHOST_ALPHA = 0.38
+GHOST_ALPHA = 0.5
 
 
 def own_is_hidden(**state):

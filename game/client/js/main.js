@@ -305,6 +305,7 @@ window.Game = window.Game || {};
     // the character walk again (classicMeeting.hide).
     if (message.phase !== 'round') clearClassicLeftovers();
     mode = message.mode;
+    callWorld('setClassicVision', mode === 'classic' && message.phase === 'round');
     Game.duel.noteLobby(message);
     Game.classicRound.setLobby(message);
     Game.countdown.noteLobby(message);
