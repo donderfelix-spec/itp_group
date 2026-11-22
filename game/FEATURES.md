@@ -122,6 +122,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Duel: every player starts at a different station, up to 8 players (S-126) | M2 | Done |
 | Stations as objects with a pulsing outline when they matter (S-128) | M2 | Done |
 | Card at the top left with room and next task, direction arrow (S-129) | M2 | Done |
+| Classic: the direction arrow points at the nearest own open task (S-145) | M3 | Done |
 | “Done” for 0.5 s without a close button (S-127) | M2 | Done |
 | Duel: leaderboard with times at the end | M2 | Done |
 | Beach exit: “Catch the wave”, click at the right moment (first “If time allows” minigame) | M4 | Planned |
