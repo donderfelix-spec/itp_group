@@ -198,6 +198,14 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 
 - [x] **M3-4.24** Draw the emergency button as an alarm switch (Hanna, 2026-11-22), kept inside its circle of radius 11. Done: S-149, `tests/test_emergency_button_art.py`
 
+### Lennart's Classic follow-ups (2026-11-22)
+
+- [x] **M3-4.24** Let a living Free Rider report an F-sheet, including a sheet they caused (Lennart). Verified by the report rules and regression test, 2026-11-22.
+- [ ] **M3-4.25** After a player is failed, prevent them from opening or finishing tasks and from increasing group progress; also stop any task already open when they fail (Lennart). This replaces the previous ghost-task behaviour when implemented.
+- [x] **M3-4.26** Double the F-sheet reporting range from 2 to 4 map units so players can report from farther away; server check and browser hint are in sync (Lennart, 2026-11-22).
+- [x] **M3-4.27** Double the “Let fail” range from 5 to 10 map units so the Free Rider can fail a player from farther away; server check and browser hint are in sync (Lennart, 2026-11-22).
+- [x] **M3-4.28** Show F-sheets and their portraits 30% larger. Classic exposes only the first unfinished assigned task; the arrow points to it, other tasks are unavailable, and completion unlocks the next task (Lennart, 2026-11-22).
+
 ## M4: Extension
 
 - [ ] **M4-3.1** Sabotage “Wi-Fi outage”
