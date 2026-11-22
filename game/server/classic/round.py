@@ -124,6 +124,13 @@ class ClassicRound:
         return self.meeting
 
     def advance_meeting(self, now):
+        """Advance this round's own copy of the meeting; only tests use it.
+
+        The server applies a meeting's result through `apply_meeting_result`
+        (M3-3.9) and must not use this method: it replaces `eliminated` with
+        the meeting's list, which would undo failures made after the meeting
+        started.
+        """
         if self.meeting is None:
             raise ValueError("There is no active meeting.")
         self.meeting = meeting_rules.advance_meeting(self.meeting, now)

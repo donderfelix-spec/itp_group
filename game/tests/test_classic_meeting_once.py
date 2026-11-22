@@ -10,6 +10,7 @@ meeting is refused; a new meeting can start.
 """
 
 import random
+import time
 
 from server import main
 from server.classic.meeting import DISCUSSION_SECONDS, SKIP, VOTING_SECONDS
@@ -53,15 +54,40 @@ def everything_sent(connection):
         arrived.append(message)
 
 
+def read_until(connection, wanted):
+    """The messages of this connection up to and including the next one of type `wanted`."""
+    received = []
+    while not received or received[-1]["type"] != wanted:
+        received.append(connection.receive_json())
+    return received
+
+
+def everybody_until(connections, wanted):
+    """`read_until` for every member. Returns `{name: messages}`."""
+    return {name: read_until(connection, wanted) for name, connection in connections.items()}
+
+
+def wait_for_background_sends():
+    """Wait until the sends the server started as tasks of their own are done (the tick, positions)."""
+    deadline = time.monotonic() + 5
+    while main.background_sends:
+        assert time.monotonic() < deadline, "the server's background sends did not finish"
+        time.sleep(0.01)
+
+
 def results_in(messages):
     return [m for m in messages if m["type"] == "meeting_state" and m["phase"] == "result"]
 
 
 def ticks(connections, count=3):
-    """Run the server's real tick a few times, as the server does every 50 ms."""
+    """Run the server's real tick a few times, as the server does every 50 ms.
+
+    The tick sends in the background; this waits until those sends are done.
+    """
     first = next(iter(connections.values()))
     for _ in range(count):
         first.portal.call(REAL_TICK, 0.0)
+    wait_for_background_sends()
 
 
 def start_emergency(connections, caller, clock):
@@ -72,16 +98,26 @@ def start_emergency(connections, caller, clock):
         assert connection.receive_json()["type"] == "meeting_state"
 
 
-def everybody_votes(connections, lobby, clock, target_of):
+def everybody_votes(connections, lobby, clock, target_of, last="positions"):
     """After the discussion every living player votes `target_of(voter)`.
 
-    The last vote ends the meeting at once. Returns what each member was sent.
+    The last vote ends the meeting at once. Returns what each member was
+    sent, up to the message of type `last`: the positions that follow the
+    result, or the lobby state when the result ends the round. The votes
+    are cast one after the other, each once everybody has its snapshot, so
+    no two vote handlers run at the same time.
     """
     clock.wait(DISCUSSION_SECONDS)
     living = [name for name in FIVE if name not in lobby.classic_round.eliminated]
-    for voter in living:
+    told = {name: [] for name in connections}
+    for voter in living[:-1]:
         connections[voter].send_json({"type": "vote", "target_id": target_of(voter)})
-    return {name: everything_sent(connection) for name, connection in connections.items()}
+        for name, messages in everybody_until(connections, "meeting_state").items():
+            told[name] += messages
+    connections[living[-1]].send_json({"type": "vote", "target_id": target_of(living[-1])})
+    for name, messages in everybody_until(connections, last).items():
+        told[name] += messages
+    return told
 
 
 def fail(connections, fr, victim):
@@ -109,7 +145,7 @@ def count_applications(monkeypatch):
     return calls
 
 
-# Accepted: the result is applied once and sent once, then the meeting is gone
+# Accepted: the result is applied once and sent once; the finished meeting stays until the next one
 
 
 def test_a_failure_after_a_meeting_stays_failed_across_ticks(connect, clock):
@@ -166,7 +202,9 @@ def test_a_meeting_ended_by_its_time_is_sent_once_by_the_tick(connect, clock, mo
     clock.wait(DISCUSSION_SECONDS + VOTING_SECONDS)
 
     ticks(connections)
-    told = {name: everything_sent(connection) for name, connection in connections.items()}
+    # The tick sends the result, then the roster (the tick's own positions
+    # may come in between, so the test waits for the roster).
+    told = everybody_until(connections, "classic_roster")
     ticks(connections)
     later = {name: everything_sent(connection) for name, connection in connections.items()}
 
@@ -185,12 +223,13 @@ def test_a_vote_that_comes_after_the_time_ran_out_gets_the_result_sent_once(conn
 
     connections[voter].send_json({"type": "vote", "target_id": SKIP})
     assert connections[voter].receive_json()["code"] == "vote_rejected"
+    told = everybody_until(connections, "classic_roster")  # the result, then the roster
     ticks(connections)
-    told = {name: everything_sent(connection) for name, connection in connections.items()}
+    later = {name: everything_sent(connection) for name, connection in connections.items()}
 
     assert lobby.meeting["applied"] is True
     for name in FIVE:
-        assert len(results_in(told[name])) == 1
+        assert len(results_in(told[name] + later[name])) == 1
 
 
 def test_a_second_meeting_can_start_after_the_first(connect, clock):
@@ -200,7 +239,7 @@ def test_a_second_meeting_can_start_after_the_first(connect, clock):
     ticks(connections)
 
     connections[second_caller].send_json({"type": "emergency"})
-    snapshots = [connection.receive_json() for connection in connections.values()]
+    snapshots = [read_until(connection, "meeting_state")[-1] for connection in connections.values()]
 
     assert all(snapshot["type"] == "meeting_state" for snapshot in snapshots)
     assert all(snapshot["phase"] == "discussion" for snapshot in snapshots)
@@ -213,7 +252,7 @@ def test_a_vote_that_ejects_the_free_rider_still_ends_the_round(connect, clock):
     connections, lobby, fr, [caller, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
 
-    told = everybody_votes(connections, lobby, clock, lambda voter: fr if voter != fr else caller)
+    told = everybody_votes(connections, lobby, clock, lambda voter: fr if voter != fr else caller, last="lobby_state")
 
     assert lobby.classic_round is None and lobby.meeting is None  # the round ended
     for messages in told.values():
@@ -234,7 +273,7 @@ def test_chat_and_vote_after_the_meeting_are_refused_and_apply_nothing_again(con
 
     connections[other].send_json({"type": "chat", "text": "Too late?"})
     assert connections[other].receive_json()["code"] == "chat_rejected"
-    everything_sent(connections[other])  # the meeting's result, sent again with the refusal
+    read_until(connections[other], "meeting_state")  # the meeting's result, sent again with the refusal
     connections[other].send_json({"type": "vote", "target_id": SKIP})
     assert connections[other].receive_json()["code"] == "vote_rejected"
     ticks(connections)
@@ -252,7 +291,8 @@ def test_a_chat_after_the_time_ran_out_is_refused_and_the_result_applied_once(co
     connections[caller].send_json({"type": "chat", "text": "Hello?"})
     assert connections[caller].receive_json()["code"] == "chat_rejected"
     ticks(connections)
-    told = {name: everything_sent(connection) for name, connection in connections.items()}
+    # The tick sends the result again, then the roster.
+    told = everybody_until(connections, "classic_roster")
 
     assert len(calls) == 1
     assert lobby.meeting["applied"] is True
