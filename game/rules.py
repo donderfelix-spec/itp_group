@@ -7,11 +7,11 @@ from typing import Literal, NotRequired, Protocol, TypedDict
 
 Role = Literal["HP", "FR"]
 TASKS_PER_PLAYER = 4
-FAIL_RANGE_TILES = 5.0
+FAIL_RANGE_TILES = 20.0
 FAIL_RANGE = FAIL_RANGE_TILES
 FAIL_COOLDOWN_SECONDS = 15.0
 FAIL_COOLDOWN = FAIL_COOLDOWN_SECONDS
-REPORT_RANGE = 2.0
+REPORT_RANGE = 8.0
 Position = tuple[float, float]
 
 
@@ -268,7 +268,7 @@ def _valid_position(position: object) -> bool:
 def can_report(
     state: ClassicState, player_id: str, blood_sheet_id: str, position: Position
 ) -> bool:
-    """Return whether a living player is within the 2-field F-sheet interaction range."""
+    """Return whether a living player is within the F-sheet report range."""
     if state.get("phase") == "meeting" or state.get("timers_paused", False):
         return False
     if player_id in state["eliminated"] or state["roles"].get(player_id) not in ("HP", "FR"):
