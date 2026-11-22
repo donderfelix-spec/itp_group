@@ -407,10 +407,14 @@ async function playWalkways(a, out) {
   out.straight.push(straightRecord('lecture left aisle down', await hold(a, 'y', 1, (p) => p.y >= 150)));
   await walkTo(a, { x: 215, y: 50 }, 4);
   out.straight.push(straightRecord('lecture right aisle down', await hold(a, 'y', 1, (p) => p.y >= 150)));
-  await walkTo(a, { x: 35, y: 82.5 }, 3.5);
+  // The middle of each gap between two lecture rows, read from the map, so
+  // that the walk stays inside the gap wherever the rows are.
+  const rows = campus.solids.filter((s) => s.kind === 'bench').sort((p, q) => p.y - q.y);
+  const gapMiddle = (above, below) => (above.y + above.h + below.y) / 2;
+  await walkTo(a, { x: 35, y: gapMiddle(rows[0], rows[1]) }, 3);
   out.straight.push(straightRecord('lecture gap rows 1-2 left to right', await hold(a, 'x', 1, (p) => p.x >= 215)));
   await shoot(a, 'walkway-lecture-gap-1-2.png');
-  await walkTo(a, { x: 215, y: 117.5 }, 3.5);
+  await walkTo(a, { x: 215, y: gapMiddle(rows[1], rows[2]) }, 3);
   out.straight.push(straightRecord('lecture gap rows 2-3 right to left', await hold(a, 'x', -1, (p) => p.x <= 35)));
   await shoot(a, 'walkway-lecture-gap-2-3.png');
   // Mon Café: straight from the door to the counter.
