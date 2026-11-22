@@ -12,6 +12,7 @@ stops the round (S-157), there is no meeting result at all.
 
 import pytest
 
+from server import main
 from server.classic import meeting as meeting_rules
 from server.classic.meeting import DISCUSSION_SECONDS, EjectResult
 from task_helpers import client, clock, connect  # noqa: F401
@@ -109,6 +110,38 @@ def test_a_leave_that_brings_the_skips_to_75_percent_ends_the_meeting_once(conne
         assert results[0]["ejected_id"] is None
         assert leaver not in results[0]["living"] and leaver not in results[0]["skip_voted"]
     assert last in connections
+
+
+def test_a_leave_ends_the_meeting_before_anything_is_sent(connect, clock, monkeypatch):
+    # S-165: "at once". The leave's first sends wait; in that time another
+    # handler can run. Here `first` takes back his Skip while the lobby's
+    # state is being sent. The meeting must already be over by then.
+    connections, lobby, [fr], [caller, first, leaver, _last] = classic_round(connect)
+    start_emergency(connections, caller, clock)
+    clock.wait(DISCUSSION_SECONDS)
+    skip(connections, fr, caller, first)
+    seen = {}
+    send_the_lobby = main.tell_lobby
+
+    async def lobby_while_a_skip_is_taken_back(the_lobby, new_host=None):
+        if not seen:  # only the leave below; later leaves (closing the test) go on as usual
+            seen["phase"] = the_lobby.meeting["phase"]
+            try:
+                # What the Skip handler would do in this window.
+                the_lobby.meeting = meeting_rules.agree_to_skip_discussion(the_lobby.meeting, first, main.seconds_now())
+                seen["taken_back"] = True
+            except ValueError:
+                seen["taken_back"] = False
+        await send_the_lobby(the_lobby, new_host)
+
+    monkeypatch.setattr(main, "tell_lobby", lobby_while_a_skip_is_taken_back)
+    told = leave(connections, leaver)
+    later = everything_now(connections)
+
+    assert seen == {"phase": "result", "taken_back": False}
+    assert lobby.meeting["phase"] == "result" and lobby.meeting["applied"] is True
+    for name in connections:
+        assert len(results_in(told[name] + later[name])) == 1
 
 
 def test_a_leave_with_too_few_skips_leaves_the_vote_open(connect, clock):

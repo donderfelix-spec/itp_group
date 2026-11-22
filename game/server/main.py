@@ -567,10 +567,11 @@ async def tell_member_the_countdown(name: str, lobby):
 async def handle_leave_lobby(websocket: WebSocket, name: str, message: dict):
     lobby, new_host, rejection_code = app.state.lobbies.leave(name)
     if rejection_code is None:
-        # Decided at once, before anything is sent (M3-3.8).
+        # Decided at once, before anything is sent (M3-3.8, S-165).
         stop_news = stop_round_if_it_no_longer_fits(lobby)
+        meeting_news = settle_the_meeting_after_a_leave(lobby)
         await websocket.send_json(protocol.left_lobby())
-        await tell_the_rest_after_a_leave(lobby, new_host, stop_news)
+        await tell_the_rest_after_a_leave(lobby, new_host, stop_news, meeting_news)
     return rejection_code
 
 
@@ -582,7 +583,8 @@ async def take_out_of_lobby(name: str):
     lobby, new_host, rejection_code = app.state.lobbies.leave(name)
     if rejection_code is None:
         stop_news = stop_round_if_it_no_longer_fits(lobby)
-        await tell_the_rest_after_a_leave(lobby, new_host, stop_news)
+        meeting_news = settle_the_meeting_after_a_leave(lobby)
+        await tell_the_rest_after_a_leave(lobby, new_host, stop_news, meeting_news)
 
 
 ROUND_STOPPED_TEXT = "Too many players left. The round was stopped."
@@ -614,11 +616,35 @@ def stop_round_if_it_no_longer_fits(lobby) -> dict:
     }
 
 
-async def tell_the_rest_after_a_leave(lobby, new_host, stop_news):
+def settle_the_meeting_after_a_leave(lobby):
+    """Bring a running meeting up to date right after a leave, before anything is sent.
+
+    Called with no await before it, so no other handler can come in between
+    (S-165): the vote's time may have run out since the last tick, and with
+    one living player fewer the Skips left may now be 75 %. A result is
+    applied once (S-156). The meeting clock is recorded, so the tick does not
+    send the same snapshot; `tell_classic_after_a_leave` sends it.
+
+    Returns `(now, finished)`: the time of that snapshot and whether this
+    leave finished the meeting. None if no running meeting is to be sent
+    (no Classic round, no meeting, or its result was already applied).
+    """
+    if lobby.classic_round is None or lobby.meeting is None or lobby.meeting.get("applied"):
+        return None
+    now = seconds_now()
+    lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
+    lobby.meeting = classic_meeting.end_if_enough_skips(lobby.meeting, now)
+    sync_classic_after_meeting(lobby)
+    lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
+    return now, lobby.meeting.get("applied", False)
+
+
+async def tell_the_rest_after_a_leave(lobby, new_host, stop_news, meeting_news=None):
     """Tell the players who stay what a player's leaving changed. Never raises.
 
     The same for every way of leaving: "Leave", logging out, a lost
-    connection or signing in elsewhere. `stop_news` is what
+    connection or signing in elsewhere. `meeting_news` is what
+    `settle_the_meeting_after_a_leave` returned. `stop_news` is what
     `stop_round_if_it_no_longer_fits` returned: if the round was stopped,
     everybody gets that news and then the lobby's state, so every browser
     goes back to the lobby (S-101).
@@ -638,7 +664,7 @@ async def tell_the_rest_after_a_leave(lobby, new_host, stop_news):
         return
     await tell_lobby(lobby, new_host)
     try:
-        await tell_classic_after_a_leave(lobby)
+        await tell_classic_after_a_leave(lobby, meeting_news)
     except Exception as problem:
         # The caller is a player's own handler: a fault here must not close
         # that player's connection. Only the kind of error is logged.
@@ -647,26 +673,19 @@ async def tell_the_rest_after_a_leave(lobby, new_host, stop_news):
     await tell_round_news(lobby)
 
 
-async def tell_classic_after_a_leave(lobby):
+async def tell_classic_after_a_leave(lobby, meeting_news=None):
     """In Classic, a leaver is out of the lists (M3-3.11): send the new ones.
 
     A running meeting is sent again, without the leaver among the living and
-    the voters. A finished one is not: its result was already shown.
+    the voters; `meeting_news` (from `settle_the_meeting_after_a_leave`)
+    says at which time, and whether the leave finished it. A meeting whose
+    result was shown before is not sent again.
     """
     if lobby.classic_round is None:
         return
     finished_now = False
-    if lobby.meeting is not None and not lobby.meeting.get("applied"):
-        # As in `answer_vote_message`: the time of the vote may have run out
-        # since the last tick. Then this snapshot is the result: it is
-        # applied once, and the tick must not send the same one again.
-        now = seconds_now()
-        lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
-        # With one living player fewer, the Skips may now be 75 % (S-162).
-        lobby.meeting = classic_meeting.end_if_enough_skips(lobby.meeting, now)
-        sync_classic_after_meeting(lobby)
-        finished_now = lobby.meeting.get("applied", False)
-        lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
+    if meeting_news is not None and lobby.meeting is not None:
+        now, finished_now = meeting_news
         await tell_meeting_state(lobby, now)
     await tell_classic_roster(lobby)
     if finished_now:
