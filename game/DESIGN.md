@@ -190,7 +190,7 @@ The win and the time go into the statistics (S-40).
 
 - At the top of the panel on the right, above “Players” (S-143): “Next: Build the tray (Canteen)” with the title of the minigame and the room, below it the clock counting down from 3:00. The progress of all players stands in the Players list below, for example “Mara 1/3”. A player who has finished all three sees “Finished in 1:12.4. Waiting for the others.” instead of the next station.
 - Every station is drawn as its object; only the next station has the pulsing yellow outline and opens (S-128).
-- The card at the top left of the map shows the room you are in and the next task; a small yellow triangle with a dark outline next to your character points straight at the station (S-129).
+- The card at the top left of the map shows the room you are in and the next task; a small yellow triangle with a dark outline next to your character points straight at the station (S-129). In Classic, where a High Performer has several tasks, it points at the nearest own open task, and the card shows only the room (S-145).
 - When the round is over, the ranking appears over the map for everybody: heading “Duel ranking”, one row per player with place, name and time (“1:12.4”), or “2/3” for a player who did not finish, and the button “Back to lobby”. If the three minutes ran out, the line “Time is up.” stands above the rows. The lobby is open again at that moment, so the host can start the next round.
 - A player who leaves during the round is taken out of the list and the ranking. The round goes on for the others, also for a single player.
 

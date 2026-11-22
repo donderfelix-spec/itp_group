@@ -5,7 +5,11 @@
 // at the station, even through a wall. The route search of `create` is not
 // used by the page; tests check the map with it (tests/test_task_navigation.js).
 //
-// main.js sets the target (`setTarget`, `reset`), world.js calls `draw`
+// In Classic a player has a list of open tasks instead of one next task:
+// the arrow then points at the nearest of them (`setTargets`), and the card
+// shows only the room.
+//
+// main.js sets the target (`setTarget`, `setTargets`, `reset`), world.js calls `draw`
 // once per frame. The card is the element #task-card of index.html, so it
 // stays out of the canvas and under the ?debug panel.
 "use strict";
@@ -251,6 +255,26 @@ window.Game = window.Game || {};
     };
   }
 
+  // The station of `stationIds` nearest to `position` in a straight line,
+  // or null when there is none. On a tie the first in the list wins. Ids
+  // that are not on the map are skipped. No hysteresis: the arrow simply
+  // turns to whichever station is nearer now.
+  function nearestStation(campus, position, stationIds) {
+    if (!campus || !isPosition(position) || !Array.isArray(stationIds)) return null;
+    let nearest = null;
+    let shortest = Infinity;
+    for (const stationId of stationIds) {
+      const station = campus.stations.find((entry) => entry.id === stationId);
+      if (!station) continue;
+      const distance = Math.hypot(station.x - position.x, station.y - position.y);
+      if (distance < shortest) { // strictly smaller, so a tie keeps the first
+        nearest = station.id;
+        shortest = distance;
+      }
+    }
+    return nearest;
+  }
+
   // Called in map coordinates, before the characters are drawn. The arrow
   // stands beside the character's body and points straight at the station
   // (also through a wall). No arrow on arrival or exactly on the station.
@@ -273,6 +297,7 @@ window.Game = window.Game || {};
   // display of the page.
 
   let target = null; // the station id of the own next task, or null
+  let targets = []; // Classic: the station ids of the own open tasks
   let shownCard = ''; // what the card shows now, so it is only changed on a change
   let shownPlace = null; // the room the card shows now, or null while it is hidden
 
@@ -322,9 +347,16 @@ window.Game = window.Game || {};
     if (target === null) showCard(shownPlace, null); // at once, not only at the next frame
   }
 
+  // Classic: the own open tasks. The arrow points at the nearest one; the
+  // card gets no task part. An empty list (all done, a Free Rider) means no arrow.
+  function setTargets(stationIds) {
+    targets = Array.isArray(stationIds) ? stationIds.filter((id) => Number.isInteger(id)) : [];
+  }
+
   // The player left the lobby: no target and no card until the next frame of a world.
   function reset() {
     target = null;
+    targets = [];
     showCard(null, null);
   }
 
@@ -337,7 +369,13 @@ window.Game = window.Game || {};
     const canShow = Boolean(campus) && isPosition(drawn) && !paused;
     const guidance = canShow && target !== null ? directGuidance(campus, server, target) : null;
     showCard(canShow ? placeName(campus, drawn) : null, guidance);
-    if (guidance) drawArrow(ctx, guidance, drawn);
+    if (guidance) {
+      drawArrow(ctx, guidance, drawn);
+    } else if (canShow && targets.length) {
+      // Classic: the arrow only, towards the nearest open task, chosen anew every frame.
+      const nearest = nearestStation(campus, server, targets);
+      drawArrow(ctx, directGuidance(campus, server, nearest), drawn);
+    }
   }
 
   function isPosition(position) {
@@ -347,10 +385,12 @@ window.Game = window.Game || {};
   Game.taskNavigation = {
     create: create,
     directGuidance: directGuidance,
+    nearestStation: nearestStation,
     drawArrow: drawArrow,
     cardLines: cardLines,
     placeName: placeName,
     setTarget: setTarget,
+    setTargets: setTargets,
     reset: reset,
     draw: draw,
   };
