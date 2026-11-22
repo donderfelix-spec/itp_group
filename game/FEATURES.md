@@ -168,3 +168,7 @@ Circular deck bushes and hedge crowns without square planters or gravel beds: im
 ## Textured bushes and smaller figures, 2026-11-21
 
 Lobed bush silhouettes with larger veined leaves and layered greens; map figures subtly smaller at38 units. Browser preview checked. The earlier historical canteen-route comparison remains a known test failure.
+
+## Main Deck shrub refinement, 2026-11-22
+
+The Main Deck bushes and hedge now have denser, layered foliage down to the ground, with lighter leaf tips and fine shoots.

@@ -253,3 +253,7 @@ Human character verification: 300 character, running-pose, running and character
 ## Textured bushes and smaller figures, 2026-11-21
 
 - [x] Replace plain circular bushes with lobed outlines, branches and larger textured leaves; subtly reduce map figure height and push the campus branch. Requested by Hanna. Motion harnesses read actual render size; existing test thresholds retained.
+
+## Main Deck shrub refinement, 2026-11-22
+
+- [x] Refine the Main Deck bushes and hedge from Hanna's shrub reference, with foliage down to the ground and fine shoots at the edges.

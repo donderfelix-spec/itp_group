@@ -70,70 +70,102 @@ Game.world = Game.world || {};
     ctx.lineCap = "butt";
   };
 
-  // Bushes with rounded lobes, without planters or square borders.
   art.kinds.tree = function (ctx, bush) {
-    leafyCrown(ctx, bush.x + bush.w / 2, bush.y + bush.h / 2,
-      Math.min(bush.w, bush.h) / 2, bush.x);
+    var x = bush.x + bush.w / 2;
+    var y = bush.y + bush.h / 2;
+    var radius = Math.min(bush.w, bush.h) / 2;
+    util.ellipse(ctx, x, y + radius * 0.67, radius * 0.78, radius * 0.17, "rgba(46, 42, 59, 0.18)", 0);
+    leafyCrown(ctx, x, y, radius, bush.x + bush.y);
   };
 
-  // Uneven rounded lobes form a bush silhouette; large leaves add texture.
+  var shadowLeaves = ["#29401D", "#3B5325", "#4F682A", "#657C33"];
+  var sunlitLeaves = ["#4E6828", "#66832E", "#7C983B", "#99AE49", "#B6C75B"];
+
+  function bushLeaf(ctx, x, y, angle, length, colour) {
+    var dx = Math.cos(angle) * length;
+    var dy = Math.sin(angle) * length;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + dx * 0.32 - dy * 0.46, y + dy * 0.32 + dx * 0.46, x + dx, y + dy);
+    ctx.quadraticCurveTo(x + dx * 0.58 + dy * 0.32, y + dy * 0.58 - dx * 0.32, x, y);
+    ctx.fillStyle = colour;
+    ctx.fill();
+  }
+
   function leafyCrown(ctx, x, y, radius, seed) {
     ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(radius, radius);
+
+    // Low, compact foliage under the individual leaves and shoots.
+    var phase = util.noise(seed, 4) * Math.PI * 2;
     ctx.beginPath();
-    var phase = util.noise(seed, 4) * Math.PI;
-    for (var edge = 0; edge <= 96; edge++) {
-      var angle = edge / 96 * Math.PI * 2;
-      var reach = radius * (0.87 + 0.09 * Math.cos(angle * 7 + phase)
-        + 0.035 * Math.sin(angle * 3 + phase));
-      var px = x + Math.cos(angle) * reach;
-      var py = y + Math.sin(angle) * reach;
+    for (var edge = 0; edge < 48; edge++) {
+      var angle = edge / 48 * Math.PI * 2;
+      var reach = 0.82 + 0.06 * Math.cos(angle * 7 + phase) + 0.035 * Math.sin(angle * 11);
+      var depth = Math.sin(angle);
+      var px = Math.cos(angle) * reach * (1 + Math.max(0, depth) * 0.13);
+      var py = depth * reach * 0.82 - 0.025;
       if (edge === 0) ctx.moveTo(px, py);
       else ctx.lineTo(px, py);
     }
     ctx.closePath();
-    ctx.fillStyle = "#43864D";
+    ctx.fillStyle = "#2D421F";
     ctx.fill();
-    ctx.strokeStyle = util.OUTLINE;
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-    ctx.clip();
-    [[-0.35, -0.3, 0.47], [0.38, -0.18, 0.42], [-0.2, 0.4, 0.45]].forEach(function (clump, index) {
-      util.circle(ctx, x + radius * clump[0], y + radius * clump[1],
-        radius * clump[2], index === 0 ? "#659C50" : "#3B7B47", 0);
-    });
-    util.ellipse(ctx, x + radius * 0.35, y + radius * 0.4,
-      radius * 0.9, radius * 0.85, "#347043", 0);
-    util.line(ctx, x, y + radius * 0.75, x - radius * 0.12, y - radius * 0.25, "#756044", 1.1);
-    util.line(ctx, x - radius * 0.04, y + radius * 0.3, x + radius * 0.53, y - radius * 0.12, "#756044", 0.75);
-    util.line(ctx, x - radius * 0.1, y, x - radius * 0.55, y - radius * 0.35, "#756044", 0.65);
-    // Broad pointed leaves with a central vein leave some woody forks visible.
-    for (var i = 0; i < 22; i++) {
-      var angle = util.noise(seed + i, 31) * Math.PI * 2;
-      var reach = Math.sqrt(util.noise(i * 1.9, seed)) * radius * 0.72;
-      var lx = x + Math.cos(angle) * reach;
-      var ly = y + Math.sin(angle) * reach * 0.78;
-      var length = radius * (0.21 + util.noise(seed, i) * 0.1);
-      var direction = angle - 0.6;
-      var dx = Math.cos(direction) * length;
-      var dy = Math.sin(direction) * length;
+
+    // Fan thin shoots out of the base. Alternating leaves follow each stem.
+    for (var shoot = 0; shoot < 12; shoot++) {
+      var angle = -Math.PI + (shoot + 0.15 + util.noise(seed, shoot) * 0.7) / 12 * Math.PI;
+      var reach = 0.75 + util.noise(shoot, seed) * 0.19;
+      var tipX = Math.cos(angle) * reach;
+      var tipY = Math.sin(angle) * reach * 0.83 - 0.04;
+      var baseX = tipX * 0.2;
+      var baseY = 0.58 + util.noise(seed + 12, shoot) * 0.13;
+      var bend = (util.noise(seed + 20, shoot) - 0.5) * 0.64;
+      var stemX = tipX - baseX;
+      var stemY = tipY - baseY;
       ctx.beginPath();
-      ctx.moveTo(lx - dx, ly - dy);
-      ctx.quadraticCurveTo(lx - dy * 0.9, ly + dx * 0.9, lx + dx, ly + dy);
-      ctx.quadraticCurveTo(lx + dy * 0.9, ly - dx * 0.9, lx - dx, ly - dy);
-      ctx.fillStyle = i % 3 === 0 ? "#8BAC62" : i % 3 === 1 ? "#60964F" : "#3C7041";
-      ctx.fill();
-      util.line(ctx, lx - dx * 0.7, ly - dy * 0.7, lx + dx * 0.75, ly + dy * 0.75, "#ACC27C", 0.23);
+      ctx.moveTo(baseX, baseY);
+      ctx.quadraticCurveTo(baseX + stemX / 2 + bend / 2, baseY + stemY / 2, tipX, tipY);
+      ctx.strokeStyle = shoot % 3 === 0 ? "#6B6043" : "#4D592E";
+      ctx.lineWidth = 0.03;
+      ctx.lineCap = "round";
+      ctx.stroke();
+
+      for (var leaf = 0; leaf < 6; leaf++) {
+        var t = 0.28 + leaf * 0.132;
+        var side = (leaf + shoot) % 2 ? -1 : 1;
+        var leafX = baseX + stemX * t + bend * t * (1 - t);
+        var leafY = baseY + stemY * t;
+        var direction = Math.atan2(stemY, stemX + bend * (1 - 2 * t)) + side * 0.73;
+        var size = 0.15 + util.noise(seed + shoot, leaf) * 0.12 - 0.09 * t;
+        var palette = t > 0.67 ? sunlitLeaves : shadowLeaves;
+        bushLeaf(ctx, leafX, leafY, direction, size, util.pick(palette, seed + leaf * 0.9, shoot + 21));
+      }
+    }
+
+    // Smaller foreground leaves overlap into pockets of light and shade.
+    for (var leaf = 0; leaf < 52; leaf++) {
+      var angle = util.noise(seed + leaf, 31) * Math.PI * 2;
+      var reach = Math.sqrt(util.noise(leaf * 1.9, seed)) * 0.75;
+      var leafX = Math.cos(angle) * reach;
+      var leafY = Math.sin(angle) * reach * 0.79 + 0.09;
+      var size = 0.14 + util.noise(seed, leaf + 18) * 0.15;
+      var palette = leafY < 0.1 || leaf % 5 === 0 ? sunlitLeaves : shadowLeaves;
+      bushLeaf(ctx, leafX, leafY, angle - 0.6, size, util.pick(palette, leaf + 22, seed));
     }
     ctx.restore();
   }
 
-  // Round bushes also form the hedge; the hiding footprint stays the same.
+  // Overlapping bush crowns form the hedge along its existing footprint.
   art.kinds.hedge = function (ctx, bed) {
-    var radius = bed.h * 0.49;
+    var radius = bed.h * 0.45;
+    util.ellipse(ctx, bed.x + bed.w / 2, bed.y + bed.h * 0.8,
+      bed.w * 0.43, bed.h * 0.085, "rgba(46, 42, 59, 0.18)", 0);
     [0.18, 0.4, 0.62, 0.82].forEach(function (share, index) {
       var x = bed.x + bed.w * share;
-      var y = bed.y + bed.h * (index % 2 ? 0.44 : 0.51);
-      leafyCrown(ctx, x, y, radius * (index % 2 ? 1 : 0.9), bed.x + index * 7);
+      var y = bed.y + bed.h * (index % 2 ? 0.46 : 0.54);
+      leafyCrown(ctx, x, y, radius * (index % 2 ? 1 : 0.94), bed.x + index * 7);
     });
   };
 

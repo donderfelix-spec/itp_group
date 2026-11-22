@@ -221,3 +221,7 @@ Hanna explicitly requested simple round bushes with branches and leaves, no squa
 ## Textured bushes and smaller figures, 2026-11-21
 
 Hanna replaced the simple-circle request with a natural lobed bush outline and larger textured leaves, and requested slightly smaller figures followed by a push. Final map height38 was chosen to keep the existing planted-foot slide within its tested tolerance. Movement/collision size is unchanged. Motion-test harnesses now measure the actual supplied character height rather than assuming39; test tolerances are unchanged.
+
+## Main Deck shrub refinement, 2026-11-22
+
+Hanna requested that the Main Deck shrubs follow her reference photo more closely. Smaller, overlapping olive-green leaves, bright tips and slender shoots give each shrub a looser outline. A shared ground shadow connects the hedge crowns visually. The same campus objects define their positions and footprints.
