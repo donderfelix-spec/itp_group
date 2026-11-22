@@ -168,3 +168,21 @@ def test_a_ghosts_rejected_vote_during_the_vote_is_sent_to_nobody_else(monkeypat
     assert [message["code"] for message in sockets["Ines"].messages] == ["vote_rejected"]
     assert messages_to_others(sockets, "Ines") == {"Mara": [], "Tiago": []}
 
+
+
+# ---- A vote and a Skip just as the time runs out ---------------------------------
+
+def test_a_vote_and_a_skip_after_the_deadline_send_the_result_once(monkeypatch):
+    # The vote ended at 175.0; neither the tick nor anybody else has told it yet.
+    lobby, sockets = lobby_in_a_vote(monkeypatch, now=176.0)
+    asyncio.run(main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": "Tiago"}))
+    asyncio.run(skip(sockets["Tiago"]))
+    assert lobby.meeting["phase"] == "result"
+    assert [message["code"] for message in sockets["Mara"].messages if message["type"] == "error"] == ["vote_rejected"]
+    assert [message["code"] for message in sockets["Tiago"].messages if message["type"] == "error"] == ["skip_discussion_rejected"]
+    assert all(len(results_sent_to(socket)) == 1 for socket in sockets.values())
+
+    scheduled = []
+    monkeypatch.setattr(main, "run_in_background", lambda work: scheduled.append(work) or work.close())
+    main.update_meeting_clock(lobby)  # the next tick
+    assert scheduled == []
