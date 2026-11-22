@@ -8,8 +8,8 @@ repeated is repeated here:
 
 - with the real map and the real walking rule `step`: every room can be
   walked into and out of through its door, both openings between the
-  corridor and the Main Deck walked through, and every hiding spot outside
-  the (still solid) hedge reached;
+  corridor and the Main Deck walked through, and every hiding spot reached,
+  also the one in the hedge, which is walkable since M3-1.4 (S-98);
 - with the real server and its real tick, over WebSocket: walking into one
   solid of every kind that M2-1.4 added stops at its edge, and no position
   any player is told lies inside a solid;
@@ -148,20 +148,27 @@ def test_a_player_walks_through_each_corridor_opening_both_ways(from_spawn, open
     assert any(through[0] <= x <= through[-1] and wall_y - 30 < y < wall_y for x, y in from_spawn)
 
 
-# The hiding spot in the hedge stays out of reach until hiding is built:
-# the hedge is solid until then (S-98, S-111).
-SPOTS_OUTSIDE_THE_HEDGE = [
-    spot for spot in CAMPUS["hiding_spots"]
-    if not any(solid["kind"] == "hedge" and overlaps(spot["x"], spot["y"], solid) for solid in SOLIDS)
-]
+# Since hiding was built (M3-1.4) the hedge is walkable, so the hiding spot
+# in it can be reached like the other three (S-98).
+HIDING_SPOTS = CAMPUS["hiding_spots"]
+HEDGE = next(solid for solid in SOLIDS if solid["kind"] == "hedge")
 
 
-def test_only_the_hedge_spot_is_out_of_reach_for_now():
-    assert len(SPOTS_OUTSIDE_THE_HEDGE) == len(CAMPUS["hiding_spots"]) - 1
+def centre_lies_in(spot, solid):
+    return (
+        solid["x"] <= spot["x"] <= solid["x"] + solid["w"]
+        and solid["y"] <= spot["y"] <= solid["y"] + solid["h"]
+    )
 
 
-@pytest.mark.parametrize("spot", SPOTS_OUTSIDE_THE_HEDGE, ids=lambda spot: f"hiding spot at {spot['x']},{spot['y']}")
-def test_every_hiding_spot_outside_the_hedge_can_be_reached(from_spawn, spot):
+def test_one_of_the_four_hiding_spots_lies_in_the_walkable_hedge():
+    assert len(HIDING_SPOTS) == 4
+    assert HEDGE["walkable"] is True
+    assert len([spot for spot in HIDING_SPOTS if centre_lies_in(spot, HEDGE)]) == 1
+
+
+@pytest.mark.parametrize("spot", HIDING_SPOTS, ids=lambda spot: f"hiding spot at {spot['x']},{spot['y']}")
+def test_every_hiding_spot_can_be_reached(from_spawn, spot):
     assert any(math.dist(place, (spot["x"], spot["y"])) <= spot["r"] for place in from_spawn)
 
 
