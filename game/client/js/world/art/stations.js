@@ -148,11 +148,12 @@ Game.world = Game.world || {};
     circle(ctx, 11, 3.75, 2, WHITE, DETAIL);
     circle(ctx, 11, 3.75, 1.1, GREEN, 0);
   }
-  place(3, -14, -12, 16, 11, trayStand);
+  place(3, -13.5, -12, 16, 11, trayStand);
 
   // 4 Shelve the books: a wooden book cart with a row of books, parked in
-  // front of the bookshelf, 5 units from it (as close as its outline
-  // allows). Its shadow lies under the cart, between the wheels.
+  // front of the bookshelf, 6.6 units from it: as close as its outline allows
+  // with a gap of 1 to the shelf. Its shadow lies under the cart, between
+  // the wheels.
   function bookCart(ctx) {
     var colours = [RED, BLUE, YELLOW, GREEN, PURPLE, ORANGE];
     var heights = [4.5, 5, 4, 5, 4.5, 4];
@@ -164,7 +165,7 @@ Game.world = Game.world || {};
     circle(ctx, 3.5, 12.5, 1.4, DARK, 0);
     circle(ctx, 14.5, 12.5, 1.4, DARK, 0);
   }
-  place(4, -9, 1, 18, 14, bookCart, { shadow: { x: -8, y: 12.5, w: 16 } });
+  place(4, -9, -0.5, 18, 14, bookCart, { shadow: { x: -8, y: 11, w: 16 } });
 
   // 5 Self-checkout: one more checkout pillar in the row of Pingo Doce, with
   // its screen, card reader, red scanner glass and bagging tray.
