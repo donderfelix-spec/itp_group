@@ -1192,7 +1192,7 @@ async def tell_meeting_state(lobby, now=None):
 
 
 async def answer_vote_message(websocket: WebSocket, message: dict):
-    """Record a final vote and rebroadcast a snapshot that hides its target."""
+    """Record, change or take back a vote and send everybody the new snapshot."""
     name = app.state.sessions.name_of(websocket)
     if name is None:
         await websocket.send_json(protocol.rejection("not_signed_in"))
@@ -1217,11 +1217,11 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
     sync_classic_after_meeting(lobby)
     if lobby.meeting is not None:
         # This snapshot is the news of the moment: the tick must not send the
-        # same one again (after an early end it would repeat the result).
+        # same one again in this second.
         lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
     await tell_meeting_state(lobby, now)
-    # A handler that ended the round meanwhile (two last votes at once) may
-    # have cleared the meeting while this one waited.
+    # A handler that ended the round meanwhile (a Skip that reached 75 %, or
+    # the tick) may have cleared the meeting while this one waited.
     if lobby.meeting is not None and lobby.meeting.get("phase") == "result":
         await tell_classic_roster(lobby)
         lobby.walkers._everybody_needs_news()
@@ -1253,6 +1253,11 @@ async def answer_skip_discussion_message(websocket: WebSocket):
     except ValueError:
         await websocket.send_json(protocol.rejection("skip_discussion_rejected"))
     sync_classic_after_meeting(lobby)
+    # The rejection above waited: another handler may have ended the round.
+    if lobby.meeting is not None:
+        # This snapshot is the news of the moment: the tick must not send the
+        # same one again (after a Skip at 75 % it would repeat the result).
+        lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
     await publish_meeting_and_round_result(lobby, now)
 
 
