@@ -202,9 +202,9 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 ### Lennart's Classic follow-ups (2026-11-22)
 
 - [x] **M3-4.25** Let a living Free Rider report an F-sheet, including a sheet they caused (Lennart). `rules.can_report` already allowed it; Lennart's test pins it. Done: S-180, `tests/test_classic_report_and_fail_ranges.py`
-- [x] **M3-4.26** Raise the F-sheet report range from 2 to 8 map units so players can report from farther away; server check (`rules.REPORT_RANGE`) and browser hint (`world.js` `REPORT_RANGE`) agree (Lennart, 2026-11-22). Done: S-180, `tests/test_classic_report_and_fail_ranges.py`
+- [x] **M3-4.26** Raise the F-sheet report range from 2 to 8 map units so players can report from farther away; server check (`rules.REPORT_RANGE`) and browser hint (`world.js` `REPORT_RANGE`) agree (Lennart, 2026-11-22). Done: S-180, `tests/test_classic_report_and_fail_ranges.py`, `tests/test_play_classic_ranges_and_f_key.py`
 - [x] **M3-4.27** Raise the “Let fail” range from 5 to 20 map units so the Free Rider can fail a player from farther away; server check (`rules.FAIL_RANGE_TILES`) and browser constant agree (Lennart, 2026-11-22). Done: S-180, `tests/test_classic_report_and_fail_ranges.py`, `tests/test_classic_fail_hud_area3.py`
-- [x] **M3-4.28** Draw F-sheets and their portraits 30 % larger; key F also lets fail, besides Q; the button says only “Let fail” (no tile count) (Lennart, 2026-11-22). Done: S-181, `tests/test_classic_report_and_fail_ranges.py`
+- [x] **M3-4.28** Draw F-sheets and their portraits 30 % larger; key F also lets fail, besides Q; the button says only “Let fail” (no tile count) (Lennart, 2026-11-22). Done: S-181, `tests/test_classic_report_and_fail_ranges.py`, `tests/test_play_classic_ranges_and_f_key.py`
 
 ## M4: Extension
 
