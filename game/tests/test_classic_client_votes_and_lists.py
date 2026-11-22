@@ -1,4 +1,4 @@
-"""The page in Node: the Skip vote button and the own Classic task list (M3-3.12, M3-3.17).
+"""The page in Node: votes, the Skip button and the own Classic task list (M3-3.12, M3-3.17).
 
 Runs the page's own JavaScript through tests/classic_cleanup_in_node.js.
 """
@@ -35,26 +35,118 @@ def classic_round_as_high_performer(task_stations):
 
 # ---- Skip ------------------------------------------------------------------
 
+def meeting_with(phase, **changes):
+    """A meeting_state step of the own player Ana, with some fields changed."""
+    step = meeting_state(phase)
+    step[1].update(changes)
+    return step
+
+
 @needs_node
-def test_the_skip_button_sends_an_empty_target_and_then_every_button_is_off():
+def test_the_skip_button_sends_skip_discussion_and_shows_the_count():
     steps = classic_round_as_free_rider() + [
-        meeting_state("voting"), ["look"], ["clickVote", ""], ["look"],
+        meeting_state("voting"), ["look"], ["click", "classic-skip-discussion"],
+        meeting_with("voting", skip_voted=["Ana"]), ["look"],
     ]
     result = run_page(steps)
     before, after = result["looks"][-2:]
-    skip = [button for button in before["voteButtons"] if button["target"] == ""]
-    assert skip == [{"target": "", "text": "Skip", "disabled": False}]
-    assert result["sent"][-1] == {"type": "vote", "target_id": ""}
-    assert all(button["disabled"] for button in after["voteButtons"])
+    # Three living players: 75 % is 2.25, so 3 are needed.
+    assert before["skip"] == {"hidden": False, "status": "0 / 3 Skip votes to end voting early.", "text": "Skip", "disabled": False}
+    assert result["sent"][-1] == {"type": "skip_discussion"}
+    assert after["skip"]["text"] == "Undo Skip"
+    assert after["skip"]["status"] == "1 / 3 Skip votes to end voting early."
+    # Skip is no longer a vote button, and the vote buttons stay usable.
+    assert [button["target"] for button in after["voteButtons"]] == ["Ana", "Bo", "Cy"]
+    assert not any(button["disabled"] for button in after["voteButtons"])
 
 
 @needs_node
-def test_skip_is_a_final_vote_like_the_others():
+def test_votes_can_change_and_be_withdrawn_and_show_every_voters_icon():
     steps = classic_round_as_free_rider() + [
-        meeting_state("voting"), ["clickVote", ""], ["clickVote", "Bo"],
+        meeting_state("voting"),
+        ["clickVote", "Bo"], meeting_with("voting", voted=["Ana", "Cy"], vote_targets={"Ana": "Bo", "Cy": "Bo"}), ["look"],
+        ["clickVote", "Cy"], meeting_with("voting", voted=["Ana", "Cy"], vote_targets={"Ana": "Cy", "Cy": "Bo"}), ["look"],
+        ["clickVote", "Cy"], meeting_with("voting", voted=["Cy"], vote_targets={"Cy": "Bo"}), ["look"],
     ]
-    votes = [message for message in run_page(steps)["sent"] if message["type"] == "vote"]
-    assert votes == [{"type": "vote", "target_id": ""}]
+    result = run_page(steps)
+    first, changed, withdrawn = result["looks"][-3:]
+    votes = [message for message in result["sent"] if message["type"] == "vote"]
+    assert votes == [
+        {"type": "vote", "target_id": "Bo"},
+        {"type": "vote", "target_id": "Cy"},
+        {"type": "vote", "target_id": "Cy"},
+    ]
+    assert first["selectedVoteTarget"] == "Bo"
+    assert first["voteIconLabels"] == ["Ana voted for Bo", "Cy voted for Bo"]
+    assert changed["selectedVoteTarget"] == "Cy"
+    assert sorted(changed["voteIconLabels"]) == ["Ana voted for Cy", "Cy voted for Bo"]
+    assert withdrawn["selectedVoteTarget"] is None
+    assert withdrawn["voteIconLabels"] == ["Cy voted for Bo"]
+
+
+@needs_node
+def test_a_report_discussion_offers_voting_and_skip_but_an_emergency_one_does_not():
+    steps = classic_round_as_free_rider() + [
+        meeting_with("discussion", reason="report"), ["look"],
+        ["click", "classic-skip-discussion"],
+    ]
+    result = run_page(steps)
+    report = result["looks"][-1]
+    assert report["skip"]["hidden"] is False
+    assert [button["target"] for button in report["voteButtons"]] == ["Ana", "Bo", "Cy"]
+    assert result["sent"][-1] == {"type": "skip_discussion"}
+
+    steps = classic_round_as_free_rider() + [
+        meeting_state("discussion"), ["look"], ["click", "classic-skip-discussion"],
+    ]
+    result = run_page(steps)
+    assert result["looks"][-1]["skip"]["hidden"] is True
+    assert not any(message["type"] == "skip_discussion" for message in result["sent"])
+
+
+@needs_node
+def test_a_ghost_sees_the_votes_but_cannot_vote_or_skip():
+    steps = classic_round_as_free_rider() + [
+        meeting_with("voting", living=["Bo", "Cy", "Di"], ghosts=["Ana"], vote_targets={"Bo": "Cy"}),
+        ["look"], ["clickVote", "Cy"], ["click", "classic-skip-discussion"],
+    ]
+    result = run_page(steps)
+    seen = result["looks"][-1]
+    assert seen["skip"]["disabled"] is True
+    assert all(button["disabled"] for button in seen["voteButtons"])
+    assert seen["voteIconLabels"] == ["Bo voted for Cy"]
+    assert not any(message["type"] in ("vote", "skip_discussion") for message in result["sent"])
+
+
+@needs_node
+def test_a_double_click_sends_one_vote_or_skip_until_the_next_meeting_state():
+    steps = classic_round_as_free_rider() + [
+        meeting_state("voting"),
+        ["clickVote", "Bo"], ["clickVote", "Bo"], ["click", "classic-skip-discussion"],
+        meeting_with("voting", voted=["Ana"], vote_targets={"Ana": "Bo"}),
+        ["clickVote", "Bo"], ["clickVote", "Cy"],
+        meeting_with("voting"),
+        ["click", "classic-skip-discussion"], ["click", "classic-skip-discussion"],
+    ]
+    sent = [message for message in run_page(steps)["sent"] if message["type"] in ("vote", "skip_discussion")]
+    assert sent == [
+        {"type": "vote", "target_id": "Bo"},
+        {"type": "vote", "target_id": "Bo"},  # the second one, after the snapshot: taken back
+        {"type": "skip_discussion"},
+    ]
+
+
+@needs_node
+def test_skip_needs_four_of_five_and_six_of_seven():
+    five = ["Ana", "Bo", "Cy", "Di", "Ed"]
+    seven = five + ["Flo", "Gus"]
+    steps = classic_round_as_free_rider() + [
+        meeting_with("voting", living=five, ghosts=[]), ["look"],
+        meeting_with("voting", living=seven, ghosts=[]), ["look"],
+    ]
+    with_five, with_seven = run_page(steps)["looks"][-2:]
+    assert with_five["skip"]["status"] == "0 / 4 Skip votes to end voting early."
+    assert with_seven["skip"]["status"] == "0 / 6 Skip votes to end voting early."
 
 
 @needs_node

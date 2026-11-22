@@ -1,9 +1,9 @@
-"""The vote handler in server/main.py: two last votes at once, and a result sent once."""
+"""The vote and Skip handlers in server/main.py: a meeting cleared while they wait, and a result sent once."""
 
 import asyncio
 
 from server import main
-from server.classic.meeting import SKIP, start_discussion
+from server.classic.meeting import start_discussion
 from server.net.lobbies import Lobbies
 from server.net.sessions import Sessions
 
@@ -52,40 +52,14 @@ def test_a_vote_handler_survives_a_meeting_cleared_while_it_waited(monkeypatch):
         the_lobby.meeting = None  # what the other handler did meanwhile
 
     monkeypatch.setattr(main, "tell_meeting_state", snapshot_then_round_over)
-    asyncio.run(main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": SKIP}))
+    asyncio.run(main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": "Tiago"}))
     assert lobby.meeting is None
-
-
-def test_two_last_votes_at_once_both_finish(monkeypatch):
-    lobby, sockets = lobby_in_a_vote(monkeypatch)
-
-    async def both():
-        await asyncio.gather(
-            main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": "Tiago"}),
-            main.answer_vote_message(sockets["Tiago"], {"type": "vote", "target_id": SKIP}),
-        )
-
-    asyncio.run(both())
-    assert lobby.meeting["phase"] == "result"
-
-
-def test_an_early_result_is_sent_once_and_not_again_by_the_tick(monkeypatch):
-    lobby, sockets = lobby_in_a_vote(monkeypatch)
-    asyncio.run(main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": SKIP}))
-    asyncio.run(main.answer_vote_message(sockets["Tiago"], {"type": "vote", "target_id": SKIP}))
-    assert lobby.meeting["phase"] == "result"
-    assert all(len(results_sent_to(socket)) == 1 for socket in sockets.values())
-
-    scheduled = []
-    monkeypatch.setattr(main, "run_in_background", lambda work: scheduled.append(work) or work.close())
-    main.update_meeting_clock(lobby)  # the next tick
-    assert scheduled == []
 
 
 def test_the_tick_still_publishes_a_new_clock_second(monkeypatch):
     # Edge: recording the clock after a vote must not stop the countdown.
     lobby, sockets = lobby_in_a_vote(monkeypatch)
-    asyncio.run(main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": SKIP}))
+    asyncio.run(main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": "Tiago"}))
     assert lobby.meeting["phase"] == "voting"
 
     scheduled = []
@@ -95,3 +69,120 @@ def test_the_tick_still_publishes_a_new_clock_second(monkeypatch):
     monkeypatch.setattr(main, "seconds_now", lambda: 151.0)
     main.update_meeting_clock(lobby)  # one second later
     assert len(scheduled) == 1
+
+
+# ---- The same fixes in Lennart's Skip handler --------------------------------
+
+def skip(socket):
+    return main.answer_skip_discussion_message(socket)
+
+
+def test_a_skip_handler_survives_a_meeting_cleared_while_it_waited(monkeypatch):
+    lobby, sockets = lobby_in_a_vote(monkeypatch)
+    send_the_snapshot = main.tell_meeting_state
+
+    async def snapshot_then_round_over(the_lobby, now=None):
+        await send_the_snapshot(the_lobby, now)
+        the_lobby.meeting = None  # what another handler did meanwhile
+
+    monkeypatch.setattr(main, "tell_meeting_state", snapshot_then_round_over)
+    asyncio.run(skip(sockets["Mara"]))
+    assert lobby.meeting is None
+
+
+def test_two_last_skips_at_once_both_finish(monkeypatch):
+    # Two living players: both must press Skip (75 % of 2 is 1.5).
+    lobby, sockets = lobby_in_a_vote(monkeypatch)
+
+    async def both():
+        await asyncio.gather(skip(sockets["Mara"]), skip(sockets["Tiago"]))
+
+    asyncio.run(both())
+    assert lobby.meeting["phase"] == "result"
+    assert lobby.meeting["vote_result"].ejected_id is None
+
+
+def test_a_skip_result_is_sent_once_and_not_again_by_the_tick(monkeypatch):
+    lobby, sockets = lobby_in_a_vote(monkeypatch)
+    asyncio.run(skip(sockets["Mara"]))
+    asyncio.run(skip(sockets["Tiago"]))
+    assert lobby.meeting["phase"] == "result"
+    assert all(len(results_sent_to(socket)) == 1 for socket in sockets.values())
+
+    scheduled = []
+    monkeypatch.setattr(main, "run_in_background", lambda work: scheduled.append(work) or work.close())
+    main.update_meeting_clock(lobby)  # the next tick
+    assert scheduled == []
+
+
+def test_the_tick_still_publishes_a_new_clock_second_after_a_skip(monkeypatch):
+    lobby, sockets = lobby_in_a_vote(monkeypatch)
+    asyncio.run(skip(sockets["Mara"]))
+    assert lobby.meeting["phase"] == "voting"
+
+    scheduled = []
+    monkeypatch.setattr(main, "run_in_background", lambda work: scheduled.append(work) or work.close())
+    main.update_meeting_clock(lobby)  # the same second: nothing new
+    assert scheduled == []
+    monkeypatch.setattr(main, "seconds_now", lambda: 151.0)
+    main.update_meeting_clock(lobby)  # one second later
+    assert len(scheduled) == 1
+
+
+# ---- A rejected vote or Skip ---------------------------------------------------
+
+def messages_to_others(sockets, sender):
+    return {name: list(socket.messages) for name, socket in sockets.items() if name != sender}
+
+
+def lobby_after_the_result(monkeypatch):
+    """The vote ended at 175.0 and its result was sent; now it is 180.0."""
+    lobby, sockets = lobby_in_a_vote(monkeypatch, now=176.0)
+    main.update_meeting_clock(lobby)  # what the tick did: the result
+    assert lobby.meeting["phase"] == "result"
+    monkeypatch.setattr(main, "seconds_now", lambda: 180.0)
+    for socket in sockets.values():
+        socket.messages.clear()
+    return lobby, sockets
+
+
+def test_a_vote_rejected_after_the_result_is_sent_to_nobody_else(monkeypatch):
+    monkeypatch.setattr(main, "run_in_background", lambda work: work.close())
+    lobby, sockets = lobby_after_the_result(monkeypatch)
+    asyncio.run(main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": "Tiago"}))
+    assert [message["code"] for message in sockets["Mara"].messages] == ["vote_rejected"]
+    assert messages_to_others(sockets, "Mara") == {"Tiago": [], "Ines": []}
+
+
+def test_a_skip_rejected_after_the_result_is_sent_to_nobody_else(monkeypatch):
+    monkeypatch.setattr(main, "run_in_background", lambda work: work.close())
+    lobby, sockets = lobby_after_the_result(monkeypatch)
+    asyncio.run(skip(sockets["Tiago"]))
+    assert [message["code"] for message in sockets["Tiago"].messages] == ["skip_discussion_rejected"]
+    assert messages_to_others(sockets, "Tiago") == {"Mara": [], "Ines": []}
+
+
+def test_a_ghosts_rejected_vote_during_the_vote_is_sent_to_nobody_else(monkeypatch):
+    lobby, sockets = lobby_in_a_vote(monkeypatch)
+    asyncio.run(main.answer_vote_message(sockets["Ines"], {"type": "vote", "target_id": "Mara"}))
+    assert [message["code"] for message in sockets["Ines"].messages] == ["vote_rejected"]
+    assert messages_to_others(sockets, "Ines") == {"Mara": [], "Tiago": []}
+
+
+
+# ---- A vote and a Skip just as the time runs out ---------------------------------
+
+def test_a_vote_and_a_skip_after_the_deadline_send_the_result_once(monkeypatch):
+    # The vote ended at 175.0; neither the tick nor anybody else has told it yet.
+    lobby, sockets = lobby_in_a_vote(monkeypatch, now=176.0)
+    asyncio.run(main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": "Tiago"}))
+    asyncio.run(skip(sockets["Tiago"]))
+    assert lobby.meeting["phase"] == "result"
+    assert [message["code"] for message in sockets["Mara"].messages if message["type"] == "error"] == ["vote_rejected"]
+    assert [message["code"] for message in sockets["Tiago"].messages if message["type"] == "error"] == ["skip_discussion_rejected"]
+    assert all(len(results_sent_to(socket)) == 1 for socket in sockets.values())
+
+    scheduled = []
+    monkeypatch.setattr(main, "run_in_background", lambda work: scheduled.append(work) or work.close())
+    main.update_meeting_clock(lobby)  # the next tick
+    assert scheduled == []

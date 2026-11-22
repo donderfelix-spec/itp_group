@@ -85,6 +85,7 @@ REJECTIONS = {
     "fail_rejected": "You cannot fail a player right now.",
     "chat_rejected": "You cannot send that chat message right now.",
     "vote_rejected": "You cannot cast that vote right now.",
+    "skip_discussion_rejected": "You cannot skip this discussion right now.",
     "report_rejected": "You cannot report that F-sheet right now. Stand at the sheet and try again.",
     "emergency_rejected": "You cannot call an emergency meeting right now.",
     # Statistics (S-40).
@@ -106,18 +107,6 @@ def _check_name(value):
     if not isinstance(value, str) or not NAME_PATTERN.fullmatch(value):
         raise ProtocolError("bad_name", "Usernames are 3–16 letters or numbers.")
     return value
-
-
-# The `target_id` of a vote for nobody ("Skip", DESIGN.md 5.6). It is the
-# same value as server.classic.meeting.SKIP; a name is never empty.
-SKIP_VOTE = ""
-
-
-def _check_vote_target(value):
-    """A vote names a player or is SKIP_VOTE."""
-    if value == SKIP_VOTE:
-        return value
-    return _check_name(value)
 
 
 def _is_safe_text(value: str) -> bool:
@@ -250,7 +239,8 @@ CLIENT_MESSAGES = {
     "report": {"sheet_id": _check_sheet_id, "position": _check_position},
     "emergency": {},
     "chat": {"text": _check_chat_text},
-    "vote": {"target_id": _check_vote_target},
+    "vote": {"target_id": _check_name},
+    "skip_discussion": {},
     # Statistics (S-40). Neither carries a name: the profile is always the
     # one of the account the connection is signed in with.
     "get_profile": {},

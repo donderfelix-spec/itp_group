@@ -173,6 +173,8 @@ async def read_messages(websocket: WebSocket):
             await answer_chat_message(websocket, message)
         elif message["type"] == "vote":
             await answer_vote_message(websocket, message)
+        elif message["type"] == "skip_discussion":
+            await answer_skip_discussion_message(websocket)
 
 
 async def answer_account_message(websocket: WebSocket, message: dict):
@@ -565,10 +567,11 @@ async def tell_member_the_countdown(name: str, lobby):
 async def handle_leave_lobby(websocket: WebSocket, name: str, message: dict):
     lobby, new_host, rejection_code = app.state.lobbies.leave(name)
     if rejection_code is None:
-        # Decided at once, before anything is sent (M3-3.8).
+        # Decided at once, before anything is sent (M3-3.8, S-165).
         stop_news = stop_round_if_it_no_longer_fits(lobby)
+        meeting_news = settle_the_meeting_after_a_leave(lobby)
         await websocket.send_json(protocol.left_lobby())
-        await tell_the_rest_after_a_leave(lobby, new_host, stop_news)
+        await tell_the_rest_after_a_leave(lobby, new_host, stop_news, meeting_news)
     return rejection_code
 
 
@@ -580,7 +583,8 @@ async def take_out_of_lobby(name: str):
     lobby, new_host, rejection_code = app.state.lobbies.leave(name)
     if rejection_code is None:
         stop_news = stop_round_if_it_no_longer_fits(lobby)
-        await tell_the_rest_after_a_leave(lobby, new_host, stop_news)
+        meeting_news = settle_the_meeting_after_a_leave(lobby)
+        await tell_the_rest_after_a_leave(lobby, new_host, stop_news, meeting_news)
 
 
 ROUND_STOPPED_TEXT = "Too many players left. The round was stopped."
@@ -612,11 +616,35 @@ def stop_round_if_it_no_longer_fits(lobby) -> dict:
     }
 
 
-async def tell_the_rest_after_a_leave(lobby, new_host, stop_news):
+def settle_the_meeting_after_a_leave(lobby):
+    """Bring a running meeting up to date right after a leave, before anything is sent.
+
+    Called with no await before it, so no other handler can come in between
+    (S-165): the vote's time may have run out since the last tick, and with
+    one living player fewer the Skips left may now be 75 %. A result is
+    applied once (S-156). The meeting clock is recorded, so the tick does not
+    send the same snapshot; `tell_classic_after_a_leave` sends it.
+
+    Returns `(now, finished)`: the time of that snapshot and whether this
+    leave finished the meeting. None if no running meeting is to be sent
+    (no Classic round, no meeting, or its result was already applied).
+    """
+    if lobby.classic_round is None or lobby.meeting is None or lobby.meeting.get("applied"):
+        return None
+    now = seconds_now()
+    lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
+    lobby.meeting = classic_meeting.end_if_enough_skips(lobby.meeting, now)
+    sync_classic_after_meeting(lobby)
+    lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
+    return now, lobby.meeting.get("applied", False)
+
+
+async def tell_the_rest_after_a_leave(lobby, new_host, stop_news, meeting_news=None):
     """Tell the players who stay what a player's leaving changed. Never raises.
 
     The same for every way of leaving: "Leave", logging out, a lost
-    connection or signing in elsewhere. `stop_news` is what
+    connection or signing in elsewhere. `meeting_news` is what
+    `settle_the_meeting_after_a_leave` returned. `stop_news` is what
     `stop_round_if_it_no_longer_fits` returned: if the round was stopped,
     everybody gets that news and then the lobby's state, so every browser
     goes back to the lobby (S-101).
@@ -636,7 +664,7 @@ async def tell_the_rest_after_a_leave(lobby, new_host, stop_news):
         return
     await tell_lobby(lobby, new_host)
     try:
-        await tell_classic_after_a_leave(lobby)
+        await tell_classic_after_a_leave(lobby, meeting_news)
     except Exception as problem:
         # The caller is a player's own handler: a fault here must not close
         # that player's connection. Only the kind of error is logged.
@@ -645,24 +673,19 @@ async def tell_the_rest_after_a_leave(lobby, new_host, stop_news):
     await tell_round_news(lobby)
 
 
-async def tell_classic_after_a_leave(lobby):
+async def tell_classic_after_a_leave(lobby, meeting_news=None):
     """In Classic, a leaver is out of the lists (M3-3.11): send the new ones.
 
     A running meeting is sent again, without the leaver among the living and
-    the voters. A finished one is not: its result was already shown.
+    the voters; `meeting_news` (from `settle_the_meeting_after_a_leave`)
+    says at which time, and whether the leave finished it. A meeting whose
+    result was shown before is not sent again.
     """
     if lobby.classic_round is None:
         return
     finished_now = False
-    if lobby.meeting is not None and not lobby.meeting.get("applied"):
-        # As in `answer_vote_message`: the time of the vote may have run out
-        # since the last tick. Then this snapshot is the result: it is
-        # applied once, and the tick must not send the same one again.
-        now = seconds_now()
-        lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
-        sync_classic_after_meeting(lobby)
-        finished_now = lobby.meeting.get("applied", False)
-        lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
+    if meeting_news is not None and lobby.meeting is not None:
+        now, finished_now = meeting_news
         await tell_meeting_state(lobby, now)
     await tell_classic_roster(lobby)
     if finished_now:
@@ -835,8 +858,9 @@ def tick(seconds: float):
     So a slow player cannot delay the tick or the other players.
     """
     for lobby in app.state.lobbies.all():
+        meeting_is_published = False
         if lobby.meeting is not None:
-            update_meeting_clock(lobby)
+            meeting_is_published = update_meeting_clock(lobby)
         try:
             if lobby.classic_round is None:
                 has_positions = lobby.walkers.advance(seconds, app.state.campus)
@@ -862,10 +886,19 @@ def tick(seconds: float):
         try:
             # A round whose time is up ends here, with no message from a
             # browser needed. A try of its own: a fault in the walking above
-            # must not keep a round from ending.
-            farewells, result = end_round_if_over(lobby)
-            if farewells:
-                run_in_background(tell_round_ended(lobby, farewells, result))
+            # must not keep a round from ending. When the meeting's news was
+            # just started above, that send asks this itself, after the
+            # result: else a vote whose time ends the round would never show
+            # its result (the round ended and cleared the meeting first).
+            # This relies on two things: `publish_meeting_and_round_result`
+            # always asks `end_round_if_over` after its snapshot (its sends
+            # never raise), and its task starts, and builds the snapshot,
+            # before the next tick, which asks again in any case because the
+            # meeting clock is then unchanged.
+            if not meeting_is_published:
+                farewells, result = end_round_if_over(lobby)
+                if farewells:
+                    run_in_background(tell_round_ended(lobby, farewells, result))
         except Exception as problem:
             log_tick_fault("The check for the end of a round failed", lobby.code, problem)
 
@@ -1114,6 +1147,7 @@ async def answer_fail_message(websocket: WebSocket):
     event = {
         "type": "classic_fail",
         "target_id": target_id,
+        "character": lobby.character_of(target_id),
         "sheet_id": sheet_id,
         "position": {"x": target_position[0], "y": target_position[1]},
     }
@@ -1234,15 +1268,21 @@ async def publish_meeting_and_round_result(lobby, now):
         await tell_round_ended(lobby, farewells, result)
 
 
-def update_meeting_clock(lobby):
-    """Advance a meeting from the server clock and publish each clock second."""
+def update_meeting_clock(lobby) -> bool:
+    """Advance a meeting from the server clock and publish each clock second.
+
+    Returns whether a publish was started; it also ends the round if the
+    meeting's result decided it.
+    """
     now = seconds_now()
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
     sync_classic_after_meeting(lobby)
     clock = meeting_clock_of(lobby.meeting, now)
-    if clock != lobby.meeting_clock:
-        lobby.meeting_clock = clock
-        run_in_background(publish_meeting_and_round_result(lobby, now))
+    if clock == lobby.meeting_clock:
+        return False
+    lobby.meeting_clock = clock
+    run_in_background(publish_meeting_and_round_result(lobby, now))
+    return True
 
 
 def meeting_clock_of(meeting, now):
@@ -1287,11 +1327,12 @@ async def tell_meeting_state(lobby, now=None):
     snapshot = classic_meeting.meeting_snapshot(
         lobby.meeting, seconds_now() if now is None else now
     )
+    snapshot["characters"] = dict(lobby.players())
     await asyncio.gather(*(send_to(name, snapshot) for name in lobby.names()))
 
 
 async def answer_vote_message(websocket: WebSocket, message: dict):
-    """Record a final vote and rebroadcast a snapshot that hides its target."""
+    """Record, change or take back a vote and send everybody the new snapshot."""
     name = app.state.sessions.name_of(websocket)
     if name is None:
         await websocket.send_json(protocol.rejection("not_signed_in"))
@@ -1305,23 +1346,26 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
         return
 
     now = seconds_now()
+    phase_before = lobby.meeting["phase"]
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
     sync_classic_after_meeting(lobby)
     try:
         lobby.meeting = classic_meeting.cast_vote(
             lobby.meeting, name, message["target_id"]
         )
-        lobby.meeting = classic_meeting.end_voting_if_everyone_voted(lobby.meeting, now)
     except ValueError:
+        phase_changed = lobby.meeting["phase"] != phase_before
         await websocket.send_json(protocol.rejection("vote_rejected"))
+        if not phase_changed:
+            return  # nothing changed, so the others need not hear anything
     sync_classic_after_meeting(lobby)
     if lobby.meeting is not None:
         # This snapshot is the news of the moment: the tick must not send the
-        # same one again (after an early end it would repeat the result).
+        # same one again in this second.
         lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
     await tell_meeting_state(lobby, now)
-    # A handler that ended the round meanwhile (two last votes at once) may
-    # have cleared the meeting while this one waited.
+    # A handler that ended the round meanwhile (a Skip that reached 75 %, or
+    # the tick) may have cleared the meeting while this one waited.
     if lobby.meeting is not None and lobby.meeting.get("phase") == "result":
         await tell_classic_roster(lobby)
         lobby.walkers._everybody_needs_news()
@@ -1329,6 +1373,40 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
     farewells, result = end_round_if_over(lobby)
     if farewells:
         await tell_round_ended(lobby, farewells, result)
+
+
+async def answer_skip_discussion_message(websocket: WebSocket):
+    """Record a Skip ballot and publish the result if the threshold is met."""
+    name = app.state.sessions.name_of(websocket)
+    if name is None:
+        await websocket.send_json(protocol.rejection("not_signed_in"))
+        return
+    lobby = app.state.lobbies.lobby_of(name)
+    if lobby is None:
+        await websocket.send_json(protocol.rejection("not_in_lobby"))
+        return
+    if lobby.meeting is None:
+        await websocket.send_json(protocol.rejection("skip_discussion_rejected"))
+        return
+
+    now = seconds_now()
+    phase_before = lobby.meeting["phase"]
+    lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
+    sync_classic_after_meeting(lobby)
+    try:
+        lobby.meeting = classic_meeting.agree_to_skip_discussion(lobby.meeting, name, now)
+    except ValueError:
+        phase_changed = lobby.meeting["phase"] != phase_before
+        await websocket.send_json(protocol.rejection("skip_discussion_rejected"))
+        if not phase_changed:
+            return  # nothing changed, so the others need not hear anything
+    sync_classic_after_meeting(lobby)
+    # The rejection above waited: another handler may have ended the round.
+    if lobby.meeting is not None:
+        # This snapshot is the news of the moment: the tick must not send the
+        # same one again (after a Skip at 75 % it would repeat the result).
+        lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
+    await publish_meeting_and_round_result(lobby, now)
 
 
 # The round of each mode. The rules of Duel are in `server/modes/duel.py`

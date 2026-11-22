@@ -345,6 +345,12 @@ function mapButton(className) {
 function look() {
   const useButton = mapButton('use-button');
   const reportButton = mapButton('report-button');
+  const selectedVote = element('classic-vote-players').children.find(
+    (button) => button.classList.contains('classic-vote-player-selected')
+  );
+  const voteIconLabels = everyElementBelow(element('classic-vote-players'))
+    .filter((found) => found.classList.contains('classic-voter-icon'))
+    .map((found) => found.title);
   const lobbyNames = everyElementBelow(element('lobby-players'));
   const ownOnMap = mapTexts.filter((text) => text.text === ownName);
   return {
@@ -362,6 +368,25 @@ function look() {
     ownNameRedInLobby: lobbyNames.some((found) => found.classList.contains('free-rider-name')),
     ownNameRedInRound: element('classic-own-name').classList.contains('free-rider-name'),
     meetingKnowsFreeRider: meetingKnowsFreeRider,
+    selectedVoteTarget: selectedVote ? selectedVote.dataset.targetId : null,
+    voteIconLabels: voteIconLabels,
+    // The names in the side panel's Players list, in their order.
+    listNames: element('lobby-players').children
+      .map((row) => row.children.find((child) => child.classList.contains('player-name')).textContent),
+    // The rows of the side panel's Players list marked dead, with their markers.
+    deadInList: element('lobby-players').children
+      .filter((row) => row.classList.contains('player-dead'))
+      .map((row) => ({
+        name: row.children.find((child) => child.classList.contains('player-name')).textContent,
+        markers: row.children.filter((child) => child.classList.contains('marker')).map((child) => child.textContent),
+      })),
+    // Lennart's Skip section of the meeting window.
+    skip: {
+      hidden: element('classic-skip-options').hidden,
+      status: element('classic-skip-status').textContent,
+      text: element('classic-skip-discussion').textContent,
+      disabled: element('classic-skip-discussion').disabled,
+    },
     focusedId: document.activeElement ? document.activeElement.id : null,
     pulsing: pulsingStations,
     useButtonDisabled: useButton ? useButton.disabled : null,

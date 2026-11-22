@@ -169,8 +169,13 @@ class Browser:
         return [m["message"] for m in self.messages(label, "error", since)]
 
     def drawn(self, label, character, since):
+        # The draws of a character as a figure on the map. The victim's
+        # portrait on the F-sheet (S-163) is drawn at the sheet-local point
+        # (0, 0.6), where no player can stand; it is left out, as in
+        # tests/test_play_hiding.py.
         return self.js(label, f"""window.__drawn
-            .filter((d) => d.t >= {since} && d.character === '{character}').length""")
+            .filter((d) => d.t >= {since} && d.character === '{character}'
+                && !(d.x === 0 && d.y === 0.6)).length""")
 
     def meeting_texts(self, label, since):
         return self.js(label, f"window.__meetingTexts.filter((d) => d.t >= {since}).map((d) => d.text)")
@@ -504,12 +509,16 @@ def round_1_ghosts_and_meetings(play, labels, seen):
     b.wait(second, f"window.__received.some((r) => r.t >= {since} && r.m.type === 'error')")
     ghost_vote_errors = b.errors(second, since)
     votes_after_ghost = dict(play.lobby().meeting["votes"])
-    # The living vote the Free Rider out; he votes Skip.
+    # The living vote the Free Rider out; he presses Skip.
     for label in (caller, voter):
         selector = f'.classic-vote-player[data-target-id="{names[fr]}"]'
         b.wait(label, f"document.querySelector('{selector}') !== null && !document.querySelector('{selector}').disabled")
         b.call("click", label=label, selector=selector)
-    b.call("click", label=fr, selector=".classic-vote-skip")
+    b.call("click", label=fr, selector="#classic-skip-discussion")
+    # Lennart's rules (S-162): everybody having voted does not end the vote;
+    # its clock does. The Skip must arrive before the clock jumps.
+    wait_until(lambda: names[fr] in play.lobby().meeting.get("skip_votes", ()), "the Free Rider's Skip")
+    clock.skip(31)
     for label in labels:
         b.wait(label, "!document.getElementById('classic-end-screen').hidden")
     time.sleep(0.5)
@@ -772,9 +781,9 @@ def round_4_tab_closed_in_meeting(play, labels, seen, newcomer):
         for label in others
     }
     b.shot(others[0], "r4_vote_without_the_closed_tab")
-    b.call("click", label=caller, selector=".classic-vote-skip")
-    # The vote must arrive before the clock jumps past the end of the vote.
-    wait_until(lambda: names[caller] in play.lobby().meeting["votes"], "the Skip vote")
+    b.call("click", label=caller, selector="#classic-skip-discussion")
+    # The Skip must arrive before the clock jumps past the end of the vote.
+    wait_until(lambda: names[caller] in play.lobby().meeting.get("skip_votes", ()), "the Skip")
     clock.skip(31)
     play.wait_for_phase(others, "result", mark)
     result_texts = {label: b.wait(label, "document.getElementById('classic-vote-result').textContent") for label in others}
@@ -1105,7 +1114,7 @@ def test_a_player_voted_for_who_leaves_in_the_vote_takes_the_vote_with_him(playe
     for label, living in seen["living_after"].items():
         assert seen["leaver"] not in living, (label, living)
     for label, buttons in seen["buttons"].items():
-        assert seen["leaver"] not in [target for target, _ in buttons] and len(buttons) == 5, (label, buttons)
+        assert seen["leaver"] not in [target for target, _ in buttons] and len(buttons) == 4, (label, buttons)  # Skip is its own button (S-162)
     assert set(seen["result_texts"].values()) == {"No one was ejected."}
     assert seen["phase_after"] == "round" and seen["lobby_phase"] == "round"
     assert seen["errors"] == {label: [] for label in seen["errors"]}
@@ -1120,7 +1129,7 @@ def test_a_tab_closed_in_the_discussion_leaves_the_meeting_and_it_ends_by_its_cl
     assert all(count > 0 for count in seen["meeting_texts_drawn"].values())
     assert seen["meeting_texts_with_closer"] == {label: 0 for label in seen["meeting_texts_drawn"]}
     for label, buttons in seen["vote_buttons"].items():
-        assert closer not in buttons and len(buttons) == 5, (label, buttons)  # four players and Skip
+        assert closer not in buttons and len(buttons) == 4, (label, buttons)  # four players; Skip is its own button (S-162)
     assert set(seen["result_texts"].values()) == {"No one was ejected."}
     assert set(seen["results_per_page"].values()) == {1}
     assert seen["phase_after"] == "round" and seen["lobby_phase"] == "round"

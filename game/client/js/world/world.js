@@ -1090,7 +1090,7 @@ Game.world = Game.world || {};
     var x = message.position.x;
     var y = message.position.y;
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    bloodSheets.set(message.sheet_id, { x: x, y: y });
+    bloodSheets.set(message.sheet_id, { x: x, y: y, character: message.character });
   }
 
   function clearBloodSheets() {
@@ -1677,11 +1677,18 @@ Game.world = Game.world || {};
       ctx.lineWidth = 0.65;
       ctx.fillRect(-4.2, -5.5, 8.4, 11);
       ctx.strokeRect(-4.2, -5.5, 8.4, 11);
+      var hasPortrait = typeof sheet.character === "string" && typeof Game.world.drawCharacter === "function";
+      if (hasPortrait) {
+        ctx.save();
+        ctx.globalAlpha = 0.78;
+        Game.world.drawCharacter(ctx, sheet.character, 0, 0.6, 7.6);
+        ctx.restore();
+      }
       ctx.fillStyle = "#C43E3E";
-      ctx.font = "bold 7px system-ui, sans-serif";
+      ctx.font = hasPortrait ? "bold 3.4px system-ui, sans-serif" : "bold 7px system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("F", 0, 0.3);
+      ctx.fillText("F", hasPortrait ? -2.55 : 0, hasPortrait ? -3.2 : 0.3);
       ctx.restore();
     });
   }
