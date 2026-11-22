@@ -890,6 +890,11 @@ def tick(seconds: float):
             # just started above, that send asks this itself, after the
             # result: else a vote whose time ends the round would never show
             # its result (the round ended and cleared the meeting first).
+            # This relies on two things: `publish_meeting_and_round_result`
+            # always asks `end_round_if_over` after its snapshot (its sends
+            # never raise), and its task starts, and builds the snapshot,
+            # before the next tick, which asks again in any case because the
+            # meeting clock is then unchanged.
             if not meeting_is_published:
                 farewells, result = end_round_if_over(lobby)
                 if farewells:
