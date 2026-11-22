@@ -305,7 +305,6 @@ def test_chat_and_vote_after_the_meeting_are_refused_and_apply_nothing_again(con
 
     connections[other].send_json({"type": "chat", "text": "Too late?"})
     assert connections[other].receive_json()["code"] == "chat_rejected"
-    read_until(connections[other], "meeting_state")  # the meeting's result, sent again with the refusal
     connections[other].send_json({"type": "vote", "target_id": caller})
     assert connections[other].receive_json()["code"] == "vote_rejected"
     ticks(connections)

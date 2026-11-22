@@ -77,7 +77,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | If someone leaves the game, the round continues, and the host changes if needed | M2 | Done |
 | A player who lost the connection in a lobby is put back into it after signing in again, without typing the code (S-109) | M3 | Done |
 | Players who were disconnected for a short time come back into their running round | M4 | Later |
-| Each client gets only the information that its player is allowed to know | M3 | Planned |
+| Each client gets only the information that its player is allowed to know | M3 | Done (M3-2.1, 2026-11-22; known limit S-168) |
 | Game reachable at a public URL, deployed automatically from `main` | M0 | Done |
 | Several lobbies at the same time | M1 | Done |
 
@@ -90,7 +90,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Shared progress bar of the group work | M3 | Done |
 | Free Rider fails a nearby player, followed by a cooldown; the sheet shows the victim's portrait (S-163) | M3 | Playable with known defects (M3-3.13, M3-3.15) |
 | Find and report a failed player | M3 | Playable with known defects (M3-3.15) |
-| Emergency meeting with the red button in the centre of the Main Deck (S-147), limited per player, range checked by the server, hint only for the living (S-170) | M3 | Playable with known defects (M3-3.15: the wording “E Call meeting”) |
+| Emergency meeting with the red button in the centre of the Main Deck (S-147), drawn as an alarm switch (S-149), limited per player, range checked by the server, hint only for the living (S-170) | M3 | Playable with known defects (M3-3.15: the wording “E Call meeting”) |
 | Meeting with text chat and time limit; the window closes after the result (S-153) | M3 | Playable with known defects (M3-3.13) |
 | Own task list per player, only its stations pulse; the Free Rider has none (S-154) | M3 | Done |
 | Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie; votes are public and can be changed, after a report already during the discussion, 75 % Skip ends the meeting (S-160 to S-162) | M3 | Done |

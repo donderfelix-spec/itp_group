@@ -1320,8 +1320,9 @@ async def answer_chat_message(websocket: WebSocket, message: dict):
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
     sync_classic_after_meeting(lobby)
     if not classic_meeting.can_send_chat(lobby.meeting, name, message["text"], now):
+        # Only the sender hears about a refused chat (M3-2.1). If the time
+        # moved the meeting on meanwhile, the tick sends that to everybody.
         await websocket.send_json(protocol.rejection("chat_rejected"))
-        await tell_meeting_state(lobby, now)
         return
     lobby.meeting = classic_meeting.send_chat(lobby.meeting, name, message["text"], now)
     await tell_meeting_state(lobby, now)
