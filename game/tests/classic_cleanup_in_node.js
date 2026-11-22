@@ -370,6 +370,13 @@ function look() {
     meetingKnowsFreeRider: meetingKnowsFreeRider,
     selectedVoteTarget: selectedVote ? selectedVote.dataset.targetId : null,
     voteIconLabels: voteIconLabels,
+    // The rows of the side panel's Players list marked dead, with their markers.
+    deadInList: element('lobby-players').children
+      .filter((row) => row.classList.contains('player-dead'))
+      .map((row) => ({
+        name: row.children.find((child) => child.classList.contains('player-name')).textContent,
+        markers: row.children.filter((child) => child.classList.contains('marker')).map((child) => child.textContent),
+      })),
     // Lennart's Skip section of the meeting window.
     skip: {
       hidden: element('classic-skip-options').hidden,

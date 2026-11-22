@@ -1998,6 +1998,14 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 .free-rider-name { color: #C43E3E; }
 
+/* A dead Classic player in the side panel (lobby.js): crossed out, faded
+   and marked "Dead", so it does not rest on colour alone. The row takes the
+   full width, so the name keeps room beside the marker. */
+.player-dead { grid-column: 1 / -1; }
+.player-dead .icon { opacity: 0.4; filter: grayscale(1); }
+.player-dead .player-name { color: #756E75; text-decoration: line-through 2px; }
+.marker-dead { background: #EAE6DF; border-style: dashed; }
+
 .icon {
   flex: none;
   width: 48px;

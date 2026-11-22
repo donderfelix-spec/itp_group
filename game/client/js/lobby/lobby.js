@@ -36,6 +36,10 @@ window.Game = window.Game || {};
   // In a Duel or Solo round: how many stations each player has done, from
   // `duel_progress` (see showProgress). null outside such a round.
   let progress = null;
+  // In a Classic round: the players whose `classic_roster` entry says
+  // `ghost: true`. Only ghosts get these entries (the server's rule), so a
+  // living player never sees a ghost here. Empty outside a round.
+  let deadNames = new Set();
   let leaveHandler = null; // see setup
 
   // `whenLeaveAsked` (from main.js) runs once "Leave lobby" has sent
@@ -400,6 +404,9 @@ window.Game = window.Game || {};
   function makePlayerRow(player, hostName) {
     const row = document.createElement('li');
     row.className = player.name === ownName ? 'player player-own' : 'player';
+    // A dead player is crossed out and marked "Dead", not by colour alone.
+    const isDead = deadNames.has(player.name);
+    if (isDead) row.classList.add('player-dead');
     row.appendChild(makeIcon(player.character));
     // textContent, never innerHTML: a name is text from another player.
     const name = makeText('span', 'player-name', player.name);
@@ -408,6 +415,7 @@ window.Game = window.Game || {};
     row.appendChild(name);
     if (player.name === hostName) row.appendChild(makeText('span', 'marker marker-host', 'Host'));
     if (player.name === ownName) row.appendChild(makeText('span', 'marker', 'You'));
+    if (isDead) row.appendChild(makeText('span', 'marker marker-dead', 'Dead'));
     return row;
   }
 
@@ -423,6 +431,7 @@ window.Game = window.Game || {};
   function show(state) {
     latestState = state;
     if (!isRaceRound(state)) progress = null; // a round that ended leaves no progress behind
+    if (state.phase !== 'round') deadNames = new Set(); // nor its dead
     codeElement.textContent = state.code;
     showPlayers(state);
     const isHost = state.host === ownName;
@@ -443,6 +452,7 @@ window.Game = window.Game || {};
 
   function setPlayers(players) {
     if (!latestState || !Array.isArray(players)) return;
+    deadNames = new Set(players.filter((player) => player && player.ghost === true).map((player) => player.name));
     latestState.players = players;
     showPlayers(latestState);
     showCharacters(players);
