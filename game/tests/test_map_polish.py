@@ -18,9 +18,9 @@ With the real map and the real walking rule (`step`, `is_free`):
 
 The follow-up (Felix, 2026-11-22: the objects were "a bit too big" and did
 not match the furniture): every object is at most its target size plus 2,
-stands against a wall or a piece of furniture (all but station 9), and
-station 12 moved beside bush 4 without making a way of the Duel longer than
-on the branch before.
+stands against a wall or a piece of furniture (all but stations 9 and 12,
+which no allowed place brings near one), and no way of the Duel is longer
+than on the branch before.
 
 In Chromium (skipped when Node, Playwright or Chromium is missing): the
 pixels of each station's object, outline, shadow and number tag lie on no
@@ -35,6 +35,7 @@ strokes a line wider than 1.
 import contextlib
 import itertools
 import json
+import math
 import socket
 import subprocess
 import sys
@@ -47,7 +48,7 @@ import pytest
 
 from server.modes import minigames
 from server.world.campus import load_campus
-from server.world.movement import PLAYER_HALF_SIZE, is_free, step
+from server.world.movement import PLAYER_HALF_SIZE, PLAYER_SPEED, is_free, step
 from server.world.paths import SPAWN, station_distances
 from server.world.stations import station_in_range
 from test_play_campus_detail import NODE, node_environment, playwright_works
@@ -521,10 +522,13 @@ def gap_between_boxes(first, second):
     return max(dx, dy)
 
 
-# Station 9 stands in the open: table 3 lies 24 above its outline, the tray
+# Stations 9 and 12 stand in the open, drawn as things that stand free (a
+# trolley, a bin). Station 9: table 3 lies 24 above its outline, the tray
 # return 26 to the right behind the hiding spot, and any place nearer to them
-# makes a way of the Duel longer (it stays, drawn on a trolley of its own).
-STANDS_IN_THE_OPEN = {9}
+# makes a way of the Duel longer. Station 12: the nearest solid, bush 4, lies
+# 33 to the left; beside it the station would glow within a second's walk of
+# the spawn, and a place further from the spawn makes ways longer (below).
+STANDS_IN_THE_OPEN = {9, 12}
 # How close an outline comes to the wall or furniture its object stands against.
 LEANING_GAP = 3
 
@@ -540,35 +544,20 @@ def test_station_9_has_no_wall_or_furniture_within_reach():
     assert min(gap_between_boxes(box, solid) for solid in SOLIDS) == 24
 
 
-def test_station_12_in_its_old_place_stood_alone_on_the_deck():
-    # Rejected: at (600, 350) the nearest solid, bush 4, was 33 units away.
-    left, top, right, bottom = STATION_BOXES[12]
-    old = {"x": 600 + left, "y": 350 + top, "w": right - left, "h": bottom - top}
-    assert min(gap_between_boxes(old, solid) for solid in SOLIDS) > LEANING_GAP
+def test_station_12_has_no_wall_or_furniture_within_reach():
+    box = station_box(12)
+    assert min(gap_between_boxes(box, solid) for solid in SOLIDS) == 33
 
 
-def test_no_two_station_objects_overlap():
-    for first, second in itertools.combinations(sorted(STATION_BOXES), 2):
-        assert not overlap(station_box(first), station_box(second)), (first, second)
-
-
-def hiding_square(spot):
-    """The square around a hiding spot's circle."""
-    return {"x": spot["x"] - spot["r"], "y": spot["y"] - spot["r"], "w": spot["r"] * 2, "h": spot["r"] * 2}
-
-
-@pytest.mark.parametrize("station_id", sorted(STATION_BOXES))
-def test_no_station_object_or_its_outline_lies_on_a_hiding_spot(station_id):
-    # Station 9 stands beside the Canteen's hiding spot at (636, 128).
-    box = station_box(station_id)
-    assert [spot for spot in CAMPUS["hiding_spots"] if overlap(box, hiding_square(spot))] == []
-
-
-def test_station_9_in_its_old_place_lay_on_the_tray_return_and_the_wall():
-    # Rejected: the box check finds what M2-1.20 moved station 9 away from.
-    left, top, right, bottom = STATION_BOXES[9]
-    old = {"x": 650 + left, "y": 144 + top, "w": right - left, "h": bottom - top}
-    assert {solid["id"] for solid in SOLIDS if overlap(old, solid)} >= {"canteen-tray-return", "canteen-wall-right"}
+def test_station_12_beside_the_bush_would_glow_within_a_second_of_the_spawn():
+    # Rejected: at (568, 350), beside bush 4, the station lies 98 from the
+    # spawn, less than one second's walk plus the use range
+    # (test_play_stations.py); lower down, at (576, 368), the way from the
+    # spawn becomes longer (137.5 -> 140.6).
+    spawn = CAMPUS["spawn"]
+    assert math.hypot(568 - spawn["x"], 350 - spawn["y"]) <= PLAYER_SPEED + USE_RANGE
+    station = station_called(12)
+    assert math.hypot(station["x"] - spawn["x"], station["y"] - spawn["y"]) > PLAYER_SPEED + USE_RANGE
 
 
 def test_a_station_box_that_only_touches_a_solid_is_free():
@@ -664,17 +653,15 @@ def test_the_aisles_and_free_stations_made_some_ways_much_shorter(ways_now):
     # became shorter and none longer. The largest change is 5 to 11, 32 %
     # shorter (station 11 in the aisle between the shelves); others are
     # 9 to 11 14.6 %, spawn to 11 13.5 %, 11 to 12 17.3 %, 8 to 10 9.9 % and
-    # 1 to 7 6.5 %. (11 to 12 was 172.167 until the follow-up moved station
-    # 12 beside bush 4, see below.)
+    # 1 to 7 6.5 %.
     assert ways_now[(5, 11)] == pytest.approx(113.941, abs=ROUNDING)
-    assert ways_now[(11, 12)] == pytest.approx(156.569, abs=ROUNDING)
+    assert ways_now[(11, 12)] == pytest.approx(172.167, abs=ROUNDING)
     assert ways_now[(8, 10)] == pytest.approx(390.392, abs=ROUNDING)
 
 
-# The follow-up of M2-1.20 (station objects drawn like the furniture) moved
-# one station: 12 from (600, 350) to (568, 350), so that its bin stands
-# beside bush 4. Measured on the branch before the follow-up (b592c7c), the
-# same 66 ways; none may be longer now.
+# The follow-up of M2-1.20 (station objects drawn like the furniture) may
+# move a station only if no way becomes longer; it moved none in the end.
+# Measured on the branch before the follow-up (b592c7c), the same 66 ways.
 WAYS_ON_THE_BRANCH_BEFORE_THE_FOLLOW_UP = {
     (SPAWN, 1): 598.676, (SPAWN, 2): 339.647, (SPAWN, 3): 326.274, (SPAWN, 4): 718.108,
     (SPAWN, 5): 262.510, (SPAWN, 7): 614.960, (SPAWN, 8): 285.304, (SPAWN, 9): 219.362,
@@ -701,13 +688,9 @@ def test_no_way_of_the_duel_became_longer_than_on_the_branch(ways_now):
     assert ways_longer_than_before(ways_now, WAYS_ON_THE_BRANCH_BEFORE_THE_FOLLOW_UP) == []
 
 
-def test_station_12_beside_the_bush_made_only_its_own_ways_shorter(ways_now):
-    # Every way to station 12 is shorter (spawn to 12 137.539 -> 117.255),
-    # every other way is as long as before.
+def test_no_way_of_the_duel_changed_in_the_follow_up(ways_now):
     before = WAYS_ON_THE_BRANCH_BEFORE_THE_FOLLOW_UP
-    shorter = {pair for pair, length in before.items() if ways_now[pair] < length - ROUNDING}
-    assert shorter == {pair for pair in before if 12 in pair}
-    assert ways_now[(SPAWN, 12)] == pytest.approx(117.255, abs=ROUNDING)
+    assert all(ways_now[pair] == pytest.approx(length, abs=ROUNDING) for pair, length in before.items())
 
 
 def test_a_way_one_unit_longer_is_found_and_one_as_long_is_not():

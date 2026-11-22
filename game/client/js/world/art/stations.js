@@ -260,8 +260,9 @@ Game.world = Game.world || {};
   }
   place(11, -7, -5, 12, 10, shoppingBasket, { tag: { x: 5.5, y: 4.5 } });
 
-  // 12 Seagull quality control: a seagull on a bin, holding a stolen page,
-  // beside the bush on the deck.
+  // 12 Seagull quality control: a seagull on a bin, holding a stolen page.
+  // A bin stands free on the deck: no wall or furniture is near enough to
+  // lean on, and beside bush 4 the station would glow too near the spawn.
   function seagullOnBin(ctx) {
     box(ctx, 1.5, 7, 9, 7, 0.6, "#5E6270", EDGE); // the bin
     [4, 6, 8].forEach(function (x) {
