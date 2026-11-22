@@ -330,7 +330,8 @@
       <h2>Statistics</h2>
       <ul id="classic-stat-list" class="classic-stat-list"></ul>
       <div class="button-row">
-        <button type="button" id="classic-new-round" class="button button-main">New Round</button>
+        <!-- Only the host sees "New Round" (round.js, updateHostAction). -->
+        <button type="button" id="classic-new-round" class="button button-main" hidden>New Round</button>
         <button type="button" id="classic-back-lobby" class="button">Back to the lobby</button>
       </div>
       <p id="classic-host-hint" class="rule"></p>

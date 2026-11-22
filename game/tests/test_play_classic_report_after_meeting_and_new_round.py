@@ -128,7 +128,7 @@ class Browser:
                 voteList: shown('classic-vote-options'),
                 voteButtons: Array.from(document.querySelectorAll('#classic-vote-players button'))
                     .filter((button) => button.getClientRects().length > 0)
-                    .map((button) => ({ target: button.dataset.targetId, voters: button.querySelectorAll('.classic-voter-icon').length,
+                    .map((button) => ({ target: button.dataset.targetId, voters: Number(button.querySelector('.classic-vote-count').textContent),
                                           selected: button.classList.contains('classic-vote-player-selected') })),
                 voteResult: shown('classic-vote-result') ? document.getElementById('classic-vote-result').textContent : null,
                 skipStatus: shown('classic-skip-options') ? document.getElementById('classic-skip-status').textContent : null,
@@ -332,8 +332,9 @@ def play_round_one(browser, clock, seen):
             && ['meeting_state', 'classic_result'].includes(r.m.type)).map((r) => [r.m.type, r.m.phase || null])""")
         for label in LABELS
     }
+    # Whether "New Round" is hidden (not in the layout): only the host sees it.
     seen["new_round_button"] = {
-        label: browser.js(label, "document.getElementById('classic-new-round').disabled") for label in LABELS
+        label: browser.js(label, "document.getElementById('classic-new-round').offsetParent === null") for label in LABELS
     }
 
 

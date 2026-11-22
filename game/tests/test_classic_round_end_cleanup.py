@@ -325,7 +325,9 @@ def test_a_cast_vote_keeps_the_selected_player_highlighted_until_the_result():
     result = run_page(steps)
     assert result["sent"][-1] == {"type": "vote", "target_id": "Bo"}
     assert result["looks"][-1]["selectedVoteTarget"] == "Bo"
-    assert result["looks"][-1]["voteIconLabels"] == ["Ana voted for Bo"]
+    assert result["looks"][-1]["votes"]["Bo"] == {
+        "count": "1", "countIsZero": False, "label": "Bo — votes: Ana", "title": "Bo — votes: Ana",
+    }
 
 
 @needs_node
