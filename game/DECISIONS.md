@@ -10,6 +10,8 @@ As of 2026-11-19. On 2026-11-18 the team confirmed all entries except those with
 
 ## Game idea
 
+Lennart's minigame redesign (2026-11-22): stations 7, 10 and 12 replace their answer-labelled clicking puzzles with chart reconstruction, chat deduction and timed three-lane rescue. The user requested more variety and challenge. Older campus_task packets retain their renderer; new openings use campus_challenge.
+
 | No. | Date | Decision | Reason | By |
 |---|---|---|---|---|
 | S-01 | 2026-11-18 | Instead of the betting app, the team builds a multiplayer game in the social deduction genre that is set on the Nova SBE campus. | The team changed its mind. | Team |

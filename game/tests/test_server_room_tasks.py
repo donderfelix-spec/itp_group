@@ -30,7 +30,7 @@ def play(connection, name, clock):
     assert opened['type'] == 'station_opened'
     assert opened['title'] == minigames.MINIGAMES[station].title
     if station in room_tasks.MINIGAMES:
-        assert opened['content']['kind'] == 'campus_task'
+        assert opened['content']['kind'] == ('campus_challenge' if station in (7, 10, 12) else 'campus_task')
     clock.wait(1)
     connection.send_json({'type': 'finish_station'})
     return station, news(connection)
