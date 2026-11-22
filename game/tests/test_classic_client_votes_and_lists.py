@@ -119,6 +119,24 @@ def test_a_ghost_sees_the_votes_but_cannot_vote_or_skip():
 
 
 @needs_node
+def test_a_double_click_sends_one_vote_or_skip_until_the_next_meeting_state():
+    steps = classic_round_as_free_rider() + [
+        meeting_state("voting"),
+        ["clickVote", "Bo"], ["clickVote", "Bo"], ["click", "classic-skip-discussion"],
+        meeting_with("voting", voted=["Ana"], vote_targets={"Ana": "Bo"}),
+        ["clickVote", "Bo"], ["clickVote", "Cy"],
+        meeting_with("voting"),
+        ["click", "classic-skip-discussion"], ["click", "classic-skip-discussion"],
+    ]
+    sent = [message for message in run_page(steps)["sent"] if message["type"] in ("vote", "skip_discussion")]
+    assert sent == [
+        {"type": "vote", "target_id": "Bo"},
+        {"type": "vote", "target_id": "Bo"},  # the second one, after the snapshot: taken back
+        {"type": "skip_discussion"},
+    ]
+
+
+@needs_node
 def test_skip_needs_four_of_five_and_six_of_seven():
     five = ["Ana", "Bo", "Cy", "Di", "Ed"]
     seven = five + ["Flo", "Gus"]

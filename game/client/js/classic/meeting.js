@@ -24,6 +24,10 @@ Game.classicMeeting = Game.classicMeeting || {};
   var skipStatus;
   var skipButton;
   var voteListSignature = "";
+  // True from a vote or Skip click until the next meeting_state arrives.
+  // A second click before then is ignored, so a double click cannot take
+  // back the vote (or the Skip) it just cast.
+  var waitingForMeeting = false;
   var resultCloseTimer = null;
   var resultShown = false;
   // The window stays this long after any result, then the round goes on.
@@ -72,6 +76,7 @@ Game.classicMeeting = Game.classicMeeting || {};
     }
     cancelResultClose();
     state = message;
+    waitingForMeeting = false;
     // A reported sheet stays visible, but can no longer start a meeting.
     if (
       message.reason === "report" &&
@@ -105,6 +110,7 @@ Game.classicMeeting = Game.classicMeeting || {};
     cancelResultClose();
     if (state !== null) holdTheCharacter(false);
     state = null;
+    waitingForMeeting = false;
     voteListSignature = "";
     screen.hidden = true;
   }
@@ -232,13 +238,13 @@ Game.classicMeeting = Game.classicMeeting || {};
   }
 
   function skipDiscussion() {
-    if (!votingIsOpen() || !state.living.includes(ownName)) return;
-    Game.net.send({ type: "skip_discussion" });
+    if (waitingForMeeting || !votingIsOpen() || !state.living.includes(ownName)) return;
+    waitingForMeeting = Game.net.send({ type: "skip_discussion" });
   }
 
   function castVote(targetId) {
-    if (!votingIsOpen() || !state.living.includes(ownName)) return;
-    Game.net.send({ type: "vote", target_id: targetId });
+    if (waitingForMeeting || !votingIsOpen() || !state.living.includes(ownName)) return;
+    waitingForMeeting = Game.net.send({ type: "vote", target_id: targetId });
   }
 
   function updateVoteResult() {
