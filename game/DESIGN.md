@@ -317,3 +317,7 @@ Deck bushes use a circular green silhouette containing woody branches and pointe
 ## Textured bushes and smaller figures, 2026-11-21
 
 Bushes use an uneven outline with rounded lobes, overlapping leaf clusters, larger pointed leaves with veins and visible woody branches. Square borders remain removed. Map characters are drawn38 units high instead of39, a subtle2.6% reduction; their feet stay at the same ground position.
+
+## Room floors, 2026-11-22
+
+The Lecture Hall has honey-oak planks. Mon Café has terracotta tiles with cream rosettes, the Canteen has an aqua checkerboard, CTT Student Hall has blue-lilac terrazzo, and Pingo Doce has cream tiles with olive diamonds.

@@ -172,3 +172,7 @@ Lobed bush silhouettes with larger veined leaves and layered greens; map figures
 ## Main Deck shrub refinement, 2026-11-22
 
 The Main Deck bushes and hedge now have denser, layered foliage down to the ground, with lighter leaf tips and fine shoots.
+
+## Room floors, 2026-11-22
+
+Five distinct floor finishes for the campus rooms: implemented on the Campus and Characters branch.
