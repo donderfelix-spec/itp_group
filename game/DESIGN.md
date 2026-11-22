@@ -115,7 +115,7 @@ If you walk away, both disappear again; a station that matters to you keeps its 
 | E | Task station that is on your own list | Yellow | “E Use” | Stations that you do not need or have already finished do not glow |
 | E | Emergency button | Yellow | “E Call meeting” | Only as long as you have not yet used up your meeting |
 | R | “F” sheet | Coral | “R Report” | Visible to everyone who is in range |
-| Q | High Performer in range | Coral | “Q Fail” | Only the Free Rider sees the border around the High Performer and the button. During the cooldown the button stays grey and counts down the seconds |
+| Q or F | High Performer in range (20 map units, S-180) | Coral | “Let fail” | Only the Free Rider sees the border around the High Performer and the button. During the cooldown the button stays grey and counts down the seconds (“Let fail (n s)”, S-181) |
 
 Pressing a key that would do nothing at that moment has no effect and also shows no error message.
 
