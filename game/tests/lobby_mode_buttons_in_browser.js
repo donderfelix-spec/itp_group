@@ -9,7 +9,8 @@
 //               every mode button (classes, colours, shadow, the pixel colour
 //               of an empty spot) and every visible "?" (its gaps to the
 //               button's inner border edge, whether a 24 x 24 box around its
-//               centre hits it, whether a click opens its text, and its
+//               centre hits it, whether a click on a corner of its tap square opens
+//               (and pins) its text and a second click closes it, its
 //               outline on keyboard focus, and that the room for the
 //               button's text ends left of it)
 // With a shots folder, it also saves the mode area of the host's panel at
@@ -49,7 +50,6 @@ async function join(page, code) {
 async function chooseMode(page, modeId) {
   await page.click(`#lobby-modes > .mode[data-mode="${modeId}"]`);
   await page.waitForFunction((id) => document.querySelector(`#lobby-modes > .mode[data-mode="${id}"]`).classList.contains('mode-own'), modeId);
-  await page.waitForTimeout(200);
 }
 
 // The colour of one CSS pixel of the page, read from a screenshot drawn on
@@ -123,15 +123,24 @@ async function readWhyButtons(page) {
   }));
 }
 
-// A click opens the text of the "?"; a second click closes it again.
+// A click on a corner of the 24 x 24 tap square (outside the visible
+// circle) opens the text of the "?" and pins it: it stays open when the
+// mouse has gone far away and the "?" has lost the focus, so neither the
+// hover nor the focus is what keeps it open. A second click closes it.
 async function clickOpens(page, modeId) {
   const selector = `#lobby-modes > .mode-why[data-mode="${modeId}"]`;
-  await page.click(selector);
-  const opened = await page.getAttribute(selector, 'aria-expanded');
-  await page.click(selector);
+  const box = await page.locator(selector).boundingBox();
+  const corner = { x: box.x + box.width / 2 + 11, y: box.y + box.height / 2 - 11 };
+  const blur = () => page.evaluate(() => document.activeElement && document.activeElement.blur());
+  await page.mouse.click(corner.x, corner.y);
   await page.mouse.move(0, 0);
-  await page.waitForTimeout(100);
-  return opened === 'true';
+  await blur();
+  const opened = await page.getAttribute(selector, 'aria-expanded');
+  await page.mouse.click(corner.x, corner.y);
+  await page.mouse.move(0, 0);
+  await blur();
+  const closed = await page.getAttribute(selector, 'aria-expanded');
+  return opened === 'true' && closed === 'false';
 }
 
 // Tab from the top of the page to the "?" and read its outline.
@@ -148,7 +157,6 @@ async function focusOutline(page, modeId) {
     return { focused: document.activeElement === why, focusVisible: why.matches(':focus-visible'), style: style.outlineStyle, width: parseFloat(style.outlineWidth) };
   }, modeId);
   await page.evaluate(() => document.activeElement && document.activeElement.blur());
-  await page.waitForTimeout(100);
   return outline;
 }
 
@@ -175,7 +183,10 @@ async function playViewport(browser, label, viewport, scale) {
   const code = await createLobby(host);
   const result = {};
   await host.waitForSelector('#lobby-modes:not([hidden])');
-  await host.waitForTimeout(300);
+  await host.waitForFunction(() => {
+    const duel = document.querySelector('#lobby-modes > .mode[data-mode="duel"]');
+    return duel.classList.contains('mode-own') && duel.classList.contains('mode-unfit');
+  });
   result.alone_duel = await readSituation(host, scale);
   if (shotsFolder) await saveModeArea(host, 'modes_alone_duel.png');
 
@@ -188,7 +199,6 @@ async function playViewport(browser, label, viewport, scale) {
   const other = await guest(browser, label + ' other', { width: 1280, height: 800 }, 1);
   await join(other, code);
   await host.waitForFunction(() => document.querySelector('#lobby-modes > .mode[data-mode="solo"]').classList.contains('mode-unfit'));
-  await host.waitForTimeout(200);
   result.two = await readSituation(host, scale);
   if (shotsFolder) await saveModeArea(host, 'modes_two.png');
   return result;
