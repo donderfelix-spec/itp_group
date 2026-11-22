@@ -70,8 +70,8 @@ Game.world = Game.world || {};
   // 1 Sort the slides: a projector screen on a stand, with a slide on it.
   // The stand is short, so that the outline stays off the first lecture row.
   stations[1] = function (ctx) {
-    line(ctx, 0, 3, 0, 6, OUTLINE, 1.8);
-    line(ctx, -6, 6.5, 6, 6.5, OUTLINE, 1.8);
+    line(ctx, 0, 3, 0, 5.5, OUTLINE, 1.8);
+    line(ctx, -6, 6, 6, 6, OUTLINE, 1.8);
     box(ctx, -12, -12, 24, 15, 1, WHITE, 1.4);
     line(ctx, -12, -12, 12, -12, OUTLINE, 2.4); // the roller at the top
     line(ctx, -9, -8, -3, -8, "#7A8CA8", 1.4);
@@ -131,10 +131,10 @@ Game.world = Game.world || {};
   };
 
   // 7 De-buzzword the slides: a flip chart on an easel, one word crossed out.
-  // Drawn a little smaller and to the right, so that it and its outline fit
-  // between the wall and the lectern.
+  // Drawn a little smaller, to the right and up, so that it and its outline
+  // fit between the wall, the lectern and the first row.
   stations[7] = function (ctx) {
-    shifted(ctx, 4.5, 0, 0.88, flipChart);
+    shifted(ctx, 4.5, -2, 0.88, flipChart);
   };
 
   function flipChart(ctx) {

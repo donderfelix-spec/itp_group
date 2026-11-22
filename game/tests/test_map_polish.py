@@ -1,0 +1,565 @@
+"""The map polish of to-do M2-1.20: aisles without dead ends, no gaps a
+player only just squeezes into, lamp posts against the walls, and station
+objects that stand free.
+
+With the real map and the real walking rule (`step`, `is_free`):
+
+- the CTT's aisle along the window wall and the Canteen's aisle along its
+  left wall can be walked from one end to the other;
+- no two solids anywhere leave a gap of 10 to 13 units that a player can
+  reach (S-111): 10 is exactly one player, so a player gets in and is drawn
+  over the furniture on both sides;
+- every lamp post touches a wall or stands less than 10 units from one, so
+  nobody can walk between them;
+- every station's object, with its outline at the high point of the pulse,
+  lies on no solid and on no other station, and every station can be used
+  from a place a player reaches from the spawn;
+- no way of the Duel (spawn and stations 1-5 and 7-12) became longer.
+
+In Chromium (skipped when Node, Playwright or Chromium is missing): the
+pixels of each station's object and outline lie on no drawn furniture and
+in no wall, the boxes pinned here are the real drawings, and the map draws
+without a console error or warning.
+"""
+
+import contextlib
+import itertools
+import json
+import socket
+import subprocess
+import sys
+import time
+import urllib.request
+from collections import deque
+from pathlib import Path
+
+import pytest
+
+from server.modes import minigames
+from server.world.campus import load_campus
+from server.world.movement import PLAYER_HALF_SIZE, is_free, step
+from server.world.paths import SPAWN, station_distances
+from server.world.stations import station_in_range
+from test_play_campus_detail import NODE, node_environment, playwright_works
+
+CAMPUS = load_campus()
+SOLIDS = CAMPUS["solids"]
+WIDTH, HEIGHT = CAMPUS["width"], CAMPUS["height"]
+USE_RANGE = CAMPUS["use_range"]
+
+# A gap a player (10 units wide) could just squeeze into (S-111).
+SQUEEZE_GAPS = range(10, 14)
+
+
+def solid_called(solid_id, solids=SOLIDS):
+    return next(solid for solid in solids if solid["id"] == solid_id)
+
+
+def station_called(station_id):
+    return next(station for station in CAMPUS["stations"] if station["id"] == station_id)
+
+
+def changed(solid_id, **place):
+    """The real solids with one solid moved or resized."""
+    solids = [dict(solid) for solid in SOLIDS]
+    solid_called(solid_id, solids).update(place)
+    return solids
+
+
+def walk(x, y, dx, dy, seconds, solids=SOLIDS):
+    """Walk with the real rule in ticks of 0.05 s; returns where the player ends."""
+    for _ in range(round(seconds / 0.05)):
+        x, y = step(x, y, dx, dy, 0.05, solids, WIDTH, HEIGHT)
+    return x, y
+
+
+# The aisles along the walls
+
+def window_aisle_of_the_ctt():
+    """The free lane between the pillars at the window wall and the table rows."""
+    pillar = solid_called("ctt-pillar-1")
+    row = solid_called("ctt-table-row-1")
+    return pillar["x"] + pillar["w"], row["x"]
+
+
+def test_the_window_aisle_of_the_ctt_is_wider_than_a_player_beside_every_pillar():
+    left, right = window_aisle_of_the_ctt()
+    assert right - left == 14  # 22 from the wall, 14 beside each pillar
+
+
+@pytest.mark.parametrize("x", [36, 38, 40], ids=lambda x: f"x {x}")
+def test_a_player_walks_the_ctt_window_aisle_from_the_top_to_the_bookshelf(x):
+    # x 36 touches the pillars, x 40 touches the table rows: both still pass.
+    top = solid_called("ctt-wall-top-1")["y"] + solid_called("ctt-wall-top-1")["h"]
+    start_y = top + PLAYER_HALF_SIZE + 2
+    assert is_free(x, start_y, SOLIDS, WIDTH, HEIGHT)
+    end = walk(x, start_y, 0, 1, 5)
+    assert end == (x, solid_called("ctt-bookshelf")["y"] - PLAYER_HALF_SIZE)
+
+
+def test_a_player_walks_the_ctt_window_aisle_back_up_from_the_bookshelf():
+    bottom_y = solid_called("ctt-bookshelf")["y"] - PLAYER_HALF_SIZE
+    top = solid_called("ctt-wall-top-1")["y"] + solid_called("ctt-wall-top-1")["h"]
+    assert walk(38, bottom_y, 0, -1, 5) == (38, top + PLAYER_HALF_SIZE)
+
+
+def test_beside_a_pillar_a_player_one_unit_too_far_left_is_stopped():
+    # Edge case: the lane beside the pillars is exactly as wide as the walk needs.
+    end = walk(35, 245, 0, 1, 5)
+    assert end == (35, solid_called("ctt-pillar-1")["y"] - PLAYER_HALF_SIZE)
+
+
+def test_with_the_old_long_rows_the_ctt_window_aisle_was_cut_into_dead_ends():
+    # Rejected: the rows at x 37 left 6 units beside each pillar.
+    solids = SOLIDS
+    for number in range(1, 9):
+        solids = [dict(solid, x=37, w=58) if solid["id"] == f"ctt-table-row-{number}" else solid for solid in solids]
+    bookshelf_y = solid_called("ctt-bookshelf")["y"] - PLAYER_HALF_SIZE
+    starts = [x for x in range(28, 46) if is_free(x, 240, solids, WIDTH, HEIGHT)]
+    assert starts != []
+    assert [x for x in starts if walk(x, 240, 0, 1, 5, solids)[1] == bookshelf_y] == []
+
+
+def canteen_left_aisle_x():
+    """The middle of the aisle between the Canteen's left wall and its left tables."""
+    wall = solid_called("canteen-wall-left")
+    table = solid_called("canteen-table-1")
+    return (wall["x"] + wall["w"] + table["x"]) / 2
+
+
+def test_a_player_walks_the_canteen_aisle_along_the_left_wall_down_to_the_recycling_bins():
+    x = canteen_left_aisle_x()
+    start_y = solid_called("canteen-drinks-fridge")["y"] + solid_called("canteen-drinks-fridge")["h"] + PLAYER_HALF_SIZE
+    assert is_free(x, start_y, SOLIDS, WIDTH, HEIGHT)
+    end = walk(x, start_y, 0, 1, 3)
+    assert end == (x, solid_called("canteen-recycling")["y"] - PLAYER_HALF_SIZE)
+
+
+def test_the_water_fountain_stands_below_the_tray_return_against_the_right_wall():
+    fountain = solid_called("canteen-water-fountain")
+    tray_return = solid_called("canteen-tray-return")
+    wall = solid_called("canteen-wall-right")
+    assert fountain["y"] == tray_return["y"] + tray_return["h"]
+    assert fountain["x"] + fountain["w"] == wall["x"]
+
+
+def test_with_the_fountain_in_its_old_place_the_canteen_aisle_was_blocked():
+    # Rejected: at x 473, y 95 it left 7 units of the 15-wide aisle.
+    solids = changed("canteen-water-fountain", x=473, y=95)
+    x = canteen_left_aisle_x()
+    end = walk(x, 52, 0, 1, 3, solids)
+    assert end == (x, 95 - PLAYER_HALF_SIZE)
+
+
+# No gap a player only just squeezes into, anywhere
+
+def free_places(solids):
+    """For every whole-numbered place: may a player's centre stand there?
+
+    Counts the solid units under the player's square with a table of sums
+    (each entry is the number of solid units above and left of it), so each
+    place is asked in four look-ups instead of against every solid.
+    """
+    solid_unit = [[False] * WIDTH for _ in range(HEIGHT)]
+    for solid in solids:
+        for y in range(max(0, int(solid["y"])), min(HEIGHT, -int(-(solid["y"] + solid["h"]) // 1))):
+            row = solid_unit[y]
+            for x in range(max(0, int(solid["x"])), min(WIDTH, -int(-(solid["x"] + solid["w"]) // 1))):
+                row[x] = True
+    sums = [[0] * (WIDTH + 1) for _ in range(HEIGHT + 1)]
+    for y in range(HEIGHT):
+        running = 0
+        for x in range(WIDTH):
+            running += solid_unit[y][x]
+            sums[y + 1][x + 1] = sums[y][x + 1] + running
+
+    def is_free_here(x, y):
+        if not (PLAYER_HALF_SIZE <= x <= WIDTH - PLAYER_HALF_SIZE and PLAYER_HALF_SIZE <= y <= HEIGHT - PLAYER_HALF_SIZE):
+            return False
+        top, bottom, left, right = y - PLAYER_HALF_SIZE, y + PLAYER_HALF_SIZE, x - PLAYER_HALF_SIZE, x + PLAYER_HALF_SIZE
+        return sums[bottom][right] - sums[top][right] - sums[bottom][left] + sums[top][left] == 0
+
+    return is_free_here
+
+
+def reachable_places(solids, start=(CAMPUS["spawn"]["x"], CAMPUS["spawn"]["y"])):
+    """Every whole-numbered place a player's centre reaches from `start`, one unit at a time."""
+    is_free_here = free_places(solids)
+    seen = {start}
+    waiting = deque([start])
+    while waiting:
+        x, y = waiting.popleft()
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            place = (x + dx, y + dy)
+            if place not in seen and is_free_here(*place):
+                seen.add(place)
+                waiting.append(place)
+    return seen
+
+
+def lane_between(first, second):
+    """The rectangle between two solids that face each other, and its width; or None.
+
+    They face each other when they overlap along one axis by more than a
+    point: then the lane runs between them along the other axis.
+    """
+    left = max(first["x"], second["x"])
+    right = min(first["x"] + first["w"], second["x"] + second["w"])
+    top = max(first["y"], second["y"])
+    bottom = min(first["y"] + first["h"], second["y"] + second["h"])
+    if right > left and bottom < top:  # one above the other
+        return {"x": left, "y": bottom, "w": right - left, "h": top - bottom}, top - bottom
+    if bottom > top and right < left:  # side by side
+        return {"x": right, "y": top, "w": left - right, "h": bottom - top}, left - right
+    return None
+
+
+def reachable_squeeze_gaps(solids):
+    """Pairs of solids with a gap of 10 to 13 between them that a player's centre reaches."""
+    reached = reachable_places(solids)
+    found = []
+    for first, second in itertools.combinations(solids, 2):
+        lane = lane_between(first, second)
+        if lane is None or lane[1] not in SQUEEZE_GAPS:
+            continue
+        rectangle = lane[0]
+        inside = any(
+            (x, y) in reached
+            for x in range(int(rectangle["x"]), int(rectangle["x"] + rectangle["w"]) + 1)
+            for y in range(int(rectangle["y"]), int(rectangle["y"] + rectangle["h"]) + 1)
+        )
+        if inside:
+            found.append((first["id"], second["id"], lane[1]))
+    return found
+
+
+@pytest.fixture(scope="module")
+def reached_from_spawn():
+    return reachable_places(SOLIDS)
+
+
+def test_no_two_solids_anywhere_leave_a_gap_of_10_to_13_that_a_player_reaches():
+    assert reachable_squeeze_gaps(SOLIDS) == []
+
+
+@pytest.mark.parametrize("solid_id, old_place, gap", [
+    ("ctt-bookshelf", {"x": 34, "w": 112}, 11),  # 11 at each end, to the CTT's walls
+    ("pingo-doce-checkout", {"x": 456}, 13),  # 13 to the fridge on the left wall
+    ("pingo-doce-totem-2", {"x": 516}, 13),  # 13 to the checkout in its new place
+], ids=["bookshelf", "checkout", "totem 2"])
+def test_the_old_places_had_gaps_a_player_squeezed_into(solid_id, old_place, gap):
+    # Rejected: the places before this to-do are found.
+    found = reachable_squeeze_gaps(changed(solid_id, **old_place))
+    assert [pair[2] for pair in found if solid_id in pair[:2]] != []
+    assert all(pair[2] == gap for pair in found if solid_id in pair[:2]), found
+
+
+def test_a_gap_of_14_or_of_9_is_no_squeeze_gap():
+    # Edge cases: 14 leaves room (S-122), 9 is too narrow to get in at all.
+    for width, expected in ((14, False), (13, True), (10, True), (9, False)):
+        solids = [
+            {"id": "a", "x": 100, "y": 100, "w": 40, "h": 40},
+            {"id": "b", "x": 140 + width, "y": 100, "w": 40, "h": 40},
+        ]
+        assert (lane_between(solids[0], solids[1])[1] in SQUEEZE_GAPS) is expected, width
+
+
+def test_a_gap_nobody_can_reach_is_no_squeeze_gap():
+    # Edge case: two crates with a gap of 12 inside a closed box on the deck.
+    box = [
+        {"id": "box-top", "x": 300, "y": 400, "w": 60, "h": 4},
+        {"id": "box-bottom", "x": 300, "y": 446, "w": 60, "h": 4},
+        {"id": "box-left", "x": 300, "y": 400, "w": 4, "h": 50},
+        {"id": "box-right", "x": 356, "y": 400, "w": 4, "h": 50},
+        {"id": "crate-1", "x": 304, "y": 404, "w": 20, "h": 42},
+        {"id": "crate-2", "x": 336, "y": 404, "w": 20, "h": 42},
+    ]
+    solids = [solid for solid in SOLIDS if solid["id"] not in ("deck-logo", "deck-tree-6")] + box
+    assert [pair for pair in reachable_squeeze_gaps(solids) if "crate-1" in pair] == []
+
+
+# Lamp posts
+
+def distance_between(first, second):
+    """The free space between two rectangles (0 when they touch or overlap)."""
+    gap_x = max(second["x"] - (first["x"] + first["w"]), first["x"] - (second["x"] + second["w"]), 0)
+    gap_y = max(second["y"] - (first["y"] + first["h"]), first["y"] - (second["y"] + second["h"]), 0)
+    return max(gap_x, gap_y)
+
+
+def nearest_wall_distance(lamp, solids=SOLIDS):
+    return min(distance_between(lamp, solid) for solid in solids if solid["kind"] == "wall")
+
+
+LAMPS = [solid for solid in SOLIDS if solid["kind"] == "lamp-post"]
+
+
+def test_there_are_four_lamp_posts():
+    assert len(LAMPS) == 4
+
+
+@pytest.mark.parametrize("lamp", LAMPS, ids=lambda lamp: lamp["id"])
+def test_every_lamp_post_touches_a_wall_or_stands_less_than_10_from_one(lamp):
+    # Less than a player is wide: nobody gets caught between lamp and wall.
+    assert nearest_wall_distance(lamp) < 10
+
+
+@pytest.mark.parametrize("lamp_id, old_place", [
+    ("deck-lamp-1", {"y": 247}), ("deck-lamp-2", {"y": 247}), ("deck-lamp-3", {"x": 180}), ("deck-lamp-4", {"x": 418}),
+])
+def test_the_old_places_of_the_lamp_posts_stood_14_to_17_in_front_of_a_wall(lamp_id, old_place):
+    # Rejected: a player could walk between lamp and wall and get caught.
+    solids = changed(lamp_id, **old_place)
+    assert 14 <= nearest_wall_distance(solid_called(lamp_id, solids), solids) <= 17
+
+
+def test_a_lamp_post_10_from_a_wall_is_too_far():
+    # Edge case: 10 is exactly one player.
+    wall = {"kind": "wall", "x": 0, "y": 0, "w": 100, "h": 6}
+    lamp = {"kind": "lamp-post", "x": 50, "y": 16, "w": 4, "h": 4}
+    assert nearest_wall_distance(lamp, [wall]) == 10
+    assert not nearest_wall_distance(lamp, [wall]) < 10
+
+
+# Station objects
+
+# The box of each station's object with its outline at the high point of the
+# pulse, as offsets from the station's centre (left, top, right, bottom), in
+# whole map units. Measured in Chromium with the page's own drawing
+# (play_map_polish_in_browser.js); the browser test below checks that the
+# drawing still lies inside these boxes. The shadow and the number tag that
+# draw.js adds below and beside every object are not part of it.
+STATION_BOXES = {
+    1: (-17, -18, 17, 11),
+    2: (-17, -12, 15, 19),
+    3: (-17, -17, 17, 9),
+    4: (-17, -18, 17, 15),
+    5: (-13, -18, 13, 15),
+    7: (-8, -19, 17, 12),
+    8: (-11, -18, 15, 17),
+    9: (-17, -14, 17, 14),
+    10: (-18, -17, 18, 14),
+    11: (-12, -14, 16, 12),
+    12: (-16, -20, 16, 15),
+}
+
+
+def station_box(station_id):
+    station = station_called(station_id)
+    left, top, right, bottom = STATION_BOXES[station_id]
+    return {"x": station["x"] + left, "y": station["y"] + top, "w": right - left, "h": bottom - top}
+
+
+def overlap(first, second):
+    """Do the two rectangles overlap? Touching is not overlapping."""
+    return (first["x"] < second["x"] + second["w"] and second["x"] < first["x"] + first["w"]
+            and first["y"] < second["y"] + second["h"] and second["y"] < first["y"] + first["h"])
+
+
+def test_every_station_with_an_object_has_a_box():
+    with_objects = {station["id"] for station in CAMPUS["stations"]} - {6}  # 6 has no object yet (S-128)
+    assert set(STATION_BOXES) == with_objects
+
+
+@pytest.mark.parametrize("station_id", sorted(STATION_BOXES))
+def test_no_station_object_or_its_outline_lies_on_a_solid(station_id):
+    box = station_box(station_id)
+    assert [solid["id"] for solid in SOLIDS if overlap(box, solid)] == []
+
+
+def test_no_two_station_objects_overlap():
+    for first, second in itertools.combinations(sorted(STATION_BOXES), 2):
+        assert not overlap(station_box(first), station_box(second)), (first, second)
+
+
+def test_station_9_in_its_old_place_lay_on_the_tray_return_and_the_wall():
+    # Rejected: the box check finds what M2-1.20 moved station 9 away from.
+    left, top, right, bottom = STATION_BOXES[9]
+    old = {"x": 650 + left, "y": 144 + top, "w": right - left, "h": bottom - top}
+    assert {solid["id"] for solid in SOLIDS if overlap(old, solid)} >= {"canteen-tray-return", "canteen-wall-right"}
+
+
+def test_a_station_box_that_only_touches_a_solid_is_free():
+    # Edge case: station 3's box ends exactly where it may, above table 3.
+    assert station_box(3)["y"] + station_box(3)["h"] <= solid_called("canteen-table-3")["y"]
+    touching = {"x": 0, "y": 0, "w": 10, "h": 10}
+    assert not overlap(touching, {"x": 10, "y": 0, "w": 5, "h": 5})
+
+
+@pytest.mark.parametrize("station_id", sorted(minigames.MINIGAMES))
+def test_every_station_can_be_used_from_a_place_the_spawn_reaches(reached_from_spawn, station_id):
+    station = station_called(station_id)
+    near = [
+        (x, y) for x in range(station["x"] - USE_RANGE, station["x"] + USE_RANGE + 1)
+        for y in range(station["y"] - USE_RANGE, station["y"] + USE_RANGE + 1)
+        if (x, y) in reached_from_spawn
+    ]
+    assert any(station_in_range(x, y, [station], USE_RANGE) == station_id for x, y in near)
+
+
+def test_a_station_walled_in_cannot_be_used_from_anywhere_the_spawn_reaches():
+    # Rejected: station 11 in a closed box of solids.
+    station = station_called(11)
+    box = [
+        {"id": "wall-a", "x": station["x"] - 40, "y": station["y"] - 40, "w": 80, "h": 4},
+        {"id": "wall-b", "x": station["x"] - 40, "y": station["y"] + 36, "w": 80, "h": 4},
+        {"id": "wall-c", "x": station["x"] - 40, "y": station["y"] - 40, "w": 4, "h": 80},
+        {"id": "wall-d", "x": station["x"] + 36, "y": station["y"] - 40, "w": 4, "h": 80},
+    ]
+    reached = reachable_places(SOLIDS + box)
+    near = [(x, y) for (x, y) in reached if abs(x - station["x"]) <= USE_RANGE and abs(y - station["y"]) <= USE_RANGE]
+    assert not any(station_in_range(x, y, [station], USE_RANGE) == 11 for x, y in near)
+
+
+# The Duel's ways
+
+# Measured with paths.station_distances on the map before this to-do (main
+# at 936d9d8, the Felix mix of M2-1.19), in map units: the spawn and every
+# station with a minigame (1-5 and 7-12), 66 ways.
+WAYS_BEFORE_THIS_TO_DO = {
+    (SPAWN, 1): 598.676, (SPAWN, 2): 341.304, (SPAWN, 3): 326.274, (SPAWN, 4): 718.108, (SPAWN, 5): 262.510,
+    (SPAWN, 7): 614.960, (SPAWN, 8): 296.617, (SPAWN, 9): 250.392, (SPAWN, 10): 502.794, (SPAWN, 11): 266.108,
+    (SPAWN, 12): 137.539, (1, 2): 573.990, (1, 3): 815.362, (1, 4): 568.167, (1, 5): 856.500,
+    (1, 7): 175.314, (1, 8): 506.108, (1, 9): 739.480, (1, 10): 352.853, (1, 11): 860.098,
+    (1, 12): 736.215, (2, 3): 531.245, (2, 4): 716.617, (2, 5): 599.127, (2, 7): 590.274,
+    (2, 8): 181.255, (2, 9): 455.362, (2, 10): 501.304, (2, 11): 602.725, (2, 12): 464.784,
+    (3, 4): 957.990, (3, 5): 558.960, (3, 7): 831.647, (3, 8): 491.245, (3, 9): 109.657,
+    (3, 10): 742.676, (3, 11): 562.558, (3, 12): 375.647, (4, 5): 975.931, (4, 7): 556.569,
+    (4, 8): 648.735, (4, 9): 882.108, (4, 10): 277.941, (4, 11): 979.529, (4, 12): 855.647,
+    (5, 7): 872.784, (5, 8): 554.441, (5, 9): 483.078, (5, 10): 760.617, (5, 11): 168.284,
+    (5, 12): 214.510, (7, 8): 522.392, (7, 9): 755.765, (7, 10): 341.255, (7, 11): 876.382,
+    (7, 12): 752.500, (8, 9): 415.362, (8, 10): 433.421, (8, 11): 558.039, (8, 12): 424.784,
+    (9, 10): 666.794, (9, 11): 486.676, (9, 12): 299.765, (10, 11): 764.215, (10, 12): 640.333,
+    (11, 12): 208.167,
+}
+
+# The pinned values are rounded to 0.001: a way as long as before may differ by that.
+ROUNDING = 0.001
+
+
+def ways_longer_than_before(measured, before=WAYS_BEFORE_THIS_TO_DO):
+    """The ways of `before` that `measured` (both orders of each pair) makes longer."""
+    return [
+        pair for pair, length in before.items()
+        if measured[pair] > length + ROUNDING or measured[pair[::-1]] > length + ROUNDING
+    ]
+
+
+@pytest.fixture(scope="module")
+def ways_now():
+    return station_distances(CAMPUS, sorted(minigames.MINIGAMES))
+
+
+def test_the_pinned_ways_are_every_way_between_the_spawn_and_the_duel_stations():
+    places = [SPAWN] + sorted(minigames.MINIGAMES)
+    assert sorted(minigames.MINIGAMES) == [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
+    assert {frozenset(pair) for pair in WAYS_BEFORE_THIS_TO_DO} == {
+        frozenset(pair) for pair in itertools.combinations(places, 2)
+    }
+    assert len(WAYS_BEFORE_THIS_TO_DO) == 66
+
+
+def test_no_way_of_the_duel_became_longer(ways_now):
+    assert ways_longer_than_before(ways_now) == []
+
+
+def test_the_aisles_and_free_stations_made_some_ways_much_shorter(ways_now):
+    # Measured for this to-do: 5 to 11 32 % shorter (station 11 in the aisle
+    # between the shelves), 11 to 12 17 %, 8 to 10 10 %.
+    assert ways_now[(5, 11)] == pytest.approx(113.941, abs=ROUNDING)
+    assert ways_now[(11, 12)] == pytest.approx(172.167, abs=ROUNDING)
+    assert ways_now[(8, 10)] == pytest.approx(390.392, abs=ROUNDING)
+
+
+def test_a_way_one_unit_longer_is_found_and_one_as_long_is_not():
+    # Rejected and edge case for the check itself.
+    measured = {}
+    for pair, length in WAYS_BEFORE_THIS_TO_DO.items():
+        measured[pair] = measured[pair[::-1]] = length + ROUNDING / 2
+    assert ways_longer_than_before(measured) == []
+    measured[(4, 5)] += 1
+    assert ways_longer_than_before(measured) == [(4, 5)]
+
+
+# In Chromium: the drawn station objects lie on no drawn furniture
+
+GAME = Path(__file__).resolve().parents[1]
+BROWSER_SCRIPT = Path(__file__).with_name("play_map_polish_in_browser.js")
+
+# Known and reported (M2-1.20): the soft shadow that draw.js puts below every
+# object (an ellipse 22 by 7 units at 10.5 below the centre) reaches onto
+# the desk of the first lecture row below station 1. Station 1 may not move
+# (Duel), and the shadow is drawn by draw.js, outside this to-do's files.
+SHADOWS_ON_FURNITURE = {1}
+
+needs_chromium = pytest.mark.skipif(not playwright_works(), reason="Node with Playwright and Chromium is needed")
+
+
+@pytest.fixture(scope="module")
+def drawn():
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    server = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "server.main:app", "--port", str(port)],
+        cwd=GAME, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    base = f"http://127.0.0.1:{port}"
+    try:
+        for _ in range(100):
+            with contextlib.suppress(OSError):
+                urllib.request.urlopen(base + "/health", timeout=1)
+                break
+            time.sleep(0.1)
+        finished = subprocess.run(
+            [NODE, str(BROWSER_SCRIPT), base],
+            env=node_environment(), capture_output=True, text=True, timeout=240, check=False,
+        )
+        assert finished.returncode == 0, finished.stderr
+        result = json.loads(finished.stdout)
+        result["stations"] = {row["id"]: row for row in result["stations"]}
+        return result
+    finally:
+        server.terminate()
+        server.wait(timeout=10)
+
+
+@needs_chromium
+def test_the_map_with_its_stations_draws_without_a_console_error_or_warning(drawn):
+    assert drawn["console"] == []
+
+
+@needs_chromium
+def test_every_station_object_is_drawn(drawn):
+    assert sorted(drawn["stations"]) == sorted(STATION_BOXES)
+
+
+@needs_chromium
+@pytest.mark.parametrize("station_id", sorted(STATION_BOXES))
+def test_the_object_and_its_outline_lie_on_no_drawn_furniture_and_in_no_wall(drawn, station_id):
+    row = drawn["stations"][station_id]
+    assert row["object"]["onFurnitureOrWall"] == []
+    assert row["objectAndLowOutline"]["onFurnitureOrWall"] == []
+    assert row["objectAndHighOutline"]["onFurnitureOrWall"] == []
+
+
+@needs_chromium
+@pytest.mark.parametrize("station_id", sorted(STATION_BOXES))
+def test_the_pinned_box_is_the_drawn_object_with_its_outline(drawn, station_id):
+    box = drawn["stations"][station_id]["objectAndHighOutline"]["box"]
+    assert (box["left"], box["top"], box["right"], box["bottom"]) == STATION_BOXES[station_id]
+
+
+@needs_chromium
+@pytest.mark.parametrize("station_id", sorted(set(STATION_BOXES) - SHADOWS_ON_FURNITURE))
+def test_the_shadow_and_number_tag_lie_on_no_drawn_furniture_and_in_no_wall(drawn, station_id):
+    assert drawn["stations"][station_id]["shadowAndTag"]["onFurnitureOrWall"] == []
+
+
+@needs_chromium
+def test_only_the_known_shadow_of_station_1_lies_on_the_first_lecture_row(drawn):
+    # Edge case: the known overlap stays below the object, on row 1's desk.
+    row = solid_called("lecture-hall-bench-1")
+    units = drawn["stations"][1]["shadowAndTag"]["onFurnitureOrWall"]
+    assert units != []
+    assert all(row["x"] <= x < row["x"] + row["w"] and row["y"] - 1 <= y < row["y"] + 3 for x, y in units)
