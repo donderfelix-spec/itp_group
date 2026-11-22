@@ -264,6 +264,8 @@ input {
   background: rgba(46, 42, 59, 0.68);
 }
 
+.classic-meeting[hidden] { display: none; }
+
 .classic-meeting-window {
   display: flex;
   flex-direction: column;

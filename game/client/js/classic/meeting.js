@@ -22,6 +22,12 @@ Game.classicMeeting = Game.classicMeeting || {};
   var voteResult;
   var voteListSignature = "";
   var pendingVoteTarget = null;
+  var resultCloseTimer = null;
+  var resultShown = false;
+  // The window stays this long after any result, then the round goes on.
+  var RESULT_MILLISECONDS = 1800;
+  // The vote for nobody: the same value as SKIP_VOTE in server/protocol.py.
+  var SKIP_VOTE = "";
 
   function setup() {
     screen = document.getElementById("classic-meeting");
@@ -52,21 +58,32 @@ Game.classicMeeting = Game.classicMeeting || {};
 
   function show(message) {
     if (!isMeetingState(message)) return;
+    // A result is shown once: a later copy of the same result (the server
+    // may send the snapshot again) must not open the closed window again.
+    if (message.phase === "result") {
+      if (resultShown) return;
+      resultShown = true;
+    } else {
+      resultShown = false;
+    }
+    cancelResultClose();
     state = message;
-    // The server removed this sheet when the meeting started. The other
-    // sheets stay on the map until the round ends (Game.world.clearClassicRound).
+    // A reported sheet stays visible, but can no longer start a meeting.
     if (
       message.reason === "report" &&
       typeof message.reported_sheet_id === "string" &&
-      Game.world && typeof Game.world.removeBloodSheet === "function"
+      Game.world && typeof Game.world.markBloodSheetReported === "function"
     ) {
-      Game.world.removeBloodSheet(message.reported_sheet_id);
+      Game.world.markBloodSheetReported(message.reported_sheet_id);
     }
     screen.hidden = false;
     holdTheCharacter(message.phase !== "result");
     updateInput();
     updateVoting();
     updateVoteResult();
+    if (message.phase === "result") {
+      resultCloseTimer = window.setTimeout(hide, RESULT_MILLISECONDS);
+    }
     draw();
   }
 
@@ -80,6 +97,7 @@ Game.classicMeeting = Game.classicMeeting || {};
   }
 
   function hide() {
+    cancelResultClose();
     if (state !== null) holdTheCharacter(false);
     state = null;
     pendingVoteTarget = null;
@@ -103,7 +121,7 @@ Game.classicMeeting = Game.classicMeeting || {};
     input.disabled = !mayWrite;
     sendButton.disabled = !mayWrite;
     if (mayWrite) hint.textContent = "Living players can chat during the discussion.";
-    else if (state && state.phase === "voting") hint.textContent = "Chat is closed. Choose one living player to eject.";
+    else if (state && state.phase === "voting") hint.textContent = "Chat is closed. Choose one living player to eject, or Skip.";
     else if (state && state.phase === "result") hint.textContent = "The vote is over.";
     else hint.textContent = "Ghosts can read the chat but cannot write.";
   }
@@ -133,12 +151,24 @@ Game.classicMeeting = Game.classicMeeting || {};
         button.addEventListener("click", function () { castVote(playerId); });
         votePlayers.append(button);
       });
+      votePlayers.append(skipButton());
     }
     var hasVoted = state.voted.includes(ownName) || pendingVoteTarget !== null;
     Array.from(votePlayers.children).forEach(function (button) {
       button.disabled = !state.living.includes(ownName) || hasVoted;
     });
     if (state.voted.includes(ownName)) pendingVoteTarget = null;
+  }
+
+  // "Skip" is a vote like the others: secret and final (DESIGN.md 5.6).
+  function skipButton() {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "classic-vote-player classic-vote-skip";
+    button.dataset.targetId = SKIP_VOTE;
+    button.textContent = "Skip";
+    button.addEventListener("click", function () { castVote(SKIP_VOTE); });
+    return button;
   }
 
   function castVote(targetId) {
@@ -162,6 +192,13 @@ Game.classicMeeting = Game.classicMeeting || {};
       voteResult.textContent = state.ejected_id + " was not a Free Rider.";
     }
     if (state.winner) voteResult.textContent += " " + state.winner + " wins.";
+  }
+
+  function cancelResultClose() {
+    if (resultCloseTimer !== null) {
+      window.clearTimeout(resultCloseTimer);
+      resultCloseTimer = null;
+    }
   }
 
   function sendMessage(event) {
