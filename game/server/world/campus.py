@@ -100,6 +100,8 @@ def check_campus(campus) -> dict:
         _check_rectangle(solid, f"solids[{index}]", width, height)
         _check_whole_numbers(solid, f"solids[{index}]")
         _text(solid, "kind", f"solids[{index}]")
+        if "walkable" in solid and not isinstance(solid["walkable"], bool):
+            raise CampusError(f"walkable of solids[{index}] must be a boolean.")
         # Which drawing a solid shows, for kinds that have several (a sign
         # totem with a basket or a cup): only drawn, optional.
         _optional_art_name(solid, "icon", f"solids[{index}]")
@@ -131,8 +133,14 @@ def check_campus(campus) -> dict:
         raise CampusError("\"use_range\" of the map must be above 0.")
 
     _check_point(_entry(campus, "button", "the map"), "button", width, height)
+    if "hide_reveal_range" in campus and _number(campus, "hide_reveal_range", "the map") <= 0:
+        raise CampusError("hide_reveal_range must be above 0.")
     for index, spot in enumerate(_list(campus, "hiding_spots")):
         _check_point(spot, f"hiding_spots[{index}]", width, height)
+        if _number(spot, "r", f"hiding_spots[{index}]") <= 0:
+            raise CampusError("A hiding radius must be above 0.")
+        if not is_free(spot["x"], spot["y"], solids, width, height):
+            raise CampusError("A hiding spot must have a walkable centre.")
     for index, band in enumerate(_list(campus, "bands")):
         _check_rectangle(band, f"bands[{index}]", width, height)
 

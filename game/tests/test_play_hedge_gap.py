@@ -13,11 +13,14 @@ a different spot each time, so each test puts the walker where the walk
 starts (as `task_helpers.put` does for the stations) and then walks with
 real `move` messages.
 
-Like `test_hedge_gap.py`, these tests assume a solid hedge (S-87). When the
-hedge becomes a hiding place in M3-1.4 (S-98), they must be rethought.
+Like `test_hedge_gap.py`, these tests are about a solid hedge (S-87). Since
+M3-1.4 the hedge is a walkable hiding place (S-98), so the server runs them
+on a copy of the real map with the hedge made solid again. Walking into the
+walkable hedge is tested in `test_hiding_visibility.py`.
 """
 
 import contextlib
+import copy
 import time
 
 import pytest
@@ -28,7 +31,9 @@ from server.world.movement import PLAYER_HALF_SIZE, is_free, overlaps
 from task_helpers import put
 
 PASSWORD = "password123"
-CAMPUS = app.state.campus
+# Historical closed-hedge scenario; current hiding has separate live-map tests.
+CAMPUS = copy.deepcopy(app.state.campus)
+next(solid for solid in CAMPUS["solids"] if solid["id"] == "deck-hedge")["walkable"] = False
 SOLIDS = CAMPUS["solids"]
 TREE = next(item for item in SOLIDS if item["id"] == "deck-tree-3")
 HEDGE = next(item for item in SOLIDS if item["id"] == "deck-hedge")
@@ -48,6 +53,16 @@ QUIET_SECONDS = 0.4
 @pytest.fixture(autouse=True)
 def quiet_tick():
     """Replaces the fixture of the same name in conftest.py: here the real tick runs."""
+
+
+@pytest.fixture(autouse=True)
+def closed_hedge_scenario():
+    original = app.state.campus
+    app.state.campus = CAMPUS
+    try:
+        yield
+    finally:
+        app.state.campus = original
 
 
 @pytest.fixture
