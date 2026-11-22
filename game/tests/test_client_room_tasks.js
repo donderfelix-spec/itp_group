@@ -278,20 +278,22 @@ for (const mode of ['duel', 'solo']) {
 }
 
 {
-  // Classic: the stations of the own list (M3-3.17) are usable and drawn,
-  // but the task card and arrow are for Duel and Solo only, also when one
-  // station is left.
+  // Classic uses the shared top-left next-task card for each active task.
   const env = environment();
   env.load('main.js');
   const emit = (type, payload) => env.handlers.get(type)(payload);
   emit('signed_in', { name: 'Guest1', guest: true });
   emit('lobby_state', { code: 'ABCD', players: [{ name: 'Guest1' }], mode: 'classic', phase: 'round' });
-  emit('classic_role', { role: 'HP', task_stations: [3, 8, 1, 12] });
-  assert.equal(JSON.stringify(env.worldCalls.at(-2)), JSON.stringify(['usable', [3, 8, 1, 12]]));
-  assert.deepEqual(env.worldCalls.at(-1), ['target', null], 'Classic shows no task card');
-  for (const [station, left] of [[3, [8, 1, 12]], [8, [1, 12]], [1, [12]]]) emit('station_done', { station, task_stations: left });
+  emit('classic_role', { role: 'HP', task_stations: [3] });
+  assert.equal(JSON.stringify(env.worldCalls.at(-2)), JSON.stringify(['usable', [3]]));
+  assert.deepEqual(env.worldCalls.at(-1), ['target', 3], 'Classic shows its current task in the shared card');
+  for (const [station, left] of [[3, [8]], [8, [1]], [1, [12]]]) emit('station_done', { station, task_stations: left });
   assert.equal(JSON.stringify(env.worldCalls.at(-2)), JSON.stringify(['usable', [12]]), 'one station is left');
-  assert.deepEqual(env.worldCalls.at(-1), ['target', null], 'Classic shows no task card for the last station either');
+  assert.deepEqual(env.worldCalls.at(-1), ['target', 12], 'the card follows each next task');
+  emit('station_done', { station: 12, task_stations: [] });
+  assert.deepEqual(env.worldCalls.at(-1), ['target', null], 'the task clears after the final task');
+  emit('classic_role', { role: 'FR', task_stations: [] });
+  assert.deepEqual(env.worldCalls.at(-1), ['target', null], 'Free Riders have no task in the card');
 }
 
 {

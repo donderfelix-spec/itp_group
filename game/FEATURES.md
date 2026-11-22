@@ -125,7 +125,7 @@ Stations 7, 10 and 12 use chart reconstruction from survey evidence, a chat dedu
 | Duel: every player starts at a different station, up to 8 players (S-126) | M2 | Done |
 | Stations as objects with a pulsing outline when they matter (S-128) | M2 | Done |
 | Card at the top left with room and next task, direction arrow (S-129) | M2 | Done |
-| Classic: the direction arrow points at the single active task | M3 | In progress on Minispiele-und-Modi |
+| Classic: current task and arrow use the same top-left card as Duel; no task card above group progress | M3 | In progress on Minispiele-und-Modi |
 | Lobby: modes outside their player range (Classic below 4) locked, all in one grey, the chosen one marked by frame and shadow; smaller “?” with even gaps (S-146) | M2 | Done |
 | “Done” for 0.5 s without a close button (S-127) | M2 | Done |
 | Duel: leaderboard with times at the end | M2 | Done |

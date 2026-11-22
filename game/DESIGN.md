@@ -242,7 +242,7 @@ About minigame 5: The prices are multiples of 50 cents, and the target amount is
 
 | No. | Room | Title | Instruction |
 |---|---|---|---|
-| 7 | Lecture Hall | De-buzzword the slides | Rebuild the misleading chart from survey counts. Repair its labels, percentages and baseline. |
+| 7 | Lecture Hall | Fix the consultant’s chart | Rebuild the misleading chart from survey counts. Repair its labels, percentages and baseline. |
 | 8 | Mon Café | Emergency caffeine protocol | Follow the recipe. The group deadline runs on caffeine. |
 | 9 | Canteen | Save the lunch | Remove the discoloured pieces from the tray. |
 | 10 | CTT Student Hall | Decode the group chat | Use five chat clues to assign four teammates to four times and four deliverables. |

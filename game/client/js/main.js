@@ -176,11 +176,10 @@ window.Game = window.Game || {};
   function showUsableStations() {
     const stations = usableStations();
     callWorld('setUsableStations', stations);
-    // Duel and Solo show their next task in the map card. Classic keeps
-    // that card room-only and points at its single active assignment;
-    // a Free Rider has no task and therefore no arrow.
-    callTaskNavigation('setTarget', hasOneTaskAtATime() && stations.length === 1 ? stations[0] : null);
-    callTaskNavigation('setTargets', mode === 'classic' && classicRole === 'HP' ? stations : []);
+    // All three modes share the same next-task card at the top left.
+    const showsNextTask = hasOneTaskAtATime() || (mode === 'classic' && classicRole === 'HP');
+    callTaskNavigation('setTargets', []);
+    callTaskNavigation('setTarget', showsNextTask && stations.length === 1 ? stations[0] : null);
   }
 
   // Duel and Solo give each player one next station at a time.
@@ -333,12 +332,11 @@ window.Game = window.Game || {};
     showClassicTasks();
   }
 
-  // The card and arrow both receive only the current server-assigned task.
+  // The map card owns the current task; keep the old panel card hidden.
   function showClassicTasks() {
     // Like callWorld: a page put together without this part keeps working.
     if (typeof Game.lobby.showClassicTasks !== 'function') return;
-    const open = classicTasks.filter((station) => !finishedStations.has(station));
-    Game.lobby.showClassicTasks(classicRole, open, open);
+    Game.lobby.showClassicTasks(null, [], []);
   }
 
   function whenStationOpened(message) {
