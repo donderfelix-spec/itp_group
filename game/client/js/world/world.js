@@ -164,6 +164,8 @@ Game.world = Game.world || {};
   var failHandler = null; // called when the player presses Q in Classic
   var reportHandler = null; // called with an F-sheet id and position on R
   var emergencyHandler = null; // called on E at the red button
+  var hideHandler = null; // called on E at a hiding object (M3-1.6)
+  var leaveHidingHandler = null; // called on E while hidden
   var bloodSheets = new Map(); // sheet id -> map position
   var useButton = null; // the button for E, while the world runs
   // Whether `useButton` has the Free Rider's look (class "fail-button"). Kept
@@ -1082,6 +1084,11 @@ Game.world = Game.world || {};
     emergencyHandler = typeof handler === "function" ? handler : null;
   }
 
+  function setHidingHandlers(hide, leave) {
+    hideHandler = typeof hide === "function" ? hide : null;
+    leaveHidingHandler = typeof leave === "function" ? leave : null;
+  }
+
   function setEmergencyStatus(message) {
     if (!message || !Number.isFinite(message.emergency_ready_at) || !Number.isFinite(message.server_time)) return;
     emergencyStatus = message;
@@ -1166,13 +1173,53 @@ Game.world = Game.world || {};
     return Math.hypot(position.x - button.x, position.y - button.y) <= campus.use_range;
   }
 
+  // ---- Hiding with E (M3-1.6, S-191) -----------------------------------
+
+  // The hiding spot the own Free Rider can hide in now, or null: only while
+  // hiding is possible (a Classic round, see setOwnHidingCheck), only for a
+  // living Free Rider, within `use_range` of the spot's centre. The server
+  // checks the same (server/classic/hiding.py) and decides.
+  function hidingSpotInReach() {
+    var canHide = ownHidingCheck && ownIsFreeRider && !ownIsGhost && hideHandler && campus && window.ClassicHudActions;
+    var position = canHide ? ownServerPosition() : null;
+    if (!position) return null;
+    return window.ClassicHudActions.spotInReach(position.x, position.y, campus.hiding_spots, campus.use_range);
+  }
+
+  function distanceFromOwn(place) {
+    var position = ownServerPosition();
+    return position && place ? Math.hypot(position.x - place.x, position.y - place.y) : Infinity;
+  }
+
+  // What E does now: "leave" while hidden, else the nearest of the red
+  // button ("emergency"), a station ("station") and a hiding object
+  // ("hide"); null when nothing is in reach.
+  function useTarget() {
+    if (isOwnHidden() && leaveHidingHandler) return "leave";
+    var candidates = [];
+    if (isAtEmergencyButton()) candidates.push({ kind: "emergency", distance: distanceFromOwn(campus.button) });
+    var stationId = stationInRange();
+    if (stationId !== null) candidates.push({ kind: "station", distance: distanceFromOwn(stationWithId(stationId)) });
+    var spot = hidingSpotInReach();
+    if (spot) candidates.push({ kind: "hide", distance: distanceFromOwn(spot) });
+    if (candidates.length === 0) return null;
+    return window.ClassicHudActions ? window.ClassicHudActions.nearestTarget(candidates) : candidates[0].kind;
+  }
+
   function useActionInRange() {
     if (inputPaused) return;
-    if (isAtEmergencyButton()) {
+    var target = useTarget();
+    if (target === "leave") {
+      leaveHidingHandler();
+    } else if (target === "hide") {
+      // Hidden means standing still: the held walk keys count as let go.
+      releaseAllKeys();
+      hideHandler();
+    } else if (target === "emergency") {
       emergencyHandler();
-      return;
+    } else {
+      useStationInRange();
     }
-    useStationInRange();
   }
 
   function reportSheetInRange() {
@@ -1221,7 +1268,8 @@ Game.world = Game.world || {};
   function onUseButtonClick() {
     useButton.blur();
     if (ownIsFreeRider) {
-      if (isAtEmergencyButton()) emergencyHandler();
+      var target = useTarget();
+      if (target === "leave" || target === "hide" || target === "emergency") useActionInRange();
       else if (isFailButtonActive() && typeof failHandler === "function") failHandler();
     } else {
       useActionInRange();
@@ -1249,6 +1297,27 @@ Game.world = Game.world || {};
   function updateUseButton(idInRange) {
     if (!useButton) return;
     var emergencyNearby = isAtEmergencyButton();
+    // The Free Rider's shared button shows hiding when E would hide or step
+    // out (M3-1.6); only he ever sees these words.
+    var hidingText = null;
+    if (ownIsFreeRider) {
+      var target = useTarget();
+      if (target === "leave") hidingText = "E Leave hiding";
+      else if (target === "hide") hidingText = "E Hide";
+      emergencyNearby = target === "emergency";
+    }
+    if (ownIsFreeRider && hidingText !== null) {
+      if (useButtonHasFailLook) {
+        useButton.classList.remove("fail-button");
+        useButtonHasFailLook = false;
+      }
+      useButton.textContent = hidingText;
+      if (useButton.disabled !== inputPaused) {
+        if (inputPaused && document.activeElement === useButton) useButton.blur();
+        useButton.disabled = inputPaused;
+      }
+      return;
+    }
     if (ownIsFreeRider && !emergencyNearby) {
       var secondsLeft = failCooldownSeconds();
       var fill = window.ClassicFailButton.fillFraction(
@@ -1903,6 +1972,7 @@ Game.world = Game.world || {};
   Game.world.stationInRange = stationInRange;
   Game.world.setInputPaused = setInputPaused;
   Game.world.setOwnHidingCheck = setOwnHidingCheck;
+  Game.world.setHidingHandlers = setHidingHandlers;
   Game.world.nearestStationInRange = nearestStationInRange;
   Game.world.ownDrawnPosition = ownDrawnPosition;
   Game.world.walkingDirection = walkingDirection;

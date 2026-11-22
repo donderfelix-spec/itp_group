@@ -10,8 +10,9 @@ Only a living Free Rider hides (S-132), and only during a Classic round
 
 from math import hypot
 
-# The phases of a Classic round in which the Free Rider can hide. A meeting
-# does not reveal him: whoever hid when it started stays hidden (S-138).
+# The phases of a Classic round in which a Free Rider may be hidden from
+# others. Since M3-1.6 (S-191) a meeting ends hiding, so in practice nobody
+# is hidden in the phase "meeting"; who hides is `ClassicRound.hidden`.
 HIDING_PHASES = ("round", "meeting")
 
 # How close a viewer must be to see a hidden player, in map units, when the
@@ -29,7 +30,10 @@ def hiding_spot(campus, x, y):
 
 
 def players_who_hide_from(viewer, roles, ghosts, phase) -> set:
-    """The players who are hidden from `viewer` while they stand in a hiding spot.
+    """The players who are hidden from `viewer` while they hide.
+
+    Since M3-1.6 (S-191) the server passes on only those of them who pressed
+    E at a hiding object (`ClassicRound.hidden`).
 
     `roles` maps each player of the Classic round to "HP" or "FR", `ghosts`
     are the players who failed or were voted out, `phase` is the round's phase.

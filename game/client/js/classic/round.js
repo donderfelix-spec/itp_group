@@ -11,6 +11,7 @@ Game.classicRound = Game.classicRound || {};
   var ownName = null;
   var ownIsFreeRider = false;
   var ownIsGhost = false;
+  var ownToldHidden = false; // the server said the own Free Rider hides (M3-1.6)
   var roundIsActive = false;
   var isHost = false;
   var roleTimer = null;
@@ -42,6 +43,7 @@ Game.classicRound = Game.classicRound || {};
     Game.net.on("classic_progress", showProgress);
     Game.net.on("classic_result", showResult);
     Game.net.on("classic_roster", rememberOwnGhost);
+    Game.net.on("classic_hiding", rememberOwnHiding);
   }
 
   function setLobby(message) {
@@ -99,6 +101,7 @@ Game.classicRound = Game.classicRound || {};
   function allowHiding(allowed) {
     if (!allowed) {
       ownIsGhost = false;
+      ownToldHidden = false;
       showHiddenHint(false);
     }
     if (Game.world && typeof Game.world.setOwnHidingCheck === "function") {
@@ -117,17 +120,23 @@ Game.classicRound = Game.classicRound || {};
     ownIsGhost = Boolean(own) && own.ghost === true;
   }
 
-  // The world asks this for every frame that draws the own character, with
-  // its newest server position and the map's hiding spots. The text "Hidden"
-  // follows the answer, so it always agrees with the half transparent character.
-  function ownHidesAt(x, y, spots) {
+  // The server tells only the own Free Rider whether he hides (M3-1.6,
+  // S-191): after E at a hiding object, after a step, E again or a meeting.
+  function rememberOwnHiding(message) {
+    if (!message) return;
+    ownToldHidden = roundIsActive && message.hidden === true;
+  }
+
+  // The world asks this for every frame that draws the own character. The
+  // text "Hidden" follows the answer, so it always agrees with the half
+  // transparent character. Since M3-1.6 the answer comes from the server,
+  // not from the position (the arguments are kept for the world's call).
+  function ownHidesAt() {
     var hidden = window.ClassicHudActions.ownIsHidden({
       classicRound: roundIsActive,
       freeRider: ownIsFreeRider,
       ghost: ownIsGhost,
-      x: x,
-      y: y,
-      spots: spots,
+      toldHidden: ownToldHidden,
     });
     showHiddenHint(hidden);
     return hidden;

@@ -1,10 +1,11 @@
 """Hiding through the real server: who is sent a Free Rider in a hiding spot (M3-1.4).
 
 `tell_positions` sends every member the positions. In a Classic round a
-living Free Rider whose centre stands in one of the four hiding spots is
-left out for every living High Performer farther than 35 map units away
-(S-131 to S-133). Ghosts see him (S-136), other Free Riders see him
-(S-137), a meeting does not reveal him (S-138). Classic's own filter stays:
+living Free Rider who hides is left out for every living High Performer
+farther than 35 map units away (S-131 to S-133). Since M3-1.6 (S-191) he
+hides by pressing E at a hiding object (`hide_at` below), not by standing
+in the spot, and a meeting ends hiding (replaces S-138). Ghosts see him
+(S-136), other Free Riders see him (S-137). Classic's own filter stays:
 the living are never sent the ghosts. Outside Classic nothing changes.
 
 The players are placed where a long walk would have brought them, then the
@@ -84,6 +85,25 @@ def wait_for_positions_with(connection, name, seconds=3):
     return collected
 
 
+def hide_at(connections, name, place):
+    """Put the Free Rider at `place` and press E there (M3-1.6): he hides.
+
+    The server puts him on the spot's centre and sends everybody the
+    positions at once; those are read here, so the next `positions_now`
+    gets fresh ones.
+    """
+    put(name, place)
+    connections[name].send_json({"type": "hide"})
+    while True:
+        message = connections[name].receive_json()
+        assert message["type"] != "error", message
+        if message["type"] == "classic_hiding":
+            assert message["hidden"] is True
+            break
+    for connection in connections.values():
+        next_positions(connection)
+
+
 def classic_round(connect, names=FOUR):
     """A running Classic round. Returns (connections, Free Riders, High Performers).
 
@@ -103,7 +123,7 @@ def classic_round(connect, names=FOUR):
 
 def test_a_free_rider_in_a_spot_is_left_out_beyond_35_and_sent_within_35(connect):
     connections, [fr], [far, at_35, near] = classic_round(connect)
-    put(fr, IN_THE_SPOT)
+    hide_at(connections, fr, IN_THE_SPOT)
     put(far, beside_the_spot(35.5))
     put(at_35, beside_the_spot(35))
     put(near, (SPOT["x"], SPOT["y"] + 20))
@@ -121,21 +141,21 @@ def test_a_free_rider_in_a_spot_is_left_out_beyond_35_and_sent_within_35(connect
 def test_every_one_of_the_four_spots_hides_the_free_rider(connect, index):
     connections, [fr], high_performers = classic_round(connect)
     spot = CAMPUS["hiding_spots"][index]
-    put(fr, (spot["x"], spot["y"]))
+    hide_at(connections, fr, (spot["x"], spot["y"]))
     told = positions_now(connections)
     for name in high_performers:
         assert fr not in names_in(told[name])
 
 
-def test_the_edge_of_the_spot_still_hides(connect):
+def test_pressing_e_on_the_edge_of_the_spot_still_hides(connect):
     connections, [fr], [far, _, _] = classic_round(connect)
-    put(fr, (SPOT["x"], SPOT["y"] - SPOT["r"]))
+    hide_at(connections, fr, (SPOT["x"], SPOT["y"] - SPOT["r"]))
     assert fr not in names_in(positions_now(connections)[far])
 
 
 def test_the_message_to_a_far_player_carries_no_trace_of_the_hidden_free_rider(connect):
     connections, [fr], [far, _, _] = classic_round(connect)
-    put(fr, IN_THE_SPOT)
+    hide_at(connections, fr, IN_THE_SPOT)
     lobby = app.state.lobbies.lobby_of(fr)
     others = [entry for entry in lobby.walkers.positions() if entry[0] != fr]
 
@@ -148,7 +168,8 @@ def test_the_message_to_a_far_player_carries_no_trace_of_the_hidden_free_rider(c
     assert fr not in json.dumps(message)
 
 
-def test_a_free_rider_walking_into_the_spot_disappears_for_the_far_players(connect):
+def test_a_free_rider_walking_into_the_spot_disappears_only_when_he_presses_e(connect):
+    # Since M3-1.6 (S-191) walking in does not hide: he is seen on every step.
     connections, [fr], [far, _, _] = classic_round(connect)
     # Below the hedge; three steps of 9 units up end in the spot, at y 253.
     put(fr, (595.0, 280.0))
@@ -161,7 +182,10 @@ def test_a_free_rider_walking_into_the_spot_disappears_for_the_far_players(conne
     lobby.walkers.set_direction(fr, 0, 0)
 
     assert lobby.walkers.position_of(fr) == (595.0, 253.0)
-    assert [fr in seen for seen in seen_by_far] == [True, True, False]
+    assert [fr in seen for seen in seen_by_far] == [True, True, True]
+    connections[fr].send_json({"type": "hide"})
+    connections[fr].portal.call(REAL_TICK, 0.0)
+    assert fr not in names_in(next_positions(connections[far]))
 
 
 # Accepted: nobody else hides
@@ -186,7 +210,7 @@ def test_a_free_rider_outside_every_spot_is_sent_to_everybody(connect):
 
 def test_leaving_the_spot_makes_the_free_rider_visible_in_the_next_positions(connect):
     connections, [fr], [far, _, _] = classic_round(connect)
-    put(fr, IN_THE_SPOT)
+    hide_at(connections, fr, IN_THE_SPOT)
     assert fr not in names_in(positions_now(connections)[far])
     put(fr, beside_the_spot(SPOT["r"] + 1))
     assert fr in names_in(positions_now(connections)[far])
@@ -198,7 +222,7 @@ def test_leaving_the_spot_makes_the_free_rider_visible_in_the_next_positions(con
 def test_a_ghost_sees_the_hidden_free_rider_and_the_living_still_see_no_ghost(connect):
     connections, [fr], [ghost, far, _] = classic_round(connect)
     classic_for(fr).eliminated = {ghost}
-    put(fr, IN_THE_SPOT)
+    hide_at(connections, fr, IN_THE_SPOT)
 
     told = positions_now(connections)
 
@@ -210,7 +234,7 @@ def test_a_ghost_sees_the_hidden_free_rider_and_the_living_still_see_no_ghost(co
 
 def test_a_second_free_rider_sees_the_hidden_one(connect):
     connections, [first, second], high_performers = classic_round(connect, SIX)
-    put(first, IN_THE_SPOT)
+    hide_at(connections, first, IN_THE_SPOT)
     told = positions_now(connections)
     assert first in names_in(told[second])
     for name in high_performers:
@@ -235,9 +259,10 @@ def test_a_free_rider_who_is_a_ghost_does_not_hide_but_the_living_still_do_not_g
 # A meeting and the end of the round
 
 
-def test_a_meeting_does_not_reveal_the_hidden_free_rider(connect, clock):
+def test_a_meeting_ends_hiding_and_reveals_the_free_rider(connect, clock):
+    # Since M3-1.6 (S-191) a meeting ends hiding (replaces S-138).
     connections, [fr], [caller, far, _] = classic_round(connect)
-    put(fr, IN_THE_SPOT)
+    hide_at(connections, fr, IN_THE_SPOT)
     button = CAMPUS["button"]
     put(caller, (button["x"], button["y"]))
     clock.wait(46)  # the emergency button unlocks 45 seconds after the start
@@ -250,15 +275,16 @@ def test_a_meeting_does_not_reveal_the_hidden_free_rider(connect, clock):
                 break
     assert classic_for(fr).phase == "meeting"
 
-    assert fr not in names_in(positions_now(connections)[far])
+    assert fr in names_in(positions_now(connections)[far])
 
 
 def test_the_end_of_the_round_alone_sends_the_hidden_free_rider_to_everybody_again(connect):
     connections, [fr], [first, second, far] = classic_round(connect)
-    put(fr, IN_THE_SPOT)
+    hide_at(connections, fr, IN_THE_SPOT)
     lobby = app.state.lobbies.lobby_of(fr)
-    # The start of the round put everybody on the spawn, so the first tick
-    # tells everybody where everybody stands: the far player without him.
+    # As at the start of the round, everybody is to be told where everybody
+    # stands, so the first tick tells everybody: the far player without him.
+    lobby.walkers.everybody_needs_news()
     assert sorted(lobby.walkers.names_to_tell()) == sorted(FOUR)
     connections[fr].portal.call(REAL_TICK, 0.0)
     told = {name: next_positions(connection) for name, connection in connections.items()}
@@ -280,7 +306,7 @@ def test_the_end_of_the_round_alone_sends_the_hidden_free_rider_to_everybody_aga
 def test_after_the_round_ended_nobody_is_hidden(connect):
     # Whatever is sent after the end: here the positions are sent at once.
     connections, [fr], [first, second, far] = classic_round(connect)
-    put(fr, IN_THE_SPOT)
+    hide_at(connections, fr, IN_THE_SPOT)
     # Two High Performers failed: one Free Rider against one High Performer
     # is parity, so the Free Riders win and the round ends.
     lobby = app.state.lobbies.lobby_of(fr)
@@ -295,7 +321,7 @@ def test_after_the_round_ended_nobody_is_hidden(connect):
 
 def test_in_the_result_phase_of_the_round_nobody_is_hidden(connect):
     connections, [fr], [far, _, _] = classic_round(connect)
-    put(fr, IN_THE_SPOT)
+    hide_at(connections, fr, IN_THE_SPOT)
     classic_for(fr).phase = "result"
     assert fr in names_in(positions_now(connections)[far])
 

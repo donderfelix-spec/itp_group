@@ -58,6 +58,15 @@ class Walkers:
         walker.dx = dx
         walker.dy = dy
 
+    def place(self, name: str, position):
+        """Put the player at `position` (a hiding spot's centre, M3-1.6). Everybody must be told."""
+        self._walkers[name].position = position
+        self._everybody_needs_news()
+
+    def everybody_needs_news(self):
+        """Everybody gets the positions at the next tick, though nobody moved."""
+        self._everybody_needs_news()
+
     def position_of(self, name: str):
         """Where the player stands, as `(x, y)`, or None before the first tick placed them."""
         return self._walkers[name].position

@@ -114,6 +114,7 @@ If you walk away, both disappear again; a station that matters to you keeps its 
 |---|---|---|---|---|
 | E | Task station that is on your own list | Yellow | “E Use” | Stations that you do not need or have already finished do not glow |
 | E | Emergency button | Yellow | “E Call meeting” | Only as long as you have not yet used up your meeting |
+| E | Hiding spot within 25 map units (S-191) | – | “E Hide”, while hidden “E Leave hiding” | Only the living Free Rider in a Classic round sees it. When a station or the emergency button is in reach as well, E uses the nearest of them |
 | R | “F” sheet | Coral | “R Report” | Visible to everyone who is in range |
 | Q or F | High Performer in range (20 map units, S-180) | Coral | “Let fail” | Only the Free Rider sees the border around the High Performer and the button. During the cooldown the button stays grey and counts down the seconds (“Let fail (n s)”, S-181) |
 
@@ -169,7 +170,7 @@ If someone leaves the round, that player counts as failed, and their open tasks 
 
 In all modes, players walk through each other, and nobody can block a door.
 
-**Hiding spots:** There are four places, each shown on the map as an object that belongs there, standing in a soft shade as large as the spot (S-190): cardboard boxes in the aisle between the shelves in Pingo Doce, a beanbag with two books next to the bookshelf of the CTT Student Hall, a potted plant in the corner of the Canteen and a dark hollow in the hedge on the Main Deck. The objects are only drawn; everybody walks through them and sees them the same way. Everybody can walk into the hedge. Only the Free Rider hides, and only in Classic: a living Free Rider who stands in a hiding spot is visible to the living High Performers only within 35 map units. A High Performer or a ghost in a hiding spot is visible like anywhere else, and in the lobby and in Duel nobody hides. The hidden Free Rider sees his own character half transparent and the word “Hidden” in the Classic panel, so that he notices that he is hidden; nobody else sees any of it (S-131 to S-135). Ghosts see the hidden Free Rider from anywhere (S-136), the other Free Rider sees him from anywhere (S-137), and a meeting does not reveal him (S-138).
+**Hiding spots:** There are four places, each shown on the map as an object that belongs there, standing in a soft shade as large as the spot (S-190): cardboard boxes in the aisle between the shelves in Pingo Doce, a beanbag with two books next to the bookshelf of the CTT Student Hall, a potted plant in the corner of the Canteen and a dark hollow in the hedge on the Main Deck. The objects are only drawn; everybody walks through them and sees them the same way. Everybody can walk into the hedge. Only the Free Rider hides, and only in Classic. He hides on purpose (S-191): a living Free Rider who stands within 25 map units of a hiding spot presses E (“E Hide”); he is put into the middle of the spot, stands still and is then visible to the living High Performers only within 35 map units. Standing in a spot alone does not hide. A step, E again (“E Leave hiding”), a meeting, and leaving the lobby end hiding; after a meeting he presses E again to hide. While hidden he cannot fail, report or call a meeting: he steps out first, which is instant. A High Performer or a ghost cannot hide, and in the lobby and in Duel nobody hides. The hidden Free Rider sees his own character half transparent and the word “Hidden” in the Classic panel, so that he notices that he is hidden; nobody else sees any of it (S-131 to S-135). Ghosts see the hidden Free Rider (S-136), and the other Free Rider sees him (S-137).
 
 If time allows: Sabotage “WiFi down”. The Free Rider locks all stations until someone restarts the router in the CTT Student Hall.
 
@@ -267,6 +268,9 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Lobby is full, or its countdown or round is already running | “This lobby is full.” / “This round has already started.” |
 | Too few players for the mode | “Classic needs at least 4 players.” |
 | Calling an emergency meeting further than 25 map units from the red button (only when someone bypasses the page) | “Walk to the red button to call a meeting.” |
+| Hiding as a High Performer or a ghost, in a meeting, outside a Classic round (only when someone bypasses the page) | “You cannot hide right now.” |
+| Hiding further than 25 map units from every hiding spot (only when someone bypasses the page) | “Walk up to a hiding spot to hide.” |
+| Failing, reporting or calling a meeting while hidden | “Leave your hiding spot first.” |
 | Skipping when there is no meeting, as a ghost, after the time, or in the discussion of an emergency meeting (only when someone bypasses the page) | “You cannot skip this discussion right now.” |
 | Connection lost | “Connection lost. Reconnecting…” After the player signs in again, the page joins the lobby it was in by itself and puts the code into the join field. If that lobby is gone, full or in its countdown or round, the usual text appears at the code field (S-109). |
 | Database not reachable | “Accounts are unavailable right now. You can still play as a guest.” |
