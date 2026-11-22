@@ -436,6 +436,19 @@ def test_a_leave_after_the_vote_time_ran_out_sends_the_result_once(connect, cloc
         assert leaver not in results[0]["living"]
 
 
+def test_a_leave_that_finishes_the_meeting_resends_the_positions(connect, clock):
+    # In the same gap: as after any result, everybody is sent the positions.
+    connections, lobby, _frs, [caller, leaver, *_] = classic_round(connect)
+    start_emergency(connections, caller, clock)
+    clock.wait(DISCUSSION_SECONDS + VOTING_SECONDS)  # no tick in between
+
+    told = leave(connections, leaver)
+
+    for name, messages in told.items():
+        types = [message["type"] for message in messages]
+        assert "positions" in types[types.index("classic_roster"):], name
+
+
 def test_a_leave_that_ends_the_round_during_a_meeting_sends_the_result(connect, clock):
     connections, lobby, [fr], [caller, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)

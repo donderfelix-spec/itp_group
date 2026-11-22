@@ -2,9 +2,10 @@
 
 After a player leaves a running Classic round, the players still in it are
 counted (members of the lobby with a role, living or ghost), and so are the
-Free Riders among them. The round is stopped when fewer than 4 are left, or
-more Free Riders than S-48 allows for that many (1 with 4 or 5 players, 2
-with 6 to 8). Too few Free Riders never stop it. The stop comes before the
+living Free Riders among them (S-157: a Free Rider voted out can fail
+nobody). The round is stopped when fewer than 4 are left, or more living
+Free Riders than S-48 allows for that many (1 with 4 or 5 players, 2 with
+6 to 8). Too few Free Riders never stop it. The stop comes before the
 win check: a stopped round has no winner and no end screen. Everybody gets
 the notice "Too many players left. The round was stopped." and then the
 lobby's state, phase "lobby".

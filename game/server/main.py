@@ -644,6 +644,7 @@ async def tell_classic_after_a_leave(lobby):
     """
     if lobby.classic_round is None:
         return
+    finished_now = False
     if lobby.meeting is not None and not lobby.meeting.get("applied"):
         # As in `answer_vote_message`: the time of the vote may have run out
         # since the last tick. Then this snapshot is the result: it is
@@ -651,9 +652,15 @@ async def tell_classic_after_a_leave(lobby):
         now = seconds_now()
         lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
         sync_classic_after_meeting(lobby)
+        finished_now = lobby.meeting.get("applied", False)
         lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
         await tell_meeting_state(lobby, now)
     await tell_classic_roster(lobby)
+    if finished_now:
+        # As after any result: everybody gets the positions again, so the
+        # living stop drawing a player who was voted out.
+        lobby.walkers._everybody_needs_news()
+        tell_positions(lobby)
 
 
 async def tell_lobby(lobby, new_host=None):
