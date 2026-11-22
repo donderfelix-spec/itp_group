@@ -287,6 +287,8 @@ def test_a_vote_that_ejects_the_free_rider_still_ends_the_round(connect, clock):
         result = next(message for message in messages if message["type"] == "classic_result")
         assert result["winner"] == "HP"
         assert len(results_in(messages)) == 1
+        # S-166: the vote's result is sent before the end of the round.
+        assert messages.index(results_in(messages)[0]) < messages.index(result)
 
 
 # Rejected: chat and votes once the meeting is over
