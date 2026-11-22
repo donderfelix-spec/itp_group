@@ -41,10 +41,14 @@ PLAYERS = [
     {"name": "Cy", "character": "c3"},
     {"name": "Di", "character": "c4"},
 ]
-# Next to the red button of campus.json (x 642, y 249, r 11), and an F-sheet
-# within report range (2) of the own player.
-AT_THE_BUTTON = {"x": 640, "y": 249}
-SHEET = {"type": "classic_fail", "sheet_id": "f-sheet-1", "target_id": "Bo", "position": {"x": 641, "y": 250}}
+# Next to the map's emergency button, with an F-sheet within report range.
+CAMPUS_FILE = Path(__file__).resolve().parents[1] / "client/js/world/campus.json"
+BUTTON = json.loads(CAMPUS_FILE.read_text(encoding="utf-8"))["button"]
+AT_THE_BUTTON = {"x": BUTTON["x"] - 2, "y": BUTTON["y"]}
+SHEET = {
+    "type": "classic_fail", "sheet_id": "f-sheet-1", "target_id": "Bo",
+    "position": {"x": BUTTON["x"] - 1, "y": BUTTON["y"] + 1},
+}
 # Unlocks 45 seconds after the round started (DESIGN: emergency meeting).
 EMERGENCY_STATUS = {"type": "classic_emergency_status", "emergency_ready_at": 145, "server_time": 100}
 FAIL_STATUS = {"type": "classic_fail_status", "available": True, "in_range": True, "cooldown_until": None, "server_time": 100}

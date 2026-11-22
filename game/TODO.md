@@ -193,6 +193,8 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 
 - [x] **M3-4.22** In Classic the yellow triangle beside the own character points at the nearest station of the own open task list (Felix, 2026-11-22: “Isn’t the arrow for the person in Classic mode there yet?”; on 2026-11-21: “add it in Classic too”). Same look and fading as in the Duel; no arrow when all own tasks are done or for the Free Rider; a ghost keeps it while it has open tasks. The card at the top left stays room-only in Classic (S-129). Done: S-145, `tests/test_classic_arrow.py`, `tests/test_play_classic_arrow_end_to_end.py`
 
+- [x] **M3-4.23** Move the red emergency button to the centre of the Main Deck (Hanna, Felix, 2026-11-22), from (642, 249) beside the hedge to (365, 375); it clears furniture, hiding spots, stations, the deck's name and the spawn, and no walking way changes. Done: S-147, `tests/test_emergency_button_place.py`, `tests/test_play_emergency_button_centre.py`, `tests/test_hedge_gap.py`
+
 ## M4: Extension
 
 - [ ] **M4-3.1** Sabotage “Wi-Fi outage”
