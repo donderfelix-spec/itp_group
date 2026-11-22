@@ -85,6 +85,7 @@ REJECTIONS = {
     "fail_rejected": "You cannot fail a player right now.",
     "chat_rejected": "You cannot send that chat message right now.",
     "vote_rejected": "You cannot cast that vote right now.",
+    "skip_discussion_rejected": "You cannot skip this discussion right now.",
     "report_rejected": "You cannot report that F-sheet right now. Stand at the sheet and try again.",
     "emergency_rejected": "You cannot call an emergency meeting right now.",
     # Statistics (S-40).
@@ -251,6 +252,7 @@ CLIENT_MESSAGES = {
     "emergency": {},
     "chat": {"text": _check_chat_text},
     "vote": {"target_id": _check_vote_target},
+    "skip_discussion": {},
     # Statistics (S-40). Neither carries a name: the profile is always the
     # one of the account the connection is signed in with.
     "get_profile": {},

@@ -345,6 +345,12 @@ function mapButton(className) {
 function look() {
   const useButton = mapButton('use-button');
   const reportButton = mapButton('report-button');
+  const selectedVote = element('classic-vote-players').children.find(
+    (button) => button.classList.contains('classic-vote-player-selected')
+  );
+  const voteIconLabels = everyElementBelow(element('classic-vote-players'))
+    .filter((found) => found.classList.contains('classic-voter-icon'))
+    .map((found) => found.title);
   const lobbyNames = everyElementBelow(element('lobby-players'));
   const ownOnMap = mapTexts.filter((text) => text.text === ownName);
   return {
@@ -362,6 +368,8 @@ function look() {
     ownNameRedInLobby: lobbyNames.some((found) => found.classList.contains('free-rider-name')),
     ownNameRedInRound: element('classic-own-name').classList.contains('free-rider-name'),
     meetingKnowsFreeRider: meetingKnowsFreeRider,
+    selectedVoteTarget: selectedVote ? selectedVote.dataset.targetId : null,
+    voteIconLabels: voteIconLabels,
     focusedId: document.activeElement ? document.activeElement.id : null,
     pulsing: pulsingStations,
     useButtonDisabled: useButton ? useButton.disabled : null,

@@ -20,8 +20,10 @@ Game.classicMeeting = Game.classicMeeting || {};
   var voteOptions;
   var votePlayers;
   var voteResult;
+  var skipOptions;
+  var skipStatus;
+  var skipButton;
   var voteListSignature = "";
-  var pendingVoteTarget = null;
   var resultCloseTimer = null;
   var resultShown = false;
   // The window stays this long after any result, then the round goes on.
@@ -40,7 +42,11 @@ Game.classicMeeting = Game.classicMeeting || {};
     voteOptions = document.getElementById("classic-vote-options");
     votePlayers = document.getElementById("classic-vote-players");
     voteResult = document.getElementById("classic-vote-result");
+    skipOptions = document.getElementById("classic-skip-options");
+    skipStatus = document.getElementById("classic-skip-status");
+    skipButton = document.getElementById("classic-skip-discussion");
     form.addEventListener("submit", sendMessage);
+    skipButton.addEventListener("click", skipDiscussion);
     window.addEventListener("resize", draw);
     Game.net.on("meeting_state", show);
   }
@@ -79,6 +85,7 @@ Game.classicMeeting = Game.classicMeeting || {};
     screen.hidden = false;
     holdTheCharacter(message.phase !== "result");
     updateInput();
+    updateSkip();
     updateVoting();
     updateVoteResult();
     if (message.phase === "result") {
@@ -100,7 +107,6 @@ Game.classicMeeting = Game.classicMeeting || {};
     cancelResultClose();
     if (state !== null) holdTheCharacter(false);
     state = null;
-    pendingVoteTarget = null;
     voteListSignature = "";
     screen.hidden = true;
   }
@@ -111,7 +117,26 @@ Game.classicMeeting = Game.classicMeeting || {};
       && Array.isArray(message.living)
       && Array.isArray(message.ghosts)
       && Array.isArray(message.messages)
-      && Array.isArray(message.voted);
+      && Array.isArray(message.voted)
+      && (message.skip_voted === undefined || Array.isArray(message.skip_voted));
+  }
+
+  function updateSkip() {
+    var skippable = votingIsOpen();
+    skipOptions.hidden = !skippable;
+    if (!skippable) return;
+    var skipVotes = skipVotesOf(state);
+    var agreed = skipVotes.length;
+    var total = state.living.length;
+    var ownAgreed = skipVotes.includes(ownName);
+    skipStatus.textContent = agreed + " / " + Math.ceil(total * 0.75) + " Skip votes to end voting early.";
+    skipButton.disabled = !state.living.includes(ownName);
+    skipButton.textContent = ownAgreed ? "Undo Skip" : "Skip";
+    skipButton.setAttribute("aria-pressed", String(ownAgreed));
+  }
+
+  function skipVotesOf(message) {
+    return message && Array.isArray(message.skip_voted) ? message.skip_voted : [];
   }
 
   function updateInput() {
@@ -126,13 +151,16 @@ Game.classicMeeting = Game.classicMeeting || {};
     else hint.textContent = "Ghosts can read the chat but cannot write.";
   }
 
+  function votingIsOpen() {
+    return Boolean(state && (
+      state.phase === "voting" || (state.phase === "discussion" && state.reason === "report")
+    ));
+  }
+
   function updateVoting() {
-    var voting = Boolean(state && state.phase === "voting");
+    var voting = votingIsOpen();
     voteOptions.hidden = !voting;
-    if (!voting) {
-      if (state && state.phase === "result") pendingVoteTarget = null;
-      return;
-    }
+    if (!voting) return;
     var signature = state.living.join("\u0000");
     if (signature !== voteListSignature) {
       voteListSignature = signature;
@@ -147,37 +175,72 @@ Game.classicMeeting = Game.classicMeeting || {};
         avatar.textContent = playerId.charAt(0).toUpperCase();
         var name = document.createElement("span");
         name.textContent = playerId;
-        button.append(avatar, name);
+        var markers = document.createElement("span");
+        markers.className = "classic-vote-markers";
+        button.append(avatar, name, markers);
         button.addEventListener("click", function () { castVote(playerId); });
         votePlayers.append(button);
       });
-      votePlayers.append(skipButton());
     }
-    var hasVoted = state.voted.includes(ownName) || pendingVoteTarget !== null;
+    var voteTargets = voteTargetsOf(state);
+    var selectedTarget = voteTargets[ownName];
     Array.from(votePlayers.children).forEach(function (button) {
-      button.disabled = !state.living.includes(ownName) || hasVoted;
+      button.disabled = !state.living.includes(ownName);
+      var selected = button.dataset.targetId === selectedTarget;
+      button.classList.toggle("classic-vote-player-selected", selected);
+      button.setAttribute("aria-pressed", selected ? "true" : "false");
+      updateVoteMarkers(button, voteTargets);
     });
-    if (state.voted.includes(ownName)) pendingVoteTarget = null;
   }
 
-  // "Skip" is a vote like the others: secret and final (DESIGN.md 5.6).
-  function skipButton() {
-    var button = document.createElement("button");
-    button.type = "button";
-    button.className = "classic-vote-player classic-vote-skip";
-    button.dataset.targetId = SKIP_VOTE;
-    button.textContent = "Skip";
-    button.addEventListener("click", function () { castVote(SKIP_VOTE); });
-    return button;
+  function voteTargetsOf(message) {
+    return message && message.vote_targets && typeof message.vote_targets === "object"
+      ? message.vote_targets : {};
+  }
+
+  function updateVoteMarkers(button, voteTargets) {
+    var markers = button.children[2];
+    if (!markers) return;
+    markers.replaceChildren();
+    Object.keys(voteTargets).forEach(function (voterId) {
+      if (voteTargets[voterId] !== button.dataset.targetId) return;
+      var icon = document.createElement("canvas");
+      icon.className = "classic-voter-icon";
+      icon.width = 56;
+      icon.height = 56;
+      icon.title = voterId + " voted for " + button.dataset.targetId;
+      icon.setAttribute("aria-label", icon.title);
+      drawVoterIcon(icon, voterId);
+      markers.append(icon);
+    });
+  }
+
+  function drawVoterIcon(canvasElement, voterId) {
+    var characterId = state.characters && state.characters[voterId];
+    var iconContext = canvasElement.getContext("2d");
+    iconContext.scale(2, 2);
+    if (Game.world && typeof Game.world.drawCharacter === "function") {
+      try {
+        Game.world.drawCharacter(iconContext, characterId, 14, 14, 25);
+        return;
+      } catch (problem) {
+        iconContext.clearRect(0, 0, 28, 28);
+      }
+    }
+    iconContext.fillStyle = "#8A8494";
+    iconContext.beginPath();
+    iconContext.arc(14, 14, 10, 0, Math.PI * 2);
+    iconContext.fill();
+  }
+
+  function skipDiscussion() {
+    if (!votingIsOpen() || !state.living.includes(ownName)) return;
+    Game.net.send({ type: "skip_discussion" });
   }
 
   function castVote(targetId) {
-    if (!state || state.phase !== "voting" || !state.living.includes(ownName)
-      || state.voted.includes(ownName) || pendingVoteTarget !== null) return;
-    if (Game.net.send({ type: "vote", target_id: targetId })) {
-      pendingVoteTarget = targetId;
-      updateVoting();
-    }
+    if (!votingIsOpen() || !state.living.includes(ownName)) return;
+    Game.net.send({ type: "vote", target_id: targetId });
   }
 
   function updateVoteResult() {

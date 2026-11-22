@@ -98,7 +98,8 @@ def lobby_state(phase, mode="classic", code="ABCD", players=PLAYERS):
 def meeting_state(phase):
     return ["receive", {
         "type": "meeting_state", "phase": phase, "seconds_left": 30,
-        "living": ["Ana", "Bo", "Cy"], "ghosts": ["Di"], "messages": [], "voted": [],
+        "living": ["Ana", "Bo", "Cy"], "ghosts": ["Di"], "messages": [], "voted": [], "vote_targets": {}, "skip_voted": [],
+        "characters": {"Ana": "consultant", "Bo": "finance_bro", "Cy": "surfer", "Di": "founder"},
         "reason": "emergency", "trigger_player_id": "Bo", "reported_sheet_id": None,
         "ejected_id": "Ana" if phase == "result" else None,
         "revealed_role": "FR" if phase == "result" else None,
@@ -231,6 +232,29 @@ def test_a_meeting_without_an_ejection_closes_after_its_result():
     assert still_shown["meetingHidden"] is False
     assert closed["meetingHidden"] is True
     assert closed["inputPaused"] is False
+
+
+@needs_node
+def test_a_cast_vote_keeps_the_selected_player_highlighted_until_the_result():
+    voting = meeting_state("voting")
+    confirmed = meeting_state("voting")
+    confirmed[1]["voted"] = ["Ana"]
+    confirmed[1]["vote_targets"] = {"Ana": "Bo"}
+    steps = classic_round_as_free_rider() + [
+        voting, ["clickVote", "Bo"], confirmed, ["look"],
+    ]
+    result = run_page(steps)
+    assert result["sent"][-1] == {"type": "vote", "target_id": "Bo"}
+    assert result["looks"][-1]["selectedVoteTarget"] == "Bo"
+    assert result["looks"][-1]["voteIconLabels"] == ["Ana voted for Bo"]
+
+
+@needs_node
+def test_a_report_allows_voting_before_the_discussion_timer_ends():
+    report = meeting_state("discussion")
+    report[1]["reason"] = "report"
+    steps = classic_round_as_free_rider() + [report, ["clickVote", "Bo"]]
+    assert run_page(steps)["sent"][-1] == {"type": "vote", "target_id": "Bo"}
 
 
 # Accepted: the end screen closes with the next countdown, round or stop

@@ -173,6 +173,8 @@ async def read_messages(websocket: WebSocket):
             await answer_chat_message(websocket, message)
         elif message["type"] == "vote":
             await answer_vote_message(websocket, message)
+        elif message["type"] == "skip_discussion":
+            await answer_skip_discussion_message(websocket)
 
 
 async def answer_account_message(websocket: WebSocket, message: dict):
@@ -1017,6 +1019,7 @@ async def answer_fail_message(websocket: WebSocket):
     event = {
         "type": "classic_fail",
         "target_id": target_id,
+        "character": lobby.character_of(target_id),
         "sheet_id": sheet_id,
         "position": {"x": target_position[0], "y": target_position[1]},
     }
@@ -1184,6 +1187,7 @@ async def tell_meeting_state(lobby, now=None):
     snapshot = classic_meeting.meeting_snapshot(
         lobby.meeting, seconds_now() if now is None else now
     )
+    snapshot["characters"] = dict(lobby.players())
     await asyncio.gather(*(send_to(name, snapshot) for name in lobby.names()))
 
 
@@ -1226,6 +1230,31 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
     farewells, result = end_round_if_over(lobby)
     if farewells:
         await tell_round_ended(lobby, farewells, result)
+
+
+async def answer_skip_discussion_message(websocket: WebSocket):
+    """Record a Skip ballot and publish the result if the threshold is met."""
+    name = app.state.sessions.name_of(websocket)
+    if name is None:
+        await websocket.send_json(protocol.rejection("not_signed_in"))
+        return
+    lobby = app.state.lobbies.lobby_of(name)
+    if lobby is None:
+        await websocket.send_json(protocol.rejection("not_in_lobby"))
+        return
+    if lobby.meeting is None:
+        await websocket.send_json(protocol.rejection("skip_discussion_rejected"))
+        return
+
+    now = seconds_now()
+    lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
+    sync_classic_after_meeting(lobby)
+    try:
+        lobby.meeting = classic_meeting.agree_to_skip_discussion(lobby.meeting, name, now)
+    except ValueError:
+        await websocket.send_json(protocol.rejection("skip_discussion_rejected"))
+    sync_classic_after_meeting(lobby)
+    await publish_meeting_and_round_result(lobby, now)
 
 
 # The round of each mode. The rules of Duel are in `server/modes/duel.py`
