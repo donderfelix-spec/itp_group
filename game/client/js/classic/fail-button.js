@@ -12,6 +12,23 @@
     return Math.min(1, Math.max(0, 1 - remainingSeconds(status, receivedAt, now) / duration));
   }
 
-  root.ClassicFailButton = { remainingSeconds: remainingSeconds, fillFraction: fillFraction };
+  // The Free Rider's button (S-195): the key first, like "E Emergency", and
+  // never any seconds or distance. While it charges, its fill shows how far.
+  var TEXT = "F Let fail";
+
+  // What a screen reader hears: the state the button shows only by colour.
+  function spokenLabel(secondsLeft, inRange) {
+    if (secondsLeft > 0) {
+      return "Let fail, ready in " + secondsLeft + (secondsLeft === 1 ? " second" : " seconds");
+    }
+    return inRange === false ? "Let fail, nobody in range" : "Let fail";
+  }
+
+  root.ClassicFailButton = {
+    TEXT: TEXT,
+    remainingSeconds: remainingSeconds,
+    fillFraction: fillFraction,
+    spokenLabel: spokenLabel,
+  };
   if (typeof module !== "undefined" && module.exports) module.exports = root.ClassicFailButton;
 })(typeof window !== "undefined" ? window : globalThis);

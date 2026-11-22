@@ -47,7 +47,8 @@ def test_end_popup_and_lobby_button_share_the_same_leave_handler():
 def test_client_displays_report_and_meeting_trigger_and_dead_players():
     world = (ROOT / "client/js/world/world.js").read_text()
     meeting = (ROOT / "client/js/classic/meeting.js").read_text()
-    assert 'reportButton.textContent = "Report"' in world
+    assert 'var REPORT_BUTTON_TEXT = "R Report"' in world  # S-195: was "Report"
+    assert 'reportButton.textContent = REPORT_BUTTON_TEXT' in world
     assert "ownIsGhost" in world
     assert 'state.trigger_player_id' in meeting
     assert 'state.reason' in meeting

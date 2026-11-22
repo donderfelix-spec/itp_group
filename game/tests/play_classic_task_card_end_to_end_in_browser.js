@@ -140,14 +140,14 @@ const pause = (ms) => new Promise((r) => setTimeout(r, ms));
       cardAfter: after.lines, itemsAfter: after.items, progressBefore: before.label, progressAfter: after.label,
       fillBefore: before.fill, fillAfter: after.fill };
 
-    // 2. Another High Performer stands next to the Free Rider, who presses Q.
+    // 2. Another High Performer stands next to the Free Rider, who presses F.
     // The first one goes back to the spawn, so it is not the nearest.
     const victim = highPerformers[1];
     const spot = victim.tasks[0];
     await put([[worker.name, 'spawn'], [victim.name, spot], [freeRider.name, spot]]);
     let failed = null;
     for (let attempt = 0; attempt < 20 && !failed; attempt++) {
-      await freeRider.page.keyboard.press('KeyQ');
+      await freeRider.page.keyboard.press('KeyF'); // F lets fail (S-195; Q did before)
       await pause(300);
       failed = victim.received.find((m) => m.type === 'classic_fail');
     }

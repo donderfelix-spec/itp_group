@@ -124,7 +124,8 @@ Game.world = Game.world || {};
   // section 4).
   var USE_KEY_CODE = "KeyE"; // `event.code` of the key in the E position
   var USE_BUTTON_TEXT = "E Use";
-  var FAIL_KEY_CODE = "KeyQ";
+  var REPORT_BUTTON_TEXT = "R Report"; // the key first, as on the other buttons (S-195)
+  var FAIL_KEY_CODE = "KeyF"; // only F lets fail; Q no longer does (S-195)
   var FAIL_RANGE_TILES = 25;
   var FAIL_COOLDOWN_SECONDS = 15;
   var REPORT_KEY_CODE = "KeyR";
@@ -162,7 +163,7 @@ Game.world = Game.world || {};
   var walkingSince = null;
   var usableStations = null; // ids of the stations that count, null = all
   var useHandler = null; // called with the id of the station that is opened
-  var failHandler = null; // called when the player presses Q in Classic
+  var failHandler = null; // called when the Free Rider presses F in Classic
   var reportHandler = null; // called with an F-sheet id and position on R
   var emergencyHandler = null; // called on E at the red button
   var hideHandler = null; // called on E at a hiding object (M3-1.6)
@@ -173,6 +174,9 @@ Game.world = Game.world || {};
   // here, so the class is taken off once and not touched on every frame.
   var useButtonHasFailLook = false;
   var reportButton = null;
+  // The Free Rider's own button for E (S-195): "E Emergency", "E Hide" or
+  // "E Leave hiding", shown only while E would do one of them.
+  var freeRiderEButton = null;
   var inputPaused = false; // true while a minigame is open, see setInputPaused()
   var overviewOpen = false;
   var classicVision = false;
@@ -867,8 +871,12 @@ Game.world = Game.world || {};
       failInRange = false;
       failCooldownUntil = null;
       failStatus = null;
-      if (useButton && useButtonHasFailLook) useButton.classList.remove("fail-button");
+      if (useButton && useButtonHasFailLook) {
+        useButton.classList.remove("fail-button");
+        setUseButtonLabel(null);
+      }
       useButtonHasFailLook = false;
+      if (freeRiderEButton) freeRiderEButton.hidden = true;
     }
   }
 
@@ -1261,10 +1269,16 @@ Game.world = Game.world || {};
     reportButton = document.createElement("button");
     reportButton.type = "button";
     reportButton.className = "button report-button";
-    reportButton.textContent = "Report";
+    reportButton.textContent = REPORT_BUTTON_TEXT;
     reportButton.hidden = true;
     reportButton.addEventListener("click", onReportButtonClick);
     canvas.parentNode.appendChild(reportButton);
+    freeRiderEButton = document.createElement("button");
+    freeRiderEButton.type = "button";
+    freeRiderEButton.className = "button free-rider-e-button";
+    freeRiderEButton.hidden = true;
+    freeRiderEButton.addEventListener("click", onFreeRiderEButtonClick);
+    canvas.parentNode.appendChild(freeRiderEButton);
   }
 
   // A clicked button keeps the keyboard focus. Space and Enter would then
@@ -1273,12 +1287,16 @@ Game.world = Game.world || {};
   function onUseButtonClick() {
     useButton.blur();
     if (ownIsFreeRider) {
-      var target = useTarget();
-      if (target === "leave" || target === "hide" || target === "emergency") useActionInRange();
-      else if (isFailButtonActive() && typeof failHandler === "function") failHandler();
+      // The Free Rider's main button only lets fail (S-195).
+      if (isFailButtonActive() && typeof failHandler === "function") failHandler();
     } else {
       useActionInRange();
     }
+  }
+
+  function onFreeRiderEButtonClick() {
+    freeRiderEButton.blur();
+    if (FREE_RIDER_E_TEXTS[useTarget()]) useActionInRange();
   }
 
   function onReportButtonClick() {
@@ -1295,56 +1313,34 @@ Game.world = Game.world || {};
       reportButton.remove();
       reportButton = null;
     }
+    if (freeRiderEButton) {
+      freeRiderEButton.remove();
+      freeRiderEButton = null;
+    }
   }
 
   // Grey and switched off while it would do nothing, yellow otherwise. The
   // stylesheet gives the two looks.
+  // The buttons at the bottom right (S-195). A High Performer has one: "E
+  // Use", or "E Emergency" at the red button. A Free Rider's main button is
+  // always "F Let fail", and his E actions have a second button of their own
+  // (see updateFreeRiderEButton). Grey and switched off while it would do
+  // nothing, yellow otherwise; the stylesheet gives the looks.
   function updateUseButton(idInRange) {
     if (!useButton) return;
-    var emergencyNearby = isAtEmergencyButton();
-    // The Free Rider's shared button shows hiding when E would hide or step
-    // out (M3-1.6); only he ever sees these words.
-    var hidingText = null;
     if (ownIsFreeRider) {
-      var target = useTarget();
-      if (target === "leave") hidingText = "E Leave hiding";
-      else if (target === "hide") hidingText = "E Hide";
-      emergencyNearby = target === "emergency";
-    }
-    if (ownIsFreeRider && hidingText !== null) {
-      if (useButtonHasFailLook) {
-        useButton.classList.remove("fail-button");
-        useButtonHasFailLook = false;
-      }
-      useButton.textContent = hidingText;
-      if (useButton.disabled !== inputPaused) {
-        if (inputPaused && document.activeElement === useButton) useButton.blur();
-        useButton.disabled = inputPaused;
-      }
+      updateFailButton();
+      updateFreeRiderEButton();
       return;
     }
-    if (ownIsFreeRider && !emergencyNearby) {
-      var secondsLeft = failCooldownSeconds();
-      var fill = window.ClassicFailButton.fillFraction(
-        failStatus, failStatusReceivedAt, performance.now(), FAIL_COOLDOWN_SECONDS
-      );
-      useButton.classList.add("fail-button");
-      useButtonHasFailLook = true;
-      useButton.style.setProperty("--fail-fill", (fill * 100) + "%");
-      useButton.textContent = secondsLeft > 0
-        ? "Let fail (" + secondsLeft + " s)"
-        : "Let fail";
-      var shouldDisableFail = !isFailButtonActive() || inputPaused;
-      if (useButton.disabled !== shouldDisableFail) {
-        if (shouldDisableFail && document.activeElement === useButton) useButton.blur();
-        useButton.disabled = shouldDisableFail;
-      }
-      return;
-    }
+    if (freeRiderEButton && !freeRiderEButton.hidden) freeRiderEButton.hidden = true;
     if (useButtonHasFailLook) {
       useButton.classList.remove("fail-button");
+      useButton.classList.remove("fail-charging");
+      setUseButtonLabel(null);
       useButtonHasFailLook = false;
     }
+    var emergencyNearby = isAtEmergencyButton();
     var shouldBeDisabled = (idInRange === null && !emergencyNearby) || inputPaused;
     useButton.textContent = emergencyNearby ? "E Emergency" : USE_BUTTON_TEXT;
     if (useButton.disabled === shouldBeDisabled) return;
@@ -1355,6 +1351,68 @@ Game.world = Game.world || {};
       useButton.blur();
     }
     useButton.disabled = shouldBeDisabled;
+  }
+
+  // "F Let fail", always (S-195). While it charges (the 15 s cooldown) it is
+  // grey and fills from left to right in a darker grey, with no seconds;
+  // charged with nobody in range it is all dark grey and switched off;
+  // charged with a victim in range it is yellow like an active "E Use".
+  // A screen reader hears the state in the button's label.
+  function updateFailButton() {
+    var secondsLeft = failCooldownSeconds();
+    var fill = window.ClassicFailButton.fillFraction(
+      failStatus, failStatusReceivedAt, performance.now(), FAIL_COOLDOWN_SECONDS
+    );
+    if (!useButtonHasFailLook) {
+      useButton.classList.add("fail-button");
+      useButtonHasFailLook = true;
+    }
+    useButton.classList.toggle("fail-charging", secondsLeft > 0);
+    useButton.style.setProperty("--fail-fill", (fill * 100) + "%");
+    useButton.textContent = window.ClassicFailButton.TEXT;
+    setUseButtonLabel(window.ClassicFailButton.spokenLabel(secondsLeft, failInRange));
+    setDisabled(useButton, !isFailButtonActive() || inputPaused);
+  }
+
+  // The Free Rider's own E button: shown only while E would call the
+  // meeting, hide or step out (the nearest target wins, M3-1.6).
+  var FREE_RIDER_E_TEXTS = { emergency: "E Emergency", hide: "E Hide", leave: "E Leave hiding" };
+
+  function updateFreeRiderEButton() {
+    if (!freeRiderEButton) return;
+    var text = FREE_RIDER_E_TEXTS[useTarget()] || null;
+    if (text === null) {
+      if (!freeRiderEButton.hidden) {
+        if (document.activeElement === freeRiderEButton) freeRiderEButton.blur();
+        freeRiderEButton.hidden = true;
+      }
+      return;
+    }
+    if (freeRiderEButton.textContent !== text) freeRiderEButton.textContent = text;
+    freeRiderEButton.hidden = false;
+    setDisabled(freeRiderEButton, inputPaused);
+  }
+
+  // Switches a button on or off; the focus leaves a button that goes off
+  // (see updateUseButton).
+  function setDisabled(button, disabled) {
+    if (button.disabled === disabled) return;
+    if (disabled && document.activeElement === button) button.blur();
+    button.disabled = disabled;
+  }
+
+
+  // The spoken name of the Free Rider's button, or none (the visible text
+  // counts then). Set only when it changes, so a screen reader is not told
+  // the same thing on every frame.
+  function setUseButtonLabel(label) {
+    if (!useButton) return;
+    var now = useButton.getAttribute("aria-label");
+    if (label === null) {
+      if (now !== null) useButton.removeAttribute("aria-label");
+    } else if (now !== label) {
+      useButton.setAttribute("aria-label", label);
+    }
   }
 
   function failCooldownSeconds() {
@@ -1443,7 +1501,7 @@ Game.world = Game.world || {};
   }
 
   function isFailKey(event) {
-    return event.code === FAIL_KEY_CODE || event.code === "KeyF";
+    return event.code === FAIL_KEY_CODE;
   }
 
   function isReportKey(event) {

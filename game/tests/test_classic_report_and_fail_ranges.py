@@ -4,7 +4,7 @@
   and the browser (world.js) use the same numbers.
 - A living Free Rider can report an F-sheet, also their own victim's
   (Lennart's test, kept unchanged from his commit).
-- Key F lets fail like Q; the button says only "Let fail".
+- Only key F lets fail (Q did too until S-195); the button says only "F Let fail".
 
 Edge cases decided here: a distance of exactly 8 (report) or 25 (fail)
 counts as in range; 8.01 and 25.01 do not.
@@ -172,9 +172,14 @@ def sent_fails(steps):
 
 
 @needs_node
-@pytest.mark.parametrize("key", ["KeyF", "KeyQ"])
-def test_f_and_q_both_let_fail(key):
-    assert sent_fails(free_rider_in_a_round() + [["key", key]]) == [{"type": "fail"}]
+def test_f_lets_fail():
+    assert sent_fails(free_rider_in_a_round() + [["key", "KeyF"]]) == [{"type": "fail"}]
+
+
+@needs_node
+def test_q_no_longer_lets_fail():
+    # S-195: only F lets fail; Q did as well before.
+    assert sent_fails(free_rider_in_a_round() + [["key", "KeyQ"]]) == []
 
 
 @needs_node
@@ -199,7 +204,7 @@ def test_f_does_nothing_while_a_minigame_is_open():
 def test_the_fail_button_says_only_let_fail():
     look = run_page(free_rider_in_a_round() + [["look"]])["looks"][0]
     assert look["useButtonHasFailLook"] is True
-    assert look["useButtonText"] == "Let fail"
+    assert look["useButtonText"] == "F Let fail"
     assert "tiles" not in WORLD_JS
 
 
