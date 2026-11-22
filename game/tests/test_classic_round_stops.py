@@ -83,19 +83,32 @@ def classic_round(connect, names):
     return connections, app.state.lobbies.lobby_of(names[0]), free_riders, high_performers
 
 
-def leave(connections, name):
-    """`name` presses "Leave". Returns `{other: messages}` up to the next lobby state."""
-    connection = connections.pop(name)
+def press_leave(connection):
+    """Send "Leave" and read this connection up to its answer `left_lobby`.
+
+    Anything still on its way to the leaver from before is skipped.
+    """
     connection.send_json({"type": "leave_lobby"})
-    assert connection.receive_json()["type"] == "left_lobby"
-    return {other: wait_for_news(conn) for other, conn in connections.items()}
+    for _ in range(50):
+        if connection.receive_json()["type"] == "left_lobby":
+            return
+    raise AssertionError("no left_lobby among the next 50 messages")
+
+
+def leave(connections, name, last="classic_progress"):
+    """`name` presses "Leave" and the round goes on. Returns `{other: messages}`.
+
+    The others are read up to the last message a continuing leave brings:
+    the progress, after the lobby state and the roster. In an open lobby
+    the lobby state is the last one (`last="lobby_state"`).
+    """
+    press_leave(connections.pop(name))
+    return {other: wait_for_news(conn, last) for other, conn in connections.items()}
 
 
 def leave_and_stop(connections, name):
     """`name` leaves and the round stops. Returns `{other: messages}` up to the open lobby."""
-    connection = connections.pop(name)
-    connection.send_json({"type": "leave_lobby"})
-    assert connection.receive_json()["type"] == "left_lobby"
+    press_leave(connections.pop(name))
     return {other: wait_for_the_open_lobby(conn) for other, conn in connections.items()}
 
 
@@ -261,8 +274,7 @@ def test_with_five_the_free_rider_leaves_and_the_high_performers_win_without_a_s
     drain(connections)
 
     connection = connections.pop(fr)
-    connection.send_json({"type": "leave_lobby"})
-    assert connection.receive_json()["type"] == "left_lobby"
+    press_leave(connection)
     told = {name: wait_for_the_open_lobby(conn) for name, conn in connections.items()}
 
     for messages in told.values():
@@ -285,8 +297,7 @@ def test_with_five_parity_after_a_leave_is_a_win_not_a_stop(connect, clock):
         clock.wait(FAIL_COOLDOWN_SECONDS)
 
     connection = connections.pop(leaver)
-    connection.send_json({"type": "leave_lobby"})
-    assert connection.receive_json()["type"] == "left_lobby"
+    press_leave(connection)
     told = {name: wait_for_the_open_lobby(conn) for name, conn in connections.items()}
 
     for messages in told.values():
@@ -303,8 +314,7 @@ def test_a_duel_goes_on_when_a_player_leaves(connect):
     lobby = app.state.lobbies.lobby_of("Mara")
 
     leaver = players.pop("Ines")
-    leaver.send_json({"type": "leave_lobby"})
-    assert leaver.receive_json()["type"] == "left_lobby"
+    press_leave(leaver)
     told = {name: wait_for_news(conn) for name, conn in players.items()}
 
     assert lobby.round_is_running() and lobby.duel is not None
@@ -316,6 +326,6 @@ def test_leaving_an_open_lobby_sends_no_stop(connect):
     lobby.end_round()
     drain(connections)
 
-    told = leave(connections, FOUR[1])
+    told = leave(connections, FOUR[1], last="lobby_state")
 
     assert all(STOPPED not in messages for messages in told.values())
