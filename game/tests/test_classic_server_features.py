@@ -147,20 +147,6 @@ def test_only_free_rider_can_fail_and_fail_cooldown_is_checked_by_server(connect
     assert len(round_state.eliminated) == 1
 
 
-def test_role_debug_output_requires_debug_roles_environment_variable(connect, monkeypatch, capsys):
-    monkeypatch.setenv("DEBUG_ROLES", "1")
-    _connections, _code, _public, _start_messages = start_classic(connect)
-    output = capsys.readouterr().out
-    assert "Classic roles:" in output
-    assert "FR" in output and "HP" in output
-
-
-def test_role_debug_output_is_silent_without_debug_roles(connect, monkeypatch, capsys):
-    monkeypatch.delenv("DEBUG_ROLES", raising=False)
-    start_classic(connect)
-    assert "Classic roles:" not in capsys.readouterr().out
-
-
 def test_only_free_rider_receives_marker_and_public_lobby_states_hide_roles(connect):
     connections, _code, public_messages, start_messages = start_classic(connect)
     roles = {name: classic_for(name).roles[name] for name in connections}

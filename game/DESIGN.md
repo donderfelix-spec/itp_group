@@ -289,8 +289,16 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Opening a station that is not on your list or that you have already finished | “You do not need that station.” |
 | Opening a station while a task is open | “Close your current task first.” |
 | Closing or finishing while no task is open | “You have no task open.” |
+| A Free Rider opens, closes or finishes a task in Classic | “Free Riders cannot complete tasks.” |
 | Reporting a task as done faster than it can be played | “That was too fast. Try again.” |
 | The server fails while opening, closing or finishing a task | “Something went wrong. Try again.” |
+| Failing a player (Q) while no Classic round is running, or when no High Performer can be failed right now | “You cannot fail a player right now.” |
+| Failing a player again before the cooldown has ended | “You can fail again in 12 seconds.” (the number counts down; “second” when it is 1) |
+| Reporting an F-sheet while no Classic round is running, or while the server does not find you at the position you send | “You cannot report that F-sheet right now. Stand at the sheet and try again.” |
+| Calling an emergency meeting while no Classic round is running, or while the rules do not allow it | “You cannot call an emergency meeting right now.” |
+| Calling an emergency meeting in the first 45 seconds of a Classic round | “The emergency button unlocks in 30 seconds.” (the number counts down; “second” when it is 1) |
+| Sending a chat message while no meeting is running, or while the rules do not allow it (not in the discussion, or too soon after your last message) | “You cannot send that chat message right now.” |
+| Casting a vote while no meeting is running, or while the rules do not allow it | “You cannot cast that vote right now.” |
 | A guest asks for a profile | “Guests have no statistics. Sign up to keep yours.” |
 | Profile or leaderboard while the database is not reachable | “Statistics are unavailable right now.” |
 | A minigame gets content from the server that it cannot show | “This task could not be loaded.” (shown inside the minigame window) |
@@ -299,6 +307,9 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | A message with a field the server does not expect, or without a field it needs (only when someone bypasses the page) | “That message has a field the server does not expect.” / “That message is incomplete.” |
 | Choosing a character that does not exist (only when someone bypasses the page) | “That character does not exist.” |
 | A walking direction that is not -1, 0 or 1 (only when someone bypasses the page) | “That move could not be read.” |
+| A report with a sheet ID that is not an F-sheet ID (only when someone bypasses the page) | “That F-sheet could not be identified.” |
+| A position that does not have exactly an x and a y number, or a number that is not finite (only when someone bypasses the page) | “That position could not be read.” |
+| A chat message that is empty, longer than 200 characters or contains a character that cannot be stored (only when someone bypasses the page) | “Chat messages must contain 1–200 characters.” |
 
 ## 10. What is deliberately not included
 

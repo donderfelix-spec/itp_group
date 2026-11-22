@@ -1288,8 +1288,6 @@ def set_up_classic(lobby):
     lobby.classic_round = ClassicRound(
         lobby.names(), sorted(minigames.MINIGAMES), random, seconds_now()
     )
-    if os.environ.get("DEBUG_ROLES") == "1":
-        print(f"Classic roles: {lobby.classic_round.roles}", flush=True)
     lobby.tasks = tasks.RoundTasks(
         campus["stations"], campus["use_range"],
         needed_stations=lobby.classic_round.stations_needed,
