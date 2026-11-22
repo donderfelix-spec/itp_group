@@ -885,22 +885,32 @@ Game.world = Game.world || {};
   }
 
   // An emergency stop switch with a yellow safety plate and raised red cap.
+  // Everything stays inside the button's circle (radius r): a dark round
+  // base fills that circle exactly, and the plate with the cap is drawn
+  // smaller on top of it, lifted a little so the base shows below it like
+  // the furniture's shadow (M3-4.24).
+  var BUTTON_PLATE_SCALE = 0.76; // the plate's size, compared with the button's radius
+  var BUTTON_PLATE_LIFT = 0.06;  // how far the plate is lifted, in button radii
+
   function drawButton(ctx, campus, visible) {
     if (!visible || !campus.button) return;
     var button = campus.button;
     var x = button.x;
-    var y = button.y;
     var r = button.r;
-    var half = r * 0.86;
-    var plate = { x: x - half, y: y - half, w: 2 * half, h: 2 * half };
+    // The dark round base: the whole button, so a player sees its full size.
+    circle(ctx, x, button.y, r, OUTLINE, 0);
 
-    box(ctx, { x: plate.x, y: plate.y + r * 0.14, w: plate.w, h: plate.h },
-      r * 0.22, OUTLINE, 0);
-    box(ctx, plate, r * 0.22, YELLOW, r * 0.12);
-    circle(ctx, x, y, r * 0.69, "#9E352E", r * 0.12);
-    circle(ctx, x, y - r * 0.12, r * 0.54, CORAL, 0);
-    line(ctx, x, y - r * 0.41, x, y - r * 0.04, CREAM, r * 0.15);
-    circle(ctx, x, y + r * 0.15, r * 0.087, CREAM, 0);
+    // The plate's own centre and size; the parts below keep Hanna's
+    // proportions, measured in `size` instead of the button's radius.
+    var y = button.y - r * BUTTON_PLATE_LIFT;
+    var size = r * BUTTON_PLATE_SCALE;
+    var half = size * 0.86;
+    var plate = { x: x - half, y: y - half, w: 2 * half, h: 2 * half };
+    box(ctx, plate, size * 0.22, YELLOW, size * 0.12);
+    circle(ctx, x, y, size * 0.69, "#9E352E", size * 0.12);
+    circle(ctx, x, y - size * 0.12, size * 0.54, CORAL, 0);
+    line(ctx, x, y - size * 0.41, x, y - size * 0.04, CREAM, size * 0.15);
+    circle(ctx, x, y + size * 0.15, size * 0.087, CREAM, 0);
   }
 
   // ---- Task stations (Felix, 2026-11-21) -------------------------------
