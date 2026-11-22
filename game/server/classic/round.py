@@ -61,13 +61,20 @@ class ClassicRound:
         }
 
     def stations_needed(self, player_id, finished, in_use):
-        return [int(station) for station in self.tasks.get(player_id, ())]
+        """Expose only the first unfinished assignment to the task frame."""
+        if self.roles.get(player_id) != "HP":
+            return []
+        completed = self.completed_tasks.get(player_id, set())
+        return [
+            int(station) for station in self.tasks.get(player_id, ())
+            if station not in completed
+        ][:1]
 
     def station_done(self, player_id, station):
         station_id = str(station)
         if (
             self.roles.get(player_id) != "HP"
-            or station_id not in self.tasks.get(player_id, ())
+            or station not in self.stations_needed(player_id, set(), ())
             or station_id in self.completed_tasks[player_id]
         ):
             return

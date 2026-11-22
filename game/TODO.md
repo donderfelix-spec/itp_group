@@ -195,6 +195,14 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 
 - [x] **M3-4.23** Move the red emergency button to the centre of the Main Deck (Hanna, Felix, 2026-11-22), from (642, 249) beside the hedge to (365, 375); it clears furniture, hiding spots, stations, the deck's name and the spawn, and no walking way changes. Done: S-147, `tests/test_emergency_button_place.py`, `tests/test_play_emergency_button_centre.py`, `tests/test_hedge_gap.py`
 
+### Lennart's Classic follow-ups (2026-11-22)
+
+- [x] **M3-4.24** Let a living Free Rider report an F-sheet, including a sheet they caused (Lennart). Verified by the report rules and regression test, 2026-11-22.
+- [ ] **M3-4.25** After a player is failed, prevent them from opening or finishing tasks and from increasing group progress; also stop any task already open when they fail (Lennart). This replaces the previous ghost-task behaviour when implemented.
+- [x] **M3-4.26** Double the F-sheet reporting range from 2 to 4 map units so players can report from farther away; server check and browser hint are in sync (Lennart, 2026-11-22).
+- [x] **M3-4.27** Double the “Let fail” range from 5 to 10 map units so the Free Rider can fail a player from farther away; server check and browser hint are in sync (Lennart, 2026-11-22).
+- [x] **M3-4.28** Show F-sheets and their portraits 30% larger. Classic exposes only the first unfinished assigned task; the arrow points to it, other tasks are unavailable, and completion unlocks the next task (Lennart, 2026-11-22).
+
 ## M4: Extension
 
 - [ ] **M4-3.1** Sabotage “Wi-Fi outage”

@@ -124,10 +124,11 @@ Game.world = Game.world || {};
   var USE_KEY_CODE = "KeyE"; // `event.code` of the key in the E position
   var USE_BUTTON_TEXT = "E Use";
   var FAIL_KEY_CODE = "KeyQ";
-  var FAIL_RANGE_TILES = 5;
+  var FAIL_RANGE_TILES = 20;
   var FAIL_COOLDOWN_SECONDS = 15;
   var REPORT_KEY_CODE = "KeyR";
-  var REPORT_RANGE = 2;
+  var REPORT_RANGE = 8;
+  var EMERGENCY_RANGE = 2;
   var EMERGENCY_DELAY_SECONDS = 45;
 
   // ---- State -----------------------------------------------------------
@@ -1143,7 +1144,7 @@ Game.world = Game.world || {};
     var position = ownServerPosition();
     if (!position) return false;
     var button = campus.button;
-    return Math.hypot(position.x - button.x, position.y - button.y) <= (button.r || 0) + REPORT_RANGE;
+    return Math.hypot(position.x - button.x, position.y - button.y) <= (button.r || 0) + EMERGENCY_RANGE;
   }
 
   function useActionInRange() {
@@ -1241,7 +1242,7 @@ Game.world = Game.world || {};
         ? "E Emergency"
         : secondsLeft > 0
         ? "Let fail (" + secondsLeft + " s)"
-        : (failInRange ? "Let fail (" + FAIL_RANGE_TILES + " tiles)" : "Let fail");
+        : "Let fail";
       var shouldDisableFail = !isFailButtonActive() || inputPaused;
       if (useButton.disabled !== shouldDisableFail) {
         if (shouldDisableFail && document.activeElement === useButton) useButton.blur();
@@ -1353,7 +1354,7 @@ Game.world = Game.world || {};
   }
 
   function isFailKey(event) {
-    return event.code === FAIL_KEY_CODE;
+    return event.code === FAIL_KEY_CODE || event.code === "KeyF";
   }
 
   function isReportKey(event) {
@@ -1672,6 +1673,7 @@ Game.world = Game.world || {};
       ctx.save();
       ctx.translate(sheet.x, sheet.y);
       ctx.rotate(-0.12);
+      ctx.scale(1.3, 1.3);
       ctx.fillStyle = "#FFFDF5";
       ctx.strokeStyle = "#2E2A3B";
       ctx.lineWidth = 0.65;

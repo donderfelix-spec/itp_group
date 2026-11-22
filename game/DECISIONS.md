@@ -211,6 +211,12 @@ These entries follow from the team's answers and from the project description in
 
 ## Open decisions
 
+### Lennart's branch request (2026-11-22)
+
+Follow-up: report range is now 8 map units and fail range is 20. The Let fail button omits the tile count. F also triggers Let fail, with the existing chat-input and cooldown guards.
+
+Classic exposes only the first unfinished assignment in the player's assigned order. The private task packet, visible task card, station permission and direction arrow all use that single station; finishing it unlocks the next. F-sheets and their victim portraits are drawn at 130% of their previous size. The report range changes from 2 to 4 map units and the fail range from 5 to 10, including server checks and client hints. A living Free Rider can report an unreported F-sheet, including their own victim's. These changes implement Lennart's explicit request to make actions easier to reach and tasks sequential. The separate request to prevent failed players from doing tasks remains open as M3-4.25.
+
 | Question | Affects | Thinking so far |
 |---|---|---|
 | Who creates the account at Render? | Area 2 | A team member has to do this themselves, with their own GitHub account. |
