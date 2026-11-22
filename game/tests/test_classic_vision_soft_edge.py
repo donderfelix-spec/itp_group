@@ -19,7 +19,8 @@ from server.world import visibility
 NODE = shutil.which("node")
 HARNESS = Path(__file__).with_name("vision_soft_edge_in_node.js")
 WORLD_JS = Path(__file__).parents[1] / "client" / "js" / "world" / "world.js"
-FOG = "rgba(34, 36, 54, 0.74)"
+# The full fog: 0.60 since S-193 (Felix, 2026-11-22: "a touch lighter"), before 0.74.
+FOG = "rgba(34, 36, 54, 0.6)"
 
 needs_node = pytest.mark.skipif(NODE is None, reason="Node is needed to run the page's JavaScript")
 
