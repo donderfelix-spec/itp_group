@@ -132,6 +132,21 @@ class ClassicRound:
             self._has_news = True
         return self.meeting
 
+    def apply_meeting_result(self, meeting):
+        """A meeting reached its result: apply it to the round, and play goes on.
+
+        The server calls this exactly once per meeting (M3-3.9). Only the
+        player voted out, if any, becomes a ghost; the list of ghosts is
+        never replaced by the meeting's older copy of it.
+        """
+        vote_result = meeting.get("vote_result")
+        if vote_result is not None and vote_result.ejected_id is not None:
+            self.eliminated.add(vote_result.ejected_id)
+        self.phase = "round"
+        self.timers_paused = False
+        self.meeting = meeting
+        self._has_news = True
+
     def progress(self):
         return progress(self.state())
 

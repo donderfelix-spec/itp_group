@@ -1112,16 +1112,22 @@ async def answer_emergency_message(websocket: WebSocket):
 
 
 def sync_classic_after_meeting(lobby):
-    """Return Classic to play and retain any ejection from a finished meeting."""
+    """Apply a finished meeting's result to Classic, exactly once (M3-3.9).
+
+    The finished meeting stays in `lobby.meeting` until the next meeting
+    replaces it or the round ends, and this function is called again by
+    the tick and the handlers. The flag "applied" makes every later call do
+    nothing: before, each call set the ghosts back to the meeting's list,
+    and a player failed after the meeting came back to life.
+    """
     classic = lobby.classic_round
     meeting = lobby.meeting
     if classic is None or meeting is None or meeting.get("phase") != "result":
         return
-    classic.eliminated = set(meeting.get("eliminated", classic.eliminated))
-    classic.phase = "round"
-    classic.timers_paused = False
-    classic.meeting = meeting
-    classic._has_news = True
+    if meeting.get("applied"):
+        return
+    meeting["applied"] = True
+    classic.apply_meeting_result(meeting)
 
 
 async def publish_meeting_and_round_result(lobby, now):
