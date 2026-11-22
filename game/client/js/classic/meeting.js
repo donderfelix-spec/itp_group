@@ -22,6 +22,11 @@ Game.classicMeeting = Game.classicMeeting || {};
   var voteResult;
   var voteListSignature = "";
   var pendingVoteTarget = null;
+  // The result stays on screen for a while, then the view closes by itself.
+  // A result that was closed is not shown again if the server repeats it.
+  var RESULT_MILLISECONDS = 8000;
+  var resultCloseTimer = null;
+  var resultClosed = false;
 
   function setup() {
     screen = document.getElementById("classic-meeting");
@@ -53,6 +58,15 @@ Game.classicMeeting = Game.classicMeeting || {};
   function show(message) {
     if (!isMeetingState(message)) return;
     state = message;
+    if (message.phase === "result") {
+      if (resultClosed) return;
+      if (resultCloseTimer === null) {
+        resultCloseTimer = window.setTimeout(finishResult, RESULT_MILLISECONDS);
+      }
+    } else {
+      resultClosed = false;
+      cancelResultClose();
+    }
     // The server removed this sheet when the meeting started. The other
     // sheets stay on the map until the round ends (Game.world.stop).
     if (
@@ -69,11 +83,28 @@ Game.classicMeeting = Game.classicMeeting || {};
     draw();
   }
 
+  // The meeting view closes: after the result, when a new round starts,
+  // or when the player leaves the lobby. Nothing of the old vote stays.
   function hide() {
+    cancelResultClose();
+    if (state && state.phase === "result") resultClosed = true;
     state = null;
     pendingVoteTarget = null;
     voteListSignature = "";
-    screen.hidden = true;
+    if (votePlayers) votePlayers.replaceChildren();
+    if (voteResult) voteResult.hidden = true;
+    if (screen) screen.hidden = true;
+  }
+
+  function finishResult() {
+    resultCloseTimer = null;
+    resultClosed = true;
+    hide();
+  }
+
+  function cancelResultClose() {
+    if (resultCloseTimer !== null) window.clearTimeout(resultCloseTimer);
+    resultCloseTimer = null;
   }
 
   function isMeetingState(message) {

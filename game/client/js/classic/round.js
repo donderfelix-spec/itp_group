@@ -44,6 +44,11 @@ Game.classicRound = Game.classicRound || {};
       || (message.phase === "round" && message.mode !== "classic")) {
       setOwnFreeRider(false);
     }
+    // A new round never shows the meeting of the round before.
+    if (classicRoundActive && !roundIsActive && Game.classicMeeting
+      && typeof Game.classicMeeting.hide === "function") {
+      Game.classicMeeting.hide();
+    }
     roundIsActive = classicRoundActive;
     isHost = message.host === ownName;
     if (message.mode === "classic" && message.phase === "round") progressPanel.hidden = false;

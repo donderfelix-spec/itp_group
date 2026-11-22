@@ -45,6 +45,7 @@ function makeEl() {
 
 const handlers = {};
 const byId = {};
+const timers = [];
 function elementById(id) {
   if (!byId[id]) byId[id] = makeEl();
   return byId[id];
@@ -63,8 +64,8 @@ const sandbox = {
   performance: { now: () => 0 },
   requestAnimationFrame: () => 0,
   cancelAnimationFrame() {},
-  setTimeout: () => 0,
-  clearTimeout() {},
+  setTimeout: (fn, ms) => { timers.push({ fn, ms, cleared: false }); return timers.length; },
+  clearTimeout: (id) => { if (timers[id - 1]) timers[id - 1].cleared = true; },
   innerWidth: 800,
   innerHeight: 600,
   Game: { net: { on(name, fn) { handlers[name] = fn; }, send() { return true; }, ask() {} } },
@@ -110,6 +111,18 @@ sandbox.Game.classicRound.setLobby(lobby('lobby'));
 // The host starts a new round.
 sandbox.Game.classicRound.setLobby(lobby('round'));
 seen.afterNewRound = screen.hidden;
+seen.voteResultHidden = elementById('classic-vote-result').hidden;
+
+// A result closes by itself after its time, and a repeated copy of it stays closed.
+// A new meeting starts with its discussion, then its result comes.
+handlers['meeting_state'](meeting({ phase: 'discussion', seconds_left: 45, reason: 'emergency', reported_sheet_id: null }));
+handlers['meeting_state'](meeting({ reason: 'emergency', reported_sheet_id: null }));
+const resultTimers = timers.filter((timer) => timer.ms === 8000 && !timer.cleared);
+seen.resultTimerSet = resultTimers.length === 1;
+resultTimers.forEach((timer) => timer.fn());
+seen.closedByTimer = screen.hidden;
+handlers['meeting_state'](meeting({ reason: 'emergency', reported_sheet_id: null }));
+seen.repeatedResultStaysClosed = screen.hidden;
 process.stdout.write(JSON.stringify(seen));
 """
 
@@ -120,6 +133,10 @@ def test_a_new_round_closes_the_meeting_view_that_was_open_at_the_end():
     seen = json.loads(result.stdout)
     assert seen["afterResult"] is False, "the result must be shown first"
     assert seen["afterNewRound"] is True
+    assert seen["voteResultHidden"] is True
+    assert seen["resultTimerSet"] is True
+    assert seen["closedByTimer"] is True
+    assert seen["repeatedResultStaysClosed"] is True
 
 
 def receive_until(connection, message_type):

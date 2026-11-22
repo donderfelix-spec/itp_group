@@ -964,6 +964,10 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
 
 def set_up_round(lobby):
     """Give the lobby what a round of its mode needs. A new round begins with no task open and nothing finished."""
+    # A meeting belongs to the round it was called in. Ending a round already
+    # clears it; this makes sure no meeting of an earlier round is left over.
+    lobby.meeting = None
+    lobby.meeting_clock = None
     ROUND_SETUPS[lobby.mode](lobby)
 
 
