@@ -126,7 +126,7 @@ Pressing a key that would do nothing at that moment has no effect and also shows
 | WASD or arrow keys | Walk |
 | E | Use a station, press the emergency button |
 | R | Report a failed player |
-| Q | Fail someone (Free Rider only) |
+| Q or F | Fail someone (Free Rider only) |
 | M | Overview map |
 | Enter | Send chat in the meeting |
 | Esc | Close the minigame or the map |
@@ -143,9 +143,9 @@ Every action also works with a mouse click on the button.
 
 1. Everyone starts on the Main Deck. Each player sees their role for three seconds. Two Free Riders also see who the other one is.
 2. Each High Performer gets four of the eleven tasks (stations 1 to 5 and 7 to 12, S-124), chosen at random. Every finished task fills the shared progress bar.
-3. Each High Performer has one active task: the first unfinished assignment in their original order. Only that station pulses, can be opened, and receives the direction arrow. Finishing it reveals the next task. The Free Rider has no task list and cannot open a station (S-154).
-4. The Free Rider can fail a High Performer who is in range (5 fields). After that, the Free Rider has to wait 15 seconds. The Free Rider starts with the ability loaded and cannot fail another Free Rider.
-5. Reporting happens right on the spot: For any living player who stands within 2 fields of an “F” sheet, the button “Report” lights up (key R). Pressing it starts the meeting for everyone at once, and nobody has to walk anywhere. The reported sheet stays on the map until the round ends and cannot be reported again (S-150). Without a find, each living player can call one meeting per round with the red button in the centre of the Main Deck, available 45 seconds after the round starts.
+3. Every player sees only their own task list; all its stations pulse. The Free Rider has no task list and cannot open a station: they fake tasks by standing at one, and no station pulses for them (S-154).
+4. The Free Rider can fail a High Performer who is in range (20 map units, S-180), with key Q or F or the button “Let fail”. After that, the Free Rider has to wait 15 seconds. The Free Rider starts with the ability loaded and cannot fail another Free Rider.
+5. Reporting happens right on the spot: For any living player, the Free Rider included, who stands within 8 map units of an “F” sheet (S-180), the button “Report” lights up (key R). Pressing it starts the meeting for everyone at once, and nobody has to walk anywhere. The reported sheet stays on the map until the round ends and cannot be reported again (S-150). Without a find, each living player can call one meeting per round with the red button in the centre of the Main Deck, available 45 seconds after the round starts.
 6. Meeting: 45 seconds of discussion by chat, then 30 seconds for the vote. You vote for one person or “Skip”. The person with the most votes goes, and nobody goes if there is a tie or a majority for “Skip”. After a report, voting is already open during the discussion; after an emergency meeting only in the voting phase (S-161). During the vote the window says “Chat is closed. Choose one living player to eject, or Skip.” Votes are public: everybody sees each voter's character next to their target, and the own target is highlighted. Clicking the same player again takes the vote back, another player replaces it (S-160). “Skip” switches the own Skip on and off (“Skip” / “Undo Skip”) and takes back the own vote; the window shows “2 / 3 Skip votes to end voting early.” As soon as 75 % of the living have chosen Skip, rounded up, the meeting ends at once. Anyone who does not vote does not count as “Skip”; Skip with as many votes as the leading player is a tie. Otherwise the vote ends when its 30 seconds run out, also when everybody has voted (S-162). The result stays on screen for a moment (1.8 s), then the window closes and the round goes on; when the result ends the round, the end screen follows at once (S-153).
 7. Whoever is voted out drifts out to sea: The character is caught by a wave on the beach, gets smaller and disappears on the horizon. A text says whether it was a Free Rider: “Mara was a Free Rider.” or “Mara was not a Free Rider.”
 8. After the meeting everyone stands on the Main Deck again, and the Free Rider’s cooldown starts again.
@@ -160,7 +160,7 @@ Every action also works with a mouse click on the button.
 | Discussion / vote | 45 s / 30 s |
 | Emergency meetings | 1 per player |
 
-Lennart's branch update (2026-11-22): the Free Rider fail radius is 10 map units and the F-sheet report radius is 4. A living Free Rider can report any unreported F-sheet, including their own victim's. The cooldown remains 15 seconds. F-sheets and their victim portraits are drawn 30% larger. The emergency interaction radius keeps its previous value.
+Lennart's update (2026-11-22, S-180, S-181): the Free Rider fail radius is 20 map units and the F-sheet report radius is 8. A living Free Rider can report any unreported F-sheet, including their own victim's. The cooldown remains 15 seconds. F-sheets and their victim portraits are drawn 30 % larger.
 
 **High Performers win:** The progress bar is full, or all Free Riders have been voted out.
 **Free Riders win:** There are as many Free Riders left as High Performers.
