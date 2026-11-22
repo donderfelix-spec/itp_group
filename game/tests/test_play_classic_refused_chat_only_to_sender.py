@@ -242,14 +242,16 @@ def play_the_meeting(play, labels, seen):
     b.wait(skipper, "!document.getElementById('classic-skip-discussion').disabled")
     b.call("click", label=skipper, selector="#classic-skip-discussion")
     wait_until(lambda: names[skipper] in play.lobby().meeting.get("skip_votes", ()), "the Skip")
-    marker = f"{names[caller]} voted for {names[target]}"
+    # The target's vote button names its voters in its title (S-173).
+    marker = f"{names[target]} — votes: {names[caller]}"
     for label in labels:
-        b.wait(label, f"Array.from(document.querySelectorAll('.classic-voter-icon')).some((x) => x.title === {json.dumps(marker)})")
+        b.wait(label, f"Array.from(document.querySelectorAll('.classic-vote-player')).some((x) => x.title === {json.dumps(marker)})")
         b.wait(label, "document.getElementById('classic-skip-status').textContent.startsWith('1 / ')")
     time.sleep(0.3)
     seen["vote_shown"] = {
         label: {
-            "markers": b.js(label, "Array.from(document.querySelectorAll('.classic-voter-icon')).map((x) => x.title)"),
+            "markers": b.js(label, "Array.from(document.querySelectorAll('.classic-vote-player'))"
+                         ".filter((x) => x.querySelector('.classic-vote-count').textContent !== '0').map((x) => x.title)"),
             "selected": b.js(label, "Array.from(document.querySelectorAll('.classic-vote-player-selected')).map((x) => x.dataset.targetId)"),
             "skip_status": b.text(label, "classic-skip-status"),
             "skip_button": b.text(label, "classic-skip-discussion"),
