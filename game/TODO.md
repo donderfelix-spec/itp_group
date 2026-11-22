@@ -150,9 +150,9 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 
 **Area 1 (Hanna)**
 
-- [ ] **M3-1.1** Limited vision (Hanna)
-- [ ] **M3-1.2** Show ghosts, a failed character stays on the ground until it is reported (Hanna)
-- [ ] **M3-1.3** Overview map with open tasks (Hanna)
+- [x] **M3-1.1** Limited vision for living Classic players, with wall shadows and per-viewer server positions (Hanna)
+- [x] **M3-1.2** Show half-transparent ghosts to other ghosts. Draw the failed character on the ground until reported (Hanna)
+- [x] **M3-1.3** Campus overview showing the own position and personal open tasks (Hanna)
 - [x] **M3-1.4** Four hiding spots (S-62), after the core of Classic (Hanna). Built from Hanna's hiding code in PR #69, split off by Felix's decision of 2026-11-21 (S-131 to S-135): only a living Free Rider hides, only in Classic, and is then sent only to players within 35 map units; the hedge is walkable, so all four spots can be reached; the hidden Free Rider sees his own character half transparent and “Hidden” under the progress bar. Proposals S-136 to S-140 (ghosts and the other Free Rider see him, a meeting does not reveal him, the browser forgets a player missing from `positions` in Classic, the measured walkable hedge). Two code reviews, play test with five Classic and two Duel pages in Chromium (`tests/test_play_hiding.py`, 2026-11-21). Known limit for Felix: because only the Free Rider is ever left out of `positions`, a High Performer's browser can work out who he is (S-133)
 
 **Area 2 (Felix)**

@@ -222,6 +222,7 @@ const minigames = {
 let emergencyButtonDrawn = null;
 // The characters drawn in the last frame: {character, x, alpha}.
 let charactersDrawn = [];
+let fallenCharactersDrawn = [];
 // The stations the last frame let pulse (the fifth argument of drawMap).
 let pulsingStations = null;
 
@@ -280,7 +281,12 @@ page.Game = {
     // the world then draws a circle in its place.
     drawCharacter(ctx, character, x) {
       if (character === 'broken') throw new Error('This character cannot be drawn.');
-      charactersDrawn.push({ character: character, x: x, alpha: ctx.globalAlpha });
+      if (ctx === element('map').getContext()) {
+        charactersDrawn.push({ character: character, x: x, alpha: ctx.globalAlpha });
+      }
+    },
+    drawFallenCharacter(ctx, character, x, y) {
+      fallenCharactersDrawn.push({ character: character, x: x, y: y });
     },
     chooseLabels: (labels) => ({ shown: labels, hidden: new Set() }),
   },
@@ -318,6 +324,7 @@ function runFrame() {
   const context = element('map').getContext();
   context.texts = [];
   charactersDrawn = [];
+  fallenCharactersDrawn = [];
   try {
     frame(clock);
   } catch (problem) {
@@ -453,6 +460,7 @@ const STEPS = {
   lookAtDrawing() {
     drawings.push({
       charactersDrawn: charactersDrawn,
+      fallenCharactersDrawn: fallenCharactersDrawn,
       hiddenHintShown: everyElementBelow(element('classic-progress'))
         .some((found) => found.id === 'classic-hidden-hint' && !found.hidden),
     });

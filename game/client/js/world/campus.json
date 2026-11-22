@@ -175,6 +175,7 @@
   "button": {"x": 365, "y": 375, "r": 11},
 
   "hide_reveal_range": 35,
+  "classic_vision_range": 150,
 
   "hiding_spots": [
     {"x": 595, "y": 249, "r": 9},

@@ -15,8 +15,8 @@ from task_helpers import client, clock, connect, placeholder_at_every_station, p
 from test_classic_server_features import classic_for, start_classic
 
 FOUR = ("Mara", "Tiago", "Ines", "Rui")
-# Far from every hiding spot and from each other, so hiding plays no part.
-FAR_PLACES = [(100.0, 330.0), (300.0, 330.0), (300.0, 400.0), (200.0, 300.0)]
+# An open stretch of the deck, outside hiding spots and within mutual sight.
+DECK_PLACES = [(475.0, 287.0), (489.0, 305.0), (505.0, 285.0), (521.0, 305.0)]
 
 
 def next_of_type(connection, wanted):
@@ -54,7 +54,7 @@ def round_with_a_ghost(connect):
     """
     connections, _code, _public, _start = start_classic(connect, FOUR)
     classic = classic_for(FOUR[0])
-    for name, place in zip(FOUR, FAR_PLACES):
+    for name, place in zip(FOUR, DECK_PLACES):
         put(name, place)
     ghost = next(name for name in FOUR if classic.roles[name] == "HP")
     classic.eliminated = {ghost}

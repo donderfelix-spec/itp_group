@@ -1249,6 +1249,15 @@ Game.world = Game.world || {};
     ctx.restore();
   }
 
+  // The overview only needs scenery. Draw it directly once, without changing
+  // the camera's tile cache or adding live markers such as the emergency button.
+  function drawOverviewBase(ctx, campus) {
+    ctx.save();
+    ctx.lineJoin = "round";
+    drawStaticLayers(ctx, campus, { x: 0, y: 0, w: campus.width, h: campus.height });
+    ctx.restore();
+  }
+
   // ---- Which name labels are drawn (S-117) -------------------------------
 
   // A label that was hidden in the previous frame comes back only when it is
@@ -1307,6 +1316,7 @@ Game.world = Game.world || {};
   }
 
   Game.world.drawMap = drawMap;
+  Game.world.drawOverviewBase = drawOverviewBase;
   Game.world.drawStationGlow = drawStationGlow;
   Game.world.roomAt = roomAt;
   // How many outline silhouettes are kept, for tests/test_station_objects.js.
