@@ -202,7 +202,11 @@ Game.classicRound = Game.classicRound || {};
     stats.append(item);
   }
 
+  // Only the host sees "New Round" (Felix, 2026-11-22). For everybody else it
+  // is hidden and takes no room, so "Back to the lobby" stands alone.
+  // setLobby calls this again when the host changes while the screen is open.
   function updateHostAction() {
+    newRound.hidden = !isHost;
     newRound.disabled = !isHost;
     hostHint.textContent = isHost ? "Start another round with the same lobby." : "The host can start the next round.";
   }
