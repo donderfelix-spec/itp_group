@@ -1,13 +1,13 @@
 """Lennart's action ranges, the F key and the Free Rider's report (M3-4.25 to M3-4.28, S-180, S-181).
 
-- Report range 8 map units, fail range 20 map units; the server (rules.py)
+- Report range 8 map units, fail range 36 map units; the server (rules.py)
   and the browser (world.js) use the same numbers.
 - A living Free Rider can report an F-sheet, also their own victim's
   (Lennart's test, kept unchanged from his commit).
 - Key F lets fail like Q; the button says only "Let fail".
 
-Edge cases decided here: a distance of exactly 8 (report) or 20 (fail)
-counts as in range; 8.01 and 20.01 do not.
+Edge cases decided here: a distance of exactly 8 (report) or 36 (fail)
+counts as in range; 8.01 and 36.01 do not.
 """
 
 import re
@@ -62,7 +62,7 @@ def test_free_rider_can_report_own_sheet_at_doubled_range():
         "f_sheets": {"f-sheet-1": (0, 0)}, "meeting_triggers": set(),
     }
     assert REPORT_RANGE == 8
-    assert FAIL_RANGE_TILES == 20
+    assert FAIL_RANGE_TILES == 36
     assert can_report(state, "Free", "f-sheet-1", (8, 0))
     assert not can_report(state, "Free", "f-sheet-1", (8.01, 0))
     state["meeting_triggers"].add("report:f-sheet-1")
@@ -74,7 +74,7 @@ def test_free_rider_can_report_own_sheet_at_doubled_range():
 
 def test_browser_and_server_use_the_same_ranges():
     assert browser_number("REPORT_RANGE") == REPORT_RANGE == 8
-    assert browser_number("FAIL_RANGE_TILES") == FAIL_RANGE_TILES == 20
+    assert browser_number("FAIL_RANGE_TILES") == FAIL_RANGE_TILES == 36
 
 
 # Report range: accepted, rejected, edge
@@ -99,13 +99,13 @@ def test_a_ghost_cannot_report_even_inside_the_range():
 # Fail range: accepted, rejected, edge
 
 
-@pytest.mark.parametrize("position", [(20.0, 0.0), (0.0, 20.0), (12.0, 16.0), (19.99, 0.0)])
-def test_the_free_rider_fails_up_to_twenty_map_units_away(position):
+@pytest.mark.parametrize("position", [(36.0, 0.0), (0.0, 36.0), (21.6, 28.8), (35.99, 0.0)])
+def test_the_free_rider_fails_up_to_thirty_six_map_units_away(position):
     assert can_fail(fail_state(position), "Free", "Target", now=100.0)
 
 
-@pytest.mark.parametrize("position", [(20.01, 0.0), (15.0, 15.0), (0.0, 21.0)])
-def test_a_fail_just_beyond_twenty_map_units_is_refused(position):
+@pytest.mark.parametrize("position", [(36.01, 0.0), (26.0, 26.0), (0.0, 37.0)])
+def test_a_fail_just_beyond_thirty_six_map_units_is_refused(position):
     assert not can_fail(fail_state(position), "Free", "Target", now=100.0)
 
 
