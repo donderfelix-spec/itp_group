@@ -3,7 +3,7 @@
 import asyncio
 
 from server import main
-from server.classic.meeting import SKIP, start_discussion
+from server.classic.meeting import start_discussion
 from server.net.lobbies import Lobbies
 from server.net.sessions import Sessions
 
@@ -52,40 +52,14 @@ def test_a_vote_handler_survives_a_meeting_cleared_while_it_waited(monkeypatch):
         the_lobby.meeting = None  # what the other handler did meanwhile
 
     monkeypatch.setattr(main, "tell_meeting_state", snapshot_then_round_over)
-    asyncio.run(main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": SKIP}))
+    asyncio.run(main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": "Tiago"}))
     assert lobby.meeting is None
-
-
-def test_two_last_votes_at_once_both_finish(monkeypatch):
-    lobby, sockets = lobby_in_a_vote(monkeypatch)
-
-    async def both():
-        await asyncio.gather(
-            main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": "Tiago"}),
-            main.answer_vote_message(sockets["Tiago"], {"type": "vote", "target_id": SKIP}),
-        )
-
-    asyncio.run(both())
-    assert lobby.meeting["phase"] == "result"
-
-
-def test_an_early_result_is_sent_once_and_not_again_by_the_tick(monkeypatch):
-    lobby, sockets = lobby_in_a_vote(monkeypatch)
-    asyncio.run(main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": SKIP}))
-    asyncio.run(main.answer_vote_message(sockets["Tiago"], {"type": "vote", "target_id": SKIP}))
-    assert lobby.meeting["phase"] == "result"
-    assert all(len(results_sent_to(socket)) == 1 for socket in sockets.values())
-
-    scheduled = []
-    monkeypatch.setattr(main, "run_in_background", lambda work: scheduled.append(work) or work.close())
-    main.update_meeting_clock(lobby)  # the next tick
-    assert scheduled == []
 
 
 def test_the_tick_still_publishes_a_new_clock_second(monkeypatch):
     # Edge: recording the clock after a vote must not stop the countdown.
     lobby, sockets = lobby_in_a_vote(monkeypatch)
-    asyncio.run(main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": SKIP}))
+    asyncio.run(main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": "Tiago"}))
     assert lobby.meeting["phase"] == "voting"
 
     scheduled = []

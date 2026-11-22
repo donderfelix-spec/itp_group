@@ -370,6 +370,13 @@ function look() {
     meetingKnowsFreeRider: meetingKnowsFreeRider,
     selectedVoteTarget: selectedVote ? selectedVote.dataset.targetId : null,
     voteIconLabels: voteIconLabels,
+    // Lennart's Skip section of the meeting window.
+    skip: {
+      hidden: element('classic-skip-options').hidden,
+      status: element('classic-skip-status').textContent,
+      text: element('classic-skip-discussion').textContent,
+      disabled: element('classic-skip-discussion').disabled,
+    },
     focusedId: document.activeElement ? document.activeElement.id : null,
     pulsing: pulsingStations,
     useButtonDisabled: useButton ? useButton.disabled : null,

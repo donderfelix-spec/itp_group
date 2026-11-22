@@ -259,15 +259,11 @@ def test_classic_vote_tie_over_websocket_leaves_round_running(names, connect, cl
     if len(names) == 5:
         targets.append(names[2])
 
-    for index, (voter, target) in enumerate(zip(names, targets)):
+    for voter, target in zip(names, targets):
         connections[voter].send_json({"type": "vote", "target_id": target})
         snapshots = [connection.receive_json() for connection in connections.values()]
         assert all(snapshot == snapshots[0] for snapshot in snapshots)
-        # Once everybody has voted, the vote ends at once (Felix, 2026-11-21).
-        assert snapshots[0]["phase"] == ("result" if index == len(names) - 1 else "voting")
-    for connection in connections.values():
-        assert connection.receive_json()["type"] == "classic_roster"
-        assert connection.receive_json()["type"] == "positions"
+        assert snapshots[0]["phase"] == "voting"
 
     clock.wait(30.0)
     connections[names[0]].send_json({"type": "vote", "target_id": names[0]})

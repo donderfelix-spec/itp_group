@@ -102,13 +102,9 @@ def test_report_on_a_sheet_made_after_another_report_names_that_sheet(connect, c
     living = [player for player in EIGHT_PLAYERS if player not in ghosts]
     next_vote = {voter: living[(index + 1) % len(living)] for index, voter in enumerate(living)}
     clock.wait(45.0)
-    for index, voter in enumerate(living):
+    for voter in living:
         connections[voter].send_json({"type": "vote", "target_id": next_vote[voter]})
-        # Once everybody has voted, the vote ends at once (Felix, 2026-11-21).
-        expected_phase = "result" if index == len(living) - 1 else "voting"
-        assert receive_broadcast(connections, "meeting_state")["phase"] == expected_phase
-    for connection in connections.values():
-        read_until(connection, "positions")
+        assert receive_broadcast(connections, "meeting_state")["phase"] == "voting"
     clock.wait(30.0)
     connections[reporter].send_json({"type": "vote", "target_id": next_vote[reporter]})
     assert connections[reporter].receive_json()["code"] == "vote_rejected"

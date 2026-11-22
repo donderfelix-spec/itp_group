@@ -28,8 +28,6 @@ Game.classicMeeting = Game.classicMeeting || {};
   var resultShown = false;
   // The window stays this long after any result, then the round goes on.
   var RESULT_MILLISECONDS = 1800;
-  // The vote for nobody: the same value as SKIP_VOTE in server/protocol.py.
-  var SKIP_VOTE = "";
 
   function setup() {
     screen = document.getElementById("classic-meeting");
