@@ -907,6 +907,10 @@ Game.world = Game.world || {};
   var OUTLINE_GROWTH = { low: { dark: 2.6, yellow: 1.6 }, high: { dark: 4.2, yellow: 3.1 } };
   // Half the size of the square an object (and its outline) is drawn into.
   var OBJECT_HALF_SIZE = 20;
+  // How the outline grows (see grownBy): in passes of at most this many
+  // pixels, each in this many directions.
+  var GROW_PASS_PIXELS = 2.5;
+  var GROW_DIRECTIONS = 16;
 
   function stationObject(station) {
     var art = Game.world.art;
@@ -919,13 +923,26 @@ Game.world = Game.world || {};
     return 0.5 - 0.5 * Math.cos((Number(now) || 0) / PULSE_MILLISECONDS * Math.PI * 2);
   }
 
-  // Where the soft shadow below an object lies: the middle of the ellipse,
-  // from the station's centre in map units.
-  var DEFAULT_SHADOW = { x: 1, y: 10.5 };
+  // The soft shadow below an object is the furniture's shadow
+  // (shadowBelow in art/common.js): a strip `w` wide whose top left corner
+  // lies at (x, y), from the station's centre in map units. Without a place
+  // of its own a drawing gets this one.
+  var DEFAULT_SHADOW = { x: -9, y: 10, w: 18 };
+  // How deep each of the shadow's two bands is: as below small furniture.
+  var SHADOW_DEPTH = 1.2;
+
+  // The middle of the number tag, from the station's centre in map units,
+  // for a drawing without a place of its own.
+  var DEFAULT_TAG = { x: 11, y: 9 };
+  var TAG_RADIUS = 4.2;
+
+  function isNumber(value) {
+    return typeof value === "number" && isFinite(value);
+  }
 
   // The shadow of a drawing from art/stations.js (M2-1.20). A drawing may
-  // say where its shadow lies with `drawing.shadow = {x, y}`, or that it has
-  // none with `drawing.shadow = null`, so that the shadow stays off the
+  // say where its shadow lies with `drawing.shadow = {x, y, w}`, or that it
+  // has none with `drawing.shadow = null`, so that the shadow stays off the
   // furniture next to it. Without it (or with anything else) the shadow
   // lies at DEFAULT_SHADOW.
   function shadowOf(drawObject) {
@@ -936,10 +953,19 @@ Game.world = Game.world || {};
     if (shadow === null) {
       return null;
     }
-    var isPlace = typeof shadow === "object"
-      && typeof shadow.x === "number" && isFinite(shadow.x)
-      && typeof shadow.y === "number" && isFinite(shadow.y);
-    return isPlace ? shadow : DEFAULT_SHADOW;
+    var isStrip = typeof shadow === "object"
+      && isNumber(shadow.x) && isNumber(shadow.y) && isNumber(shadow.w) && shadow.w > 0;
+    return isStrip ? shadow : DEFAULT_SHADOW;
+  }
+
+  // Where the number tag of a drawing lies (M2-1.20): a drawing may give the
+  // tag's middle with `drawing.tag = {x, y}`, so that the tag sits at the
+  // lower right of a small object. Anything else gives DEFAULT_TAG: the
+  // number is always shown.
+  function tagOf(drawObject) {
+    var tag = drawObject.tag;
+    var isPlace = tag !== null && typeof tag === "object" && isNumber(tag.x) && isNumber(tag.y);
+    return isPlace ? tag : DEFAULT_TAG;
   }
 
   // The object of a station, its soft shadow and its number tag.
@@ -947,22 +973,19 @@ Game.world = Game.world || {};
     ctx.save();
     ctx.translate(station.x, station.y);
     var shadow = shadowOf(drawObject);
-    if (shadow) {
-      ctx.fillStyle = "rgba(46, 42, 59, 0.16)";
-      ctx.beginPath();
-      ctx.ellipse(shadow.x, shadow.y, 11, 3.5, 0, 0, Math.PI * 2);
-      ctx.fill();
+    var util = Game.world.art.util; // from art/common.js, which art/stations.js needs too
+    if (shadow && util) {
+      util.shadowBelow(ctx, shadow.x, shadow.y, shadow.w, SHADOW_DEPTH);
     }
     drawObject(ctx);
     ctx.restore();
-    drawNumberTag(ctx, station);
+    var tag = tagOf(drawObject);
+    drawNumberTag(ctx, station, station.x + tag.x, station.y + tag.y);
   }
 
-  // The station's number in a small cream tag at the lower right of the object.
-  function drawNumberTag(ctx, station) {
-    var x = station.x + 11;
-    var y = station.y + 9;
-    circle(ctx, x, y, 4.2, CREAM, 1);
+  // The station's number in a small cream tag at (x, y) on the map.
+  function drawNumberTag(ctx, station, x, y) {
+    circle(ctx, x, y, TAG_RADIUS, CREAM, 1);
     text(ctx, String(station.id), x, y + 0.3, 5);
   }
 
@@ -998,28 +1021,51 @@ Game.world = Game.world || {};
     }
     var size = Math.ceil(OBJECT_HALF_SIZE * 2 * scale);
     var shape = newCanvas(size);
-    var grown = newCanvas(size);
-    if (!shape || !grown) {
+    if (!shape) {
       return null;
     }
     var shapeCtx = shape.getContext("2d");
     shapeCtx.setTransform(scale, 0, 0, scale, size / 2, size / 2);
     drawObject(shapeCtx);
-    // Grow the shape: draw it again and again, moved a little in every
-    // direction, then paint all of it in one colour.
-    var grownCtx = grown.getContext("2d");
-    var reach = growth * scale;
-    for (var ring = 1; ring <= 2; ring++) {
-      for (var step = 0; step < 16; step++) {
-        var angle = step / 16 * Math.PI * 2;
-        grownCtx.drawImage(shape, Math.cos(angle) * reach * ring / 2, Math.sin(angle) * reach * ring / 2);
-      }
+    var grown = grownBy(shape, growth * scale, size);
+    if (!grown) {
+      return null;
     }
+    var grownCtx = grown.getContext("2d");
     grownCtx.globalCompositeOperation = "source-in";
     grownCtx.fillStyle = colour;
     grownCtx.fillRect(0, 0, size, size);
     silhouettes.set(key, grown);
     return grown;
+  }
+
+  // The shape on the canvas `source` grown by `reach` pixels, on a new
+  // canvas. It grows in small passes: each pass draws the shape of the last
+  // pass in GROW_DIRECTIONS directions, at most GROW_PASS_PIXELS away. Small
+  // passes keep the edge smooth at every zoom, also round the tip of a thin
+  // leg or handle (M2-1.20); one wide pass left a fringe of stripes there.
+  function grownBy(source, reach, size) {
+    var passes = Math.max(1, Math.ceil(reach / GROW_PASS_PIXELS));
+    var current = source;
+    for (var pass = 0; pass < passes; pass++) {
+      var next = newCanvas(size);
+      if (!next) {
+        return null;
+      }
+      var nextCtx = next.getContext("2d");
+      nextCtx.drawImage(current, 0, 0);
+      for (var step = 0; step < GROW_DIRECTIONS; step++) {
+        var angle = step / GROW_DIRECTIONS * Math.PI * 2;
+        nextCtx.drawImage(current, Math.cos(angle) * reach / passes, Math.sin(angle) * reach / passes);
+      }
+      current = next;
+    }
+    // Where only a few copies overlap, the edge is still half see-through;
+    // drawn over itself twice it becomes solid.
+    var currentCtx = current.getContext("2d");
+    currentCtx.drawImage(current, 0, 0);
+    currentCtx.drawImage(current, 0, 0);
+    return current;
   }
 
   // Pixels per map unit of the drawing now, rounded so that zooming a
