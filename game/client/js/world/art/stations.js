@@ -96,7 +96,7 @@ Game.world = Game.world || {};
       ctx.restore();
     };
     drawing.shadow = (extra && extra.shadow) || { x: left + 1, y: top + h, w: w - 2 };
-    drawing.tag = (extra && extra.tag) || { x: left + w, y: top + h - 1 };
+    drawing.tag = (extra && extra.tag) || { x: left + w - 0.35, y: top + h - 1.35 };
     stations[id] = drawing;
   }
 
@@ -119,8 +119,8 @@ Game.world = Game.world || {};
   place(1, -6, -14.5, 18, 14, projectorScreen, { shadow: { x: -1, y: -1, w: 8 } });
 
   // 2 Brew the order: an espresso machine on a small steel cabinet, against
-  // the café's right wall below the coffee bar. The tag stays 4 units off
-  // the wall.
+  // the café's right wall below the coffee bar. Its tag ends 3 units
+  // before the wall.
   function espressoMachine(ctx) {
     box(ctx, 0, 7, 13, 7, 0.8, STEEL, EDGE); // the cabinet
     line(ctx, 5.5, 11.5, 7.5, 11.5, "#8E96A3", DETAIL); // its handle
@@ -134,7 +134,7 @@ Game.world = Game.world || {};
     box(ctx, 5.5, 5.6, 2, 1.6, 0.3, WHITE, DETAIL); // a cup under it
     circle(ctx, 10, 4.2, 0.5, "#F2695C", 0); // the light
   }
-  place(2, -2.5, -7, 13, 14, espressoMachine, { tag: { x: 9.5, y: 6 } });
+  place(2, -2.5, -7, 13, 14, espressoMachine, { tag: { x: 9.15, y: 5.65 } });
 
   // 3 Build the tray: a tray with two plates on a short steel stand at the
   // end of the canteen's counter.
@@ -148,10 +148,11 @@ Game.world = Game.world || {};
     circle(ctx, 11, 3.75, 2, WHITE, DETAIL);
     circle(ctx, 11, 3.75, 1.1, GREEN, 0);
   }
-  place(3, -13.5, -12, 16, 11, trayStand);
+  place(3, -14, -12, 16, 11, trayStand);
 
   // 4 Shelve the books: a wooden book cart with a row of books, parked in
-  // front of the bookshelf. Its shadow lies under the cart, between the wheels.
+  // front of the bookshelf, 5 units from it (as close as its outline
+  // allows). Its shadow lies under the cart, between the wheels.
   function bookCart(ctx) {
     var colours = [RED, BLUE, YELLOW, GREEN, PURPLE, ORANGE];
     var heights = [4.5, 5, 4, 5, 4.5, 4];
@@ -163,7 +164,7 @@ Game.world = Game.world || {};
     circle(ctx, 3.5, 12.5, 1.4, DARK, 0);
     circle(ctx, 14.5, 12.5, 1.4, DARK, 0);
   }
-  place(4, -9, -1, 18, 14, bookCart, { shadow: { x: -8, y: 10.5, w: 16 } });
+  place(4, -9, 1, 18, 14, bookCart, { shadow: { x: -8, y: 12.5, w: 16 } });
 
   // 5 Self-checkout: one more checkout pillar in the row of Pingo Doce, with
   // its screen, card reader, red scanner glass and bagging tray.
@@ -206,7 +207,7 @@ Game.world = Game.world || {};
     polygon(ctx, [[2.7, 4.2], [7.3, 4.2], [7.1, 6.3], [2.9, 6.3]], KRAFT, 0); // its sleeve
     box(ctx, 1.5, 0.5, 7, 1.8, 0.6, COFFEE, EDGE); // its lid
   }
-  place(8, -9, -14, 10, 12, coffeeOnTable, { shadow: { x: -7.5, y: -3, w: 7 }, tag: { x: 0.5, y: -3 } });
+  place(8, -9, -14, 10, 12, coffeeOnTable, { shadow: { x: -7.5, y: -3, w: 7 }, tag: { x: 0.15, y: -3.35 } });
 
   // 9 Save the lunch: a lunch tray on a small steel trolley. The nearest
   // furniture (table 3, the tray return) is too far for it to lean on.
@@ -221,7 +222,7 @@ Game.world = Game.world || {};
     box(ctx, 9, 4.05, 5, 1.7, 0.4, WHITE, 0);
     circle(ctx, 11.5, 2.6, 0.7, GREEN, 0);
     circle(ctx, 11.5, 4.9, 0.7, ORANGE, 0);
-    circle(ctx, 4, 4.25, 0.8, "#7C8F3A", 0); // a mouldy spot
+    circle(ctx, 4, 4.25, 0.8, util.OLIVE_LEAVES.dark, 0); // a mouldy spot
   }
   place(9, -8, -6, 16, 12, lunchTrolley, { shadow: { x: -7, y: 4, w: 14 } });
 
@@ -258,7 +259,7 @@ Game.world = Game.world || {};
       line(ctx, x, 5.5, x, 8.5, util.darker(RED, 0.3), DETAIL);
     });
   }
-  place(11, -7, -5, 12, 10, shoppingBasket, { tag: { x: 5.5, y: 4.5 } });
+  place(11, -7, -5, 12, 10, shoppingBasket, { tag: { x: 5.15, y: 4.15 } });
 
   // 12 Seagull quality control: a seagull on a bin, holding a stolen page.
   // A bin stands free on the deck: no wall or furniture is near enough to
