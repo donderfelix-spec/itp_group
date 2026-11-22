@@ -189,6 +189,8 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 
 - [ ] **M3-4.2** Test the emergency button Classic already has (S-123) in play (Lennart): it unlocks 45 seconds into the round, the server checks range and use (see M3-3.15), and a ghost sees the hint of M3-3.19. Report every bug to Laurin; no second button is built.
 
+- [x] **M3-4.22** In Classic the yellow triangle beside the own character points at the nearest station of the own open task list (Felix, 2026-11-22: “Isn’t the arrow for the person in Classic mode there yet?”; on 2026-11-21: “add it in Classic too”). Same look and fading as in the Duel; no arrow when all own tasks are done or for the Free Rider; a ghost keeps it while it has open tasks. The card at the top left stays room-only in Classic (S-129). Done: S-145, `tests/test_classic_arrow.py`, `tests/test_play_classic_arrow_end_to_end.py`
+
 ## M4: Extension
 
 - [ ] **M4-3.1** Sabotage “Wi-Fi outage”
