@@ -123,6 +123,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Stations as objects with a pulsing outline when they matter (S-128) | M2 | Done |
 | Card at the top left with room and next task, direction arrow (S-129) | M2 | Done |
 | Classic: the direction arrow points at the nearest own open task (S-145) | M3 | Done |
+| Lobby: modes outside their player range (Classic below 4) locked, all in one grey, the chosen one marked by frame and shadow; smaller “?” with even gaps (S-146) | M2 | Done |
 | “Done” for 0.5 s without a close button (S-127) | M2 | Done |
 | Duel: leaderboard with times at the end | M2 | Done |
 | Beach exit: “Catch the wave”, click at the right moment (first “If time allows” minigame) | M4 | Planned |

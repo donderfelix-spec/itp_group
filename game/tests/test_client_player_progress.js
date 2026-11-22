@@ -324,10 +324,10 @@ for (const [mode, name] of [['solo', 'Solo'], ['duel', 'Duel']]) {
   env.emit('lobby_state', lobbyState(['Mara', 'Tiago'], 'duel', 'lobby'));
   check(focused === 'duel', 'the focus moves from the hidden "?" to its mode button');
   env.document.activeElement = null;
-  check(!button('duel').disabled && !button('classic').disabled && button('solo').disabled, 'two: Solo greyed, Duel and Classic free');
+  check(!button('duel').disabled && button('classic').disabled && button('solo').disabled, 'two: Solo and Classic greyed, Duel free');
   check(why('duel').hidden && text('duel').hidden && !why('solo').hidden, 'a mode that fits again loses its "?" and text');
   env.emit('lobby_state', lobbyState(['Mara', 'Tiago', 'Ines'], 'classic', 'lobby'));
-  check(!button('classic').disabled, 'Classic with three players stays selectable, as on main');
+  check(button('classic').disabled && !why('classic').hidden, 'Classic with three players is locked and shows its "?"');
   env.emit('lobby_state', { ...lobbyState(['Mara'], 'solo', 'lobby'), host: 'Tiago' });
   check(grid.hidden, 'a player who is not host sees only the text of the mode');
 }

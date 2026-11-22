@@ -195,16 +195,11 @@ window.Game = window.Game || {};
   const whyTexts = {};
   const whyShownBy = {};
 
-  // The fewest players a mode played together can be chosen with: the
-  // smallest minimum of the modes without a maximum (Duel's 2).
-  const FEWEST_TOGETHER = Math.min(...MODES.filter((mode) => !mode.maxPlayers).map((mode) => mode.minPlayers));
-
-  // Solo fits up to its maximum (one player alone); the other modes need
-  // company. Classic with 2 or 3 players still fits here: its start hint
-  // says who is missing.
+  // A mode fits when the number of players is at least its minimum and,
+  // if it has a maximum (only Solo), at most that.
   function fitsPlayerCount(mode, playerCount) {
-    if (mode.maxPlayers) return playerCount <= mode.maxPlayers;
-    return playerCount >= Math.min(mode.minPlayers, FEWEST_TOGETHER);
+    if (playerCount < mode.minPlayers) return false;
+    return !mode.maxPlayers || playerCount <= mode.maxPlayers;
   }
 
   // The same texts as the server's (protocol.py), with the minimum of MODES.
