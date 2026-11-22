@@ -36,7 +36,7 @@ from server.net.lobbies import Lobbies
 from server.net.repeated_faults import RepeatedFaults
 from server.net.sessions import GUEST_NUMBERS, Sessions
 from server.protocol import PROTOCOL_VERSION, ProtocolError, error, parse_client_message, welcome
-from rules import FAIL_COOLDOWN_SECONDS, FAIL_RANGE_TILES, can_fail, check_winner, end_reason
+from rules import FAIL_COOLDOWN_SECONDS, FAIL_RANGE_TILES, can_fail, check_winner, end_reason, round_still_fits
 from server.classic.round import EMERGENCY_DELAY_SECONDS
 from server.world import paths, visibility
 from server.world.campus import load_campus
@@ -565,8 +565,10 @@ async def tell_member_the_countdown(name: str, lobby):
 async def handle_leave_lobby(websocket: WebSocket, name: str, message: dict):
     lobby, new_host, rejection_code = app.state.lobbies.leave(name)
     if rejection_code is None:
+        # Decided at once, before anything is sent (M3-3.8).
+        stop_news = stop_round_if_it_no_longer_fits(lobby)
         await websocket.send_json(protocol.left_lobby())
-        await tell_the_rest_after_a_leave(lobby, new_host)
+        await tell_the_rest_after_a_leave(lobby, new_host, stop_news)
     return rejection_code
 
 
@@ -577,15 +579,50 @@ async def take_out_of_lobby(name: str):
     """
     lobby, new_host, rejection_code = app.state.lobbies.leave(name)
     if rejection_code is None:
-        await tell_the_rest_after_a_leave(lobby, new_host)
+        stop_news = stop_round_if_it_no_longer_fits(lobby)
+        await tell_the_rest_after_a_leave(lobby, new_host, stop_news)
 
 
-async def tell_the_rest_after_a_leave(lobby, new_host):
+ROUND_STOPPED_TEXT = "Too many players left. The round was stopped."
+
+
+def stop_round_if_it_no_longer_fits(lobby) -> dict:
+    """Stop a Classic round whose players no longer fit its Free Riders (M3-3.8).
+
+    Called right after a player left, before anything is sent: no win check
+    can come first, and a stopped round has no winner and no end screen.
+    Returns what each member still has to be told, `{name: [messages]}`:
+    a closed station if one was open, then the notice. Empty if the round
+    goes on or no Classic round is running.
+    """
+    classic = lobby.classic_round
+    if classic is None or round_still_fits(classic.roles, lobby.names()):
+        return {}
+    open_stations = {name: lobby.tasks.open_station_of(name) for name in lobby.names()}
+    lobby.end_round()  # also ends a running meeting
+    # Everybody is sent the positions at the next tick, as after any end:
+    # a Free Rider who was hidden (M3-1.4) is visible again.
+    lobby.walkers._everybody_needs_news()
+    stopped = protocol.notice(ROUND_STOPPED_TEXT)
+    return {
+        name: ([] if station is None else [protocol.station_closed(station)]) + [stopped]
+        for name, station in open_stations.items()
+    }
+
+
+async def tell_the_rest_after_a_leave(lobby, new_host, stop_news):
     """Tell the players who stay what a player's leaving changed. Never raises.
 
     The same for every way of leaving: "Leave", logging out, a lost
-    connection or signing in elsewhere.
+    connection or signing in elsewhere. `stop_news` is what
+    `stop_round_if_it_no_longer_fits` returned: if the round was stopped,
+    everybody gets that news and then the lobby's state, so every browser
+    goes back to the lobby (S-101).
     """
+    if stop_news:
+        await asyncio.gather(*(tell_farewell(name, lobby, messages) for name, messages in stop_news.items()))
+        await tell_lobby(lobby, new_host)
+        return
     await tell_lobby(lobby, new_host)
     await tell_classic_after_a_leave(lobby)
     # The round goes on without this player, or ends if nobody is left to wait for.

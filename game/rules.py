@@ -46,6 +46,30 @@ class ClassicState(TypedDict):
     timers_paused: NotRequired[bool]
 
 
+MIN_CLASSIC_PLAYERS = 4
+
+
+def free_riders_for(player_count: int) -> int:
+    """How many Free Riders a Classic round of this many players has (S-48)."""
+    return 1 if player_count <= 5 else 2
+
+
+def round_still_fits(roles: Mapping[str, Role], present_names: Collection[str]) -> bool:
+    """Whether a running Classic round may go on after players left (M3-3.8).
+
+    `present_names` are the players still in the lobby. Everybody of them
+    with a role counts, living or ghost. The round must stop when fewer than
+    4 are left, or more Free Riders than S-48 gives that many players. Too
+    few Free Riders never stop it: if the last one leaves, the High
+    Performers win by the usual rule.
+    """
+    present = [name for name in present_names if name in roles]
+    if len(present) < MIN_CLASSIC_PLAYERS:
+        return False
+    free_riders = sum(1 for name in present if roles[name] == "FR")
+    return free_riders <= free_riders_for(len(present))
+
+
 def assign_roles(player_ids: Sequence[str], rng: RandomSource) -> dict[str, Role]:
     """Assign the required number of Free Riders using the supplied RNG."""
     players = list(player_ids)
@@ -56,8 +80,7 @@ def assign_roles(player_ids: Sequence[str], rng: RandomSource) -> dict[str, Role
     if len(set(players)) != len(players):
         raise ValueError("Player IDs must be unique.")
 
-    free_rider_count = 1 if len(players) <= 5 else 2
-    free_riders = set(rng.sample(players, free_rider_count))
+    free_riders = set(rng.sample(players, free_riders_for(len(players))))
     return {
         player_id: "FR" if player_id in free_riders else "HP"
         for player_id in players
