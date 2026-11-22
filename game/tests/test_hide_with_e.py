@@ -34,6 +34,17 @@ REACH = CAMPUS["use_range"]
 ROLES = {"fr": "FR", "hp": "HP", "hp2": "HP", "hp3": "HP"}
 
 
+# Free places on the open deck from which the hedge spot is in sight
+# (Classic's limited vision, S-185: 120 units, walls block).
+IN_SIGHT = [(640.0, 249.0), (595.0, 295.0), (560.0, 290.0), (630.0, 300.0), (600.0, 330.0)]
+
+
+def watch_the_hedge(*names):
+    """Put these players where they see the hedge spot, so that only hiding decides."""
+    for name, place in zip(names, IN_SIGHT):
+        put(name, place)
+
+
 def below_the_spot(distance):
     """A free place `distance` units below the hedge spot's centre (the deck below the hedge)."""
     return (CENTRE[0], CENTRE[1] + distance)
@@ -190,6 +201,7 @@ def test_pressing_e_beside_the_hedge_puts_him_in_the_spot_hidden_and_standing_st
 
 def test_standing_in_a_spot_without_pressing_e_does_not_hide(connect):
     connections, [fr], [far, _, _] = classic_round(connect)
+    watch_the_hedge(far)
     put(fr, CENTRE)
     assert fr in names_in(positions_now(connections)[far])
 
@@ -243,6 +255,7 @@ def test_only_the_free_rider_is_told_and_the_others_get_no_trace(connect):
 def test_the_second_free_rider_and_ghosts_still_see_him(connect):
     connections, [first, second], [ghost, *living] = classic_round(connect, SIX)
     classic_for(first).eliminated = {ghost}
+    watch_the_hedge(second, *living)
     put(first, CENTRE)
     assert press_hide(connections, first)["hidden"] is True
     told = positions_now(connections)
@@ -257,6 +270,7 @@ def test_the_second_free_rider_and_ghosts_still_see_him(connect):
 
 def test_a_step_ends_hiding_and_he_is_sent_again(connect):
     connections, [fr], [far, _, _] = hidden_in_the_spot(connect)
+    watch_the_hedge(far)
     connections[fr].send_json({"type": "move", "dx": 0, "dy": 1})
     assert answer(connections[fr]) == {"type": "classic_hiding", "hidden": False}
     assert classic_for(fr).hidden == {}
@@ -272,6 +286,7 @@ def test_letting_go_of_every_key_does_not_end_hiding(connect):
 
 def test_e_again_ends_hiding(connect):
     connections, [fr], [far, _, _] = hidden_in_the_spot(connect)
+    watch_the_hedge(far)
     connections[fr].send_json({"type": "leave_hiding"})
     assert answer(connections[fr]) == {"type": "classic_hiding", "hidden": False}
     assert fr in names_in(positions_now(connections)[far])
@@ -308,6 +323,7 @@ def test_a_report_ends_hiding_and_tells_him(connect, clock):
     assert answer(connections[fr]) == {"type": "classic_hiding", "hidden": False}
     assert classic_for(fr).phase == "meeting"
     assert classic_for(fr).hidden == {}
+    watch_the_hedge(far)
     positions_arrived(connections[far])  # the older positions, sent while he hid
     assert fr in names_in(positions_now(connections)[far])
 
@@ -429,6 +445,7 @@ def test_a_hidden_free_rider_must_step_out_to_fail_report_or_call(connect, clock
 def test_those_who_were_told_get_him_without_the_flag_after_hiding_ends(connect, way_out):
     connections, [first, second], [ghost, *_] = classic_round(connect, SIX)
     classic_for(first).eliminated = {ghost}
+    watch_the_hedge(second)
     put(first, CENTRE)
     assert press_hide(connections, first)["hidden"] is True
     told = positions_now(connections)

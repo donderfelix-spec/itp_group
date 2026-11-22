@@ -763,6 +763,10 @@ def classic(server):
         }
         browser.shot(victim, "7_ghost_sees_hidden_free_rider")
 
+        # One High Performer watches the hedge from the open deck, in sight
+        # (S-185), so that only hiding decides whether he gets the Free Rider.
+        put(names[far], (595.0, 295.0))
+        standing_still(names[far])
         # A meeting while he hides: `other1` presses the emergency button.
         clock.skip(50)
         caller = other1

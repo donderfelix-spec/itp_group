@@ -211,6 +211,8 @@ def played(server):
             browser.call("click", label=label, selector=f'.classic-vote-player[data-target-id="{names[fr]}"]')
         clock.skip(31)
         wait_until(lambda: lobby_of(names[fr]).phase == "lobby", "the lobby after the vote")
+        for label in LABELS:
+            browser.wait(label, "window.__received.some((r) => r.m.type === 'classic_result')")
         seen["result"] = browser.messages("P0", "classic_result")[-1]
         for label in LABELS:
             browser.js(label, "!document.getElementById('classic-end-screen').hidden && document.getElementById('classic-back-lobby').click()")
