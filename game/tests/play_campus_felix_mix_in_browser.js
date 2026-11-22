@@ -234,7 +234,9 @@ async function walkTo(page, goal, tol = 4) {
       x: Math.abs(p0.x - goal.x) <= tol ? Math.round(p0.x) : goal.x,
       y: Math.abs(p0.y - goal.y) <= tol ? Math.round(p0.y) : goal.y,
     };
-    const legs = plan(p0, aim);
+    // Keeping the axis that is close enough can aim at a place that is not
+    // free (for station 10, between two CTT tables); then aim at the goal itself.
+    const legs = plan(p0, aim) || plan(p0, goal);
     if (!legs) throw new Error(`no route from ${JSON.stringify(p0)} to ${JSON.stringify(goal)}`);
     let failed = false;
     for (let i = 0; i < legs.length && !failed; i++) {
