@@ -421,6 +421,26 @@ Game.world = Game.world || {};
     });
   };
 
+  // Mon Café: warm ceramic tiles with the occasional cream rosette.
+  art.floors["cafe-tiles"] = function (ctx, area, room) {
+    var floor = room.floor;
+    var tile = 12;
+    var period = tile * 2;
+    repeating(ctx, area, "cafe-tiles|" + floor, period, function (square) {
+      eachCellOfSquare(2, tile, function (x, y, column, row) {
+        square.fillStyle = lighter(floor, noise(column, row) * 0.16);
+        square.fillRect(x, y, tile, tile);
+      });
+      gridJoints(square, period, tile, darker(floor, 0.18), 0.48);
+
+      var centre = tile / 2;
+      var cream = lighter(floor, 0.54);
+      ellipse(square, centre, centre, 2.45, 0.85, cream, 0);
+      ellipse(square, centre, centre, 0.85, 2.45, cream, 0);
+      circle(square, centre, centre, 0.55, darker(floor, 0.15), 0);
+    });
+  };
+
   // Square tiles with light joints, every other one a little darker (the canteen).
   art.floors["mint-tiles"] = function (ctx, area, room) {
     var floor = room ? room.floor : "#D7EDDF";
@@ -428,7 +448,7 @@ Game.world = Game.world || {};
     repeating(ctx, area, "mint|" + floor, 2 * tile, function (square) {
       square.fillStyle = floor;
       square.fillRect(0, 0, 2 * tile, 2 * tile);
-      square.fillStyle = darker(floor, 0.035);
+      square.fillStyle = darker(floor, 0.09);
       square.fillRect(0, 0, tile, tile);
       square.fillRect(tile, tile, tile, tile);
       gridJoints(square, 2 * tile, tile, lighter(floor, 0.4), 0.5);
@@ -447,26 +467,26 @@ Game.world = Game.world || {};
     });
   };
 
-  // Pingo Doce: small white tiles with a regular pattern of grey diamonds,
-  // and a band of darker tiles along the walls.
+  // Pingo Doce: warm cream tiles, olive diamonds and a tiled border.
   art.floors["diamond-tiles"] = function (ctx, area, room) {
-    var floor = room ? room.floor : "#DCEFC8";
+    var floor = room ? room.floor : "#D8D0A1";
     var tile = 5;
-    var period = 20; // a grey diamond on every fourth crossing of the joints
+    var period = 4 * tile; // one diamond every four tiles
     var base = lighter(floor, 0.62);
     repeating(ctx, area, "diamonds|" + floor, period, function (square) {
       square.fillStyle = base;
       square.fillRect(0, 0, period, period);
       gridJoints(square, period, tile, darker(base, 0.07), 0.35);
-      // One diamond on the corner; the copies of the square add the others.
+      // The centre crossing keeps the whole diamond inside the cached square.
+      var centre = period / 2;
       var half = tile / 2 + 0.6;
       square.beginPath();
-      square.moveTo(0, -half);
-      square.lineTo(half, 0);
-      square.lineTo(0, half);
-      square.lineTo(-half, 0);
+      square.moveTo(centre, centre - half);
+      square.lineTo(centre + half, centre);
+      square.lineTo(centre, centre + half);
+      square.lineTo(centre - half, centre);
       square.closePath();
-      square.fillStyle = mix(base, "#8E978F", 0.38);
+      square.fillStyle = mix(base, "#879158", 0.62);
       square.fill();
     });
     if (room) {
@@ -484,10 +504,10 @@ Game.world = Game.world || {};
     ctx.beginPath();
     ctx.rect(outer.x, outer.y, outer.w, outer.h);
     ctx.rect(outer.x + band, outer.y + band, outer.w - 2 * band, outer.h - 2 * band);
-    ctx.fillStyle = mix(floor, "#9AA897", 0.35);
+    ctx.fillStyle = mix(floor, "#969D62", 0.58);
     ctx.fill("evenodd");
     ctx.restore();
-    var joint = mix(floor, "#7F8C7D", 0.55);
+    var joint = mix(floor, "#737A4F", 0.5);
     strokeAll(ctx, joint, 0.6, function () {
       ctx.rect(outer.x + band, outer.y + band, outer.w - 2 * band, outer.h - 2 * band);
     });

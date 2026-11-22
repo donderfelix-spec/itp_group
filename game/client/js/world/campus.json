@@ -8,11 +8,11 @@
   "colours": {"lawn": "#DCE6C8", "deck": "#F3F0E9", "outline": "#2E2A3B"},
 
   "rooms": [
-    {"id": "lecture-hall", "name": "Lecture Hall",     "x": 20,  "y": 20,  "w": 210, "h": 150, "floor": "#EAD3AE", "label": {"x": 125, "y": 152}, "pattern": "planks",        "wall_face": "white-wall"},
-    {"id": "mon-cafe",     "name": "Mon Café",         "x": 250, "y": 20,  "w": 200, "h": 150, "floor": "#F6ECE0", "label": {"x": 350, "y": 152}, "pattern": "concrete",      "wall_face": "sage-tiles"},
-    {"id": "canteen",      "name": "Canteen",          "x": 470, "y": 20,  "w": 190, "h": 150, "floor": "#D7EDDF", "label": {"x": 565, "y": 152}, "pattern": "mint-tiles",    "wall_face": "white-tiles"},
-    {"id": "ctt",          "name": "CTT Student Hall", "x": 20,  "y": 230, "w": 140, "h": 330, "floor": "#D6E4F4", "label": {"x": 90,  "y": 248}, "pattern": "speckled",      "wall_face": "white-wall"},
-    {"id": "pingo-doce",   "name": "Pingo Doce",       "x": 440, "y": 400, "w": 220, "h": 160, "floor": "#DCEFC8", "label": {"x": 614, "y": 421}, "pattern": "diamond-tiles", "wall_face": "wood-slats"}
+    {"id": "lecture-hall", "name": "Lecture Hall",     "x": 20,  "y": 20,  "w": 210, "h": 150, "floor": "#E8BF88", "label": {"x": 125, "y": 152}, "pattern": "planks",        "wall_face": "white-wall"},
+    {"id": "mon-cafe",     "name": "Mon Café",         "x": 250, "y": 20,  "w": 200, "h": 150, "floor": "#DDAC99", "label": {"x": 350, "y": 152}, "pattern": "cafe-tiles",      "wall_face": "sage-tiles"},
+    {"id": "canteen",      "name": "Canteen",          "x": 470, "y": 20,  "w": 190, "h": 150, "floor": "#BCE2DC", "label": {"x": 565, "y": 152}, "pattern": "mint-tiles",    "wall_face": "white-tiles"},
+    {"id": "ctt",          "name": "CTT Student Hall", "x": 20,  "y": 230, "w": 140, "h": 330, "floor": "#CACDEC", "label": {"x": 90,  "y": 248}, "pattern": "speckled",      "wall_face": "white-wall"},
+    {"id": "pingo-doce",   "name": "Pingo Doce",       "x": 440, "y": 400, "w": 220, "h": 160, "floor": "#D8D0A1", "label": {"x": 614, "y": 421}, "pattern": "diamond-tiles", "wall_face": "wood-slats"}
   ],
 
   "deck_label": {"name": "Main Deck", "x": 365, "y": 350},
@@ -233,11 +233,11 @@
     {"kind": "sign", "layer": "wall", "x": 576, "y": 403, "w": 37, "h": 6, "text": "PINGO DOCE & GO", "colour": "#3E9B4F"},
     {"kind": "sign", "layer": "wall", "x": 615, "y": 403, "w": 29, "h": 6, "text": "READY MEALS"},
     {"kind": "posters", "layer": "wall", "x": 646, "y": 403, "w": 11, "h": 7},
-    {"kind": "stage", "layer": "floor", "x": 23, "y": 31, "w": 204, "h": 23, "colour": "#F4E6CC"},
-    {"kind": "tier", "layer": "floor", "x": 23, "y": 54, "w": 204, "h": 20, "colour": "#E8D0A9"},
-    {"kind": "tier", "layer": "floor", "x": 23, "y": 74, "w": 204, "h": 30, "colour": "#E3C9A0"},
-    {"kind": "tier", "layer": "floor", "x": 23, "y": 104, "w": 204, "h": 18, "colour": "#DEC297"},
-    {"kind": "tier", "layer": "floor", "x": 23, "y": 122, "w": 204, "h": 45, "colour": "#D9BB8E"},
+    {"kind": "stage", "layer": "floor", "x": 23, "y": 31, "w": 204, "h": 23, "colour": "#F2D8AB"},
+    {"kind": "tier", "layer": "floor", "x": 23, "y": 54, "w": 204, "h": 20, "colour": "#EBC591"},
+    {"kind": "tier", "layer": "floor", "x": 23, "y": 74, "w": 204, "h": 30, "colour": "#E2B681"},
+    {"kind": "tier", "layer": "floor", "x": 23, "y": 104, "w": 204, "h": 18, "colour": "#DCAC78"},
+    {"kind": "tier", "layer": "floor", "x": 23, "y": 122, "w": 204, "h": 45, "colour": "#D5A774"},
     {"kind": "aisle", "layer": "floor", "x": 26, "y": 54, "w": 12, "h": 113},
     {"kind": "aisle", "layer": "floor", "x": 212, "y": 54, "w": 13, "h": 113},
     {"kind": "spotlights", "layer": "floor", "x": 46, "y": 97, "w": 160, "h": 8},
