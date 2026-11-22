@@ -158,6 +158,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M3-1.5** The hiding spots as objects of the map instead of dashed circles (Felix's wish, S-190): boxes in the aisle of Pingo Doce, a beanbag by the bookshelf of the CTT Student Hall, a potted plant in the corner of the Canteen, a hollow in the hedge; each in a soft shade. Drawing only: places, radii and the hiding rule unchanged, nothing new is solid (`tests/test_hiding_objects.py`). Done 2026-11-22 on `game/m3-hiding-spots-in-map`
 - [x] **M3-1.6** The Free Rider hides on purpose: E at a hiding object (“E Hide”), a step, E again or a meeting ends it; no fail, report or meeting while hidden (Felix's wish, S-191). A hidden Free Rider is sent to no living High Performer; himself, the other Free Rider and ghosts see him half transparent with a crossed-out eye (S-192, retires the reveal range of 35). Server rules in `server/classic/hiding.py`, messages `hide` / `leave_hiding` (`tests/test_hide_with_e.py`). Done 2026-11-22 on `game/m3-hide-with-e`
 - [ ] **M3-1.7** Place the hiding objects and the task (station) objects anew on the map (Felix, 2026-11-22; open, not built): the positions of `hiding_spots` and `stations` in `campus.json` together with their drawings, the walking paths and the tests that pin them
+- [ ] **M3-1.8** On narrow windows the “Walk with WASD” hint lies partly under “R Report” and the E button; move it. Needs a change to `tests/test_narrow_windows.py`, approved by a person (rule 7) (Felix, 2026-11-22)
 
 **Area 2 (Felix)**
 
