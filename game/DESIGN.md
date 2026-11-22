@@ -95,6 +95,7 @@ All characters are the same size and the same speed, they differ only in how the
 
 - Top left: name of the room you are standing in.
 - Top centre: progress bar of the group work.
+- Side panel during a round, the same order in every mode (S-143): first the panel of the mode (Duel and Solo: the heading “Duel” or “Solo”, the next task and the clock; Classic: the heading “Classic”, the own name, a card with the own tasks, then “Group progress” with the bar), then “Players”, then the rest. Outside a round the panel starts with “Players”. The Classic task card lists the own stations as bullet points in the order of the round’s start, as “Shelve the books (CTT Student Hall)”; a finished one stays in its place and is faded (not crossed out); when all are done, “All your tasks are done.” stands below the list and the card turns green; a Free Rider sees “Fake tasks: stand at a station to look busy.” A ghost keeps its card, because ghosts keep doing their tasks.
 - Below the progress bar, only for the own Free Rider while he hides in Classic: “Hidden” (S-135).
 - Right: your own task list with the room, finished tasks crossed out.
 - Bottom right: large buttons “Use”, “Report” and, for the Free Rider, “Fail”. A button is grey as long as it would do nothing.
@@ -187,7 +188,7 @@ The win and the time go into the statistics (S-40).
 
 **What a player sees in Duel**
 
-- In the panel on the right, in place of the character selection: “Next: Build the tray (Canteen)” with the title of the minigame and the room, below it the clock counting down from 3:00. The progress of all players stands in the Players list above, for example “Mara 1/3”. A player who has finished all three sees “Finished in 1:12.4. Waiting for the others.” instead of the next station.
+- At the top of the panel on the right, above “Players” (S-143): “Next: Build the tray (Canteen)” with the title of the minigame and the room, below it the clock counting down from 3:00. The progress of all players stands in the Players list below, for example “Mara 1/3”. A player who has finished all three sees “Finished in 1:12.4. Waiting for the others.” instead of the next station.
 - Every station is drawn as its object; only the next station has the pulsing yellow outline and opens (S-128).
 - The card at the top left of the map shows the room you are in and the next task; a small yellow triangle with a dark outline next to your character points straight at the station (S-129).
 - When the round is over, the ranking appears over the map for everybody: heading “Duel ranking”, one row per player with place, name and time (“1:12.4”), or “2/3” for a player who did not finish, and the button “Back to lobby”. If the three minutes ran out, the line “Time is up.” stands above the rows. The lobby is open again at that moment, so the host can start the next round.
