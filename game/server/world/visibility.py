@@ -2,21 +2,23 @@
 
 Plain functions: no network, no clock. The server leaves a player out of the
 `positions` message when he is outside the viewer's sight (S-185) or hidden
-from him (S-133), so a browser never learns where that player is.
+from him, so a browser never learns where that player is. A living High
+Performer is never sent a hidden player, however near (S-192; the reveal
+range of 35 is gone). Those who may still see him (himself, the other Free
+Riders within their sight, ghosts) are told that he hides (`told_hidden`),
+so their pages draw him as hidden.
 
 Limited vision applies to living Classic players. The hiding-spot rules
-additionally conceal a living Free Rider from distant High Performers.
+additionally conceal a hiding Free Rider from every living High Performer.
 """
 
 from math import hypot
 
-# The phases of a Classic round in which the Free Rider can hide. A meeting
-# does not reveal him: whoever hid when it started stays hidden (S-138).
+# The phases of a Classic round in which a Free Rider may be hidden from
+# others. Since M3-1.6 (S-191) a meeting ends hiding, so in practice nobody
+# is hidden in the phase "meeting"; who hides is `ClassicRound.hidden`.
 HIDING_PHASES = ("round", "meeting")
 
-# How close a viewer must be to see a hidden player, in map units, when the
-# map does not say (`hide_reveal_range` in campus.json, which says 35, S-133).
-DEFAULT_REVEAL_RANGE = 35
 DEFAULT_VISION_RANGE = 120
 
 
@@ -69,7 +71,10 @@ def hiding_spot(campus, x, y):
 
 
 def players_who_hide_from(viewer, roles, ghosts, phase) -> set:
-    """The players who are hidden from `viewer` while they stand in a hiding spot.
+    """The players who are hidden from `viewer` while they hide.
+
+    Since M3-1.6 (S-191) the server passes on only those of them who pressed
+    E at a hiding object (`ClassicRound.hidden`).
 
     `roles` maps each player of the Classic round to "HP" or "FR", `ghosts`
     are the players who failed or were voted out, `phase` is the round's phase.
@@ -90,26 +95,22 @@ def players_who_hide_from(viewer, roles, ghosts, phase) -> set:
 def visible_positions(positions, viewer, campus, hiders):
     """The entries of `positions` that may be sent to `viewer`.
 
-    `positions` are (name, x, y) triples. A player in `hiders` who stands in
-    a hiding spot is left out, unless the viewer is within the map's reveal
-    range of him (centre to centre, the range itself included). The viewer
-    always gets its own position. The list given is not changed.
+    `positions` are (name, x, y) triples. A player in `hiders` (who hides
+    from this viewer, see `players_who_hide_from`) is left out at any
+    distance (S-192). The viewer always gets its own position. The list
+    given is not changed. `campus` is not needed any more and kept so the
+    callers stay as they are.
     """
-    if not hiders:
-        return list(positions)
-    own = next((entry for entry in positions if entry[0] == viewer), None)
-    reveal_range = campus.get("hide_reveal_range", DEFAULT_REVEAL_RANGE)
-    return [
-        entry for entry in positions
-        if not _is_hidden(entry, own, campus, hiders, reveal_range)
-    ]
+    return [entry for entry in positions if entry[0] == viewer or entry[0] not in hiders]
 
 
-def _is_hidden(entry, own, campus, hiders, reveal_range) -> bool:
-    name, x, y = entry
-    if name not in hiders or hiding_spot(campus, x, y) is None:
-        return False
-    if own is None:
-        # A viewer without a position yet cannot be close to anybody.
-        return True
-    return hypot(x - own[1], y - own[2]) > reveal_range
+def told_hidden(viewer, roles, ghosts, hidden) -> set:
+    """The hidden players `viewer` is told are hidden (S-192).
+
+    `hidden` are the players in the hidden state. Only the Free Riders
+    (himself and the others, also as ghosts) and the ghosts are told; a
+    living High Performer never, so no message to him carries the flag.
+    """
+    if viewer in ghosts or roles.get(viewer) == "FR":
+        return set(hidden)
+    return set()

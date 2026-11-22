@@ -143,8 +143,14 @@ async function layout(g) {
     const fr = pages.find((g) => g.role === 'FR');
     const hps = pages.filter((g) => g.role === 'HP');
 
-    // 1. The Free Rider stands in the first hiding spot (the hedge).
+    // 1. The Free Rider stands in the first hiding spot (the hedge) and,
+    // since M3-1.6 (S-191), presses E once his button offers "E Hide".
     await put([[fr.name, 'spot']]);
+    await fr.page.waitForFunction(() => {
+      const button = document.querySelector('.use-button');
+      return Boolean(button) && button.textContent === 'E Hide';
+    }, null, { timeout: 5000 });
+    await fr.page.keyboard.press('KeyE');
     const frShown = await waitForHint(fr, true);
     out.frShown = frShown;  // "Hidden" appeared within 5 seconds
     out.hpPages = [];
@@ -162,8 +168,10 @@ async function layout(g) {
     await pause(800);
     out.hpInSpot = await hintShown(hps[0]);
 
-    // 3. The Free Rider steps out of the spot: "Hidden" goes.
-    await put([[fr.name, 'outside']]);
+    // 3. The Free Rider steps out of the spot with one step: "Hidden" goes.
+    await fr.page.keyboard.down('KeyD');
+    await pause(300);
+    await fr.page.keyboard.up('KeyD');
     out.goneAfterLeaving = await waitForHint(fr, false);
     out.afterLeaving = await hintShown(fr);
   } finally {

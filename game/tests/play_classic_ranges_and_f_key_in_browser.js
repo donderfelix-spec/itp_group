@@ -6,8 +6,8 @@
 // When a player must stand somewhere, it prints {"put": [[name, [x, y]], ...]}
 // and waits for "ok" on stdin. Its last line is the result:
 //   roles      label -> role
-//   fail21     the Free Rider 21 map units from the victim: button, F sent a fail?
-//   fail20     at 20: button text and whether F failed the victim
+//   fail26     the Free Rider 26 map units from the victim: button, F sent a fail?
+//   fail25     at 25: button text and whether F failed the victim
 //   report85   a High Performer 8.5 from the sheet: Report button shown?
 //   report8    the Free Rider 8 from the sheet: Report shown, R started a meeting?
 //   sheetBox   per page: where the F-sheet is on the screen and the viewport size
@@ -118,18 +118,18 @@ async function buttons(g) {
     const spot = [470, 340];
     const far = [[finder.name, [120, 560]], [third.name, [600, 560]]];
 
-    // 1. 21 map units: out of range, F does nothing.
-    await put([[victim.name, spot], [freeRider.name, [spot[0] + 21, spot[1]]], ...far]);
+    // 1. 26 map units: out of range, F does nothing (the range is 25, S-194).
+    await put([[victim.name, spot], [freeRider.name, [spot[0] + 26, spot[1]]], ...far]);
     await pause(800);
     await freeRider.page.keyboard.press('KeyF');
     await pause(600);
-    out.fail21 = {
+    out.fail26 = {
       status: lastFailStatus(freeRider), buttons: await buttons(freeRider),
       failed: victim.received.some((m) => m.type === 'classic_fail'),
     };
 
-    // 2. 20 map units: in range, F fails the victim.
-    await put([[freeRider.name, [spot[0] + 20, spot[1]]]]);
+    // 2. 25 map units: in range, F fails the victim.
+    await put([[freeRider.name, [spot[0] + 25, spot[1]]]]);
     await freeRider.page.waitForFunction(() => {
       const use = document.querySelector('.use-button');
       return use && !use.disabled;
@@ -141,9 +141,9 @@ async function buttons(g) {
       await pause(100);
       failed = victim.received.find((m) => m.type === 'classic_fail');
     }
-    out.fail20 = { status: lastFailStatus(freeRider), buttonsBefore: before,
+    out.fail25 = { status: lastFailStatus(freeRider), buttonsBefore: before,
       failed: Boolean(failed && failed.target_id === victim.name) };
-    if (!failed) throw new Error('F at 20 did not fail: ' + JSON.stringify(out.fail20));
+    if (!failed) throw new Error('F at 25 did not fail: ' + JSON.stringify(out.fail25));
     const sheet = failed.position;
 
     // 3. A High Performer 8.5 from the sheet sees no Report button.

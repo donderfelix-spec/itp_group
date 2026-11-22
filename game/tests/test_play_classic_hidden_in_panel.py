@@ -12,6 +12,9 @@ Free Rider's own page:
 - High Performers never see it, also when one stands in a hiding spot;
 - it goes when the Free Rider steps out of the spot.
 
+Since M3-1.6 (S-191) the Free Rider hides by pressing E at the hiding object
+(his button reads "E Hide"), and steps out with a real step.
+
 Skipped when Node, Playwright or Chromium is missing. A screenshot of the
 Free Rider while hidden (1280 x 800) goes to CLASSIC_HIDDEN_SCREENSHOT, and
 the measurements to CLASSIC_HIDDEN_RESULT, if set.

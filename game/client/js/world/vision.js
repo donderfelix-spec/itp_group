@@ -54,7 +54,9 @@
     ctx.closePath();
   }
 
-  var FOG = "rgba(34, 36, 54, 0.74)";
+  // How dark the fog is: 0.60 since S-193 (Felix: "a touch lighter"; was
+  // 0.74). The soft edge fades into this same value, so there is no seam.
+  var FOG = "rgba(34, 36, 54, 0.6)";
   var CLEAR = "rgba(34, 36, 54, 0)";
   // The view fades into the fog over its outer part: clear up to this share
   // of the range, then darker until it reaches the full fog at the range.

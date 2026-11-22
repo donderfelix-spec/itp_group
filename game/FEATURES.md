@@ -44,7 +44,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Walking diagnostic for the team: with `?debug` in the address a panel measures the connection and the drawing while walking and copies the numbers as text | M2 | Done |
 | Limited view in Classic: nearby living players in direct sight, with walls casting shadows (S-185) | M3 | Done |
 | Half-transparent ghosts visible to other ghosts and fallen characters visible until reported (S-186) | M3 | Done |
-| Four hiding spots in Classic in which the Free Rider is visible only within 35 map units (S-131 to S-140) | M3 | Done |
+| Four hiding spots in Classic (S-131 to S-140), drawn as objects of the map: boxes, a beanbag, a potted plant and a hollow in the hedge (S-190); the Free Rider hides on purpose with E and is then sent to no High Performer; himself, the other Free Rider and ghosts see him with a crossed-out eye (S-191, S-192) | M3 | Done |
 | Campus overview with your location and your own open tasks (S-187) | M3 | Done |
 | Finished graphics for rooms and characters instead of placeholders | M4 | Planned |
 | Sounds and music | M4 | Later |
@@ -90,7 +90,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Shared progress bar of the group work | M3 | Done |
 | Free Rider fails a nearby player, followed by a cooldown; the sheet shows the victim's portrait (S-163) | M3 | Playable with known defects (M3-3.13, M3-3.15) |
 | Find and report a failed player | M3 | Playable with known defects (M3-3.15) |
-| Report from 8 map units, also by the Free Rider; let fail from 20 map units with Q or F; F-sheets 30 % larger (S-180, S-181) | M3 | Done (M3-4.25 to M3-4.28) |
+| Report from 8 map units, also by the Free Rider; let fail from 25 map units with Q or F (S-194); F-sheets 30 % larger (S-180, S-181) | M3 | Done (M3-4.25 to M3-4.28) |
 | Emergency meeting with the red button in the centre of the Main Deck (S-147), drawn as an alarm switch (S-149), limited per player, range checked by the server, hint only for the living (S-170) | M3 | Playable with known defects (M3-3.15: the wording “E Call meeting”) |
 | Meeting with text chat and time limit; the window closes after the result (S-153) and always fits the screen (S-173) | M3 | Playable with known defects (M3-3.13) |
 | Own task list per player, only its stations pulse; the Free Rider has none (S-154) | M3 | Done |

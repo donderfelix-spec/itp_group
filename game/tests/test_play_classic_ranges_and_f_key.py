@@ -4,9 +4,9 @@ Four guests play Classic in Chromium against the real server, run in this
 process (the fixtures and `put` of test_play_classic_task_card_end_to_end.py),
 two pages at 1280 x 800 and two at 1024 x 700.
 
-- The Free Rider 21 map units from a High Performer: the server says "not in
+- The Free Rider 26 map units from a High Performer: the server says "not in
   range" and F fails nobody.
-- At 20 map units: the button says only "Let fail" and F fails the victim.
+- At 25 map units (S-194, was 20): the button says only "Let fail" and F fails the victim.
 - A High Performer 8.5 map units from the F-sheet sees no Report button.
 - The Free Rider 8 map units from the sheet sees Report; R starts the meeting
   for everybody, as a report by the Free Rider.
@@ -74,14 +74,14 @@ def test_ranges_and_f_key_in_the_real_game(played):
     assert sorted(played["roles"].values()) == ["FR", "HP", "HP", "HP"]
 
     # Rejected just outside the fail range: nothing happens on F.
-    assert played["fail21"]["status"]["in_range"] is False
-    assert played["fail21"]["failed"] is False
-    assert played["fail21"]["buttons"]["useDisabled"] is True
+    assert played["fail26"]["status"]["in_range"] is False
+    assert played["fail26"]["failed"] is False
+    assert played["fail26"]["buttons"]["useDisabled"] is True
 
-    # Accepted at exactly 20: "Let fail" without a tile count, F fails.
-    assert played["fail20"]["buttonsBefore"]["useText"] == "Let fail"
-    assert played["fail20"]["buttonsBefore"]["useDisabled"] is False
-    assert played["fail20"]["failed"] is True
+    # Accepted at exactly 25: "Let fail" without a tile count, F fails.
+    assert played["fail25"]["buttonsBefore"]["useText"] == "Let fail"
+    assert played["fail25"]["buttonsBefore"]["useDisabled"] is False
+    assert played["fail25"]["failed"] is True
 
     # Report: hidden at 8.5, shown at 8, also for the Free Rider.
     assert played["report85"]["reportShown"] is False

@@ -133,8 +133,11 @@ def check_campus(campus) -> dict:
         raise CampusError("\"use_range\" of the map must be above 0.")
 
     _check_point(_entry(campus, "button", "the map"), "button", width, height)
-    if "hide_reveal_range" in campus and _number(campus, "hide_reveal_range", "the map") <= 0:
-        raise CampusError("hide_reveal_range must be above 0.")
+    if "hide_reveal_range" in campus:
+        # Retired by S-192: a hidden Free Rider is sent to no living High
+        # Performer at any distance. A map that still names it is refused,
+        # so the old range cannot quietly come back.
+        raise CampusError("hide_reveal_range is no longer used (S-192); remove it from the map.")
     if "classic_vision_range" in campus and _number(campus, "classic_vision_range", "the map") <= 0:
         raise CampusError("classic_vision_range must be above 0.")
     for index, spot in enumerate(_list(campus, "hiding_spots")):

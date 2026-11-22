@@ -616,7 +616,7 @@ Game.world = Game.world || {};
 
   // ---- The part of the map that never changes --------------------------
 
-  // Ground, floors, wall faces, furniture, decor and the room names: all of
+  // Ground, floors, wall faces, furniture, hiding spots, decor and the room names: all of
   // it inside `area` (in map units). The order matters: what is drawn later
   // lies on top.
   function drawStaticLayers(ctx, campus, area) {
@@ -638,6 +638,7 @@ Game.world = Game.world || {};
   function drawUpperLayers(ctx, campus, area) {
     drawRoomNames(ctx, campus, area);
     drawSolids(ctx, campus, area);
+    drawHidingSpots(ctx, campus, area);
     drawDecor(ctx, campus, area, "wall");
     drawDecor(ctx, campus, area, "on");
     drawDoorFrames(ctx, campus, area);
@@ -874,13 +875,40 @@ Game.world = Game.world || {};
 
   // ---- Things to walk up to --------------------------------------------
 
-  // Hiding spots: half transparent white circles with a dashed outline.
-  function drawHidingSpots(ctx, campus) {
+  // Hiding spots (M3-1.5): each shows an object that belongs to its place,
+  // registered by an art file in the group "hiding" as "room-id:spot" ("spot"
+  // on the deck). They never change, so they are drawn into the tiles, after
+  // the furniture (the hollow lies on the hedge). Everybody sees the same
+  // objects; who hides is decided by the server alone. A drawing stays
+  // within DRAWING_OVERHANG of its spot's circle. Without a drawing (or if
+  // it fails) the spot keeps its old dashed circle: it is never invisible.
+  var HIDING_OBJECT = "spot";
+
+  function hidingObjectOf(campus, spot) {
+    return artFor("hiding", roomAt(campus, spot.x, spot.y), HIDING_OBJECT);
+  }
+
+  function drawHidingSpots(ctx, campus, area) {
     var spots = list(campus.hiding_spots);
-    ctx.setLineDash([4, 3]);
     for (var i = 0; i < spots.length; i++) {
-      circle(ctx, spots[i].x, spots[i].y, spots[i].r, "rgba(255, 255, 255, 0.55)", 2);
+      var spot = spots[i];
+      var square = { x: spot.x - spot.r, y: spot.y - spot.r, w: 2 * spot.r, h: 2 * spot.r };
+      if (!reaches(square, area)) {
+        continue;
+      }
+      var drawing = hidingObjectOf(campus, spot);
+      var room = roomAt(campus, spot.x, spot.y);
+      if (!drawing || !drawWithArt(ctx, drawing, spot, room, campus)) {
+        drawDashedCircle(ctx, spot);
+      }
     }
+  }
+
+  // The plain look of a hiding spot: a half transparent white circle with a
+  // dashed outline.
+  function drawDashedCircle(ctx, spot) {
+    ctx.setLineDash([4, 3]);
+    circle(ctx, spot.x, spot.y, spot.r, "rgba(255, 255, 255, 0.55)", 2);
     ctx.setLineDash([]);
   }
 
@@ -1265,7 +1293,6 @@ Game.world = Game.world || {};
     ctx.save();
     ctx.lineJoin = "round";
     drawStaticPart(ctx, campus, view);
-    drawHidingSpots(ctx, campus);
     drawButton(ctx, campus, emergencyVisible === true);
     drawStations(ctx, campus, pulsingStations, now);
     ctx.restore();
@@ -1341,6 +1368,8 @@ Game.world = Game.world || {};
   Game.world.drawOverviewBase = drawOverviewBase;
   Game.world.drawStationGlow = drawStationGlow;
   Game.world.roomAt = roomAt;
+  // The drawing a hiding spot's object comes from, for tests/test_hiding_objects.py.
+  Game.world.hidingObjectOf = hidingObjectOf;
   // How many outline silhouettes are kept, for tests/test_station_objects.js.
   Game.world.outlineCacheSize = function () { return silhouettes.size; };
   Game.world.chooseLabels = chooseLabels;

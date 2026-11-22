@@ -165,6 +165,8 @@ Game.world = Game.world || {};
   var failHandler = null; // called when the player presses Q in Classic
   var reportHandler = null; // called with an F-sheet id and position on R
   var emergencyHandler = null; // called on E at the red button
+  var hideHandler = null; // called on E at a hiding object (M3-1.6)
+  var leaveHidingHandler = null; // called on E while hidden
   var bloodSheets = new Map(); // sheet id -> position, character and reported flag
   var useButton = null; // the button for E, while the world runs
   // Whether `useButton` has the Free Rider's look (class "fail-button"). Kept
@@ -919,6 +921,9 @@ Game.world = Game.world || {};
       if (entry && isName(entry.name) && isNumber(entry.x) && isNumber(entry.y)) {
         var player = playerNamed(entry.name);
         listed.add(entry.name);
+        // The server says so only to those who may know (S-192): the
+        // player himself, the other Free Riders and the ghosts.
+        player.toldHidden = entry.hidden === true;
         // Only the own character is bridged (M2-1.16); the others are
         // played from the queue as before.
         var receive = isOwn(player) && isBridging() ? receiveOwnPosition : receivePosition;
@@ -1083,6 +1088,11 @@ Game.world = Game.world || {};
     emergencyHandler = typeof handler === "function" ? handler : null;
   }
 
+  function setHidingHandlers(hide, leave) {
+    hideHandler = typeof hide === "function" ? hide : null;
+    leaveHidingHandler = typeof leave === "function" ? leave : null;
+  }
+
   function setEmergencyStatus(message) {
     if (!message || !Number.isFinite(message.emergency_ready_at) || !Number.isFinite(message.server_time)) return;
     emergencyStatus = message;
@@ -1168,13 +1178,53 @@ Game.world = Game.world || {};
     return Math.hypot(position.x - button.x, position.y - button.y) <= campus.use_range;
   }
 
+  // ---- Hiding with E (M3-1.6, S-191) -----------------------------------
+
+  // The hiding spot the own Free Rider can hide in now, or null: only while
+  // hiding is possible (a Classic round, see setOwnHidingCheck), only for a
+  // living Free Rider, within `use_range` of the spot's centre. The server
+  // checks the same (server/classic/hiding.py) and decides.
+  function hidingSpotInReach() {
+    var canHide = ownHidingCheck && ownIsFreeRider && !ownIsGhost && hideHandler && campus && window.ClassicHudActions;
+    var position = canHide ? ownServerPosition() : null;
+    if (!position) return null;
+    return window.ClassicHudActions.spotInReach(position.x, position.y, campus.hiding_spots, campus.use_range);
+  }
+
+  function distanceFromOwn(place) {
+    var position = ownServerPosition();
+    return position && place ? Math.hypot(position.x - place.x, position.y - place.y) : Infinity;
+  }
+
+  // What E does now: "leave" while hidden, else the nearest of the red
+  // button ("emergency"), a station ("station") and a hiding object
+  // ("hide"); null when nothing is in reach.
+  function useTarget() {
+    if (isOwnHidden() && leaveHidingHandler) return "leave";
+    var candidates = [];
+    if (isAtEmergencyButton()) candidates.push({ kind: "emergency", distance: distanceFromOwn(campus.button) });
+    var stationId = stationInRange();
+    if (stationId !== null) candidates.push({ kind: "station", distance: distanceFromOwn(stationWithId(stationId)) });
+    var spot = hidingSpotInReach();
+    if (spot) candidates.push({ kind: "hide", distance: distanceFromOwn(spot) });
+    if (candidates.length === 0) return null;
+    return window.ClassicHudActions ? window.ClassicHudActions.nearestTarget(candidates) : candidates[0].kind;
+  }
+
   function useActionInRange() {
     if (inputPaused) return;
-    if (isAtEmergencyButton()) {
+    var target = useTarget();
+    if (target === "leave") {
+      leaveHidingHandler();
+    } else if (target === "hide") {
+      // Hidden means standing still: the held walk keys count as let go.
+      releaseAllKeys();
+      hideHandler();
+    } else if (target === "emergency") {
       emergencyHandler();
-      return;
+    } else {
+      useStationInRange();
     }
-    useStationInRange();
   }
 
   function reportSheetInRange() {
@@ -1223,7 +1273,8 @@ Game.world = Game.world || {};
   function onUseButtonClick() {
     useButton.blur();
     if (ownIsFreeRider) {
-      if (isAtEmergencyButton()) emergencyHandler();
+      var target = useTarget();
+      if (target === "leave" || target === "hide" || target === "emergency") useActionInRange();
       else if (isFailButtonActive() && typeof failHandler === "function") failHandler();
     } else {
       useActionInRange();
@@ -1251,6 +1302,27 @@ Game.world = Game.world || {};
   function updateUseButton(idInRange) {
     if (!useButton) return;
     var emergencyNearby = isAtEmergencyButton();
+    // The Free Rider's shared button shows hiding when E would hide or step
+    // out (M3-1.6); only he ever sees these words.
+    var hidingText = null;
+    if (ownIsFreeRider) {
+      var target = useTarget();
+      if (target === "leave") hidingText = "E Leave hiding";
+      else if (target === "hide") hidingText = "E Hide";
+      emergencyNearby = target === "emergency";
+    }
+    if (ownIsFreeRider && hidingText !== null) {
+      if (useButtonHasFailLook) {
+        useButton.classList.remove("fail-button");
+        useButtonHasFailLook = false;
+      }
+      useButton.textContent = hidingText;
+      if (useButton.disabled !== inputPaused) {
+        if (inputPaused && document.activeElement === useButton) useButton.blur();
+        useButton.disabled = inputPaused;
+      }
+      return;
+    }
     if (ownIsFreeRider && !emergencyNearby) {
       var secondsLeft = failCooldownSeconds();
       var fill = window.ClassicFailButton.fillFraction(
@@ -1585,7 +1657,7 @@ Game.world = Game.world || {};
     ctx.save();
     // A ghost (Classic) is drawn half transparent; only other ghosts see it.
     if (player.isGhost) ctx.globalAlpha = figureAlpha;
-    else if (isOwn(player) && ownIsHiddenNow) ctx.globalAlpha = HIDDEN_ALPHA;
+    else if (isShownHidden(player)) ctx.globalAlpha = HIDDEN_ALPHA;
     try {
       Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
       ctx.restore();
@@ -1693,9 +1765,71 @@ Game.world = Game.world || {};
     // Where labels would cover each other, only one of them is drawn; a
     // label never moves away from its own head (S-117).
     useNameFont();
-    var choice = Game.world.chooseLabels(visible.map(labelAboveHead), hiddenNames);
+    var labels = visible.map(labelAboveHead);
+    var choice = Game.world.chooseLabels(labels, hiddenNames);
     hiddenNames = choice.hidden;
     choice.shown.forEach(drawLabel);
+    // The crossed-out eye of a hidden player (S-192), also when his name
+    // gives way to another one: the symbol alone tells hidden from ghost.
+    visible.forEach(function (entry, index) {
+      if (isShownHidden(entry.player)) drawHiddenSymbol(labels[index]);
+    });
+  }
+
+  // ---- A hidden player (M3-1.6, S-192) --------------------------------
+
+  // Drawn half transparent with a crossed-out eye above the name: the own
+  // hidden Free Rider (the server told him, `classic_hiding`) and a player
+  // the server flags as hidden in `positions`. A living High Performer is
+  // never sent a hidden player, so he never sees either.
+  function isShownHidden(player) {
+    return player.toldHidden === true || (isOwn(player) && ownIsHiddenNow);
+  }
+
+  // The symbol: a cream badge with a dark ring, a dark eye and a coral
+  // stroke across it, in full colour so it stays readable at the game's
+  // zoom and at the soft edge of the view. In map units.
+  var HIDDEN_SYMBOL_RADIUS = 3.6;
+  var HIDDEN_SYMBOL_GAP = 1; // between the badge and the name label
+  var HIDDEN_SLASH_COLOUR = "#C43E3E";
+
+  function drawHiddenSymbol(label, target) {
+    var c = target || ctx;
+    var r = HIDDEN_SYMBOL_RADIUS;
+    var x = label.x;
+    var y = label.y - label.height / 2 - HIDDEN_SYMBOL_GAP - r;
+    c.save();
+    c.lineCap = "round";
+    c.lineJoin = "round";
+    c.beginPath();
+    c.arc(x, y, r, 0, Math.PI * 2);
+    c.fillStyle = SURFACE;
+    c.fill();
+    c.lineWidth = 0.7;
+    c.strokeStyle = OUTLINE;
+    c.stroke();
+    // The eye: an almond and its pupil.
+    c.beginPath();
+    c.moveTo(x - r * 0.68, y);
+    c.quadraticCurveTo(x, y - r * 0.62, x + r * 0.68, y);
+    c.quadraticCurveTo(x, y + r * 0.62, x - r * 0.68, y);
+    c.lineWidth = 0.6;
+    c.stroke();
+    c.beginPath();
+    c.arc(x, y, r * 0.2, 0, Math.PI * 2);
+    c.fillStyle = OUTLINE;
+    c.fill();
+    // The stroke across it, with a cream edge so it stands out on the eye.
+    c.beginPath();
+    c.moveTo(x - r * 0.6, y - r * 0.6);
+    c.lineTo(x + r * 0.6, y + r * 0.6);
+    c.lineWidth = 1.5;
+    c.strokeStyle = SURFACE;
+    c.stroke();
+    c.lineWidth = 0.8;
+    c.strokeStyle = HIDDEN_SLASH_COLOUR;
+    c.stroke();
+    c.restore();
   }
 
   function drawBloodSheets() {
@@ -1940,6 +2074,10 @@ Game.world = Game.world || {};
       : null;
   };
   Game.world.setOwnHidingCheck = setOwnHidingCheck;
+  Game.world.setHidingHandlers = setHidingHandlers;
+  // The crossed-out eye on any canvas, at a name label {x, y, height}: for
+  // the review pictures and tests (S-192).
+  Game.world.drawHiddenSymbol = drawHiddenSymbol;
   Game.world.nearestStationInRange = nearestStationInRange;
   Game.world.ownDrawnPosition = ownDrawnPosition;
   Game.world.walkingDirection = walkingDirection;

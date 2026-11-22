@@ -4,6 +4,9 @@ What the tester played with five browsers in Classic and two in Duel is
 played here by real Chromium pages (Playwright, driven through
 `play_hiding_in_browser.js`) against the real server with its real tick:
 
+- Since M3-1.6 (S-191) he hides by pressing E at the hiding object once his
+  button reads "E Hide" (`press_hide`); walking into a spot alone does not
+  hide, a step ends hiding and a meeting ends it too (replaces S-138).
 - Classic, five players, so one Free Rider (found from the role card of his
   page). He walks with real keys into each of the four hiding spots, the one
   in the hedge from the spawn, into the hedge and through it. For every spot
@@ -15,10 +18,12 @@ played here by real Chromium pages (Playwright, driven through
 - A High Performer in a hiding spot is sent to everybody and sees no "Hidden".
 - A ghost sees the hidden Free Rider from far away; the living are not sent
   the ghost, during the round and during a meeting.
-- A meeting (the emergency button) does not reveal the hidden Free Rider,
-  and after it everything is as before.
+- A meeting (the emergency button) ends hiding: he is sent again, and after
+  it he must press E again to hide.
 - The end of a round, by a vote and by parity while the Free Rider hides,
-  sends everybody everybody again without anybody moving.
+  sends everybody everybody again without anybody moving. He cannot fail
+  while hidden, so the parity is reached by his fails before he hides and
+  the last High Performer counted as failed by the server.
 - A Free Rider who leaves the lobby while he hides is gone for everybody, his
   "Hidden" is gone, and joining again is refused with the text of DESIGN.md,
   section 9.
@@ -66,10 +71,16 @@ from server.world.movement import is_free
 CAMPUS = app.state.campus
 SOLIDS, WIDTH, HEIGHT = CAMPUS["solids"], CAMPUS["width"], CAMPUS["height"]
 SPAWN = (CAMPUS["spawn"]["x"], CAMPUS["spawn"]["y"])
-REVEAL_RANGE = CAMPUS["hide_reveal_range"]
+# The reveal range of S-133. Retired by S-192: a hidden Free Rider is sent to
+# no living High Performer at all. The plays still measure against it, to
+# show that even a High Performer well within it does not get him.
+REVEAL_RANGE = 35
 SPOTS = {name: spot for name, spot in zip(("hedge", "pingo-doce", "ctt", "canteen"), CAMPUS["hiding_spots"])}
 HEDGE = next(solid for solid in SOLIDS if solid["id"] == "deck-hedge")
 BUTTON = CAMPUS["button"]
+# Players this close are sent to each other when nobody hides. Classic's
+# limited vision (S-185) may make it smaller; without it, everybody is sent.
+SIGHT = CAMPUS.get("classic_vision_range", float("inf"))
 
 BROWSER_SCRIPT = Path(__file__).with_name("play_hiding_in_browser.js")
 NODE = shutil.which("node")
@@ -77,8 +88,6 @@ NPM = shutil.which("npm")
 SCREENSHOTS = os.environ.get("HIDING_SCREENSHOTS")
 
 KEYS = {(1, 0): "KeyD", (-1, 0): "KeyA", (0, 1): "KeyS", (0, -1): "KeyW"}
-# Positions carry one decimal: a distance this close to 35 may go either way.
-ROUNDING = 0.2
 # A page draws a player it was told about within this time, and stops
 # drawing one it was told is gone within this time (a few frames).
 DRAW_LAG_MS = 120
@@ -392,8 +401,12 @@ def in_spot(place, spot):
     return math.dist(place, (spot["x"], spot["y"])) <= spot["r"]
 
 
-def walk_into(browser, label, name, spot):
-    """Walk in with one key from the entry place until the centre is well inside the spot."""
+def walk_into(browser, label, name, spot, hide=False):
+    """Walk in with one key from the entry place until the centre is well inside the spot.
+
+    With `hide` the player then presses E (M3-1.6): the server puts him on
+    the spot's centre. Returns where he stands then, and where he started.
+    """
     start, direction = entry_for(spot)
     put(name, start)
     standing_still(name)
@@ -401,7 +414,18 @@ def walk_into(browser, label, name, spot):
     hold(browser, label, name, direction, (spot["x"], spot["y"])[axis])
     here = position(name)
     assert in_spot(here, spot), f"{name} stands at {here}, not in {spot}"
+    if hide:
+        press_hide(browser, label, name)
+        here = position(name)
+        assert here == (spot["x"], spot["y"]), f"{name} hides at {here}, not in the middle of {spot}"
     return here, start
+
+
+def press_hide(browser, label, name):
+    """Press E as a Free Rider does, once his button reads "E Hide" (M3-1.6)."""
+    browser.wait(label, "(() => { const b = document.querySelector('.use-button'); return Boolean(b) && b.textContent === 'E Hide' && !b.disabled; })()")
+    browser.call("press", label=label, key="KeyE")
+    wait_until(lambda: lobby_of(name).classic_round.is_hidden(name), f"{name} hides")
 
 
 # ---- What a page was told and drew ---------------------------------------
@@ -418,18 +442,14 @@ def character_of(browser, label, name):
 
 
 def visibility_mistakes(frames, own, hider, hider_at):
-    """Check that the hider is listed only within 35 units of clear sight."""
+    """The frames in which the hidden `hider` was listed (at any distance, S-192) or the own position is missing."""
     mistakes = []
     for t, listed in frames:
         if own not in listed:
             mistakes.append((t, "own position missing"))
             continue
-        distance = math.dist(listed[own], hider_at)
-        if abs(distance - REVEAL_RANGE) <= ROUNDING:
-            continue
-        should_see = distance <= REVEAL_RANGE and in_sight(listed[own], hider_at)
-        if (hider in listed) != should_see:
-            mistakes.append((t, round(distance, 1), hider in listed))
+        if hider in listed:
+            mistakes.append((t, round(math.dist(listed[own], hider_at), 1), True))
     return mistakes
 
 
@@ -491,7 +511,7 @@ def play_one_spot(browser, spot_name, fr, far, near, others):
     record["far_draws_fr_before"] = before != []
     # The figure is drawn a little above the player's place: measure by how much.
     record["drawn_offset"] = (before[-1][1] - start[0], before[-1][2] - start[1]) if before else None
-    fr_at, _ = walk_into(browser, fr, names[fr], spot)
+    fr_at, _ = walk_into(browser, fr, names[fr], spot, hide=True)
     record["fr_at"] = fr_at
     record["far_distance"] = math.dist(far_place, fr_at)
     time.sleep(0.4)
@@ -549,6 +569,8 @@ def play_one_spot(browser, spot_name, fr, far, near, others):
     time.sleep(0.4)
     far_frames = browser.frames(far, out_mark)
     record["far_sees_fr_after_leaving"] = bool(far_frames) and names[fr] in far_frames[-1][1]
+    record["far_first_listed_after_leaving"] = next(
+        (listed[names[fr]] for _, listed in far_frames if names[fr] in listed), None)
     first_draws = browser.drawn(far, fr_character, out_mark)
     record["far_first_draw_after_leaving"] = (
         (first_draws[0][1] - record["drawn_offset"][0], first_draws[0][2] - record["drawn_offset"][1])
@@ -712,7 +734,7 @@ def classic(server):
         failed(browser, fr, names[victim])
         put(names[victim], (SPAWN[0] - 40, SPAWN[1] + 20))
         put(names[other1], (BUTTON["x"] + 8, BUTTON["y"] + 30))
-        fr_at, _ = walk_into(browser, fr, names[fr], SPOTS["hedge"])
+        fr_at, _ = walk_into(browser, fr, names[fr], SPOTS["hedge"], hide=True)
         time.sleep(0.5)
         marks = {label: browser.now(label) for label in LABELS}
         # The ghost walks around (through walls) while the Free Rider hides.
@@ -741,6 +763,10 @@ def classic(server):
         }
         browser.shot(victim, "7_ghost_sees_hidden_free_rider")
 
+        # One High Performer watches the hedge from the open deck, in sight
+        # (S-185), so that only hiding decides whether he gets the Free Rider.
+        put(names[far], (595.0, 295.0))
+        standing_still(names[far])
         # A meeting while he hides: `other1` presses the emergency button.
         clock.skip(50)
         caller = other1
@@ -772,6 +798,7 @@ def classic(server):
         seen["meeting"] = {
             "during": during,
             "fr_still_in_spot": in_spot(position(names[fr]), SPOTS["hedge"]),
+            "fr_hidden_after": lobby_of(names[fr]).classic_round.is_hidden(names[fr]),
             "phase_after": lobby_of(names[fr]).classic_round.phase,
             "eliminated_after": sorted(lobby_of(names[fr]).classic_round.eliminated),
             "victim": names[victim],
@@ -790,18 +817,32 @@ def classic(server):
         }
         browser.shot(fr, "9_after_meeting_free_rider")
 
-        # After the meeting: the far ones still do not get him; he walks out and in.
+        # After the meeting he is not hidden (M3-1.6): the far ones get him
+        # until he presses E again; then they do not.
         after = {label: browser.now(label) for label in LABELS}
         browser.call("down", label=far, key="KeyD")
         time.sleep(0.3)
         browser.call("up", label=far, key="KeyD")
         standing_still(names[far])
         time.sleep(0.3)
-        seen["after_meeting"] = {
-            label: visibility_mistakes(browser.frames(label, after[label]), names[label], names[fr], position(names[fr]))
+        seen["after_meeting_visible"] = {
+            label: [(names[fr] in listed, round(math.dist(listed[names[label]], position(names[fr])), 1))
+                    for _, listed in browser.frames(label, after[label]) if names[label] in listed]
             for label in (far, near, caller)
         }
-        seen["after_meeting_frames"] = {label: len(browser.frames(label, after[label])) for label in (far, near, caller)}
+        press_hide(browser, fr, names[fr])
+        hidden_again = {label: browser.now(label) for label in LABELS}
+        browser.call("down", label=far, key="KeyA")
+        time.sleep(0.3)
+        browser.call("up", label=far, key="KeyA")
+        standing_still(names[far])
+        time.sleep(0.3)
+        seen["after_meeting"] = {
+            label: visibility_mistakes(browser.frames(label, hidden_again[label]), names[label], names[fr], position(names[fr]))
+            for label in (far, near, caller)
+        }
+        seen["after_meeting_frames"] = {label: len(browser.frames(label, hidden_again[label])) for label in (far, near, caller)}
+        seen["fr_hint_hidden_again"] = browser.hidden_hint(fr)["shown"]
 
         # Round end by a vote: `near` calls the second meeting, all vote him out.
         clock.skip(5)
@@ -843,15 +884,23 @@ def classic(server):
         watcher = hps2[0]
         put(names[watcher], free_place_at((spot["x"], spot["y"]), 55))
         standing_still(names[watcher])
-        watch_mark = browser.now(watcher)
-        for victim2 in hps2[1:]:
+        # He cannot fail while hidden (M3-1.6): two fails first, then he hides.
+        *victims2, last_victim = hps2[1:]
+        for victim2 in victims2:
             put(names[victim2], (fr2_at[0], fr2_at[1] + 3))
             standing_still(names[victim2])
             press_fail(browser, fr2)
             failed(browser, fr2, names[victim2])
-            if lobby_of(names[fr2]).classic_round is not None:
-                put(names[victim2], (SPAWN[0], SPAWN[1] + 30))
+            put(names[victim2], (SPAWN[0], SPAWN[1] + 30))
             clock.skip(16)
+        press_hide(browser, fr2, names[fr2])
+        fr2_at = position(names[fr2])
+        watch_mark = browser.now(watcher)
+        put(names[watcher], free_place_at((spot["x"], spot["y"]), 56))  # a frame while he hides
+        time.sleep(0.3)
+        # The last High Performer counts as failed (as if failed by the other
+        # Free Rider of a larger round): one against one, the next tick ends it.
+        lobby_of(names[fr2]).classic_round.eliminated.add(names[last_victim])
         wait_until(lambda: lobby_of(names[fr2]).phase == "lobby", "the end of round 2")
         places_at_end = everybody_where_they_are(names.values())
         time.sleep(0.8)
@@ -880,7 +929,7 @@ def classic(server):
         roles3 = start_round(browser, "P0", LABELS, 2)
         fr3 = next(label for label, role in roles3.items() if role == "Free Rider")
         stay = [label for label in LABELS if label != fr3]
-        fr3_at, _ = walk_into(browser, fr3, names[fr3], SPOTS["hedge"])
+        fr3_at, _ = walk_into(browser, fr3, names[fr3], SPOTS["hedge"], hide=True)
         put(names[stay[0]], free_place_at((SPOTS["hedge"]["x"], SPOTS["hedge"]["y"]), 55))
         standing_still(names[stay[0]])
         time.sleep(0.3)
@@ -936,7 +985,8 @@ def test_the_four_spots_are_the_ones_of_the_map():
     assert {name: (spot["x"], spot["y"]) for name, spot in SPOTS.items()} == {
         "hedge": (595, 249), "pingo-doce": (549, 468), "ctt": (136, 524), "canteen": (636, 128),
     }
-    assert REVEAL_RANGE == 35
+    # The reveal range is retired (S-192).
+    assert "hide_reveal_range" not in CAMPUS
 
 
 def test_five_players_have_exactly_one_free_rider_on_the_role_cards(classic):
@@ -962,12 +1012,13 @@ def test_the_free_rider_walks_into_the_spot_and_is_hidden_from_far_high_performe
 
 
 @pytest.mark.parametrize("spot_index", range(4), ids=list(SPOTS))
-def test_a_high_performer_walking_past_gets_the_free_rider_exactly_within_35_units(classic, spot_index):
+def test_a_high_performer_walking_past_never_gets_the_hidden_free_rider(classic, spot_index):
+    # Before S-192 he got him exactly within 35 units; now never, also within.
     record = classic["spots"][spot_index]
     assert record["near_closest"] <= REVEAL_RANGE
     assert record["near_mistakes"] == []
-    assert record["near_listed_some"]
-    assert record["near_draws_fr_when_close"]
+    assert not record["near_listed_some"]
+    assert not record["near_draws_fr_when_close"]
     assert record["near_last_listed"] is False
 
 
@@ -997,7 +1048,12 @@ def test_walking_out_of_the_spot_shows_him_at_once_at_his_new_place(classic, spo
     assert record["far_sees_fr_after_leaving"]
     first = record["far_first_draw_after_leaving"]
     assert first is not None
-    assert not in_spot(first, spot), "drawn first where he hid, not where he is"
+    # Since S-191 one step ends hiding, so he is sent at once, possibly still
+    # inside the circle. Drawn first where he was sent, not where he hid.
+    sent = record["far_first_listed_after_leaving"]
+    assert sent is not None
+    assert math.dist(first, sent) <= 1, "drawn first somewhere else than where he was sent"
+    assert math.dist(first, record["fr_at"]) >= 3, "drawn first where he hid, not where he is"
     assert record["fr_hint_after_leaving"] is False
 
 
@@ -1021,13 +1077,18 @@ def test_a_ghost_sees_the_hidden_free_rider_from_far_and_the_living_do_not_get_t
     assert ghost["living_frames_with_fr"] == {label: 0 for label in ghost["living_frames_with_fr"]}
 
 
-def test_a_meeting_does_not_reveal_the_hidden_free_rider(classic):
+def test_a_meeting_ends_hiding_and_he_is_sent_again(classic):
+    # Since M3-1.6 (S-191) a meeting ends hiding (replaces S-138).
     meeting = classic["meeting"]
     assert meeting["fr_still_in_spot"]
-    for label, told in meeting["during"].items():
+    assert meeting["fr_hidden_after"] is False
+    within_sight = [label for label, told in meeting["during"].items() if told["distance"] <= SIGHT]
+    assert within_sight, meeting["during"]
+    for label in within_sight:
+        told = meeting["during"][label]
         assert told["distance"] > REVEAL_RANGE
         assert told["frames"] > 0
-        assert told["with_fr"] == 0, label
+        assert told["with_fr"] == told["frames"], label
     # The ghost still sees him during the meeting.
     assert meeting["ghost_frames"] > 0 and meeting["ghost_frames_with_fr"] == meeting["ghost_frames"]
 
@@ -1043,12 +1104,18 @@ def test_living_pages_do_not_draw_the_ghost_during_a_meeting(classic):
     }
 
 
-def test_after_the_meeting_the_round_goes_on_and_he_is_still_hidden(classic):
+def test_after_the_meeting_he_is_seen_until_he_presses_e_again(classic):
     meeting = classic["meeting"]
     assert meeting["phase_after"] == "round"
     assert meeting["eliminated_after"] == [meeting["victim"]]
-    assert meeting["fr_hint_after"]
+    assert not meeting["fr_hint_after"]
     assert not any(meeting["hints"].values())
+    seen_after = classic["after_meeting_visible"]
+    assert any(seen_after.values()), seen_after
+    for label, frames in seen_after.items():
+        assert all(listed for listed, distance in frames if distance <= SIGHT), (label, frames)
+    # Hidden again: as before the meeting.
+    assert classic["fr_hint_hidden_again"]
     assert all(classic["after_meeting_frames"].values())
     assert classic["after_meeting"] == {label: [] for label in classic["after_meeting"]}
 

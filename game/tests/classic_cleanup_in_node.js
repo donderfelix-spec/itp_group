@@ -52,11 +52,14 @@ const timers = new Map();
 // ---- A canvas context that writes down every text it draws ------------
 
 function newContext() {
-  const state = { fillStyle: '#000000', globalAlpha: 1, texts: [] };
+  const state = { fillStyle: '#000000', strokeStyle: '#000000', globalAlpha: 1, texts: [], strokes: [] };
   const saved = []; // what save() kept of the transparency, for restore()
   const doesNothing = () => undefined;
   const methods = {
     fillText(text) { state.texts.push({ text: String(text), colour: state.fillStyle }); },
+    // Every stroke's colour: the coral stroke across the crossed-out eye of
+    // a hidden player (M3-1.6, S-192) is counted by lookAtDrawing.
+    stroke() { state.strokes.push(String(state.strokeStyle)); },
     measureText(text) { return { width: String(text).length * 7 }; },
     getTransform() { return {}; },
     save() { saved.push(state.globalAlpha); },
@@ -330,6 +333,7 @@ function runFrame() {
   if (!frame) return;
   const context = element('map').getContext();
   context.texts = [];
+  context.strokes = [];
   charactersDrawn = [];
   fallenCharactersDrawn = [];
   try {
@@ -493,6 +497,8 @@ const STEPS = {
     drawings.push({
       charactersDrawn: charactersDrawn,
       fallenCharactersDrawn: fallenCharactersDrawn,
+      // How many crossed-out eyes the last frame drew (their coral strokes).
+      hiddenSymbols: element('map').getContext().strokes.filter((colour) => colour === FREE_RIDER_RED).length,
       hiddenHintShown: everyElementBelow(element('classic-progress'))
         .some((found) => found.id === 'classic-hidden-hint' && !found.hidden),
     });

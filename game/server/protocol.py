@@ -89,6 +89,10 @@ REJECTIONS = {
     "report_rejected": "You cannot report that F-sheet right now. Stand at the sheet and try again.",
     "emergency_rejected": "You cannot call an emergency meeting right now.",
     "emergency_out_of_reach": "Walk to the red button to call a meeting.",
+    # Hiding with E (M3-1.6, S-191).
+    "hide_rejected": "You cannot hide right now.",
+    "hide_out_of_reach": "Walk up to a hiding spot to hide.",
+    "leave_hiding_first": "Leave your hiding spot first.",
     # Statistics (S-40).
     "guest_no_statistics": "Guests have no statistics. Sign up to keep yours.",
     "statistics_unavailable": "Statistics are unavailable right now.",
@@ -239,6 +243,10 @@ CLIENT_MESSAGES = {
     "fail": {},
     "report": {"sheet_id": _check_sheet_id, "position": _check_position},
     "emergency": {},
+    # Hiding with E (M3-1.6, S-191): no fields. The server knows where the
+    # player stands and which spot is in reach.
+    "hide": {},
+    "leave_hiding": {},
     "chat": {"text": _check_chat_text},
     "vote": {"target_id": _check_name},
     "skip_discussion": {},
@@ -352,12 +360,19 @@ def left_lobby() -> dict:
     return {"type": "left_lobby"}
 
 
-def positions(players) -> dict:
+def positions(players, hidden=()) -> dict:
     """`players` is a list of (name, x, y) triples.
 
     One decimal is enough to draw a character and keeps the message small.
+    A player named in `hidden` gets `"hidden": true` (S-192); the server
+    passes it only to those who may know (`visibility.told_hidden`).
     """
-    listed = [{"name": name, "x": round(x, 1), "y": round(y, 1)} for name, x, y in players]
+    listed = []
+    for name, x, y in players:
+        entry = {"name": name, "x": round(x, 1), "y": round(y, 1)}
+        if name in hidden:
+            entry["hidden"] = True
+        listed.append(entry)
     return {"type": "positions", "players": listed}
 
 

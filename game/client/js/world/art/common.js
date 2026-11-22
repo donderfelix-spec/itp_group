@@ -8,6 +8,8 @@
 //           (`area` is the part of the floor to fill; room is null on the deck)
 //   faces   the face of a wall:          fn(ctx, band, room, campus)
 //           (`band` is the strip below the wall, `wall_face_height` high)
+//   hiding  the object of a hiding spot: fn(ctx, spot, room, campus)
+//           (registered as "room-id:spot", or "spot" on the deck; M3-1.5)
 // A name registered as "room-id:name" is used only in that room. Places and
 // sizes always come from campus.json; these files only know how a thing looks.
 //
@@ -27,6 +29,7 @@ Game.world = Game.world || {};
   art.floors = art.floors || {};
   art.faces = art.faces || {};
   art.doors = art.doors || {};
+  art.hiding = art.hiding || {};
 
   var OUTLINE = "#2E2A3B";
   var FONT = "system-ui, sans-serif";
@@ -180,6 +183,18 @@ Game.world = Game.world || {};
     ctx.fillRect(x, y + depth, w, depth);
   }
 
+  // The shade of a hiding spot (M3-1.5): a soft dark patch on the floor as
+  // large as the spot, darkest in its middle and without an edge. Every
+  // hiding object stands in one, so a player who knows the game recognises
+  // a hiding spot without a marked circle. Everybody sees it the same way.
+  function hidingShade(ctx, x, y, radius) {
+    var shade = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    shade.addColorStop(0, "rgba(46, 42, 59, 0.22)");
+    shade.addColorStop(0.65, "rgba(46, 42, 59, 0.13)");
+    shade.addColorStop(1, "rgba(46, 42, 59, 0)");
+    circle(ctx, x, y, radius, shade, 0);
+  }
+
   // A small chair seen from above: the seat and, on the side `back`
   // ("up", "down", "left" or "right"), the backrest.
   function chair(ctx, x, y, size, colour, back) {
@@ -244,6 +259,7 @@ Game.world = Game.world || {};
     text: text,
     eachCell: eachCell,
     shadowBelow: shadowBelow,
+    hidingShade: hidingShade,
     chair: chair
   };
 

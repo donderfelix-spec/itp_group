@@ -129,6 +129,8 @@ VALID_MESSAGES = [
     {"type": "fail"},
     {"type": "report", "sheet_id": "f-sheet-1", "position": {"x": 12.5, "y": 30.0}},
     {"type": "emergency"},
+    {"type": "hide"},
+    {"type": "leave_hiding"},
     {"type": "chat", "text": "Hello there."},
     {"type": "vote", "target_id": "Mara"},
     {"type": "skip_discussion"},
@@ -137,7 +139,7 @@ VALID_MESSAGES = [
 ]
 MESSAGES_WITHOUT_FIELDS = [
     "guest", "log_out", "create_lobby", "leave_lobby", "start_game", "close_station", "finish_station", "fail",
-    "get_profile", "get_leaderboard", "skip_discussion",
+    "get_profile", "get_leaderboard", "skip_discussion", "hide", "leave_hiding",
 ]
 
 
@@ -396,6 +398,9 @@ REJECTION_TEXTS = {
     "report_rejected": "You cannot report that F-sheet right now. Stand at the sheet and try again.",
     "emergency_rejected": "You cannot call an emergency meeting right now.",
     "emergency_out_of_reach": "Walk to the red button to call a meeting.",
+    "hide_rejected": "You cannot hide right now.",
+    "hide_out_of_reach": "Walk up to a hiding spot to hide.",
+    "leave_hiding_first": "Leave your hiding spot first.",
     "guest_no_statistics": "Guests have no statistics. Sign up to keep yours.",
     "statistics_unavailable": "Statistics are unavailable right now.",
     "too_many_attempts": "Too many attempts. Try again in a minute.",
