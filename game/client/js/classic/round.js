@@ -7,8 +7,10 @@ Game.classicRound = Game.classicRound || {};
   var roleScreen, roleName, roleInstructions, rolePartners, ownNameLabel;
   var endScreen, winner, reason, roles, stats, newRound, hostHint;
   var progressPanel, progressLabel, progressTrack, progressFill;
+  var hiddenHint; // the text "Hidden" while the own Free Rider hides (M3-1.4)
   var ownName = null;
   var ownIsFreeRider = false;
+  var ownIsGhost = false;
   var roundIsActive = false;
   var isHost = false;
   var roleTimer = null;
@@ -30,6 +32,8 @@ Game.classicRound = Game.classicRound || {};
     progressTrack = progressPanel.querySelector('[role="progressbar"]');
     progressFill = document.getElementById("classic-progress-fill");
     ownNameLabel = document.getElementById("classic-own-name");
+    hiddenHint = makeHiddenHint();
+    progressPanel.appendChild(hiddenHint);
     // "Back to the lobby" only closes the end screen: the player stays in the
     // lobby, as with the Duel ranking's "Back to lobby" (S-101).
     document.getElementById("classic-back-lobby").addEventListener("click", hideResult);
@@ -37,6 +41,7 @@ Game.classicRound = Game.classicRound || {};
     Game.net.on("classic_role", showRole);
     Game.net.on("classic_progress", showProgress);
     Game.net.on("classic_result", showResult);
+    Game.net.on("classic_roster", rememberOwnGhost);
   }
 
   function setLobby(message) {
@@ -47,6 +52,7 @@ Game.classicRound = Game.classicRound || {};
       setOwnFreeRider(false);
     }
     roundIsActive = classicRoundActive;
+    allowHiding(roundIsActive);
     isHost = message.host === ownName;
     if (message.mode === "classic" && message.phase === "round") progressPanel.hidden = false;
     else if (message.phase !== "round") progressPanel.hidden = true;
@@ -73,7 +79,58 @@ Game.classicRound = Game.classicRound || {};
     if (Game.classicMeeting && typeof Game.classicMeeting.setOwnFreeRider === "function") {
       Game.classicMeeting.setOwnFreeRider(ownIsFreeRider);
     }
+    if (!ownIsFreeRider) showHiddenHint(false);
     updateOwnName();
+  }
+
+  // ---- Hiding (M3-1.4) ----------------------------------------------------
+
+  function makeHiddenHint() {
+    var hint = document.createElement("p");
+    hint.id = "classic-hidden-hint";
+    hint.className = "rule";
+    hint.textContent = "Hidden";
+    hint.hidden = true;
+    return hint;
+  }
+
+  // Hiding is possible only in a Classic round (S-131): only then does the
+  // world get the check below.
+  function allowHiding(allowed) {
+    if (!allowed) {
+      ownIsGhost = false;
+      showHiddenHint(false);
+    }
+    if (Game.world && typeof Game.world.setOwnHidingCheck === "function") {
+      Game.world.setOwnHidingCheck(allowed ? ownHidesAt : null);
+    }
+  }
+
+  function showHiddenHint(hidden) {
+    if (hiddenHint && hiddenHint.hidden === hidden) hiddenHint.hidden = !hidden;
+  }
+
+  // A ghost does not hide: the roster says whether the own player is one.
+  function rememberOwnGhost(message) {
+    if (!message || !Array.isArray(message.players)) return;
+    var own = message.players.find(function (entry) { return entry && entry.name === ownName; });
+    ownIsGhost = Boolean(own) && own.ghost === true;
+  }
+
+  // The world asks this for every frame that draws the own character, with
+  // its newest server position and the map's hiding spots. The text "Hidden"
+  // follows the answer, so it always agrees with the half transparent character.
+  function ownHidesAt(x, y, spots) {
+    var hidden = window.ClassicHudActions.ownIsHidden({
+      classicRound: roundIsActive,
+      freeRider: ownIsFreeRider,
+      ghost: ownIsGhost,
+      x: x,
+      y: y,
+      spots: spots,
+    });
+    showHiddenHint(hidden);
+    return hidden;
   }
 
   function updateOwnName() {
@@ -84,6 +141,7 @@ Game.classicRound = Game.classicRound || {};
 
   function resetRoleMarker() {
     roundIsActive = false;
+    allowHiding(false);
     setOwnFreeRider(false);
   }
 
@@ -167,6 +225,7 @@ Game.classicRound = Game.classicRound || {};
     roleScreen.hidden = true;
     endScreen.hidden = true;
     progressPanel.hidden = true;
+    showHiddenHint(false);
   }
 
   Game.classicRound.setup = setup;

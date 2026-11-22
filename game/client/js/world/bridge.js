@@ -46,7 +46,7 @@ Game.world = Game.world || {};
     // A solid the player already overlaps does not block this step, so the
     // player can walk out of it instead of being stuck forever.
     var blocking = solids.filter(function (solid) {
-      return !overlaps(x, y, solid);
+      return !solid.walkable && !overlaps(x, y, solid);
     });
 
     dx = direction(dx);
@@ -69,6 +69,7 @@ Game.world = Game.world || {};
   // overlapping.
   function overlaps(x, y, solid) {
     return (
+      !solid.walkable &&
       x + PLAYER_HALF_SIZE > solid.x &&
       x - PLAYER_HALF_SIZE < solid.x + solid.w &&
       y + PLAYER_HALF_SIZE > solid.y &&
