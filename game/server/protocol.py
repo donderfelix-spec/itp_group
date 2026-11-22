@@ -108,6 +108,18 @@ def _check_name(value):
     return value
 
 
+# The `target_id` of a vote for nobody ("Skip", DESIGN.md 5.6). It is the
+# same value as server.classic.meeting.SKIP; a name is never empty.
+SKIP_VOTE = ""
+
+
+def _check_vote_target(value):
+    """A vote names a player or is SKIP_VOTE."""
+    if value == SKIP_VOTE:
+        return value
+    return _check_name(value)
+
+
 def _is_safe_text(value: str) -> bool:
     """Say whether later code can store and hash this text.
 
@@ -238,7 +250,7 @@ CLIENT_MESSAGES = {
     "report": {"sheet_id": _check_sheet_id, "position": _check_position},
     "emergency": {},
     "chat": {"text": _check_chat_text},
-    "vote": {"target_id": _check_name},
+    "vote": {"target_id": _check_vote_target},
     # Statistics (S-40). Neither carries a name: the profile is always the
     # one of the account the connection is signed in with.
     "get_profile": {},

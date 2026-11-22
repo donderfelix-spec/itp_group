@@ -6,8 +6,9 @@
       <path d="M24 0V24H0" fill="none" stroke="#E1DBCD" stroke-width="1.5"/>
     </pattern>
     <g id="tree">
-      <rect x="-14" y="-14" width="28" height="28" rx="3" fill="#D9D2C2" stroke="#2E2A3B" stroke-width="2"/>
-      <circle r="9" fill="#5FA86B" stroke="#2E2A3B" stroke-width="2"/>
+      <!-- A round leafy bush inside its solid of 28 x 28 (S-141). -->
+      <circle r="14" fill="#43864D" stroke="#2E2A3B" stroke-width="2"/>
+      <circle cx="-4" cy="-4" r="6" fill="#659C50"/>
     </g>
     <g id="col"><circle r="7" fill="#FFFFFF" stroke="#2E2A3B" stroke-width="2.5"/></g>
   </defs>
@@ -51,27 +52,22 @@
   <g stroke="#2E2A3B" stroke-width="1.5">
     <rect x="60" y="30" width="110" height="8" rx="1.5" fill="#2E2A3B"><title>lecture-hall-board</title></rect>
     <rect x="38" y="37" width="8" height="7" rx="1.5" fill="#E9E3D6"><title>lecture-hall-lectern</title></rect>
-    <rect x="40" y="58" width="170" height="18" rx="1.5" fill="#FFFFFF"><title>lecture-hall-bench-1</title></rect>
-    <rect x="40" y="76" width="170" height="18" rx="1.5" fill="#FFFFFF"><title>lecture-hall-bench-2</title></rect>
-    <rect x="40" y="108" width="170" height="18" rx="1.5" fill="#FFFFFF"><title>lecture-hall-bench-3</title></rect>
-    <rect x="40" y="126" width="170" height="18" rx="1.5" fill="#FFFFFF"><title>lecture-hall-bench-4</title></rect>
+    <rect x="48" y="58" width="154" height="18" rx="1.5" fill="#FFFFFF"><title>lecture-hall-bench-1</title></rect>
+    <rect x="48" y="92" width="154" height="18" rx="1.5" fill="#FFFFFF"><title>lecture-hall-bench-2</title></rect>
+    <rect x="48" y="126" width="154" height="18" rx="1.5" fill="#FFFFFF"><title>lecture-hall-bench-3</title></rect>
     <rect x="268" y="31" width="110" height="20" rx="1.5" fill="#B98A5E"><title>mon-cafe-counter</title></rect>
     <rect x="392" y="31" width="41" height="18" rx="1.5" fill="#5E6472"><title>mon-cafe-coffee-machine</title></rect>
     <circle cx="274" cy="72" r="7" fill="#FFFFFF"><title>mon-cafe-column-1</title></circle>
-    <circle cx="426" cy="89" r="7" fill="#FFFFFF"><title>mon-cafe-column-2</title></circle>
     <circle cx="274" cy="129" r="7" fill="#FFFFFF"><title>mon-cafe-column-3</title></circle>
     <circle cx="426" cy="135" r="7" fill="#FFFFFF"><title>mon-cafe-column-4</title></circle>
-    <circle cx="350" cy="125" r="17" fill="#D9A85F"><title>mon-cafe-table-1</title></circle>
     <circle cx="315" cy="82" r="17" fill="#D9A85F"><title>mon-cafe-table-2</title></circle>
     <circle cx="385" cy="82" r="17" fill="#D9A85F"><title>mon-cafe-table-3</title></circle>
     <rect x="253" y="52" width="14" height="96" rx="1.5" fill="#E9E3D6"><title>mon-cafe-high-table</title></rect>
     <rect x="271" y="79" width="6" height="43" rx="1.5" fill="#E9E3D6"><title>mon-cafe-divider</title></rect>
     <rect x="485" y="30" width="135" height="14" rx="1.5" fill="#B98A5E"><title>canteen-counter</title></rect>
     <rect x="488" y="58" width="40" height="36" rx="1.5" fill="#FFFFFF"><title>canteen-table-1</title></rect>
-    <rect x="545" y="58" width="40" height="36" rx="1.5" fill="#FFFFFF"><title>canteen-table-2</title></rect>
     <rect x="602" y="58" width="40" height="36" rx="1.5" fill="#FFFFFF"><title>canteen-table-3</title></rect>
     <rect x="488" y="108" width="40" height="36" rx="1.5" fill="#FFFFFF"><title>canteen-table-4</title></rect>
-    <rect x="545" y="108" width="40" height="36" rx="1.5" fill="#FFFFFF"><title>canteen-table-5</title></rect>
     <rect x="473" y="158" width="60" height="9" rx="1.5" fill="#E9E3D6"><title>canteen-microwaves</title></rect>
     <rect x="473" y="23" width="12" height="24" rx="1.5" fill="#CFE6F2"><title>canteen-drinks-fridge</title></rect>
     <rect x="473" y="95" width="8" height="8" rx="1.5" fill="#E9E3D6"><title>canteen-water-fountain</title></rect>
@@ -103,8 +99,6 @@
     <rect x="612" y="440" width="22" height="50" rx="1.5" fill="#7DB55A"><title>pingo-doce-shelf-4</title></rect>
     <rect x="456" y="524" width="60" height="17" rx="1.5" fill="#2E2A3B"><title>pingo-doce-checkout</title></rect>
     <rect x="511" y="417" width="4" height="9" rx="1.5" fill="#E9E3D6"><title>pingo-doce-gate-1</title></rect>
-    <rect x="529" y="417" width="4" height="9" rx="1.5" fill="#E9E3D6"><title>pingo-doce-gate-2</title></rect>
-    <rect x="547" y="417" width="4" height="9" rx="1.5" fill="#E9E3D6"><title>pingo-doce-gate-3</title></rect>
     <rect x="565" y="417" width="4" height="9" rx="1.5" fill="#E9E3D6"><title>pingo-doce-gate-4</title></rect>
     <rect x="443" y="403" width="13" height="117" rx="1.5" fill="#CFE6F2"><title>pingo-doce-fridge-left</title></rect>
     <rect x="648" y="436" width="9" height="89" rx="1.5" fill="#CFE6F2"><title>pingo-doce-fridge-right</title></rect>
@@ -141,7 +135,7 @@
   </g>
 
   <!-- hiding spots -->
-  <rect x="556" y="236" width="68" height="26" rx="4" fill="#8CC56E" stroke="#9A9284" stroke-width="2.5"/><g fill="#4E9A5B" stroke="#2E2A3B" stroke-width="1.5"><circle cx="570" cy="249" r="7"/><circle cx="590" cy="246" r="7"/><circle cx="610" cy="250" r="7"/></g>
+  <g fill="#43864D" stroke="#2E2A3B" stroke-width="1.5"><circle cx="568" cy="249" r="11.5"/><circle cx="583" cy="247" r="12.7"/><circle cx="598" cy="249" r="11.5"/><circle cx="612" cy="247" r="12.7"/></g>
   <g fill="#FFFFFF" fill-opacity="0.55" stroke="#2E2A3B" stroke-width="2" stroke-dasharray="4 3">
     <circle cx="595" cy="249" r="9"/><circle cx="549" cy="468" r="9"/><circle cx="136" cy="524" r="9"/><circle cx="636" cy="128" r="9"/>
   </g>

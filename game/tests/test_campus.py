@@ -59,8 +59,11 @@ def test_every_solid_has_a_kind_and_its_own_id(campus):
 
 @pytest.mark.parametrize("kind, count", [
     ("glass", 1), ("pool", 1), ("tree", 6), ("hedge", 1), ("logo", 1),
-    ("bench", 4), ("board", 1), ("counter", 2), ("machine", 1), ("column", 4),
-    ("round-table", 3), ("table", 5), ("table-row", 8), ("bookshelf", 1),
+    # M2-1.19 (S-141): three lecture rows, Mon Café without the table in
+    # front of its door and the column under station 2, the canteen without
+    # its top middle and bottom right tables.
+    ("bench", 3), ("board", 1), ("counter", 2), ("machine", 1), ("column", 3),
+    ("round-table", 2), ("table", 3), ("table-row", 8), ("bookshelf", 1),
     ("shelf", 4), ("checkout", 1),
 ])
 def test_the_furniture_of_the_sketch_is_all_there(campus, kind, count):
