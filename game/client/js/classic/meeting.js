@@ -170,20 +170,7 @@ Game.classicMeeting = Game.classicMeeting || {};
       voteListSignature = signature;
       votePlayers.replaceChildren();
       state.living.forEach(function (playerId) {
-        var button = document.createElement("button");
-        button.type = "button";
-        button.className = "classic-vote-player";
-        button.dataset.targetId = playerId;
-        var avatar = document.createElement("span");
-        avatar.className = "classic-vote-avatar";
-        avatar.textContent = playerId.charAt(0).toUpperCase();
-        var name = document.createElement("span");
-        name.textContent = playerId;
-        var markers = document.createElement("span");
-        markers.className = "classic-vote-markers";
-        button.append(avatar, name, markers);
-        button.addEventListener("click", function () { castVote(playerId); });
-        votePlayers.append(button);
+        votePlayers.append(makeVoteButton(playerId));
       });
     }
     var voteTargets = voteTargetsOf(state);
@@ -193,8 +180,32 @@ Game.classicMeeting = Game.classicMeeting || {};
       var selected = button.dataset.targetId === selectedTarget;
       button.classList.toggle("classic-vote-player-selected", selected);
       button.setAttribute("aria-pressed", selected ? "true" : "false");
-      updateVoteMarkers(button, voteTargets);
+      updateVoteCount(button, voteTargets);
     });
+  }
+
+  // One button per living player: a letter, the name and the number of
+  // votes. Every button has the same size in a fixed grid (style.css), so
+  // nothing in the window moves when votes come, change or are taken back.
+  function makeVoteButton(playerId) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "classic-vote-player";
+    button.dataset.targetId = playerId;
+    var avatar = document.createElement("span");
+    avatar.className = "classic-vote-avatar";
+    avatar.textContent = playerId.charAt(0).toUpperCase();
+    // A long name ends in "…"; the whole name is in the button's title.
+    var name = document.createElement("span");
+    name.className = "classic-vote-name";
+    name.textContent = playerId;
+    var count = document.createElement("span");
+    count.className = "classic-vote-count";
+    // The button's label already says who voted, so a screen reader skips the number.
+    count.setAttribute("aria-hidden", "true");
+    button.append(avatar, name, count);
+    button.addEventListener("click", function () { castVote(playerId); });
+    return button;
   }
 
   function voteTargetsOf(message) {
@@ -202,39 +213,26 @@ Game.classicMeeting = Game.classicMeeting || {};
       ? message.vote_targets : {};
   }
 
-  function updateVoteMarkers(button, voteTargets) {
-    var markers = button.children[2];
-    if (!markers) return;
-    markers.replaceChildren();
-    Object.keys(voteTargets).forEach(function (voterId) {
-      if (voteTargets[voterId] !== button.dataset.targetId) return;
-      var icon = document.createElement("canvas");
-      icon.className = "classic-voter-icon";
-      icon.width = 56;
-      icon.height = 56;
-      icon.title = voterId + " voted for " + button.dataset.targetId;
-      icon.setAttribute("aria-label", icon.title);
-      drawVoterIcon(icon, voterId);
-      markers.append(icon);
-    });
+  // The names of the players who voted for this target, in alphabetical
+  // order, so the label does not change when the server lists them differently.
+  function votersFor(targetId, voteTargets) {
+    return Object.keys(voteTargets).filter(function (voterId) {
+      return voteTargets[voterId] === targetId;
+    }).sort();
   }
 
-  function drawVoterIcon(canvasElement, voterId) {
-    var characterId = state.characters && state.characters[voterId];
-    var iconContext = canvasElement.getContext("2d");
-    iconContext.scale(2, 2);
-    if (Game.world && typeof Game.world.drawCharacter === "function") {
-      try {
-        Game.world.drawCharacter(iconContext, characterId, 14, 14, 25);
-        return;
-      } catch (problem) {
-        iconContext.clearRect(0, 0, 28, 28);
-      }
-    }
-    iconContext.fillStyle = "#8A8494";
-    iconContext.beginPath();
-    iconContext.arc(14, 14, 10, 0, Math.PI * 2);
-    iconContext.fill();
+  // Votes are public (S-160): the count field shows how many, the title and
+  // the label for screen readers say who, e.g. "Bo — votes: Ana, Cy".
+  function updateVoteCount(button, voteTargets) {
+    var count = button.children[2];
+    if (!count) return;
+    var targetId = button.dataset.targetId;
+    var voters = votersFor(targetId, voteTargets);
+    count.textContent = String(voters.length);
+    count.classList.toggle("classic-vote-count-zero", voters.length === 0);
+    var label = targetId + " — " + (voters.length ? "votes: " + voters.join(", ") : "no votes");
+    button.title = label;
+    button.setAttribute("aria-label", label);
   }
 
   function skipDiscussion() {
@@ -274,30 +272,52 @@ Game.classicMeeting = Game.classicMeeting || {};
     if (Game.net.send({ type: "chat", text: input.value })) input.value = "";
   }
 
+  // Where the parts of the canvas go. The canvas is the part of the window
+  // that shrinks (style.css), so a short canvas gets a compact layout that
+  // leaves room for the chat. All numbers are CSS pixels from the top.
+  var ROOMY_LAYOUT = {
+    titleFont: "800 28px", titleY: 42, phaseFont: "700 18px", phaseY: 76,
+    reasonFont: "700 15px", reasonY: 101, playersY: 132, playerRows: 3,
+    chatTop: 230, chatHeading: true,
+  };
+  var COMPACT_LAYOUT = {
+    titleFont: "800 20px", titleY: 28, phaseFont: "700 15px", phaseY: 50,
+    reasonFont: "700 13px", reasonY: 68, playersY: 90, playerRows: 1,
+    chatTop: 134, chatHeading: false,
+  };
+  // Below this height the roomy layout would leave room for fewer than two
+  // chat messages.
+  var COMPACT_BELOW = 340;
+
   function draw() {
     if (!state || !canvas || !context) return;
+    // Drawn at the size the canvas has on screen, so it stays sharp.
     var scale = window.devicePixelRatio || 1;
-    var width = Math.max(320, canvas.clientWidth);
-    var height = Math.max(360, canvas.clientHeight);
+    var width = Math.max(1, canvas.clientWidth);
+    var height = Math.max(1, canvas.clientHeight);
     canvas.width = Math.floor(width * scale);
     canvas.height = Math.floor(height * scale);
     context.setTransform(scale, 0, 0, scale, 0, 0);
     context.clearRect(0, 0, width, height);
     context.fillStyle = "#F4EFE3";
     context.fillRect(0, 0, width, height);
+    var layout = height < COMPACT_BELOW ? COMPACT_LAYOUT : ROOMY_LAYOUT;
     context.fillStyle = "#2E2A3B";
-    context.font = "800 28px system-ui, sans-serif";
-    context.fillText("Meeting", 24, 42);
-    context.font = "700 18px system-ui, sans-serif";
-    context.fillText(phaseLabel(state.phase), 24, 76);
-    context.fillText("Time left: " + state.seconds_left + " s", width - 170, 76);
+    context.font = layout.titleFont + " system-ui, sans-serif";
+    context.fillText("Meeting", 24, layout.titleY);
+    context.font = layout.phaseFont + " system-ui, sans-serif";
+    context.fillText(phaseLabel(state.phase), 24, layout.phaseY);
+    var timeLeft = "Time left: " + state.seconds_left + " s";
+    context.fillText(timeLeft, width - 24 - context.measureText(timeLeft).width, layout.phaseY);
     var trigger = state.trigger_player_id ? " by " + state.trigger_player_id : "";
     var reasonLabel = state.reason === "report" ? "Report" : state.reason === "emergency" ? "Emergency" : "Meeting";
-    context.font = "700 15px system-ui, sans-serif";
-    context.fillText(reasonLabel + trigger, 24, 101);
-    drawPlayers("Living", state.living, 24, 132, "#5FA86B");
-    drawPlayers("Dead players", state.ghosts, Math.max(170, width * 0.52), 132, "#8C8795");
-    drawChat(width, height);
+    context.font = layout.reasonFont + " system-ui, sans-serif";
+    context.fillText(reasonLabel + trigger, 24, layout.reasonY);
+    var listWidth = Math.max(100, Math.min(260, width * 0.52 - 40));
+    drawPlayers("Living", state.living, 24, layout.playersY, "#5FA86B", listWidth, layout.playerRows);
+    drawPlayers("Dead players", state.ghosts, Math.max(170, width * 0.52), layout.playersY, "#8C8795",
+      listWidth, layout.playerRows);
+    drawChat(width, height, layout);
   }
 
   function phaseLabel(phase) {
@@ -306,7 +326,7 @@ Game.classicMeeting = Game.classicMeeting || {};
     return "Meeting ended";
   }
 
-  function drawPlayers(title, players, x, y, color) {
+  function drawPlayers(title, players, x, y, color, maxWidth, maxRows) {
     context.fillStyle = color;
     context.font = "700 16px system-ui, sans-serif";
     context.fillText(title, x, y);
@@ -321,19 +341,19 @@ Game.classicMeeting = Game.classicMeeting || {};
     players.forEach(function (playerId, index) {
       var label = playerId + (index === players.length - 1 ? "" : ", ");
       var width = context.measureText(label).width;
-      if (cursorX > x && cursorX + width > x + 260) {
+      if (cursorX > x && cursorX + width > x + maxWidth) {
         cursorX = x;
         row += 1;
       }
-      if (row >= 3) return;
+      if (row >= maxRows) return;
       context.fillStyle = ownIsFreeRider && playerId === ownName ? "#C43E3E" : "#2E2A3B";
       context.fillText(label, cursorX, y + 24 + row * 18);
       cursorX += width;
     });
   }
 
-  function drawChat(width, height) {
-    var top = 230;
+  function drawChat(width, height, layout) {
+    var top = layout.chatTop;
     context.strokeStyle = "#2E2A3B";
     context.lineWidth = 2;
     context.beginPath();
@@ -341,18 +361,24 @@ Game.classicMeeting = Game.classicMeeting || {};
     context.lineTo(width - 20, top - 12);
     context.stroke();
     context.fillStyle = "#2E2A3B";
-    context.font = "700 16px system-ui, sans-serif";
-    context.fillText("Discussion chat", 24, top + 12);
-    var maxRows = Math.max(1, Math.floor((height - top - 24) / 38));
+    var firstMessageY = top + 12;
+    if (layout.chatHeading) {
+      context.font = "700 16px system-ui, sans-serif";
+      context.fillText("Discussion chat", 24, top + 12);
+      firstMessageY = top + 40;
+    }
+    // A message takes up to two lines; only messages that fit are drawn,
+    // the newest ones.
+    var maxRows = Math.max(1, Math.floor((height - firstMessageY + 14) / 38));
     var messages = state.messages.slice(-maxRows);
-    var y = top + 40;
-    context.font = "14px system-ui, sans-serif";
+    var y = firstMessageY;
+    var textX = Math.min(120, Math.floor(width * 0.3));
     messages.forEach(function (message) {
       context.fillStyle = "#2E2A3B";
       context.font = "700 14px system-ui, sans-serif";
       context.fillText(message.player_id + ":", 24, y);
       context.font = "14px system-ui, sans-serif";
-      wrapText(message.text, 120, y, width - 150, 18, 2);
+      wrapText(message.text, textX, y, width - textX - 24, 18, 2);
       y += 38;
     });
   }

@@ -100,6 +100,7 @@ class FakeElement {
     this.parentNode = null;
     this.listeners = {};
     this.dataset = {};
+    this.attributes = {};
     this.classList = new FakeClassList();
     this.style = { setProperty() {} };
     this.clientWidth = 800;
@@ -155,7 +156,8 @@ class FakeElement {
   }
 
   querySelector() { return new FakeElement(); }
-  setAttribute() {}
+  setAttribute(name, value) { this.attributes[name] = String(value); }
+  getAttribute(name) { return name in this.attributes ? this.attributes[name] : null; }
   focus() { document.activeElement = this; }
   blur() { if (document.activeElement === this) document.activeElement = null; }
 }
@@ -192,7 +194,11 @@ const document = {
   hidden: false,
   activeElement: null,
   getElementById: element,
-  createElement: () => new FakeElement(),
+  createElement: (tagName) => {
+    const made = new FakeElement();
+    made.tagName = String(tagName || '').toUpperCase();
+    return made;
+  },
   addEventListener() {},
   removeEventListener() {},
 };
@@ -348,9 +354,10 @@ function look() {
   const selectedVote = element('classic-vote-players').children.find(
     (button) => button.classList.contains('classic-vote-player-selected')
   );
-  const voteIconLabels = everyElementBelow(element('classic-vote-players'))
-    .filter((found) => found.classList.contains('classic-voter-icon'))
-    .map((found) => found.title);
+  // Character icons of the voters inside a vote button: there are none
+  // since Felix's fixed-size buttons (2026-11-22).
+  const voterIcons = everyElementBelow(element('classic-vote-players'))
+    .filter((found) => found.tagName === 'CANVAS' || found.classList.contains('classic-voter-icon')).length;
   const lobbyNames = everyElementBelow(element('lobby-players'));
   const ownOnMap = mapTexts.filter((text) => text.text === ownName);
   return {
@@ -369,7 +376,24 @@ function look() {
     ownNameRedInRound: element('classic-own-name').classList.contains('free-rider-name'),
     meetingKnowsFreeRider: meetingKnowsFreeRider,
     selectedVoteTarget: selectedVote ? selectedVote.dataset.targetId : null,
-    voteIconLabels: voteIconLabels,
+    voterIcons: voterIcons,
+    // Per vote target: the number in its count field and its label, e.g.
+    // {count: "2", label: "Bo — votes: Ana, Cy", title: ...}.
+    votes: Object.fromEntries(element('classic-vote-players').children.map((button) => {
+      const count = button.children.find((child) => child.classList.contains('classic-vote-count'));
+      return [button.dataset.targetId, {
+        count: count ? count.textContent : null,
+        countIsZero: count ? count.classList.contains('classic-vote-count-zero') : null,
+        label: button.getAttribute('aria-label'),
+        title: button.title,
+      }];
+    })),
+    // The end screen's "New Round" and the hint below the buttons.
+    newRound: {
+      hidden: element('classic-new-round').hidden,
+      disabled: element('classic-new-round').disabled,
+    },
+    hostHint: element('classic-host-hint').textContent,
     // The names in the side panel's Players list, in their order.
     listNames: element('lobby-players').children
       .map((row) => row.children.find((child) => child.classList.contains('player-name')).textContent),
