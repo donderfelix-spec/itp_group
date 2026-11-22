@@ -1050,8 +1050,9 @@ Game.world = Game.world || {};
     bloodSheets.clear();
   }
 
-  function removeBloodSheet(sheetId) {
-    bloodSheets.delete(sheetId);
+  function markBloodSheetReported(sheetId) {
+    var sheet = bloodSheets.get(sheetId);
+    if (sheet) sheet.reported = true;
   }
 
   // Forgets what a Classic round left on the map: the F-sheets, the time the
@@ -1080,6 +1081,7 @@ Game.world = Game.world || {};
     var nearest = null;
     var nearestDistance = REPORT_RANGE;
     bloodSheets.forEach(function (sheet, sheetId) {
+      if (sheet.reported) return;
       var distance = Math.hypot(position.x - sheet.x, position.y - sheet.y);
       if (distance <= nearestDistance) {
         nearest = { sheet_id: sheetId, position: { x: position.x, y: position.y }, distance: distance };
@@ -1815,7 +1817,7 @@ Game.world = Game.world || {};
   Game.world.addBloodSheet = addBloodSheet;
   Game.world.clearBloodSheets = clearBloodSheets;
   Game.world.clearClassicRound = clearClassicRound;
-  Game.world.removeBloodSheet = removeBloodSheet;
+  Game.world.markBloodSheetReported = markBloodSheetReported;
   Game.world.bloodSheetIds = function () { return Array.from(bloodSheets.keys()); };
   Game.world.stationInRange = stationInRange;
   Game.world.setInputPaused = setInputPaused;
