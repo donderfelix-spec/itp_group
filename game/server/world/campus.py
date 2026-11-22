@@ -135,6 +135,8 @@ def check_campus(campus) -> dict:
     _check_point(_entry(campus, "button", "the map"), "button", width, height)
     if "hide_reveal_range" in campus and _number(campus, "hide_reveal_range", "the map") <= 0:
         raise CampusError("hide_reveal_range must be above 0.")
+    if "classic_vision_range" in campus and _number(campus, "classic_vision_range", "the map") <= 0:
+        raise CampusError("classic_vision_range must be above 0.")
     for index, spot in enumerate(_list(campus, "hiding_spots")):
         _check_point(spot, f"hiding_spots[{index}]", width, height)
         if _number(spot, "r", f"hiding_spots[{index}]") <= 0:

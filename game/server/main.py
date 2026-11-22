@@ -920,6 +920,8 @@ def tell_positions(lobby):
         # the living are not sent where the ghosts are (M3-3.20).
         if classic is not None and name not in classic.eliminated:
             positions = [entry for entry in positions if entry[0] not in classic.eliminated]
+            # Limited vision (S-185) holds in every phase, like the filter above.
+            positions = visibility.positions_in_sight(positions, name, app.state.campus)
         if classic is not None:
             # On top of that, a Free Rider in a hiding spot is only sent to
             # those close to him (M3-1.4). Outside Classic nobody hides.
