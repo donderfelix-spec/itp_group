@@ -3,8 +3,9 @@
 Hanna's drawings (her commits df02681 and 3622182) are taken onto the map
 of S-141 and S-144 without changing what blocks:
 
-- campus.json differs from main (3ac0ae5) only in the floor colours and
-  patterns of the rooms and the colours of the floor decor;
+- campus.json is the map of main (1632544) apart from the floor colours
+  and patterns of the rooms and the colours of the floor decor: its counts
+  and a digest of everything else are pinned here;
 - the six deck bushes keep their square trim: at least 90 % of each 28 x 28
   solid is drawn, and nothing outside it; the hedge is drawn inside its
   solid and its hiding spot's dashed circle stays visible on it;
@@ -20,6 +21,7 @@ The browser part is hanna_floors_and_shrubs_in_browser.js.
 """
 
 import contextlib
+import hashlib
 import json
 import socket
 import statistics
@@ -37,9 +39,6 @@ from test_play_campus_detail import NODE, node_environment, playwright_works
 GAME = Path(__file__).resolve().parents[1]
 CAMPUS_FILE = GAME / "client" / "js" / "world" / "campus.json"
 BROWSER_SCRIPT = Path(__file__).with_name("hanna_floors_and_shrubs_in_browser.js")
-
-# main when this to-do started; its map is the one Hanna's drawing must keep.
-MAIN = "3ac0ae5"
 
 # The colour of the room names (OUTLINE in draw.js). The dark edge of the
 # station outlines and the dashed outline of the hiding spots are drawn in
@@ -95,39 +94,79 @@ def compare(before, after, path):
     return [] if before == after else [path]
 
 
-def map_of_main():
-    """The map file of main, or None when git or the commit is not there
-    (CI checks out only the newest commit)."""
-    with contextlib.suppress(OSError, subprocess.SubprocessError):
-        shown = subprocess.run(
-            ["git", "show", f"{MAIN}:game/client/js/world/campus.json"],
-            cwd=GAME, capture_output=True, text=True, timeout=30, check=False,
-        )
-        if shown.returncode == 0:
-            return json.loads(shown.stdout)
-    return None
-
-
 def current_map():
     return json.loads(CAMPUS_FILE.read_text(encoding="utf-8"))
 
 
+def digest(campus):
+    """A fingerprint of everything in the map apart from the looks: ids,
+    places, sizes, labels, doors, stations, hiding spots, the button."""
+    text = json.dumps(without_looks(campus), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def counts(campus):
+    return {key: len(campus[key]) for key in ("rooms", "solids", "decor", "stations", "hiding_spots", "doors")}
+
+
+# The map of main 1632544 (after PR 86 moved the emergency button), apart
+# from the looks. Hanna's drawing must not change any of it. When the map is
+# changed on purpose later (a moved solid, a new station, ...), measure these
+# again with counts() and digest() and update them here, naming the change.
+MAIN_COUNTS = {"rooms": 5, "solids": 107, "decor": 76, "stations": 12, "hiding_spots": 4, "doors": 5}
+MAIN_DIGEST = "9b1d9509b47d2463624f22f5ee959a8564cb25e11cbf8b1f7312e1735a105ab4"
+
+# Hanna's floors (3622182): room id -> (floor colour, pattern).
+HANNAS_FLOORS = {
+    "lecture-hall": ("#E8BF88", "planks"),
+    "mon-cafe": ("#DDAC99", "cafe-tiles"),
+    "canteen": ("#BCE2DC", "mint-tiles"),
+    "ctt": ("#CACDEC", "speckled"),
+    "pingo-doce": ("#D8D0A1", "diamond-tiles"),
+}
+
+
+def test_the_map_has_mains_number_of_solids_decor_stations_spots_and_doors():
+    assert counts(current_map()) == MAIN_COUNTS
+
+
 def test_the_map_is_mains_apart_from_floor_colours_and_patterns():
-    main = map_of_main()
-    if main is None:
-        pytest.skip(f"git with commit {MAIN} is needed")
-    assert differences(main, current_map()) == []
+    assert digest(current_map()) == MAIN_DIGEST
 
 
-def test_the_floors_and_their_patterns_did_change():
-    main = map_of_main()
-    if main is None:
-        pytest.skip(f"git with commit {MAIN} is needed")
+def test_the_rooms_have_hannas_floors():
     floors = {room["id"]: (room["floor"], room["pattern"]) for room in current_map()["rooms"]}
-    old = {room["id"]: (room["floor"], room["pattern"]) for room in main["rooms"]}
-    assert all(floors[room] != old[room] for room in floors)
+    assert floors == HANNAS_FLOORS
 
 
+def test_a_new_floor_colour_pattern_or_tier_colour_keeps_the_digest():
+    changed = current_map()
+    changed["rooms"][0]["floor"] = "#000000"
+    changed["rooms"][1]["pattern"] = "planks"
+    next(item for item in changed["decor"] if item["kind"] == "tier")["colour"] = "#123456"
+    assert digest(changed) == digest(current_map())
+
+
+def test_a_bush_moved_by_one_unit_changes_the_digest():
+    changed = current_map()
+    next(solid for solid in changed["solids"] if solid["id"] == "deck-tree-1")["x"] += 1
+    assert digest(changed) != digest(current_map())
+
+
+def test_a_moved_room_name_or_button_changes_the_digest():
+    # Edge cases: things that are no solid are pinned too.
+    name = current_map()
+    name["rooms"][0]["label"]["y"] += 1
+    button = current_map()
+    button["button"]["x"] += 1
+    assert digest(name) != digest(current_map())
+    assert digest(button) != digest(current_map())
+
+
+def test_a_removed_solid_changes_the_counts():
+    changed = current_map()
+    changed["solids"].pop()
+    assert counts(changed)["solids"] == MAIN_COUNTS["solids"] - 1
 def test_a_new_floor_colour_pattern_and_tier_colour_are_no_difference():
     before = current_map()
     after = json.loads(json.dumps(before))
