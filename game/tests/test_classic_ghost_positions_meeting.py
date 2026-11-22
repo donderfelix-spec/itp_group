@@ -73,6 +73,8 @@ def test_during_a_meeting_the_living_are_not_sent_the_ghost(connect, clock):
     for connection in connections.values():
         next_of_type(connection, "meeting_state")
     assert lobby.classic_round.phase == "meeting"
+    # Back from the button to the deck: everybody, the ghost included, in mutual sight (S-185).
+    put(living[0], DECK_PLACES[FOUR.index(living[0])])
 
     told = positions_now(connections)
 
