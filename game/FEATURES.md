@@ -90,6 +90,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Shared progress bar of the group work | M3 | Done |
 | Free Rider fails a nearby player, followed by a cooldown; the sheet shows the victim's portrait (S-163) | M3 | Playable with known defects (M3-3.13, M3-3.15) |
 | Find and report a failed player | M3 | Playable with known defects (M3-3.15) |
+| Report from 8 map units, also by the Free Rider; let fail from 20 map units with Q or F; F-sheets 30 % larger (S-180, S-181) | M3 | Done (M3-4.25 to M3-4.28) |
 | Emergency meeting with the red button in the centre of the Main Deck (S-147), drawn as an alarm switch (S-149), limited per player, range checked by the server, hint only for the living (S-170) | M3 | Playable with known defects (M3-3.15: the wording “E Call meeting”) |
 | Meeting with text chat and time limit; the window closes after the result (S-153) and always fits the screen (S-173) | M3 | Playable with known defects (M3-3.13) |
 | Own task list per player, only its stations pulse; the Free Rider has none (S-154) | M3 | Done |
