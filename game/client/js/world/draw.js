@@ -904,9 +904,19 @@ Game.world = Game.world || {};
   var PULSE_MILLISECONDS = 1400;
   // How far the outline reaches beyond the object, in map units: the dark
   // edge and the yellow inside it, when the pulse is low and when it is high.
-  var OUTLINE_GROWTH = { low: { dark: 2.6, yellow: 1.6 }, high: { dark: 4.2, yellow: 3.1 } };
+  // These are the widths the outline has had on screen so far: it was grown
+  // by 2.6, 1.6, 4.2 and 3.1, and its soft edge added about a fifth. Since
+  // its edge is made hard (see hardenEdge), it grows by all of it (M2-1.20).
+  var OUTLINE_GROWTH = { low: { dark: 3.1, yellow: 1.9 }, high: { dark: 5, yellow: 3.7 } };
   // Half the size of the square an object (and its outline) is drawn into.
   var OBJECT_HALF_SIZE = 20;
+  // How the outline grows (see grownBy): in passes of at most this many map
+  // units, each in GROW_DIRECTIONS directions, the last pass of a layer in
+  // LAST_PASS_DIRECTIONS (rounder). Counted in map units, the four layers of
+  // a station need the same five passes at every zoom (2, 1, 1 and 1).
+  var GROW_PASS_UNITS = 1.5;
+  var GROW_DIRECTIONS = 16;
+  var LAST_PASS_DIRECTIONS = 32;
 
   function stationObject(station) {
     var art = Game.world.art;
@@ -919,25 +929,73 @@ Game.world = Game.world || {};
     return 0.5 - 0.5 * Math.cos((Number(now) || 0) / PULSE_MILLISECONDS * Math.PI * 2);
   }
 
+  // The soft shadow below an object is the furniture's shadow
+  // (shadowBelow in art/common.js): a strip `w` wide whose top left corner
+  // lies at (x, y), from the station's centre in map units. Without a place
+  // of its own a drawing gets this one.
+  var DEFAULT_SHADOW = { x: -9, y: 10, w: 18 };
+  // How deep each of the shadow's two bands is: as below small furniture.
+  var SHADOW_DEPTH = 1.2;
+
+  // The middle of the number tag, from the station's centre in map units,
+  // for a drawing without a place of its own.
+  var DEFAULT_TAG = { x: 11, y: 9 };
+  // The tag (the lead, 2026-11-22: smaller than before, 4.2 with a ring of 1).
+  var TAG_RADIUS = 3.5;
+  var TAG_RING = 0.7;
+  var TAG_FONT = 4.2;
+
+  function isNumber(value) {
+    return typeof value === "number" && isFinite(value);
+  }
+
+  // The shadow of a drawing from art/stations.js (M2-1.20). A drawing may
+  // say where its shadow lies with `drawing.shadow = {x, y, w}`, or that it
+  // has none with `drawing.shadow = null`, so that the shadow stays off the
+  // furniture next to it. Without it (or with anything else) the shadow
+  // lies at DEFAULT_SHADOW.
+  function shadowOf(drawObject) {
+    if (!("shadow" in drawObject)) {
+      return DEFAULT_SHADOW;
+    }
+    var shadow = drawObject.shadow;
+    if (shadow === null) {
+      return null;
+    }
+    var isStrip = typeof shadow === "object"
+      && isNumber(shadow.x) && isNumber(shadow.y) && isNumber(shadow.w) && shadow.w > 0;
+    return isStrip ? shadow : DEFAULT_SHADOW;
+  }
+
+  // Where the number tag of a drawing lies (M2-1.20): a drawing may give the
+  // tag's middle with `drawing.tag = {x, y}`, so that the tag sits at the
+  // lower right of a small object. Anything else gives DEFAULT_TAG: the
+  // number is always shown.
+  function tagOf(drawObject) {
+    var tag = drawObject.tag;
+    var isPlace = tag !== null && typeof tag === "object" && isNumber(tag.x) && isNumber(tag.y);
+    return isPlace ? tag : DEFAULT_TAG;
+  }
+
   // The object of a station, its soft shadow and its number tag.
   function drawStationObject(ctx, station, drawObject) {
     ctx.save();
     ctx.translate(station.x, station.y);
-    ctx.fillStyle = "rgba(46, 42, 59, 0.16)";
-    ctx.beginPath();
-    ctx.ellipse(1, 10.5, 11, 3.5, 0, 0, Math.PI * 2);
-    ctx.fill();
+    var shadow = shadowOf(drawObject);
+    var util = Game.world.art.util; // from art/common.js, which art/stations.js needs too
+    if (shadow && util) {
+      util.shadowBelow(ctx, shadow.x, shadow.y, shadow.w, SHADOW_DEPTH);
+    }
     drawObject(ctx);
     ctx.restore();
-    drawNumberTag(ctx, station);
+    var tag = tagOf(drawObject);
+    drawNumberTag(ctx, station, station.x + tag.x, station.y + tag.y);
   }
 
-  // The station's number in a small cream tag at the lower right of the object.
-  function drawNumberTag(ctx, station) {
-    var x = station.x + 11;
-    var y = station.y + 9;
-    circle(ctx, x, y, 4.2, CREAM, 1);
-    text(ctx, String(station.id), x, y + 0.3, 5);
+  // The station's number in a small cream tag at (x, y) on the map.
+  function drawNumberTag(ctx, station, x, y) {
+    circle(ctx, x, y, TAG_RADIUS, CREAM, TAG_RING);
+    text(ctx, String(station.id), x, y + 0.25, TAG_FONT);
   }
 
   // ---- The outline: the object's shape, grown a little -----------------
@@ -958,42 +1016,153 @@ Game.world = Game.world || {};
     return made;
   }
 
+  // The four layers of an outline, from the narrowest to the widest.
+  var OUTLINE_LAYERS = [
+    { growth: OUTLINE_GROWTH.low.yellow, colour: YELLOW },
+    { growth: OUTLINE_GROWTH.low.dark, colour: OUTLINE },
+    { growth: OUTLINE_GROWTH.high.yellow, colour: YELLOW },
+    { growth: OUTLINE_GROWTH.high.dark, colour: OUTLINE }
+  ];
+
+  function silhouetteKey(station, scale, growth, colour) {
+    return station.id + "/" + scale + "/" + growth + "/" + colour;
+  }
+
   // The object drawn in one colour and grown by `growth` map units, as a
   // canvas of the square around the station, at `scale` pixels per unit.
-  // It is made once and kept: drawing it again each frame is cheap.
+  // The four layers of a station are made together, once, and kept:
+  // drawing them again each frame is cheap.
   function silhouette(station, drawObject, scale, growth, colour) {
     if (scale !== silhouetteScale) {
       silhouettes.clear();
       silhouetteScale = scale;
     }
-    var key = station.id + "/" + scale + "/" + growth + "/" + colour;
-    if (silhouettes.has(key)) {
-      return silhouettes.get(key);
+    var key = silhouetteKey(station, scale, growth, colour);
+    if (!silhouettes.has(key)) {
+      makeSilhouettes(station, drawObject, scale);
     }
+    return silhouettes.get(key) || null;
+  }
+
+  // Makes the four layers of a station's outline. Each layer grows from
+  // the one before it (only the shape counts, not its colour), so the widest
+  // needs only what the narrower one lacks: five short passes in all.
+  function makeSilhouettes(station, drawObject, scale) {
     var size = Math.ceil(OBJECT_HALF_SIZE * 2 * scale);
     var shape = newCanvas(size);
-    var grown = newCanvas(size);
-    if (!shape || !grown) {
-      return null;
+    if (!shape) {
+      return;
     }
     var shapeCtx = shape.getContext("2d");
     shapeCtx.setTransform(scale, 0, 0, scale, size / 2, size / 2);
     drawObject(shapeCtx);
-    // Grow the shape: draw it again and again, moved a little in every
-    // direction, then paint all of it in one colour.
-    var grownCtx = grown.getContext("2d");
-    var reach = growth * scale;
-    for (var ring = 1; ring <= 2; ring++) {
-      for (var step = 0; step < 16; step++) {
-        var angle = step / 16 * Math.PI * 2;
-        grownCtx.drawImage(shape, Math.cos(angle) * reach * ring / 2, Math.sin(angle) * reach * ring / 2);
+    var source = shape;
+    var grownSoFar = 0;
+    for (var i = 0; i < OUTLINE_LAYERS.length; i++) {
+      var layer = OUTLINE_LAYERS[i];
+      // The reach in whole pixels, so the edge lies as far out at every zoom.
+      var pixels = reachInPixels(layer.growth, scale) - reachInPixels(grownSoFar, scale);
+      var grown = grownBy(source, pixels, growPasses(layer.growth - grownSoFar), size);
+      // The next layer grows from the hard edge: a soft one would spread.
+      var shown = grown && softened(grown, size);
+      if (!shown) {
+        return;
       }
+      var shownCtx = shown.getContext("2d");
+      shownCtx.globalCompositeOperation = "source-in";
+      shownCtx.fillStyle = layer.colour;
+      shownCtx.fillRect(0, 0, size, size);
+      silhouettes.set(silhouetteKey(station, scale, layer.growth, layer.colour), shown);
+      source = grown;
+      grownSoFar = layer.growth;
     }
-    grownCtx.globalCompositeOperation = "source-in";
-    grownCtx.fillStyle = colour;
-    grownCtx.fillRect(0, 0, size, size);
-    silhouettes.set(key, grown);
-    return grown;
+  }
+
+  // The shape on the canvas `source` grown by `pixels`, in `passes` passes,
+  // on a new canvas. Each pass draws the shape of the last pass in many
+  // directions, at most GROW_PASS_UNITS away. Neighbouring copies then lie
+  // at most about 0.6 units apart (0.3 in the last pass), less than a thin
+  // leg or handle is wide (0.7 units), so its tip grows round; one wide pass
+  // left a fringe of stripes there (M2-1.20). Two canvases take turns, so a pass
+  // never draws onto the shape it reads.
+  function grownBy(source, pixels, passes, size) {
+    var canvases = [newCanvas(size), newCanvas(size)];
+    if (!canvases[0] || !canvases[1]) {
+      return null;
+    }
+    var current = source;
+    for (var pass = 0; pass < passes; pass++) {
+      // Whole pixels per pass that add up to `pixels`.
+      var step = Math.round((pass + 1) * pixels / passes) - Math.round(pass * pixels / passes);
+      var directions = pass === passes - 1 ? LAST_PASS_DIRECTIONS : GROW_DIRECTIONS;
+      var next = canvases[pass % 2];
+      var nextCtx = next.getContext("2d");
+      nextCtx.clearRect(0, 0, size, size);
+      nextCtx.drawImage(current, 0, 0);
+      for (var direction = 0; direction < directions; direction++) {
+        var angle = direction / directions * Math.PI * 2;
+        // On whole pixels: a copy between pixels is blurred, and the blur
+        // of many copies would push the edge out further at a low zoom.
+        nextCtx.drawImage(current, Math.round(Math.cos(angle) * step), Math.round(Math.sin(angle) * step));
+      }
+      current = next;
+    }
+    hardenEdge(current, size);
+    return current;
+  }
+
+  // The hard-edged shape on `source` drawn again on a new canvas, a little
+  // soft (as much as a line drawn by the canvas), so that it does not look
+  // stepped: four copies, half a pixel apart, each a quarter of it, added
+  // up. The edge stays where it was.
+  function softened(source, size) {
+    var target = newCanvas(size);
+    if (!target) {
+      return null;
+    }
+    var ctx = target.getContext("2d");
+    ctx.clearRect(0, 0, size, size);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.25;
+    ctx.drawImage(source, -0.5, -0.5);
+    ctx.drawImage(source, 0.5, -0.5);
+    ctx.drawImage(source, -0.5, 0.5);
+    ctx.drawImage(source, 0.5, 0.5);
+    ctx.restore();
+    return target;
+  }
+
+  // Makes the soft edge of a grown shape hard: a pixel at least three
+  // quarters covered becomes solid, one at most a quarter covered empty, and
+  // one half covered stays half (a narrow soft step). The edge then lies
+  // where the shape really ends, at every zoom and after any number of
+  // passes; the copies of a pass add up their soft edges and would push it
+  // out.
+  function hardenEdge(canvas, size) {
+    var ctx = canvas.getContext("2d");
+    var image = typeof ctx.getImageData === "function" ? ctx.getImageData(0, 0, size, size) : null;
+    if (!image || !image.data) {
+      return; // a canvas stand-in (a test in Node)
+    }
+    var pixels = image.data;
+    for (var i = 3; i < pixels.length; i += 4) {
+      pixels[i] = Math.max(0, Math.min(255, (pixels[i] - 64) * 2));
+    }
+    ctx.putImageData(image, 0, 0);
+  }
+
+  // How far a layer that reaches `growth` map units past the object is
+  // grown, in whole pixels: one pixel less, because softening its edge (see
+  // softened) makes it reach about one pixel further on screen.
+  function reachInPixels(growth, scale) {
+    return growth > 0 ? Math.max(0, Math.round(growth * scale) - 1) : 0;
+  }
+
+  // How many passes the outline grows `growth` map units in: the same at
+  // every zoom.
+  function growPasses(growth) {
+    return Math.max(1, Math.ceil(growth / GROW_PASS_UNITS));
   }
 
   // Pixels per map unit of the drawing now, rounded so that zooming a

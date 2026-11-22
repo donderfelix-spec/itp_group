@@ -2105,8 +2105,12 @@ body:has(#screen-lobby:not([hidden])) .message {
   z-index: 1;
   align-self: center;
   justify-self: end;
-  width: 24px;
-  height: 24px;
+  /* The mode button is 26px high inside its 2px border. An 18px circle,
+     6px in from the cell's right edge, leaves 4px free above, below and
+     to the right of it. */
+  position: relative;
+  width: 18px;
+  height: 18px;
   margin-right: 6px;
   padding: 0;
   border: 2px solid var(--ink);
@@ -2114,10 +2118,17 @@ body:has(#screen-lobby:not([hidden])) .message {
   background: var(--cream);
   color: var(--ink);
   font: inherit;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1;
   cursor: help;
+}
+/* An invisible square around the small circle, so the area that can be
+   tapped stays 24 x 24px. */
+.mode-why::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
 }
 .mode-why[aria-expanded="true"] { background: var(--sun); }
 
@@ -2153,19 +2164,24 @@ body:has(#screen-lobby:not([hidden])) .message {
   box-shadow: 3px 3px 0 var(--ink);
 }
 
-/* Not built yet, or the round is running: greyed out and not clickable. */
+/* Not built yet, the round is running, or it does not fit the number of
+   players: greyed out and not clickable. Every locked mode gets the same
+   grey, the chosen one too. The grey is see-through in the colours
+   themselves (60%) rather than in the whole button (opacity), so the
+   chosen one can keep its frame and shadow fully dark. */
 .mode:disabled { cursor: not-allowed; }
-.mode:disabled:not(.mode-own) {
-  background: #D9D3C5;
-  opacity: 0.6;
-}
-/* Does not fit the number of players: greyed out, and room on the right
-   for its "?". When it is the chosen mode it stays marked, in a pale yellow. */
-.mode-unfit { padding-right: 36px; }
+.mode:disabled:not(.mode-own),
 .mode-unfit.mode-own {
-  background: #EFE2A8;
-  opacity: 0.75;
+  background: rgb(217 211 197 / 60%);
+  border-color: color-mix(in srgb, var(--ink) 60%, transparent);
+  color: color-mix(in srgb, var(--ink) 60%, transparent);
 }
+/* The chosen mode that does not fit: grey like the others, but still
+   marked as chosen by its dark frame and shadow (from .mode-own). */
+.mode-unfit.mode-own { border-color: var(--ink); }
+/* Room on the right for the "?" of a mode that does not fit: 18px circle,
+   6px to the edge, 12px free before the text. */
+.mode-unfit { padding-right: 36px; }
 
 .mode-note {
   font-size: 12px;

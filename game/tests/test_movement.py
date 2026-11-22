@@ -266,7 +266,7 @@ def test_a_position_that_is_not_finite_is_an_error_and_not_a_silent_result(x, y)
 STRAIGHT_AT = [
     ("deck-wall-right",      600, 300,  1,  0),   # wall
     ("deck-wall-top-2",      240, 200,  0, -1),   # wall, from below
-    ("ctt-wall-right",       180, 300, -1,  0),   # wall between the deck and the CTT hall
+    ("ctt-wall-right",       180, 370, -1,  0),   # wall between the deck and the CTT hall, below the bike rack
     ("pingo-doce-wall-left", 400, 500,  1,  0),   # wall between the deck and Pingo Doce
     ("glass-front",          300, 530,  0,  1),   # glass
     ("deck-pool",            365, 200,  0,  1),   # pool
@@ -554,7 +554,7 @@ def test_a_long_random_walk_never_enters_a_solid_or_leaves_the_campus():
 # The reachability tests must notice a hole (otherwise they prove nothing)
 
 @pytest.mark.parametrize("solid_id", [
-    "ctt-wall-bottom",          # only reachable through the 11 units beside the bookshelf
+    "ctt-wall-bottom",          # only reachable through the 14 units beside the bookshelf
     "canteen-wall-right",
     "deck-wall-left",
     "glass-front",

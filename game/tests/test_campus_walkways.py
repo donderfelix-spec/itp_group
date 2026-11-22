@@ -310,9 +310,13 @@ def test_fewer_pieces_make_no_way_of_the_duel_longer_and_none_much_shorter():
     # are unchanged, none is longer; the most shortened is 2 to 8, 7.2 %
     # (195.3 -> 181.3, the café table and column are gone), then 1 to 10
     # 4.3 % and 1 to 2 3.9 %. So: never longer, at most 8 % shorter.
+    # M2-1.20 (map polish) moved station 8 off the café's divider, which made
+    # 2 to 8 shorter again: against this "before" 10.8 % (196.0 -> 174.9).
+    # Only that way may be up to 11 % shorter.
     stations = sorted(minigames.MINIGAMES)
     before = station_distances(as_before_this_to_do(CAMPUS), stations)
     after = station_distances(CAMPUS, stations)
     assert after.keys() == before.keys()
     for pair, distance in before.items():
-        assert distance * 0.92 <= after[pair] <= distance + 0.001, pair
+        shortest = 0.89 if set(pair) == {2, 8} else 0.92
+        assert distance * shortest <= after[pair] <= distance + 0.001, pair
