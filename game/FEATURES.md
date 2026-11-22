@@ -42,10 +42,10 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Smooth walking over the internet: characters and the camera keep moving when position messages come late or bunched (gaps up to 250 ms) | M2 | Done |
 | The own character and the camera keep walking through longer hold-ups of the connection (up to about 700 ms) and stop sooner after a key is released | M2 | Done |
 | Walking diagnostic for the team: with `?debug` in the address a panel measures the connection and the drawing while walking and copies the numbers as text | M2 | Done |
-| Limited view in Classic: nearby living players in direct sight, with walls casting shadows | M3 | Implemented locally |
-| Half-transparent ghosts visible to other ghosts and fallen characters visible until reported | M3 | Implemented locally |
+| Limited view in Classic: nearby living players in direct sight, with walls casting shadows (S-185) | M3 | Done |
+| Half-transparent ghosts visible to other ghosts and fallen characters visible until reported (S-186) | M3 | Done |
 | Four hiding spots in Classic in which the Free Rider is visible only within 35 map units (S-131 to S-140) | M3 | Done |
-| Campus overview with your location and your own open tasks | M3 | Implemented locally |
+| Campus overview with your location and your own open tasks (S-187) | M3 | Done |
 | Finished graphics for rooms and characters instead of placeholders | M4 | Planned |
 | Sounds and music | M4 | Later |
 | Touch controls for the phone | M4 | Later |
