@@ -250,9 +250,9 @@ Game.world = Game.world || {};
     drawBareHead(ctx);
     circle(ctx, -6.5, 22, 2.4, OUTLINE, 0);
     circle(ctx, 6.5, 22, 2.4, OUTLINE, 0);
-    stroke(ctx, "M-4 29 Q0 32.5 4 29", OUTLINE, 2);
+    stroke(ctx, "M-4 29 Q0 31.5 4 29", OUTLINE, 2);
     ctx.save();
-    ctx.globalAlpha = 0.7;
+    ctx.globalAlpha = 0.5;
     circle(ctx, -11, 27, 2.6, "#F2A99B", 0);
     circle(ctx, 11, 27, 2.6, "#F2A99B", 0);
     ctx.restore();
@@ -267,9 +267,9 @@ Game.world = Game.world || {};
     ctx.beginPath();
     ctx.ellipse(6.2 + TURN, 22, 1.8, 2.4, 0, 0, Math.PI * 2);
     paint(ctx, OUTLINE, null, 0);
-    stroke(ctx, "M1.5 29 Q5 32.5 8.5 29", OUTLINE, 2);
+    stroke(ctx, "M1.5 29 Q5 31.5 8.5 29", OUTLINE, 2);
     ctx.save();
-    ctx.globalAlpha = 0.7;
+    ctx.globalAlpha = 0.5;
     circle(ctx, -11 + TURN, 27, 2.6, "#F2A99B", 0);
     ctx.beginPath();
     ctx.ellipse(13.5, 27, 1.7, 2.6, 0, 0, Math.PI * 2);
@@ -783,7 +783,7 @@ Game.world = Game.world || {};
 
   // The portrait: the character stands and looks at the viewer, as in the
   // sketch. The order matters: what is drawn later lies on top.
-  function drawPortrait(ctx, look) {
+  function drawPortrait(ctx, look, detail) {
     drawShadow(ctx);
     look.behind(ctx);
     drawShoe(ctx, -1, look.shoes);
@@ -792,6 +792,7 @@ Game.world = Game.world || {};
     drawLeg(ctx, 1, look.legs);
     drawBody(ctx, look.body);
     look.clothes(ctx);
+    detail(ctx);
     drawArm(ctx, -1, look.leftHand, look.body);
     drawArm(ctx, 1, look.rightHand, look.body);
     look.object(ctx);
@@ -800,6 +801,40 @@ Game.world = Game.world || {};
     drawFace(ctx);
     look.head(ctx);
   }
+
+  // Small outfit motifs give each student a personal touch at portrait and map scale.
+  var OUTFIT_DETAILS = {
+    consultant: function (ctx) {
+      box(ctx, -3, 53, 6, 2, 1, "#D9B45C", 0);
+    },
+    finance_bro: function (ctx) {
+      circle(ctx, 0, 58, 3.2, "#D9B45C", 1);
+      stroke(ctx, "M-1.5 59 L0 56 L1.5 59", "#FFFFFF", 1);
+    },
+    exchange_student: function (ctx) {
+      box(ctx, -11, 57, 7, 8, 1.5, "#F2695C", 1);
+      box(ctx, 4, 57, 7, 8, 1.5, "#F2695C", 1);
+      stroke(ctx, "M-9 61 h3 M6 61 h3", "#FFFFFF", 1.3);
+    },
+    surfer: function (ctx) {
+      stroke(ctx, "M-12 74 q3 -3 6 0 t6 0 t6 0 t6 0", "#FFFFFF", 1.8);
+      stroke(ctx, "M-12 78 q3 -3 6 0 t6 0 t6 0 t6 0", "#FFFFFF", 1.3);
+    },
+    founder: function (ctx) {
+      shape(ctx, "M0 42 L3 47 L0 51 L-3 47 Z", "#8EDCC5", 1);
+    },
+    overachiever: function (ctx) {
+      stroke(ctx, "M-3 59 L-1 61 L3 56", "#F4EFE3", 1.8);
+      stroke(ctx, "M-3 69 L-1 71 L3 66", "#F4EFE3", 1.8);
+    },
+    latecomer: function (ctx) {
+      stroke(ctx, "M-4 44 h8 M-4 49 h8", "#D9B45C", 1.8);
+    },
+    library_local: function (ctx) {
+      shape(ctx, "M-5 43 L0 45 L5 43 L5 51 L0 53 L-5 51 Z", "#F4EFE3", 1.2);
+      stroke(ctx, "M0 45 V53", "#7A5CC2", 1.2);
+    }
+  };
 
   // ---- The turned view and its running cycle ---------------------------
   //
@@ -1038,7 +1073,7 @@ Game.world = Game.world || {};
   // The turned character. `moment` comes from runningMoment(). `isMirrored`
   // says that the drawing is mirrored right now, so the character is turned
   // to the left.
-  function drawTurnedView(ctx, look, moment, isMirrored) {
+  function drawTurnedView(ctx, look, moment, isMirrored, detail) {
     var raised = moment.raised;
     // The shadow stays flat on the ground while the body rises above it,
     // so a step reads as a small hop.
@@ -1059,6 +1094,7 @@ Game.world = Game.world || {};
     ctx.translate(0, -raised);
     drawBodyBox(ctx, TURNED_BODY, look.body, 2.5);
     look.turnedClothes(ctx);
+    drawOnTurnedBody(ctx, detail);
     if (isMirrored && look.holdsInRightHand) {
       drawArmsWithObjectKeptInHand(ctx, look, moment);
     } else {
@@ -1111,11 +1147,13 @@ Game.world = Game.world || {};
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     thinnestLine = THINNEST_LINE_IN_PIXELS / (pixelsPerUnit(ctx) || 1);
+    var detail = typeof characterId === "string" && Object.prototype.hasOwnProperty.call(OUTFIT_DETAILS, characterId)
+      ? OUTFIT_DETAILS[characterId] : nothing;
     if (pose) {
       var moment = runningMoment(phaseOf(pose), strideOf(pose));
-      drawTurnedView(ctx, lookOf(characterId), moment, isMirrored);
+      drawTurnedView(ctx, lookOf(characterId), moment, isMirrored, detail);
     } else {
-      drawPortrait(ctx, lookOf(characterId));
+      drawPortrait(ctx, lookOf(characterId), detail);
     }
     ctx.restore();
   }
