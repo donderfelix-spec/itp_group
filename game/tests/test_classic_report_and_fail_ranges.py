@@ -73,7 +73,7 @@ def test_free_rider_can_report_own_sheet_at_doubled_range():
 
 
 def test_browser_and_server_use_the_same_ranges():
-    assert browser_number("SHEET_REPORT_RANGE") == REPORT_RANGE == 8
+    assert browser_number("REPORT_RANGE") == REPORT_RANGE == 8
     assert browser_number("FAIL_RANGE_TILES") == FAIL_RANGE_TILES == 20
 
 

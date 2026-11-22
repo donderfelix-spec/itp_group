@@ -205,6 +205,7 @@ def test_the_stop_comes_before_the_win_check(connect, clock):
 def test_a_stop_during_a_meeting_ends_the_meeting_with_the_round(connect, clock):
     connections, lobby, _frs, [caller, leaver, _] = classic_round(connect, FOUR)
     clock.wait(46)  # the emergency button unlocks 45 seconds after the start
+    put(caller, (app.state.campus["button"]["x"], app.state.campus["button"]["y"]))
     connections[caller].send_json({"type": "emergency"})
     for connection in connections.values():
         wait_for_news(connection, "meeting_state")
