@@ -4,7 +4,7 @@ Felix chose this map from a preview: fewer pieces of furniture, so that the
 rooms have walkways for characters 39 units high. Three lecture rows with
 walkable gaps, a café door that leads straight in, a centre aisle in the
 canteen, one wide lane between two turnstile posts in Pingo Doce, and a
-hedge that stays solid while it is drawn as round bushes.
+hedge drawn as round bushes (walkable since M3-1.4, S-98).
 The real walking rule `step` and `is_free` are used, so the tests ask what a
 player can really do.
 """
@@ -284,11 +284,13 @@ def test_no_piece_in_a_changed_room_leaves_a_gap_a_player_could_just_squeeze_int
 
 # The hedge on the deck
 
-def test_the_hedge_stays_solid_until_the_hiding_spots_are_built():
+def test_the_hedge_keeps_its_place_and_is_walkable_for_hiding():
+    # Until M3-1.4 the hedge was solid here; hiding made it walkable (S-98),
+    # so the hiding spot inside it (595, 249) can be stood on.
     hedge = solid_called("deck-hedge")
     assert (hedge["x"], hedge["y"], hedge["w"], hedge["h"]) == (556, 236, 68, 26)
-    assert "walkable" not in hedge
-    assert not is_free(595, 249, SOLIDS, WIDTH, HEIGHT)
+    assert hedge["walkable"] is True
+    assert is_free(595, 249, SOLIDS, WIDTH, HEIGHT)
 
 
 # The Duel
