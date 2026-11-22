@@ -1,8 +1,8 @@
 """The own Classic task card in the side panel (S-154), checked in Node.
 
-Runs tests/classic_task_card_in_node.js: lobby.js's lines of the card for a
-High Performer (remaining stations, all done), the Free Rider and a station
-without a name, and main.js's handling of `classic_role`, `station_done`,
+Runs tests/classic_task_card_in_node.js: lobby.js's card for a High
+Performer (a bullet per task in the start order, finished ones kept and
+marked done, all done), the Free Rider and a station without a name, and main.js's handling of `classic_role`, `station_done`,
 the lobby and leaving. Skipped when Node is missing.
 """
 

@@ -15,7 +15,8 @@ measured the same way. In Classic the panel reads "Classic", the own name,
 the own task card (S-154), "Group progress" with label and bar, then
 "Players". Each Classic page's card is compared with the own list it was
 sent; one High Performer's page is then handed the `station_done` messages
-the server sends for its four stations.
+the server sends for its four stations: each stays in its place with its
+bullet, only faded, and at the end "All your tasks are done." comes below.
 """
 
 import contextlib
@@ -236,7 +237,7 @@ def test_five_classic_players_have_one_free_rider_and_four_high_performers(playe
 
 
 @needs_chromium
-def test_a_high_performer_card_lists_exactly_its_own_stations_by_name_and_room(played):
+def test_a_high_performer_card_lists_exactly_its_own_stations_by_name_and_room_with_bullets(played):
     for card in cards_of(played, "HP"):
         assert len(card["taskStations"]) == 4
         assert all(name.endswith(")") and " (" in name for name in card["names"])
@@ -245,15 +246,42 @@ def test_a_high_performer_card_lists_exactly_its_own_stations_by_name_and_room(p
 
 
 @needs_chromium
-def test_a_finished_station_leaves_the_card_and_at_the_end_all_is_done(played):
+def test_each_task_is_a_bullet_in_the_order_of_the_start_list(played):
+    hp = next(card for card in cards_of(played, "HP") if not card["isHost"])
+    first = played["classicDone"][0]
+    assert [item["name"] for item in first["items"]] == hp["names"]
+    assert all(item["bullet"] for item in first["items"])
+    tops = [item["top"] for item in first["items"]]
+    assert tops == sorted(tops)
+
+
+@needs_chromium
+def test_a_finished_station_stays_in_place_only_faded(played):
     done = played["classicDone"]
     hp = next(card for card in cards_of(played, "HP") if not card["isHost"])
-    name_of = dict(zip(hp["taskStations"], hp["names"]))
     assert [step["station"] for step in done] == hp["taskStations"]
+    for count, step in enumerate(done, start=1):
+        assert [item["name"] for item in step["items"]] == hp["names"]  # nothing moves, nothing goes
+        for index, item in enumerate(step["items"]):
+            finished = index < count
+            assert item["done"] == finished and item["saysDone"] == finished
+            assert item["line"] == "none"  # faded only, never crossed out
+            assert item["bullet"]
+            if finished:
+                assert item["opacity"] <= 0.5  # clearly fainter than an open line
+            else:
+                assert item["opacity"] == 1
+
+
+@needs_chromium
+def test_with_every_task_done_the_list_stays_and_the_done_line_comes_below_in_green(played):
+    done = played["classicDone"]
     for step in done[:-1]:
-        assert step["cardText"].split("\n") == [name_of[station] for station in step["left"]]
-        assert not step["cardGreen"]
-    assert done[-1]["left"] == [] and done[-1]["cardText"] == ALL_DONE and done[-1]["cardGreen"]
+        assert step["note"] is None and not step["cardGreen"]
+    last = done[-1]
+    assert last["left"] == [] and all(item["done"] for item in last["items"])
+    assert last["note"] == ALL_DONE and last["cardGreen"]
+    assert last["noteTop"] > max(item["top"] for item in last["items"])
 
 
 @needs_chromium

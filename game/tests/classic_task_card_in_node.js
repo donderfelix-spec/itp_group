@@ -1,5 +1,5 @@
-// The own Classic task card in the side panel (S-154, brief 3 of M2-2.11):
-// lobby.js's classicTaskLines and main.js's handling of `classic_role` and
+// The own Classic task card in the side panel (S-154, briefs 3 and 4 of M2-2.11):
+// lobby.js's classicTaskCard and main.js's handling of `classic_role` and
 // `station_done`. Runs the real lobby/lobby.js, minigames/duel.js,
 // lobby/countdown.js and main.js with a small stand-in for the page (the
 // Element class and the environment are those of test_client_player_progress.js).
@@ -127,15 +127,35 @@ function check(condition, message) {
   checked += 1;
 }
 
-// ---- classicTaskLines: a plain function ----
+// ---- classicTaskCard: a plain function ----
 {
   const env = environment();
-  const lines = env.Game.lobby.classicTaskLines;
-  const nameOf = (station) => 'S' + station;
-  check(JSON.stringify(lines('HP', [3, 1, 8], nameOf)) === '["S3","S1","S8"]', 'one line per remaining station, in order');
-  check(JSON.stringify(lines('HP', [], nameOf)) === '["All your tasks are done."]', 'an empty list: all done');
-  check(JSON.stringify(lines('FR', [], nameOf)) === '["Fake tasks: stand at a station to look busy."]', 'the Free Rider fakes');
-  check(JSON.stringify(lines('FR', [3], nameOf)) === '["Fake tasks: stand at a station to look busy."]', 'a Free Rider never lists stations');
+  const card = (...values) => JSON.stringify(env.Game.lobby.classicTaskCard(...values));
+  const item = (station, done) => ({ station, done });
+  check(card('HP', [3, 1, 8], [3, 1, 8]) === JSON.stringify({ items: [item(3, false), item(1, false), item(8, false)], note: null, allDone: false }),
+    'every task open, in the order of the start list');
+  check(card('HP', [3, 1, 8], [8, 3]) === JSON.stringify({ items: [item(3, false), item(1, true), item(8, false)], note: null, allDone: false }),
+    'a finished task stays in its place, marked done; the order of the open list does not matter');
+  check(card('HP', [3, 1], []) === JSON.stringify({ items: [item(3, true), item(1, true)], note: 'All your tasks are done.', allDone: true }),
+    'all done: the list stays and the done line comes');
+  check(card('HP', [], [5, 2]) === JSON.stringify({ items: [item(5, false), item(2, false)], note: null, allDone: false }),
+    'without a start list only the open ones are shown, none is made up as done');
+  check(card('HP', [3], [3, 9]) === JSON.stringify({ items: [item(3, false), item(9, false)], note: null, allDone: false }),
+    'an open station missing from the start list is added at the end');
+  check(card('FR', [], []) === JSON.stringify({ items: [], note: 'Fake tasks: stand at a station to look busy.', allDone: false }),
+    'the Free Rider fakes');
+  check(card('FR', [3], [3]).includes('Fake tasks') && !card('FR', [3], [3]).includes('"station"'), 'a Free Rider never lists stations');
+}
+
+// What the card element shows: its lines (with a done mark), its note, its colour.
+function readCard(card) {
+  const list = card.children.find((child) => child.tagName === 'ul');
+  const note = card.children.find((child) => child.tagName === 'p');
+  return {
+    lines: list ? list.children.map((row) => (row.classes().includes('round-task-done') ? 'DONE ' : '') + row.textContent) : [],
+    note: note ? note.textContent : null,
+    green: card.classList.contains('duel-next-finished'),
+  };
 }
 
 async function main() {
@@ -146,22 +166,29 @@ async function main() {
     env.emit('signed_in', { name: 'Mara', guest: true });
     env.emit('lobby_state', lobbyState(['Mara', 'Tiago', 'Ines', 'Rui']));
     const card = env.document.getElementById('classic-task');
-    check(card.hidden === true || card.textContent === '', 'no card before the role is known');
+    check(card.hidden === true || card.children.length === 0, 'no card before the role is known');
     env.emit('classic_role', { role: 'HP', task_stations: [3, 1, 8] });
     check(card.hidden === false, 'the card is shown');
-    check(card.textContent === 'Build the tray (Canteen)\nSort the slides (Main Deck)\nStation 8',
-      'names and rooms of the map file; a station without a name falls back to its number: ' + card.textContent);
-    check(!card.classList.contains('duel-next-finished'), 'not green while tasks remain');
+    let seen = readCard(card);
+    check(JSON.stringify(seen.lines) === JSON.stringify(['Build the tray (Canteen)', 'Sort the slides (Main Deck)', 'Station 8']),
+      'one bullet per task, names and rooms of the map file; a station without a name falls back to its number: ' + seen.lines);
+    check(seen.note === null && !seen.green, 'no done line and not green while tasks remain');
     env.emit('station_done', { station: 3, task_stations: [1, 8] });
-    check(card.textContent === 'Sort the slides (Main Deck)\nStation 8', 'a finished station disappears');
-    env.emit('station_done', { station: 1 }); // no list (malformed): the finished one goes all the same
-    check(card.textContent === 'Station 8', 'the station finished here goes even without a new list');
-    env.emit('station_done', { station: 8, task_stations: [] });
-    check(card.textContent === 'All your tasks are done.' && card.classList.contains('duel-next-finished'), 'all done, in green');
+    seen = readCard(card);
+    check(JSON.stringify(seen.lines) === JSON.stringify(['DONE Build the tray (Canteen) (done)', 'Sort the slides (Main Deck)', 'Station 8']),
+      'a finished station stays in its place, marked done (faded), with a hidden "(done)": ' + seen.lines);
+    env.emit('station_done', { station: 8 }); // no list (malformed): the finished one is marked all the same
+    seen = readCard(card);
+    check(JSON.stringify(seen.lines) === JSON.stringify(['DONE Build the tray (Canteen) (done)', 'Sort the slides (Main Deck)', 'DONE Station 8 (done)']),
+      'the station finished here is marked even without a new list; the order stays: ' + seen.lines);
+    env.emit('station_done', { station: 1, task_stations: [] });
+    seen = readCard(card);
+    check(seen.lines.every((line) => line.startsWith('DONE ')) && seen.lines.length === 3, 'all three marked done, in place');
+    check(seen.note === 'All your tasks are done.' && seen.green, 'the done line under the list, the card green');
     env.emit('classic_role', { role: 'XX', task_stations: [3] });
-    check(card.textContent === 'All your tasks are done.', 'an unknown role changes nothing');
+    check(readCard(card).note === 'All your tasks are done.', 'an unknown role changes nothing');
     env.emit('lobby_state', lobbyState(['Mara', 'Tiago', 'Ines', 'Rui'], 'lobby'));
-    check(card.hidden === true && card.textContent === '', 'back in the lobby the card is hidden and empty');
+    check(card.hidden === true && card.children.length === 0, 'back in the lobby the card is hidden and empty');
   }
 
   // ---- main.js: the Free Rider ----
@@ -171,10 +198,11 @@ async function main() {
     env.emit('lobby_state', lobbyState(['Mara', 'Tiago', 'Ines', 'Rui']));
     env.emit('classic_role', { role: 'FR', task_stations: [], other_free_riders: [] });
     const card = env.document.getElementById('classic-task');
-    check(card.hidden === false && card.textContent === 'Fake tasks: stand at a station to look busy.', 'the Free Rider card');
-    check(!card.classList.contains('duel-next-finished'), 'the Free Rider card is not green');
+    const seen = readCard(card);
+    check(card.hidden === false && seen.lines.length === 0 && seen.note === 'Fake tasks: stand at a station to look busy.', 'the Free Rider card');
+    check(!seen.green, 'the Free Rider card is not green');
     env.emit('left_lobby');
-    check(card.hidden === true && card.textContent === '', 'leaving hides the card');
+    check(card.hidden === true && card.children.length === 0, 'leaving hides the card');
   }
 
   // ---- Edge: a role outside a Classic round is ignored ----
@@ -184,7 +212,7 @@ async function main() {
     env.emit('lobby_state', { ...lobbyState(['Mara', 'Tiago']), mode: 'duel' });
     env.emit('classic_role', { role: 'HP', task_stations: [3] });
     const card = env.document.getElementById('classic-task');
-    check(card.hidden === true || card.textContent === '', 'no card in a Duel');
+    check(card.hidden === true || card.children.length === 0, 'no card in a Duel');
   }
 
   console.log('Classic task card checks passed: ' + checked + ' assertions.');

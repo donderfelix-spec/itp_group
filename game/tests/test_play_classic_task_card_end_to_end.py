@@ -7,8 +7,8 @@ test can put players where the tick would after a long walk (as
 task_helpers.put does). Then
 
 - one High Performer stands at its first own station, presses E, waits and
-  clicks "Finish task" in the page; the server's `station_done` takes exactly
-  that line off its card and the group bar moves;
+  clicks "Finish task" in the page; after the server's `station_done` exactly
+  that line stays in its place, faded and marked done, and the group bar moves;
 - another High Performer stands next to the Free Rider, who presses Q; the
   failed player (a ghost, DESIGN rule 9) still sees all its own tasks.
 
@@ -133,7 +133,11 @@ def test_classic_task_card_follows_the_real_server(played):
     done = played["done"]
     assert done["stationDone"]["station"] == done["station"]
     assert done["stationDone"]["task_stations"] == done["tasksBefore"][1:]
-    assert done["cardAfter"] == done["namesBefore"][1:]
+    # The finished station stays in its place on the card, only faded (brief 4).
+    assert [item["name"] for item in done["itemsAfter"]] == done["namesBefore"]
+    assert [item["done"] for item in done["itemsAfter"]] == [True] + [False] * (len(done["namesBefore"]) - 1)
+    assert [item["faded"] for item in done["itemsAfter"]] == [item["done"] for item in done["itemsAfter"]]
+    assert not any(item["crossed"] for item in done["itemsAfter"])
     assert done["progressBefore"] == "0% complete"
     assert done["progressAfter"] != done["progressBefore"]
     assert done["fillAfter"] > done["fillBefore"]

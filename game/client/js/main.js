@@ -46,6 +46,9 @@ window.Game = window.Game || {};
   // The own Classic role from `classic_role`, "HP" or "FR"; null outside a
   // Classic round. Only for the own task card (showClassicTasks).
   let classicRole = null;
+  // The own list as `classic_role` gave it at the start of the round. The
+  // card keeps every task in this order and crosses the finished ones out.
+  let classicStartTasks = [];
   // True from the moment this browser asked to log out until the server
   // answers. It tells a wanted `signed_out` from one that came unasked.
   let logOutWasAsked = false;
@@ -104,6 +107,7 @@ window.Game = window.Game || {};
     finishedStations = new Set();
     classicTasks = [];
     classicRole = null;
+    classicStartTasks = [];
     showClassicTasks();
     if (!worldIsRunning) return;
     worldIsRunning = false;
@@ -204,6 +208,7 @@ window.Game = window.Game || {};
       Game.minigames.close(); // no round, no task
       classicTasks = [];
       classicRole = null;
+      classicStartTasks = [];
       showClassicTasks();
     }
     roundIsRunning = isRound;
@@ -324,18 +329,22 @@ window.Game = window.Game || {};
   function whenClassicRole(message) {
     rememberClassicTasks(message);
     const isOwnRole = mode === 'classic' && roundIsRunning && ['HP', 'FR'].includes(message && message.role);
-    if (isOwnRole) classicRole = message.role;
+    if (isOwnRole) {
+      classicRole = message.role;
+      classicStartTasks = classicTasks.slice(); // as rememberClassicTasks accepted it
+    }
     showUsableStations();
     showClassicTasks();
   }
 
-  // The card with the own remaining Classic tasks in the panel. The same
-  // list as the stations that glow; a ghost keeps its tasks (DESIGN, rule 9).
+  // The card with the own Classic tasks in the panel: the start list, the
+  // open ones being the stations that glow. A ghost keeps its tasks (DESIGN,
+  // rule 9).
   function showClassicTasks() {
     // Like callWorld: a page put together without this part keeps working.
     if (typeof Game.lobby.showClassicTasks !== 'function') return;
-    const remaining = classicTasks.filter((station) => !finishedStations.has(station));
-    Game.lobby.showClassicTasks(classicRole, remaining);
+    const open = classicTasks.filter((station) => !finishedStations.has(station));
+    Game.lobby.showClassicTasks(classicRole, classicStartTasks, open);
   }
 
   function whenStationOpened(message) {

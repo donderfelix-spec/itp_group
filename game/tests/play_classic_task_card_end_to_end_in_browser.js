@@ -67,6 +67,13 @@ async function card(g) {
     const fill = document.getElementById('classic-progress-fill');
     return {
       lines: document.getElementById('classic-task').innerText.split('\n').filter(Boolean),
+      // Each bullet: its name, whether it is marked done, faded, crossed out.
+      items: [...document.querySelectorAll('#classic-task li')].map((row) => ({
+        name: row.firstChild ? row.firstChild.textContent : '',
+        done: row.classList.contains('round-task-done'),
+        faded: Number(getComputedStyle(row).opacity) < 1,
+        crossed: getComputedStyle(row).textDecorationLine === 'line-through',
+      })),
       label: document.getElementById('classic-progress-label').textContent,
       fill: fill.getBoundingClientRect().width,
     };
@@ -130,7 +137,7 @@ const pause = (ms) => new Promise((r) => setTimeout(r, ms));
     await pause(1000); // the bar may glide
     const after = await card(worker);
     out.done = { station, tasksBefore: worker.tasks, namesBefore: worker.names, stationDone,
-      cardAfter: after.lines, progressBefore: before.label, progressAfter: after.label,
+      cardAfter: after.lines, itemsAfter: after.items, progressBefore: before.label, progressAfter: after.label,
       fillBefore: before.fill, fillAfter: after.fill };
 
     // 2. Another High Performer stands next to the Free Rider, who presses Q.

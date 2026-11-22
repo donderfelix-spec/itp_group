@@ -14,6 +14,7 @@
 //             Duel's names of those stations, the card's text and colour,
 //             and all text of the page
 //   classicDone   the card of one High Performer after each `station_done`
+//             (with screenshots classic_hp_one_done and classic_hp_all_done)
 //   classicWithHint  the other guest's Classic panel at 1280x800 with one
 //             more paragraph at the end of #classic-progress, put there by
 //             this script (as the "Hidden" hint of another branch will be)
@@ -200,6 +201,19 @@ function measurePanel() {
     classicHeadingText: (document.querySelector('#classic-progress h2') || {}).textContent || null,
     classicTaskText: byId('classic-task') ? byId('classic-task').innerText : null,
     classicTaskGreen: byId('classic-task') ? byId('classic-task').classList.contains('duel-next-finished') : null,
+    // Each bullet: its name, whether it is marked done, and how it looks.
+    classicTaskItems: [...document.querySelectorAll('#classic-task li')].map((row) => ({
+      name: row.firstChild ? row.firstChild.textContent : '',
+      done: row.classList.contains('round-task-done'),
+      saysDone: row.textContent.endsWith(' (done)'),
+      line: getComputedStyle(row).textDecorationLine,
+      opacity: Number(getComputedStyle(row).opacity),
+      bullet: getComputedStyle(row).display === 'list-item' && getComputedStyle(row).listStyleType !== 'none',
+      top: row.getBoundingClientRect().top,
+    })),
+    classicTaskNote: (document.querySelector('#classic-task .round-task-note') || {}).textContent || null,
+    classicTaskNoteTop: document.querySelector('#classic-task .round-task-note')
+      ? document.querySelector('#classic-task .round-task-note').getBoundingClientRect().top : null,
     classicOwnNameText: byId('classic-own-name').textContent,
     extraParagraph: rect(byId('test-extra-paragraph')),
     classicTrack: rect(document.querySelector('.classic-progress-track')),
@@ -305,7 +319,10 @@ async function shoot(g, name) {
         await highPerformer.page.waitForFunction((text) => document.getElementById('classic-task').innerText !== text,
           before, { timeout: 3000 }).catch(() => {});
         const seen = await look(highPerformer);
-        out.classicDone.push({ station, left: remaining.slice(), cardText: seen.classicTaskText, cardGreen: seen.classicTaskGreen });
+        out.classicDone.push({ station, left: remaining.slice(), cardText: seen.classicTaskText, cardGreen: seen.classicTaskGreen,
+          items: seen.classicTaskItems, note: seen.classicTaskNote, noteTop: seen.classicTaskNoteTop });
+        if (out.classicDone.length === 1) await shoot(highPerformer, 'classic_hp_one_done');
+        if (remaining.length === 0) await shoot(highPerformer, 'classic_hp_all_done');
       }
     }
 
