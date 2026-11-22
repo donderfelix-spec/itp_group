@@ -54,12 +54,24 @@ Game.world = Game.world || {};
     ctx.stroke();
   }
 
+  // Draws `drawObject` moved by (dx, dy) and made `scale` times as large,
+  // so that an object and its outline stay clear of the furniture and walls
+  // around its station (M2-1.20). The station's place does not change.
+  function shifted(ctx, dx, dy, scale, drawObject) {
+    ctx.save();
+    ctx.translate(dx, dy);
+    ctx.scale(scale, scale);
+    drawObject(ctx);
+    ctx.restore();
+  }
+
   var stations = art.stations = art.stations || {};
 
   // 1 Sort the slides: a projector screen on a stand, with a slide on it.
+  // The stand is short, so that the outline stays off the first lecture row.
   stations[1] = function (ctx) {
-    line(ctx, 0, 3, 0, 10, OUTLINE, 1.8);
-    line(ctx, -6, 10.5, 6, 10.5, OUTLINE, 1.8);
+    line(ctx, 0, 3, 0, 6, OUTLINE, 1.8);
+    line(ctx, -6, 6.5, 6, 6.5, OUTLINE, 1.8);
     box(ctx, -12, -12, 24, 15, 1, WHITE, 1.4);
     line(ctx, -12, -12, 12, -12, OUTLINE, 2.4); // the roller at the top
     line(ctx, -9, -8, -3, -8, "#7A8CA8", 1.4);
@@ -69,7 +81,13 @@ Game.world = Game.world || {};
   };
 
   // 2 Brew the order: an espresso machine with a cup under the spout.
+  // Drawn 5 units low and 1 to the left, so that its outline stays off the
+  // café's coffee machine and its wall.
   stations[2] = function (ctx) {
+    shifted(ctx, -1, 5, 1, espressoMachine);
+  };
+
+  function espressoMachine(ctx) {
     box(ctx, -11, -12, 22, 21, 3, "#6B6F7A", 1.4);
     box(ctx, -8, -9, 16, 5, 1, DARK_STEEL, 0.7);
     circle(ctx, -4.5, -6.5, 1.1, CORAL, 0);
@@ -78,15 +96,16 @@ Game.world = Game.world || {};
     box(ctx, -2.5, -3, 5, 3, 0.5, DARK_STEEL, 0.7); // the spout
     box(ctx, -4, 2, 8, 5.5, 1.8, WHITE, 0.9);
     line(ctx, -9, 9, 9, 9, OUTLINE, 1.2); // the drip tray
-  };
+  }
 
-  // 3 Build the tray: a tray with two plates.
+  // 3 Build the tray: a tray with two plates. Drawn 4 units high, so that
+  // it and its outline stay off the table below it.
   stations[3] = function (ctx) {
-    box(ctx, -12, -8, 24, 16, 3, "#C9A27A", 1.4);
-    circle(ctx, -5.5, 0, 4.5, WHITE, 0.9);
-    circle(ctx, -5.5, 0, 2.5, "#E8B04A", 0);
-    circle(ctx, 5.5, 0, 4.5, WHITE, 0.9);
-    circle(ctx, 5.5, 0, 2.5, GREEN, 0);
+    box(ctx, -12, -12, 24, 16, 3, "#C9A27A", 1.4);
+    circle(ctx, -5.5, -4, 4.5, WHITE, 0.9);
+    circle(ctx, -5.5, -4, 2.5, "#E8B04A", 0);
+    circle(ctx, 5.5, -4, 4.5, WHITE, 0.9);
+    circle(ctx, 5.5, -4, 2.5, GREEN, 0);
   };
 
   // 4 Shelve the books: a book cart with a row of books.
@@ -112,7 +131,13 @@ Game.world = Game.world || {};
   };
 
   // 7 De-buzzword the slides: a flip chart on an easel, one word crossed out.
+  // Drawn a little smaller and to the right, so that it and its outline fit
+  // between the wall and the lectern.
   stations[7] = function (ctx) {
+    shifted(ctx, 4.5, 0, 0.88, flipChart);
+  };
+
+  function flipChart(ctx) {
     line(ctx, -7, 11, -3.5, -1, WOOD, 1.8);
     line(ctx, 7, 11, 3.5, -1, WOOD, 1.8);
     box(ctx, -9, -13, 18, 14, 0.5, WHITE, 1.4);
@@ -120,16 +145,22 @@ Game.world = Game.world || {};
     line(ctx, -6, -9, 4, -9, OUTLINE, 1.1);
     line(ctx, -6, -5, 2, -5, OUTLINE, 1.1);
     line(ctx, -7, -2.5, 6, -11, CORAL, 1.8);
-  };
+  }
 
   // 8 Emergency caffeine protocol: a giant to-go coffee cup with steam.
+  // Drawn 2 units to the right and down, so that its outline stays off the
+  // column and the table beside it.
   stations[8] = function (ctx) {
+    shifted(ctx, 2, 2, 1, coffeeCup);
+  };
+
+  function coffeeCup(ctx) {
     polygon(ctx, [[-7, -7], [7, -7], [5, 10], [-5, 10]], WHITE, 1.4);
     box(ctx, -6.2, -1, 12.4, 5, 0.5, "#C9A27A", 0.7); // the sleeve
     box(ctx, -8, -10.5, 16, 3.5, 1, "#6B4A35", 1.2); // the lid
     line(ctx, -2.5, -12.5, -1.5, -15.5, "#A0A0A0", 1.1);
     line(ctx, 2.5, -12.5, 3.5, -15.5, "#A0A0A0", 1.1);
-  };
+  }
 
   // 9 Save the lunch: a lunch tray seen from above.
   stations[9] = function (ctx) {
@@ -156,7 +187,13 @@ Game.world = Game.world || {};
   };
 
   // 11 Expense the essentials: a red shopping basket with two products.
+  // Drawn smaller and in the middle of the aisle (2 units to the right), so
+  // that it and its outline stay clear of the shelves on both sides.
   stations[11] = function (ctx) {
+    shifted(ctx, 2, 0, 0.8, shoppingBasket);
+  };
+
+  function shoppingBasket(ctx) {
     line(ctx, -6.5, -3, -4.5, -11, OUTLINE, 1.5);
     line(ctx, 6.5, -3, 4.5, -11, OUTLINE, 1.5);
     line(ctx, -4.5, -11, 4.5, -11, OUTLINE, 1.5);
@@ -164,7 +201,7 @@ Game.world = Game.world || {};
     box(ctx, 1, -9, 3.5, 6, 0.5, GREEN, 0.7);
     polygon(ctx, [[-11, -3], [11, -3], [9, 9], [-9, 9]], CORAL, 1.4);
     [-5, 0, 5].forEach(function (x) { line(ctx, x, -1, x * 0.85, 7, "#B85A45", 0.9); });
-  };
+  }
 
   // 12 Seagull quality control: a seagull on a bin, holding a stolen page.
   stations[12] = function (ctx) {

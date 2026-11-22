@@ -70,20 +70,34 @@ Game.world = Game.world || {};
     ctx.lineCap = "butt";
   };
 
-  // Bushes with rounded lobes, without planters or square borders.
+  // Bushes with rounded lobes, without planters or square borders. A bush
+  // is trimmed square: its crown fills its solid to the corners, so that
+  // what is drawn is what blocks (M2-1.20).
   art.kinds.tree = function (ctx, bush) {
     leafyCrown(ctx, bush.x + bush.w / 2, bush.y + bush.h / 2,
-      Math.min(bush.w, bush.h) / 2, bush.x);
+      Math.min(bush.w, bush.h) / 2, bush.x, true);
   };
 
+  // How far a square crown reaches at `angle`: the edge of a square with
+  // rounded corners (a "superellipse"), with small lobes that stay inside it.
+  function squareReach(radius, angle, phase) {
+    var roundness = 5; // 2 is a circle; the larger, the closer to a square
+    var edge = Math.pow(Math.pow(Math.abs(Math.cos(angle)), roundness)
+      + Math.pow(Math.abs(Math.sin(angle)), roundness), -1 / roundness);
+    // At most 0.98 of the way, so that the outline stays inside the solid.
+    return radius * edge * (0.95 + 0.03 * Math.cos(angle * 9 + phase));
+  }
+
   // Uneven rounded lobes form a bush silhouette; large leaves add texture.
-  function leafyCrown(ctx, x, y, radius, seed) {
+  // `square` trims the silhouette to the square around it (the hedge's
+  // bushes stay round).
+  function leafyCrown(ctx, x, y, radius, seed, square) {
     ctx.save();
     ctx.beginPath();
     var phase = util.noise(seed, 4) * Math.PI;
     for (var edge = 0; edge <= 96; edge++) {
       var angle = edge / 96 * Math.PI * 2;
-      var reach = radius * (0.87 + 0.09 * Math.cos(angle * 7 + phase)
+      var reach = square ? squareReach(radius, angle, phase) : radius * (0.87 + 0.09 * Math.cos(angle * 7 + phase)
         + 0.035 * Math.sin(angle * 3 + phase));
       var px = x + Math.cos(angle) * reach;
       var py = y + Math.sin(angle) * reach;
@@ -408,6 +422,7 @@ Game.world = Game.world || {};
   // hole is wide) raised above a short bar of the same thickness, ring and
   // bar together as tall as the capitals.
   art.kinds.logo = function (ctx, logo) {
+    logoPlinth(ctx, logo);
     var size = logo.h * 1.25;
     var font = function () { return "900 " + size + "px system-ui, sans-serif"; };
     ctx.font = font();
@@ -447,6 +462,19 @@ Game.world = Game.world || {};
     letter("V");
     letter("A");
   };
+
+  // The flat stone plinth the letters stand on, as large as the logo's
+  // solid (M2-1.20): the whole block that stops a player is seen. Its
+  // outline lies just inside the solid.
+  function logoPlinth(ctx, logo) {
+    var lineWidth = 0.8;
+    var inset = lineWidth / 2;
+    util.box(ctx, logo.x + inset, logo.y + inset, logo.w - lineWidth, logo.h - lineWidth, 2, "#D6CEBD", lineWidth);
+    // A lighter top edge and a darker front edge: a low block, not a mark on the floor.
+    util.line(ctx, logo.x + 2, logo.y + 1.6, logo.x + logo.w - 2, logo.y + 1.6, "#F4F0E7", 0.8);
+    ctx.fillStyle = "rgba(46, 42, 59, 0.14)";
+    ctx.fillRect(logo.x + 1, logo.y + logo.h - 3, logo.w - 2, 2.2);
+  }
 
   // The O: nine parts of the height are the ring (6: a hole of 2 and a
   // stroke of 2 on each side), a gap (1) and the bar (2).
