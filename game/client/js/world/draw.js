@@ -1044,15 +1044,18 @@ Game.world = Game.world || {};
   // pass in GROW_DIRECTIONS directions, at most GROW_PASS_PIXELS away. Small
   // passes keep the edge smooth at every zoom, also round the tip of a thin
   // leg or handle (M2-1.20); one wide pass left a fringe of stripes there.
+  // Two canvases take turns, so a pass never draws onto the shape it reads.
   function grownBy(source, reach, size) {
     var passes = Math.max(1, Math.ceil(reach / GROW_PASS_PIXELS));
+    var canvases = [newCanvas(size), newCanvas(size)];
+    if (!canvases[0] || !canvases[1]) {
+      return null;
+    }
     var current = source;
     for (var pass = 0; pass < passes; pass++) {
-      var next = newCanvas(size);
-      if (!next) {
-        return null;
-      }
+      var next = canvases[pass % 2];
       var nextCtx = next.getContext("2d");
+      nextCtx.clearRect(0, 0, size, size);
       nextCtx.drawImage(current, 0, 0);
       for (var step = 0; step < GROW_DIRECTIONS; step++) {
         var angle = step / GROW_DIRECTIONS * Math.PI * 2;
