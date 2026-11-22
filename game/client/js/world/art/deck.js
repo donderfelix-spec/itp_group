@@ -1,6 +1,5 @@
-// The art of the Main Deck and the corridor (M2-1.4): the study tables,
-// leafy bushes,
-// the hedge, benches, lamp posts, a bike rack, drains, the glass front, the
+// The art of the Main Deck and the corridor (M2-1.4): the study tables on
+// their terrace, leafy bushes, the hedge, benches, lamp posts, a bike rack, drains, the glass front, the
 // beach with towels, parasols and surfboards and a surfboard rack; in the
 // corridor a terrazzo floor, the taupe slat wall with "ACADEMIC HALL",
 // ceiling lights, sofas, wire-grid dividers, a black column and stairs.
@@ -18,8 +17,12 @@ Game.world = Game.world || {};
   }
   var util = art.util;
 
-  // The study area uses the deck-pool map entry so its footprint stays stable.
+  // The study area uses the deck-pool map entry so its footprint stays
+  // stable. The tables and chairs stand on a low wooden terrace as large as
+  // the solid (M2-1.20, M2-1.21): the whole block that stops a player is
+  // seen, also between the chairs.
   art.kinds.pool = function (ctx, area) {
+    studyTerrace(ctx, area);
     var tableWidth = (area.w - 8) / 2;
     var tableDepth = area.h - 24;
     var top = area.y + 12;
@@ -34,9 +37,9 @@ Game.world = Game.world || {};
       }
 
       util.shadowBelow(ctx, left, top + tableDepth, tableWidth, 1.5);
-      util.box(ctx, left, top, tableWidth, tableDepth, 2, "#FFFFFF", 1.1);
+      util.box(ctx, left, top, tableWidth, tableDepth, 2, TABLE_TOP, 1.1);
       util.line(ctx, left + 2, top + tableDepth - 2, left + tableWidth - 2,
-        top + tableDepth - 2, "#D9DDE2", 0.7);
+        top + tableDepth - 2, "#F4F6F8", 0.7);
 
       // A laptop, an open notebook and a small plant on each table.
       var centre = left + tableWidth / 2;
@@ -49,6 +52,32 @@ Game.world = Game.world || {};
       util.ellipse(ctx, centre - 0.5, top + tableDepth / 2 - 0.8, 2.4, 1.8, "#6E9C61", 0.5);
     }
   };
+
+  // The top of a study table: a pale grey-white laminate. Pure white would
+  // differ from the light paving by only about 50 (red + green + blue), so
+  // the drawing check (6 of 16 pixels differing by more than 60) would count
+  // the tables as not drawn; this grey differs by about 75.
+  var TABLE_TOP = "#CFD6DE";
+
+  // A low terrace of pale wooden boards, its outline just inside the solid,
+  // with a lighter back edge and a darker front edge, like the plinth of
+  // the NOVA sign: a raised platform, not a mark on the paving.
+  function studyTerrace(ctx, area) {
+    var lineWidth = 0.9;
+    var inset = lineWidth / 2;
+    util.box(ctx, area.x + inset, area.y + inset, area.w - lineWidth, area.h - lineWidth,
+      2, "#D2B48C", lineWidth);
+    // The joints between the boards run along the terrace.
+    util.strokeAll(ctx, "#B8976C", 0.4, function () {
+      for (var y = area.y + 4; y < area.y + area.h - 2; y += 4) {
+        ctx.moveTo(area.x + 1.5, y);
+        ctx.lineTo(area.x + area.w - 1.5, y);
+      }
+    });
+    util.line(ctx, area.x + 2, area.y + 1.6, area.x + area.w - 2, area.y + 1.6, "#E6D2B0", 0.8);
+    ctx.fillStyle = "rgba(46, 42, 59, 0.14)";
+    ctx.fillRect(area.x + 1, area.y + area.h - 3, area.w - 2, 2.1);
+  }
 
   // A deck bush is trimmed square (M2-1.20): its crown fills its solid to
   // the corners, so that what is drawn is what blocks. Its ground shadow is

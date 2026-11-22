@@ -15,6 +15,9 @@ of S-141 and S-144 without changing what blocks:
   station's outline and of a hiding spot is drawn in the same colour as
   the names, so it keeps the same contrast;
 - Mon Café's floor is the new `cafe-tiles` pattern;
+- the study area (Hanna's commit a916099, the `pool` kind of deck-pool):
+  her two tables with chairs stand on a terrace as large as the solid, at
+  least 90 % of it drawn and nothing outside it;
 - the page draws the map without a console error or warning.
 
 The browser part is hanna_floors_and_shrubs_in_browser.js.
@@ -397,6 +400,38 @@ def test_every_deck_bush_is_drawn_to_at_least_90_percent_of_its_solid(drawn):
 @needs_chromium
 def test_no_deck_bush_and_not_the_hedge_is_drawn_outside_its_solid(drawn):
     assert drawn_outside([drawn["solids"][solid] for solid in BUSHES + ["deck-hedge"]]) == []
+
+
+@needs_chromium
+def test_the_study_area_is_drawn_to_at_least_90_percent_of_its_solid_and_not_outside(drawn):
+    study = drawn["solids"]["deck-pool"]
+    assert study["kind"] == "pool"
+    assert too_little_drawn([study]) == []
+    assert drawn_outside([study]) == []
+
+
+# The drawing check counts a pixel as drawn when red + green + blue differ
+# by more than 60 from the paving (play_map_polish_in_browser.js).
+CLEAR = 60
+DECK_ART = GAME / "client" / "js" / "world" / "art" / "deck.js"
+
+
+def differs_clearly(first, second):
+    return sum(abs(a - b) for a, b in zip(rgb(first), rgb(second))) > CLEAR
+
+
+def table_top():
+    source = DECK_ART.read_text(encoding="utf-8")
+    return source.split('var TABLE_TOP = "', 1)[1][:7]
+
+
+def test_a_pure_white_table_would_not_count_as_drawn_on_the_paving():
+    # Rejected: white differs from the deck's paving by only 49.
+    assert not differs_clearly("#FFFFFF", current_map()["colours"]["deck"])
+
+
+def test_the_table_top_counts_as_drawn_on_the_paving():
+    assert differs_clearly(table_top(), current_map()["colours"]["deck"])
 
 
 @needs_chromium
