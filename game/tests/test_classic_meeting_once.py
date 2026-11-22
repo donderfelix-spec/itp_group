@@ -54,10 +54,15 @@ def everything_sent(connection):
         arrived.append(message)
 
 
-def read_until(connection, wanted):
-    """The messages of this connection up to and including the next one of type `wanted`."""
+def read_until(connection, wanted, at_most=100):
+    """The messages of this connection up to and including the next one of type `wanted`.
+
+    Fails clearly instead of reading on and on when `at_most` messages came
+    and none of them was the one wanted.
+    """
     received = []
     while not received or received[-1]["type"] != wanted:
+        assert len(received) < at_most, f"no {wanted} among {at_most} messages: {[m['type'] for m in received]}"
         received.append(connection.receive_json())
     return received
 

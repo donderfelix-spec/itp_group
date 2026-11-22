@@ -18,9 +18,9 @@ from server.classic.meeting import DISCUSSION_SECONDS, SKIP, VOTING_SECONDS
 from server import main
 from server.classic.round import ClassicRound
 from server.main import app
-from task_helpers import client, clock, connect, placeholder_at_every_station, put  # noqa: F401
+from task_helpers import client, clock, connect, placeholder_at_every_station, put, put_at_station  # noqa: F401
 from test_classic_server_features import classic_for, start_classic
-from test_server_duel import REAL_TICK
+from test_server_duel import REAL_TICK, types_of, wait_until
 
 FIVE = ("Mara", "Tiago", "Ines", "Rui", "Luca")
 # Far from every hiding spot and from each other.
@@ -353,11 +353,12 @@ def test_a_lost_connection_counts_like_leave(connect):
     drain(connections)
 
     connections.pop(leaver).close()
-    # The server notices the closed connection in its own time.
-    told = {name: [] for name in connections}
-    for name, connection in connections.items():
-        while not of_type(told[name], "classic_roster"):
-            told[name].append(connection.receive_json())
+    # The server notices the closed connection in its own time. `wait_until`
+    # gives up with a clear message after a few seconds instead of hanging.
+    told = {
+        name: wait_until(connection, lambda messages: "classic_roster" in types_of(messages))
+        for name, connection in connections.items()
+    }
 
     assert leaver in lobby.classic_round.eliminated
     for messages in told.values():
@@ -461,13 +462,30 @@ def test_leaving_twice_is_refused_the_second_time(connect):
     assert leaver in lobby.classic_round.eliminated
 
 
-def test_a_leaver_gets_no_more_news_of_the_round(connect):
-    connections, lobby, _frs, [leaver, *_] = classic_round(connect)
+def test_a_leaver_gets_no_more_news_of_the_round(connect, clock):
+    connections, lobby, _frs, [leaver, worker, caller, *_] = classic_round(connect)
     drain(connections)
     connection = connections[leaver]
     leave(connections, leaver)
 
-    assert everything_sent(connection) == []
+    # News of the round after the leave: a finished task, then a meeting.
+    station = int(lobby.classic_round.tasks[worker][0])
+    put_at_station(worker, station)
+    connections[worker].send_json({"type": "open_station", "station": station})
+    wait_until(connections[worker], lambda messages: "station_opened" in types_of(messages))
+    clock.wait(1.1)  # the placeholder's shortest time
+    connections[worker].send_json({"type": "finish_station"})
+    for conn in connections.values():
+        wait_until(conn, lambda messages: "classic_progress" in types_of(messages))
+    clock.wait(46)  # the emergency button unlocks 45 seconds after the start
+    connections[caller].send_json({"type": "emergency"})
+    for conn in connections.values():
+        wait_until(conn, lambda messages: "meeting_state" in types_of(messages))
+    tick(connections)
+
+    # The leaver's very next message is the answer to a hello: nothing else came.
+    connection.send_json({"type": "hello", "name": "Reader"})
+    assert connection.receive_json()["type"] == "welcome"
 
 
 def test_a_high_performer_who_left_a_round_that_goes_on_cannot_join_it_again(connect):
