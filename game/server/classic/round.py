@@ -11,6 +11,7 @@ from rules import (
     report_sheet,
     role_reveal_for,
     sheet_id_for,
+    tasks_after_leaving,
 )
 from server.classic import meeting as meeting_rules
 
@@ -145,6 +146,19 @@ class ClassicRound:
         self.phase = "round"
         self.timers_paused = False
         self.meeting = meeting
+        self._has_news = True
+
+    def remove_player(self, player_id):
+        """The player left the round (M3-3.11, DESIGN.md section 5).
+
+        They count as failed, so the win rules see one living player fewer,
+        and their open tasks disappear from the progress bar; the tasks they
+        finished keep counting. Their role stays known for the end screen.
+        """
+        if player_id not in self.roles:
+            return
+        self.eliminated.add(player_id)
+        self.tasks = tasks_after_leaving(self.tasks, self.completed_tasks, player_id)
         self._has_news = True
 
     def progress(self):

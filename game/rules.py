@@ -108,6 +108,25 @@ def progress(state: ClassicState) -> float:
     return min(1.0, completed_count / total_tasks)
 
 
+def tasks_after_leaving(
+    tasks: Mapping[str, Sequence[str]],
+    completed_tasks: Mapping[str, Collection[str]],
+    player_id: str,
+) -> dict[str, list[str]]:
+    """Return the task lists once `player_id` has left the round (M3-3.11).
+
+    DESIGN.md, section 5: the open tasks of a player who leaves disappear
+    from the progress bar. So only the tasks they finished stay theirs:
+    those keep counting, the others no longer count toward the total. The
+    given lists are not changed.
+    """
+    finished = set(completed_tasks.get(player_id, ()))
+    updated = {player: list(stations) for player, stations in tasks.items()}
+    if player_id in updated:
+        updated[player_id] = [station for station in updated[player_id] if station in finished]
+    return updated
+
+
 def check_winner(state: ClassicState) -> Literal["HP", "FR"] | None:
     """Return the winner, checking High Performer conditions before parity."""
     if progress(state) >= 1.0:

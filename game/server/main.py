@@ -566,9 +566,7 @@ async def handle_leave_lobby(websocket: WebSocket, name: str, message: dict):
     lobby, new_host, rejection_code = app.state.lobbies.leave(name)
     if rejection_code is None:
         await websocket.send_json(protocol.left_lobby())
-        await tell_lobby(lobby, new_host)
-        # The round goes on without this player, or ends if nobody is left to wait for.
-        await tell_round_news(lobby)
+        await tell_the_rest_after_a_leave(lobby, new_host)
     return rejection_code
 
 
@@ -579,8 +577,32 @@ async def take_out_of_lobby(name: str):
     """
     lobby, new_host, rejection_code = app.state.lobbies.leave(name)
     if rejection_code is None:
-        await tell_lobby(lobby, new_host)
-        await tell_round_news(lobby)
+        await tell_the_rest_after_a_leave(lobby, new_host)
+
+
+async def tell_the_rest_after_a_leave(lobby, new_host):
+    """Tell the players who stay what a player's leaving changed. Never raises.
+
+    The same for every way of leaving: "Leave", logging out, a lost
+    connection or signing in elsewhere.
+    """
+    await tell_lobby(lobby, new_host)
+    await tell_classic_after_a_leave(lobby)
+    # The round goes on without this player, or ends if nobody is left to wait for.
+    await tell_round_news(lobby)
+
+
+async def tell_classic_after_a_leave(lobby):
+    """In Classic, a leaver is out of the lists (M3-3.11): send the new ones.
+
+    A running meeting is sent again, without the leaver among the living and
+    the voters. A finished one is not: its result was already shown.
+    """
+    if lobby.classic_round is None:
+        return
+    if lobby.meeting is not None and lobby.meeting.get("phase") != "result":
+        await tell_meeting_state(lobby)
+    await tell_classic_roster(lobby)
 
 
 async def tell_lobby(lobby, new_host=None):
