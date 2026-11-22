@@ -189,10 +189,26 @@ async function hold(page, axis, dir, stop, limitMs = 12000) {
   } finally {
     await page.keyboard.up(key);
   }
-  await pause(150); // a step that was under way when the key went up
-  const settled = await where(page);
+  // A step that was under way when the key went up, or (on a busy machine)
+  // a key-up that reached the server a tick or two late, still moves the
+  // player: wait until the server's position has stood still for 150 ms.
+  const settled = await settle(page);
   if (settled.x !== p.x || settled.y !== p.y) trail.push(settled);
   return trail;
+}
+
+// Waits until the server's position has not changed for 150 ms (at most 1 s
+// in all) and returns it.
+async function settle(page) {
+  let p = await where(page);
+  let since = Date.now();
+  const began = Date.now();
+  while (Date.now() - since < 150 && Date.now() - began < 1000) {
+    await pause(10);
+    const q = await where(page);
+    if (q.x !== p.x || q.y !== p.y) { p = q; since = Date.now(); }
+  }
+  return p;
 }
 
 // Hold a key until the player stands still against something.
