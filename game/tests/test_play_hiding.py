@@ -82,6 +82,10 @@ ROUNDING = 0.2
 # A page draws a player it was told about within this time, and stops
 # drawing one it was told is gone within this time (a few frames).
 DRAW_LAG_MS = 120
+# The victim's portrait on an F-sheet (Lennart, Felix 2026-11-22) is drawn
+# with drawCharacter in the sheet's own coordinates, at this place. No player
+# can stand there, so a draw here is the portrait and not a figure.
+SHEET_PORTRAIT_AT = (0, 0.6)
 
 
 # ---- Chromium ------------------------------------------------------------
@@ -393,6 +397,11 @@ def walk_into(browser, label, name, spot):
 
 
 # ---- What a page was told and drew ---------------------------------------
+
+
+def figures_only(draws):
+    """The draws of a character as a figure on the map, without the F-sheet portrait."""
+    return [draw for draw in draws if (draw[1], draw[2]) != SHEET_PORTRAIT_AT]
 
 
 def character_of(browser, label, name):
@@ -763,7 +772,7 @@ def classic(server):
                 for label in (far, near, caller, fr)
             },
             "living_draws_ghost_during_meeting": {
-                label: len(browser.drawn(label, character_of(browser, victim, names[victim]), discussion[label]))
+                label: len(figures_only(browser.drawn(label, character_of(browser, victim, names[victim]), discussion[label])))
                 for label in (far, near, caller, fr)
             },
         }
