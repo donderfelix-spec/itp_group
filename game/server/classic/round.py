@@ -11,6 +11,7 @@ from rules import (
     report_sheet,
     role_reveal_for,
     sheet_id_for,
+    tasks_after_leaving,
 )
 from server.classic import meeting as meeting_rules
 
@@ -123,6 +124,13 @@ class ClassicRound:
         return self.meeting
 
     def advance_meeting(self, now):
+        """Advance this round's own copy of the meeting; only tests use it.
+
+        The server applies a meeting's result through `apply_meeting_result`
+        (M3-3.9) and must not use this method: it replaces `eliminated` with
+        the meeting's list, which would undo failures made after the meeting
+        started.
+        """
         if self.meeting is None:
             raise ValueError("There is no active meeting.")
         self.meeting = meeting_rules.advance_meeting(self.meeting, now)
@@ -131,6 +139,34 @@ class ClassicRound:
             self.phase = "result"
             self._has_news = True
         return self.meeting
+
+    def apply_meeting_result(self, meeting):
+        """A meeting reached its result: apply it to the round, and play goes on.
+
+        The server calls this exactly once per meeting (M3-3.9). Only the
+        player voted out, if any, becomes a ghost; the list of ghosts is
+        never replaced by the meeting's older copy of it.
+        """
+        vote_result = meeting.get("vote_result")
+        if vote_result is not None and vote_result.ejected_id is not None:
+            self.eliminated.add(vote_result.ejected_id)
+        self.phase = "round"
+        self.timers_paused = False
+        self.meeting = meeting
+        self._has_news = True
+
+    def remove_player(self, player_id):
+        """The player left the round (M3-3.11, DESIGN.md section 5).
+
+        They count as failed, so the win rules see one living player fewer,
+        and their open tasks disappear from the progress bar; the tasks they
+        finished keep counting. Their role stays known for the end screen.
+        """
+        if player_id not in self.roles:
+            return
+        self.eliminated.add(player_id)
+        self.tasks = tasks_after_leaving(self.tasks, self.completed_tasks, player_id)
+        self._has_news = True
 
     def progress(self):
         return progress(self.state())
