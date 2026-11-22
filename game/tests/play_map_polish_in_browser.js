@@ -13,6 +13,10 @@
 //   roomNames  for every room the box of its drawn name, in map units
 //   coverage   for every solid other than a wall: its id, kind and the share
 //              of its rectangle that is drawn
+//   outlineReaches  at 4 and at 10 pixels per unit: how far the outline
+//              reaches past the objects on screen, at the high and at the low
+//              point of the pulse (the mean over every station's left and top
+//              side, in map units)
 //   reach      for every station with an object: how far its drawing alone
 //              reaches from the station's centre (left, top, right, bottom),
 //              in map units, to the last pixel it touches
@@ -246,7 +250,54 @@ function stationCheck() {
       }
       reach[id] = [left / P - HALF, top / P - HALF, right / P - HALF, bottom / P - HALF];
     }
-    return { stations, roomNames, coverage, reach };
+    // How far the outline reaches past each object on screen, at 4 and at
+    // 10 pixels per unit, at the high and at the low point of the pulse: the
+    // page's own map around the station with and without the outline; the
+    // outline is what differs clearly. Only the left and the top side count
+    // (the tag and the shadow lie at the lower right). In map units, the
+    // mean over every station's two sides.
+    function outlineReach(scale) {
+      const AROUND = 26;
+      const size = Math.round(2 * AROUND * scale);
+      const box = (data, counts) => {
+        let left = Infinity; let top = Infinity;
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+            if (counts(data, (y * size + x) * 4)) { left = Math.min(left, x); top = Math.min(top, y); }
+          }
+        }
+        return [left, top];
+      };
+      const sides = { high: [], low: [] };
+      for (const station of campus.stations.filter((entry) => drawings[entry.id])) {
+        const area = { x: station.x - AROUND, y: station.y - AROUND, w: 2 * AROUND, h: 2 * AROUND };
+        const draw = (pulsing, now) => {
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          ctx.setTransform(scale, 0, 0, scale, -area.x * scale, -area.y * scale);
+          Game.world.drawMap(ctx, campus, area, false, pulsing, now);
+          return ctx.getImageData(0, 0, size, size).data;
+        };
+        const plain = draw([], 0);
+        const alone = document.createElement('canvas');
+        alone.width = alone.height = size;
+        const aloneCtx = alone.getContext('2d');
+        aloneCtx.setTransform(scale, 0, 0, scale, AROUND * scale, AROUND * scale);
+        drawings[station.id](aloneCtx);
+        const object = box(aloneCtx.getImageData(0, 0, size, size).data, (data, i) => data[i + 3] > 127);
+        for (const [name, now] of [['high', HIGH_PULSE], ['low', LOW_PULSE]]) {
+          const lit = draw([station.id], now);
+          const outline = box(lit, (data, i) => Math.abs(data[i] - plain[i]) + Math.abs(data[i + 1] - plain[i + 1])
+            + Math.abs(data[i + 2] - plain[i + 2]) > CLEAR);
+          sides[name].push((object[0] - outline[0]) / scale, (object[1] - outline[1]) / scale);
+        }
+      }
+      const mean = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
+      return { high: mean(sides.high), low: mean(sides.low) };
+    }
+    const outlineReaches = { 4: outlineReach(4), 10: outlineReach(10) };
+    return { stations, roomNames, coverage, reach, outlineReaches };
   })();
 }
 

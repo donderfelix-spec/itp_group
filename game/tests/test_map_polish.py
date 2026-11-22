@@ -349,17 +349,17 @@ def test_a_lamp_post_10_from_a_wall_is_too_far():
 # Since the follow-up of M2-1.20 (Felix, 2026-11-22) the objects are drawn
 # smaller and stand against a wall or a piece of furniture (art/stations.js).
 STATION_BOXES = {
-    1: (-11, -20, 17, 5),
-    2: (-8, -12, 16, 12),
-    3: (-19, -17, 7, 4),
-    4: (-14, -3, 14, 20),
-    5: (-20, -14, 5, 12),
-    7: (-7, -20, 16, 7),
-    8: (-14, -19, 6, 3),
-    9: (-13, -11, 13, 11),
-    10: (-12, -3, 12, 17),
-    11: (-12, -10, 10, 10),
-    12: (-11, -13, 11, 11),
+    1: (-12, -20, 18, 5),
+    2: (-8, -13, 16, 13),
+    3: (-19, -17, 8, 5),
+    4: (-15, -5, 15, 19),
+    5: (-20, -15, 5, 13),
+    7: (-8, -20, 17, 7),
+    8: (-15, -19, 7, 3),
+    9: (-14, -12, 14, 11),
+    10: (-12, -4, 12, 17),
+    11: (-12, -10, 11, 11),
+    12: (-11, -14, 11, 12),
 }
 
 # The box of each object alone, measured the same way: at most the size the
@@ -367,8 +367,8 @@ STATION_BOXES = {
 OBJECT_BOXES = {
     1: (-7, -15, 13, 0),
     2: (-3, -8, 11, 8),
-    3: (-15, -13, 3, 0),
-    4: (-10, 2, 10, 15),
+    3: (-14, -13, 3, 0),
+    4: (-10, 0, 10, 14),
     5: (-15, -10, 0, 8),
     7: (-3, -15, 12, 2),
     8: (-10, -14, 0, -2),
@@ -394,7 +394,7 @@ SIZE_ALLOWANCE = 2
 # smaller difference because it is faint; where the number tag covers it,
 # the tag's box counts). Every drawing gives its own place, along its foot.
 SHADOW_BOXES = {
-    1: (-1, -1, 7, 2), 2: (-2, 7, 8, 10), 3: (-13, -1, 0, 2), 4: (-8, 12, 5, 15),
+    1: (-1, -1, 7, 2), 2: (-2, 7, 8, 10), 3: (-13, -1, 1, 2), 4: (-8, 11, 5, 14),
     5: (-14, 7, -2, 10), 7: (-1, 1, 8, 4), 8: (-8, -3, -3, 0), 9: (-7, 4, 4, 7),
     10: (-6, 9, 3, 12), 11: (-6, 5, 3, 8), 12: (-5, 6, 4, 9),
 }
@@ -407,7 +407,7 @@ OLD_DEFAULT_SHADOW_BOX = (-10, 7, 8, 14)
 # follow-up, was 4.2). Station 2's tag ends 3 units before the café's wall
 # at x 447, station 8's before table 2.
 TAG_BOXES = {
-    1: (8, -6, 16, 2), 2: (5, 2, 13, 10), 3: (-2, -6, 6, 2), 4: (5, 10, 13, 18),
+    1: (8, -6, 16, 2), 2: (5, 2, 13, 10), 3: (-2, -6, 6, 2), 4: (5, 8, 13, 16),
     5: (-5, 2, 3, 10), 7: (7, -4, 15, 4), 8: (-4, -7, 4, 1), 9: (4, 1, 12, 9),
     10: (2, 7, 10, 15), 11: (1, 0, 9, 8), 12: (2, 1, 10, 9),
 }
@@ -472,9 +472,9 @@ def test_every_station_outline_keeps_1_unit_clear_of_every_room_name(station_id)
 
 def test_station_10_keeps_clear_of_the_ctt_name_and_of_study_table_2():
     # Edge case: the outline round the laptop's desk ends 3 units before
-    # study table 2, and 13 below the name.
+    # study table 2, and 12 below the name.
     box = station_box(10)
-    assert box["y"] - ROOM_NAME_BOXES["ctt"][3] == 13
+    assert box["y"] - ROOM_NAME_BOXES["ctt"][3] == 12
     assert solid_called("ctt-study-table-2")["y"] - (box["y"] + box["h"]) == 3
 
 
@@ -525,8 +525,8 @@ def gap_between_boxes(first, second):
 
 
 # Stations 9 and 12 stand in the open, drawn as things that stand free (a
-# trolley, a bin). Station 9: table 3 lies 25 above its outline, the tray
-# return 27 to the right behind the hiding spot, and any place nearer to them
+# trolley, a bin). Station 9: table 3 lies 24 above its outline, the tray
+# return 26 to the right behind the hiding spot, and any place nearer to them
 # makes a way of the Duel longer. Station 12: the nearest solid, bush 4, lies
 # 33 to the left; beside it the station would glow within a second's walk of
 # the spawn, and a place further from the spawn makes ways longer (below).
@@ -543,7 +543,7 @@ def test_every_object_stands_against_a_wall_or_a_piece_of_furniture(station_id):
 
 def test_station_9_has_no_wall_or_furniture_within_reach():
     box = station_box(9)
-    assert min(gap_between_boxes(box, solid) for solid in SOLIDS) == 25
+    assert min(gap_between_boxes(box, solid) for solid in SOLIDS) == 24
 
 
 def test_station_12_has_no_wall_or_furniture_within_reach():
@@ -590,13 +590,12 @@ def test_station_9_in_its_old_place_lay_on_the_tray_return_and_the_wall():
 
 def test_a_station_box_that_only_touches_a_solid_is_free():
     # Edge cases: station 3's box ends where it may, above table 3 (since
-    # this follow-up 6 units above it: the tray stand stands at the counter's
-    # end, and its outline cannot touch the counter either, 1 unit away,
-    # without its soft edge lying on the counter's drawn edge). Station 4's
-    # box ends exactly where the bookshelf begins, station 11's begins
-    # exactly where shelf 3 ends.
+    # this follow-up 5 units above it: the tray stand stands at the counter's
+    # end, 1 unit from it). Station 11's box begins exactly where shelf 3
+    # ends: the basket stands as close to the shelf as its outline allows.
+    # (Station 4's book cart keeps a gap of 1 to the bookshelf.)
     assert station_box(3)["y"] + station_box(3)["h"] <= solid_called("canteen-table-3")["y"]
-    assert station_box(4)["y"] + station_box(4)["h"] == solid_called("ctt-bookshelf")["y"]
+    assert solid_called("ctt-bookshelf")["y"] - (station_box(4)["y"] + station_box(4)["h"]) == 1
     shelf = solid_called("pingo-doce-shelf-3")
     assert station_box(11)["x"] == shelf["x"] + shelf["w"]
     assert not overlap(station_box(11), shelf)
@@ -810,11 +809,12 @@ def test_the_pinned_object_box_is_the_drawn_object(drawn, station_id):
 
 # draw.js grows the outline inside a square of 2 x OBJECT_HALF_SIZE units
 # around the station; the outline reaches OUTLINE_GROWTH_HIGH beyond the
-# object (and its soft edge a little more), so the drawing must stay this
-# far inside the square, or the outline is cut off straight.
+# object, and its softened edge one pixel more (OUTLINE_EDGE at 10 pixels
+# per unit, the zoom of a retina screen), so the drawing must stay this far
+# inside the square, or the outline is cut off straight.
 OBJECT_HALF_SIZE = 20
-OUTLINE_GROWTH_HIGH = 4.2
-OUTLINE_EDGE = 0.5
+OUTLINE_GROWTH_HIGH = 5
+OUTLINE_EDGE = 0.1
 
 
 def outline_fits(reach):
@@ -822,13 +822,45 @@ def outline_fits(reach):
     return max(abs(side) for side in reach) + OUTLINE_GROWTH_HIGH + OUTLINE_EDGE <= OBJECT_HALF_SIZE
 
 
-def test_an_object_reaching_16_units_from_its_centre_would_have_its_outline_cut_off():
-    # Edge case and rejected: 15.3 units is the most that fits; the first
-    # projector screen of this follow-up reached 15.4 up, and the one before
-    # the follow-up 18.4.
-    assert outline_fits([-6.4, -15.3, 12.4, -0.1])
+def test_an_object_reaching_15_units_from_its_centre_would_have_its_outline_cut_off():
+    # Edge case and rejected: 14.9 units is the most that fits (the projector
+    # screen reaches 14.875 up); the first projector screen of this follow-up
+    # reached 15.4 up, and the one before the follow-up 18.4.
+    assert outline_fits([-6.4, -14.9, 12.4, -0.1])
+    assert not outline_fits([-6.4, -15, 12.4, -0.1])
     assert not outline_fits([-6.4, -15.4, 12.4, -0.1])
     assert not outline_fits([-6.4, -18.4, 12.4, -0.1])
+
+
+# How far the outline reaches past the objects on screen (the mean over
+# every station's left and top side, in map units), measured at 77b85da,
+# before its passes were counted in map units: high point 5.07 at 4 pixels
+# per unit and 4.93 at 10, low point 3.11 at both. The outline must look
+# as thick as then (a retina screen plays at about 10).
+OUTLINE_REACH_BEFORE = {"4": {"high": 5.07, "low": 3.11}, "10": {"high": 4.93, "low": 3.11}}
+OUTLINE_REACH_ALLOWANCE = 0.25
+
+
+def reach_differs(measured, before=OUTLINE_REACH_BEFORE, allowance=OUTLINE_REACH_ALLOWANCE):
+    """The (zoom, point) pairs where the outline reaches more or less far than before."""
+    return [
+        (zoom, point) for zoom, points in before.items() for point, value in points.items()
+        if abs(measured[zoom][point] - value) > allowance
+    ]
+
+
+def test_an_outline_as_thin_as_in_the_review_would_be_found():
+    # Rejected: 23858dd reached 4.81 at 4 pixels per unit and 4.2 and 2.61
+    # at 10; edge case: 0.25 less than before is still allowed.
+    thin = {"4": {"high": 4.81, "low": 3.11}, "10": {"high": 4.2, "low": 2.61}}
+    assert reach_differs(thin) == [("4", "high"), ("10", "high"), ("10", "low")]
+    just = {"4": {"high": 4.82, "low": 2.86}, "10": {"high": 4.68, "low": 2.86}}
+    assert reach_differs(just) == []
+
+
+@needs_chromium
+def test_the_outline_reaches_as_far_past_the_objects_as_before(drawn):
+    assert reach_differs(drawn["outlineReaches"]) == []
 
 
 @needs_chromium
@@ -943,7 +975,7 @@ def test_a_drawing_without_its_own_shadow_place_gets_the_default_shadow():
 # cart's body between its wheels, the café table's foot, the trolley's and
 # the desk's body, the bin).
 OWN_SHADOWS = {
-    1: (-1, -1, 8), 2: (-1.5, 7, 11), 3: (-13, -1, 14), 4: (-8, 12.5, 16), 5: (-13.5, 7, 12),
+    1: (-1, -1, 8), 2: (-1.5, 7, 11), 3: (-12.5, -1, 14), 4: (-8, 11, 16), 5: (-13.5, 7, 12),
     7: (-0.5, 1, 10), 8: (-7.5, -3, 7), 9: (-7, 4, 14), 10: (-5.5, 9, 11), 11: (-6, 5, 10),
     12: (-4.5, 6, 9),
 }
@@ -988,7 +1020,7 @@ def test_a_drawing_without_its_own_tag_place_gets_the_tag_at_the_old_place():
 # 0.35 left of and 1.35 above the object's lower right corner, or a little
 # further in where a wall or a table is close (2, 8, 11).
 OWN_TAGS = {
-    1: (11.65, -1.85), 2: (9.15, 5.65), 3: (1.65, -2.35), 4: (8.65, 13.65), 5: (-0.85, 5.65),
+    1: (11.65, -1.85), 2: (9.15, 5.65), 3: (2.15, -2.35), 4: (8.65, 12.15), 5: (-0.85, 5.65),
     7: (10.65, 0.15), 8: (0.15, -3.35), 9: (7.65, 4.65), 10: (6.15, 10.65), 11: (5.15, 4.15),
     12: (5.65, 4.65),
 }
@@ -1061,8 +1093,11 @@ def test_every_station_drawing_has_an_outline_as_fine_as_the_furniture():
 PASSES_IN_NODE = Path(__file__).with_name("station_outline_passes_in_node.js")
 GROW_PASS_UNITS = 1.5
 GROW_DIRECTIONS = 16
+LAST_PASS_DIRECTIONS = 32
 # The growth of each layer in map units, narrowest first (OUTLINE_GROWTH).
-LAYER_GROWTHS = (1.6, 2.6, 3.1, 4.2)
+LAYER_GROWTHS = (1.9, 3.1, 3.7, 5)
+# Each layer's edge is softened with four copies (draw.js, softened).
+SOFTENING_COPIES = 4
 
 
 def passes_for(growth, pass_size):
@@ -1072,19 +1107,20 @@ def passes_for(growth, pass_size):
 
 def copies_per_station(pass_size=GROW_PASS_UNITS):
     """drawImage calls for one station's four layers: each pass copies the
-    shape once in place and once per direction, and each layer is drawn over
-    itself twice at the end (to make its edge solid)."""
-    passes = 0
+    shape once in place and once per direction (more in a layer's last
+    pass), and each layer's edge is softened at the end."""
+    copies = 0
     grown = 0
     for growth in LAYER_GROWTHS:
-        passes += passes_for(growth - grown, pass_size)
+        passes = passes_for(growth - grown, pass_size)
+        copies += (passes - 1) * (1 + GROW_DIRECTIONS) + (1 + LAST_PASS_DIRECTIONS) + SOFTENING_COPIES
         grown = growth
-    return passes * (1 + GROW_DIRECTIONS) + 2 * len(LAYER_GROWTHS)
+    return copies
 
 
 def test_four_layers_grown_from_each_other_need_five_passes():
-    # 1.6 in two passes, then 1.0, 0.5 and 1.1 in one each.
-    assert copies_per_station() == 5 * 17 + 8
+    # 1.9 in two passes, then 1.2, 0.6 and 1.3 in one each.
+    assert copies_per_station() == 1 * 17 + 4 * 33 + 4 * 4
 
 
 def test_passes_counted_in_pixels_would_grow_with_the_zoom():
@@ -1111,5 +1147,6 @@ def test_the_outline_needs_the_same_work_at_every_zoom():
     for zoom in zooms:
         for station_id in STATION_BOXES:
             counted = work[str(zoom)][str(station_id)]
-            # Nine canvases: the shape, and two that take turns for each layer.
-            assert counted == {"copies": copies_per_station(), "canvases": 9}, (zoom, station_id)
+            # 13 canvases: the shape, and for each layer two that take turns
+            # and the one with the softened edge.
+            assert counted == {"copies": copies_per_station(), "canvases": 13}, (zoom, station_id)
