@@ -1778,42 +1778,43 @@ Game.world = Game.world || {};
   var HIDDEN_SYMBOL_GAP = 1; // between the badge and the name label
   var HIDDEN_SLASH_COLOUR = "#C43E3E";
 
-  function drawHiddenSymbol(label) {
+  function drawHiddenSymbol(label, target) {
+    var c = target || ctx;
     var r = HIDDEN_SYMBOL_RADIUS;
     var x = label.x;
     var y = label.y - label.height / 2 - HIDDEN_SYMBOL_GAP - r;
-    ctx.save();
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = SURFACE;
-    ctx.fill();
-    ctx.lineWidth = 0.7;
-    ctx.strokeStyle = OUTLINE;
-    ctx.stroke();
+    c.save();
+    c.lineCap = "round";
+    c.lineJoin = "round";
+    c.beginPath();
+    c.arc(x, y, r, 0, Math.PI * 2);
+    c.fillStyle = SURFACE;
+    c.fill();
+    c.lineWidth = 0.7;
+    c.strokeStyle = OUTLINE;
+    c.stroke();
     // The eye: an almond and its pupil.
-    ctx.beginPath();
-    ctx.moveTo(x - r * 0.68, y);
-    ctx.quadraticCurveTo(x, y - r * 0.62, x + r * 0.68, y);
-    ctx.quadraticCurveTo(x, y + r * 0.62, x - r * 0.68, y);
-    ctx.lineWidth = 0.6;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(x, y, r * 0.2, 0, Math.PI * 2);
-    ctx.fillStyle = OUTLINE;
-    ctx.fill();
+    c.beginPath();
+    c.moveTo(x - r * 0.68, y);
+    c.quadraticCurveTo(x, y - r * 0.62, x + r * 0.68, y);
+    c.quadraticCurveTo(x, y + r * 0.62, x - r * 0.68, y);
+    c.lineWidth = 0.6;
+    c.stroke();
+    c.beginPath();
+    c.arc(x, y, r * 0.2, 0, Math.PI * 2);
+    c.fillStyle = OUTLINE;
+    c.fill();
     // The stroke across it, with a cream edge so it stands out on the eye.
-    ctx.beginPath();
-    ctx.moveTo(x - r * 0.6, y - r * 0.6);
-    ctx.lineTo(x + r * 0.6, y + r * 0.6);
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = SURFACE;
-    ctx.stroke();
-    ctx.lineWidth = 0.8;
-    ctx.strokeStyle = HIDDEN_SLASH_COLOUR;
-    ctx.stroke();
-    ctx.restore();
+    c.beginPath();
+    c.moveTo(x - r * 0.6, y - r * 0.6);
+    c.lineTo(x + r * 0.6, y + r * 0.6);
+    c.lineWidth = 1.5;
+    c.strokeStyle = SURFACE;
+    c.stroke();
+    c.lineWidth = 0.8;
+    c.strokeStyle = HIDDEN_SLASH_COLOUR;
+    c.stroke();
+    c.restore();
   }
 
   function drawBloodSheets() {
@@ -2037,6 +2038,9 @@ Game.world = Game.world || {};
   Game.world.setInputPaused = setInputPaused;
   Game.world.setOwnHidingCheck = setOwnHidingCheck;
   Game.world.setHidingHandlers = setHidingHandlers;
+  // The crossed-out eye on any canvas, at a name label {x, y, height}: for
+  // the review pictures and tests (S-192).
+  Game.world.drawHiddenSymbol = drawHiddenSymbol;
   Game.world.nearestStationInRange = nearestStationInRange;
   Game.world.ownDrawnPosition = ownDrawnPosition;
   Game.world.walkingDirection = walkingDirection;

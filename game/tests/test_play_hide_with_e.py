@@ -174,6 +174,9 @@ def played(server):
         put(names[fr], BESIDE)
         put(names[victim], (BESIDE[0], BESIDE[1] + 6))
         standing_still(names[fr])
+        # The red button unlocks 45 s after the start; the fail's progress
+        # message tells the pages, so the clock is set forward first.
+        clock.skip(50)
         press_fail(browser, fr)
         failed(browser, fr, names[victim])
         put(names[victim], (CENTRE[0] - 60, CENTRE[1] + 40))
@@ -189,7 +192,6 @@ def played(server):
         browser.shot(victim, "hide_4_ghost_sees_hidden_free_rider")
 
         # 5. A meeting at the red button.
-        clock.skip(50)
         meeting_mark = {label: browser.now(label) for label in LABELS}
         press_at_button(browser, w30, names[w30])
         wait_for_meeting_phase(browser, LABELS, "discussion", 1)

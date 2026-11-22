@@ -420,3 +420,28 @@ def test_a_hidden_free_rider_must_step_out_to_fail_report_or_call(connect, clock
     assert classic_for(fr).is_hidden(fr)
     assert classic_for(fr).eliminated == set()
     assert classic_for(fr).phase == "round"
+
+
+# ---- No stale flag (from the review) --------------------------------------
+
+
+@pytest.mark.parametrize("way_out", [{"type": "move", "dx": 0, "dy": 1}, {"type": "leave_hiding"}])
+def test_those_who_were_told_get_him_without_the_flag_after_hiding_ends(connect, way_out):
+    connections, [first, second], [ghost, *_] = classic_round(connect, SIX)
+    classic_for(first).eliminated = {ghost}
+    put(first, CENTRE)
+    assert press_hide(connections, first)["hidden"] is True
+    told = positions_now(connections)
+    for viewer in (first, second, ghost):
+        assert [entry.get("hidden") for entry in told[viewer]["players"] if entry["name"] == first] == [True]
+
+    connections[first].send_json(way_out)
+    assert answer(connections[first]) == {"type": "classic_hiding", "hidden": False}
+    # The next tick (nobody else moves) brings fresh positions that no
+    # longer flag him; a removed re-send would leave the old flag drawn.
+    connections[first].portal.call(REAL_TICK, 0.0)
+    for viewer in (first, second, ghost):
+        arrived = positions_arrived(connections[viewer])
+        assert arrived, viewer
+        last = arrived[-1]
+        assert [entry.get("hidden") for entry in last["players"] if entry["name"] == first] == [None], viewer

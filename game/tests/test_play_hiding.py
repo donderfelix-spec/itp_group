@@ -561,6 +561,8 @@ def play_one_spot(browser, spot_name, fr, far, near, others):
     time.sleep(0.4)
     far_frames = browser.frames(far, out_mark)
     record["far_sees_fr_after_leaving"] = bool(far_frames) and names[fr] in far_frames[-1][1]
+    record["far_first_listed_after_leaving"] = next(
+        (listed[names[fr]] for _, listed in far_frames if names[fr] in listed), None)
     first_draws = browser.drawn(far, fr_character, out_mark)
     record["far_first_draw_after_leaving"] = (
         (first_draws[0][1] - record["drawn_offset"][0], first_draws[0][2] - record["drawn_offset"][1])
@@ -1031,7 +1033,12 @@ def test_walking_out_of_the_spot_shows_him_at_once_at_his_new_place(classic, spo
     assert record["far_sees_fr_after_leaving"]
     first = record["far_first_draw_after_leaving"]
     assert first is not None
-    assert not in_spot(first, spot), "drawn first where he hid, not where he is"
+    # Since S-191 one step ends hiding, so he is sent at once, possibly still
+    # inside the circle. Drawn first where he was sent, not where he hid.
+    sent = record["far_first_listed_after_leaving"]
+    assert sent is not None
+    assert math.dist(first, sent) <= 1, "drawn first somewhere else than where he was sent"
+    assert math.dist(first, record["fr_at"]) >= 3, "drawn first where he hid, not where he is"
     assert record["fr_hint_after_leaving"] is False
 
 
