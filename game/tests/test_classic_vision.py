@@ -10,8 +10,8 @@ WALL = {"kind": "wall", "x": 20, "y": -10, "w": 5, "h": 20}
 @pytest.mark.parametrize(
     ("position", "visible"),
     [
-        ((-150, 0), True),
-        ((-150.01, 0), False),
+        ((-120, 0), True),
+        ((-120.01, 0), False),
         ((19, 0), True),
         ((50, 0), False),
         ((50, 40), True),  # the opening beyond the end of the wall
@@ -22,7 +22,7 @@ WALL = {"kind": "wall", "x": 20, "y": -10, "w": 5, "h": 20}
 def test_sight_stops_at_its_range_and_opaque_walls(position, visible):
     target = ("target", *position)
     entries = [VIEWER, target]
-    campus = {"classic_vision_range": 150, "solids": [WALL]}
+    campus = {"classic_vision_range": 120, "solids": [WALL]}
     assert positions_in_sight(entries, "viewer", campus) == ([VIEWER, target] if visible else [VIEWER])
     assert entries == [VIEWER, target]
 

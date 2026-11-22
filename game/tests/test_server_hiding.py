@@ -331,8 +331,8 @@ def test_in_the_result_phase_of_the_round_nobody_is_hidden(connect):
     [
         ((500.0, 390.0), (500.0, 410.0), False),  # Pingo Doce wall
         ((540.0, 390.0), (540.0, 410.0), True),   # its door
-        ((500.0, 330.0), (650.0, 330.0), True),   # 150 units exactly
-        ((500.0, 330.0), (650.1, 330.0), False),
+        ((500.0, 330.0), (620.0, 330.0), True),   # 120 units exactly
+        ((500.0, 330.0), (620.1, 330.0), False),
     ],
 )
 def test_classic_sight_obeys_walls_and_range(connect, viewer_at, other_at, visible):
@@ -360,7 +360,7 @@ def test_classic_sight_holds_in_every_phase(connect, phase):
     assert fr not in names_in(told[hp])
 
 
-@pytest.mark.parametrize("place", [(500.0, 390.0), (100.0, 330.0)], ids=["behind a wall", "beyond 150"])
+@pytest.mark.parametrize("place", [(500.0, 390.0), (100.0, 330.0)], ids=["behind a wall", "beyond the range"])
 def test_the_other_free_rider_sees_a_hidden_one_only_in_his_sight(connect, place):
     connections, [first, second], _ = classic_round(connect, SIX)
     put(first, IN_THE_SPOT)

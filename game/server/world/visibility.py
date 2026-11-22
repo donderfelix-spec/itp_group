@@ -17,7 +17,7 @@ HIDING_PHASES = ("round", "meeting")
 # How close a viewer must be to see a hidden player, in map units, when the
 # map does not say (`hide_reveal_range` in campus.json, which says 35, S-133).
 DEFAULT_REVEAL_RANGE = 35
-DEFAULT_VISION_RANGE = 150
+DEFAULT_VISION_RANGE = 120
 
 
 def _wall_blocks(start, end, wall):

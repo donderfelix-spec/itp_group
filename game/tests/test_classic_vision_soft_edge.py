@@ -41,8 +41,8 @@ def fills(result):
 @needs_node
 def test_the_fade_runs_from_clear_inside_to_the_full_fog_at_the_range(drawn):
     gradients = [call for call in drawn["soft"]["calls"] if call[0] == "createRadialGradient"]
-    inner = 150 * drawn["fadeFrom"]
-    assert gradients == [["createRadialGradient", 486, 296, inner, 486, 296, 150]]
+    inner = 120 * drawn["fadeFrom"]
+    assert gradients == [["createRadialGradient", 486, 296, inner, 486, 296, 120]]
     assert 0 < drawn["fadeFrom"] < 1
     fade = fills(drawn["soft"])[1][2]
     # Clear where it starts, exactly the outside fog at the range: no seam,

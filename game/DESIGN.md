@@ -47,7 +47,7 @@ The map is based on the real campus in Carcavelos: light buildings, a large pave
 - At the bottom, a glass front closes off the deck. You can see the beach and the sea, but you cannot go out.
 - Every room has exactly one door to the deck and two task stations (1 to 5 in the corners of the map, so that you really have to walk in Duel, and 7 to 11 at other places); station 12 stands on the Main Deck (S-124). A station is drawn as an object of its room, for example a coffee machine or a book cart (S-128); it is drawn like the furniture around it (thin lines, the room's colours, about the size of a chair or a small table), stands on free floor against a wall or furniture, and neither it nor its outline lies on furniture or a wall. Everything that blocks is drawn to its edges (S-144).
 - You only ever see the section around your own character, about one room in size. The camera follows the character.
-- In Classic, living players see up to 150 map units from their character. Opaque walls block their view, and open passages let them see through. The server sends only living player positions within that view, subject to the hiding rules. Ghosts keep their wider view.
+- In Classic, living players see up to 120 map units from their character (S-185). The view fades softly into the dark towards its edge (S-188). Opaque walls block their view, and open passages let them see through. The server sends only living player positions within that view, subject to the hiding rules. Ghosts keep their wider view.
 
 ## 3. Characters
 

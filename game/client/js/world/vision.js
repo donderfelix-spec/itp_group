@@ -22,7 +22,7 @@
 
   // The one range of the fog and of the server (positions_in_sight).
   function rangeOf(campus) {
-    return campus.classic_vision_range || 150;
+    return campus.classic_vision_range || 120;
   }
 
   function boundary(campus, origin) {

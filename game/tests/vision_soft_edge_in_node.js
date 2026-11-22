@@ -62,5 +62,5 @@ process.stdout.write(JSON.stringify({
   fadeFrom: vision.FADE_FROM,
   hard: draw(undefined, undefined),
   zeroRange: draw({ x: 486, y: 296 }, 0),
-  soft: draw({ x: 486, y: 296 }, 150),
+  soft: draw({ x: 486, y: 296 }, 120),
 }) + '\n');
