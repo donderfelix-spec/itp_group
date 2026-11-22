@@ -82,13 +82,13 @@ process.stdout.write(JSON.stringify(seen));
 """
 
 
-def test_client_keeps_sheets_through_meetings_and_drops_only_the_reported_one():
+def test_client_keeps_all_sheets_through_meetings_until_the_round_ends():
     script = NODE_SCRIPT.replace("__ROOT__", json.dumps(str(ROOT)))
     result = subprocess.run(["node", "-e", script], check=True, capture_output=True, text=True)
     after_report, after_result, after_emergency, after_stop = json.loads(result.stdout)
-    assert after_report == ["f-sheet-2"]
-    assert after_result == ["f-sheet-2"]
-    assert after_emergency == ["f-sheet-2"]
+    assert after_report == ["f-sheet-1", "f-sheet-2"]
+    assert after_result == ["f-sheet-1", "f-sheet-2"]
+    assert after_emergency == ["f-sheet-1", "f-sheet-2"]
     assert after_stop == []
 
 

@@ -37,7 +37,7 @@ def test_playtest_a_hp_win_after_report_meeting_and_fr_ejection():
     meeting = game.report(hps[1], sheet_id, game.positions[hps[1]], 9.0)
     assert meeting["phase"] == "discussion"
     assert meeting["ghosts"] == (hps[0],)
-    assert not game.f_sheets
+    assert game.f_sheets == {sheet_id: sheet_position}
 
     # 00:10 and 00:12 — two messages are accepted into the shared transcript.
     game.send_chat(hps[1], "I found the sheet by the library.", 10.0)

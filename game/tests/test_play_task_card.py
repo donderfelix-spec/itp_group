@@ -140,8 +140,8 @@ def test_one_guest_alone_starts_solo_and_the_panel_says_solo(played):
 
 
 @needs_chromium
-def test_in_classic_every_station_in_use_pulses_and_the_card_has_no_task(played):
+def test_in_classic_the_own_list_pulses_and_the_card_has_no_task(played):
     for seen in played["classic"]:
-        assert seen["pulse"] == STATIONS_IN_USE
+        assert seen["pulse"] == sorted(seen["ownList"])
         assert seen["card"] and not seen["taskPart"]
         assert seen["drawn"] == STATIONS_IN_USE

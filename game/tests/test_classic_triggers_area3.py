@@ -75,7 +75,7 @@ def test_report_message_starts_meeting_and_websocket_scenario_a_wins_for_hp(name
     meeting = receive_broadcast(connections, "meeting_state")
     assert meeting["phase"] == "discussion"
     assert ghost_id in meeting["ghosts"]
-    assert sheet_id not in round_state.f_sheets
+    assert sheet_id in round_state.f_sheets
     assert round_state.meeting["reason"] == "report"
 
     connections[reporter_id].send_json({"type": "chat", "text": "I found the sheet."})
@@ -86,17 +86,15 @@ def test_report_message_starts_meeting_and_websocket_scenario_a_wins_for_hp(name
 
     clock.wait(45.0)
     living = [player for player in names if player != ghost_id]
-    for player in living:
+    for index, player in enumerate(living):
         target = fr_id if player != fr_id else reporter_id
         connections[player].send_json({"type": "vote", "target_id": target})
         vote_state = receive_broadcast(connections, "meeting_state")
-        assert vote_state["phase"] == "voting"
+        # Once everybody has voted, the vote ends at once (Felix, 2026-11-21).
+        assert vote_state["phase"] == ("result" if index == len(living) - 1 else "voting")
         assert "votes" not in vote_state
 
-    clock.wait(30.0)
-    connections[reporter_id].send_json({"type": "vote", "target_id": fr_id})
-    assert connections[reporter_id].receive_json()["code"] == "vote_rejected"
-    final_meeting = receive_broadcast(connections, "meeting_state")
+    final_meeting = vote_state
     assert final_meeting["phase"] == "result"
     assert final_meeting["ejected_id"] == fr_id
     assert final_meeting["revealed_role"] == "FR"
@@ -112,6 +110,13 @@ def test_report_message_starts_meeting_and_websocket_scenario_a_wins_for_hp(name
     assert all(result["winner"] == "HP" for result in results.values())
     assert all(result["reason"] == "all_free_riders_eliminated" for result in results.values())
     assert all(result["roles"][fr_id] == "FR" for result in results.values())
+
+    # The vote is over: one more vote is refused. It is sent once the news of
+    # the result (ending with the lobby after the round) has been read, so no
+    # message of the result is in between.
+    assert connections[reporter_id].receive_json()["type"] == "lobby_state"
+    connections[reporter_id].send_json({"type": "vote", "target_id": fr_id})
+    assert connections[reporter_id].receive_json()["code"] == "vote_rejected"
 
 
 @pytest.mark.parametrize("names", PLAYER_SETS)
@@ -144,6 +149,11 @@ def test_emergency_is_living_only_once_per_player_and_chat_vote_reach_all(names,
     for player, target in zip(living, targets):
         connections[player].send_json({"type": "vote", "target_id": target})
         receive_broadcast(connections, "meeting_state")
+    # Everybody has voted, so the vote ended at once (Felix, 2026-11-21).
+    for connection in connections.values():
+        assert connection.receive_json()["type"] == "classic_roster"
+    for connection in connections.values():
+        assert connection.receive_json()["type"] == "positions"
     clock.wait(30.0)
     connections[reporter_id].send_json({"type": "vote", "target_id": reporter_id})
     assert connections[reporter_id].receive_json()["code"] == "vote_rejected"
