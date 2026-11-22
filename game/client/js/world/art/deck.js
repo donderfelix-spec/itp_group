@@ -81,11 +81,12 @@ Game.world = Game.world || {};
   // How far a square crown reaches at `angle`: the edge of a square with
   // rounded corners (a "superellipse"), with small lobes that stay inside it.
   function squareReach(radius, angle, phase) {
-    var roundness = 5; // 2 is a circle; the larger, the closer to a square
+    var roundness = 7; // 2 is a circle; the larger, the closer to a square
     var edge = Math.pow(Math.pow(Math.abs(Math.cos(angle)), roundness)
       + Math.pow(Math.abs(Math.sin(angle)), roundness), -1 / roundness);
-    // At most 0.98 of the way, so that the outline stays inside the solid.
-    return radius * edge * (0.95 + 0.03 * Math.cos(angle * 9 + phase));
+    // At most 0.97 of the way: with half of the outline's width (0.4) a
+    // bush of 28 x 28 reaches 0.97 x 14 + 0.4 = 13.98, inside its solid.
+    return radius * edge * (0.94 + 0.03 * Math.cos(angle * 9 + phase));
   }
 
   // Uneven rounded lobes form a bush silhouette; large leaves add texture.

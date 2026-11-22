@@ -11,6 +11,8 @@
 //              map units, and the units where a pixel of the part lies on
 //              drawn furniture or a wall
 //   roomNames  for every room the box of its drawn name, in map units
+//   coverage   for every solid other than a wall: its id, kind and the share
+//              of its rectangle that is drawn
 //
 // How it is measured: the page's own Game.world.drawMap draws the map at 4
 // pixels per unit, the same way as play_campus_detail_in_browser.js:
@@ -200,7 +202,18 @@ function stationCheck() {
       }
       return { id: room.id, box };
     });
-    return { stations, roomNames };
+    // How much of each solid other than a wall is drawn (as in
+    // play_campus_detail_in_browser.js): the share of its units that differ
+    // from the map with only the walls.
+    const drawnUnits = difference(noStations, bare);
+    const coverage = campus.solids.filter((solid) => solid.kind !== 'wall').map((solid) => {
+      let count = 0;
+      for (let y = solid.y; y < solid.y + solid.h; y++) {
+        for (let x = solid.x; x < solid.x + solid.w; x++) count += drawnUnits[y * W + x];
+      }
+      return { id: solid.id, kind: solid.kind, share: count / (solid.w * solid.h) };
+    });
+    return { stations, roomNames, coverage };
   })();
 }
 

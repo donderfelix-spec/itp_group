@@ -83,11 +83,12 @@ Game.world = Game.world || {};
   stations[1].shadow = { x: 1, y: 6.5 };
 
   // 2 Brew the order: an espresso machine with a cup under the spout.
-  // Drawn 5 units low and 1 to the left, so that its outline stays off the
-  // café's coffee machine and its wall.
+  // Drawn 5 units low, so that its outline stays off the café's coffee
+  // machine; its shadow lies under the machine's foot (draw.js).
   stations[2] = function (ctx) {
-    shifted(ctx, -1, 5, 1, espressoMachine);
+    shifted(ctx, 0, 5, 1, espressoMachine);
   };
+  stations[2].shadow = { x: 0, y: 13 };
 
   function espressoMachine(ctx) {
     box(ctx, -11, -12, 22, 21, 3, "#6B6F7A", 1.4);

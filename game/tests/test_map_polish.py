@@ -338,7 +338,7 @@ def test_a_lamp_post_10_from_a_wall_is_too_far():
 # draw.js adds below and beside every object have boxes of their own below.
 STATION_BOXES = {
     1: (-17, -18, 17, 11),
-    2: (-17, -12, 15, 19),
+    2: (-16, -12, 16, 19),
     3: (-17, -17, 17, 9),
     4: (-17, -18, 17, 15),
     5: (-13, -18, 13, 15),
@@ -353,17 +353,17 @@ STATION_BOXES = {
 
 # The soft shadow below each object, measured the same way (where the
 # number tag covers it, the tag's box counts). Most lie at draw.js's default
-# place; stations 1, 3 and 7 give their own (art/stations.js) so that the
-# shadow stays off row 1's desk, off table 3 and off the Lecture Hall's wall.
+# place; stations 1, 2, 3 and 7 give their own (art/stations.js) so that the
+# shadow stays off row 1's desk, lies under the espresso machine drawn 5
+# units low, and stays off table 3 and off the Lecture Hall's wall.
 DEFAULT_SHADOW_BOX = (-10, 7, 8, 14)
 SHADOW_BOXES = {station_id: DEFAULT_SHADOW_BOX for station_id in STATION_BOXES}
-SHADOW_BOXES.update({1: (-10, 3, 9, 10), 3: (-10, 1, 12, 8), 7: (-6, 4, 8, 12)})
+SHADOW_BOXES.update({1: (-10, 3, 9, 10), 2: (-11, 9, 10, 17), 3: (-10, 1, 12, 8), 7: (-6, 4, 8, 12)})
 
-# The number tag at the lower right of each object. At station 2 the tag's
-# dark rim (to x 447.7) meets the café's dark wall (from x 447): it cannot be
-# told apart from the wall there, so its measured box ends a unit earlier.
+# The number tag at the lower right of each object, the same for all.
+# (Station 2 stands at x 431, so that its tag ends at x 446.7, before the
+# café's wall at x 447.)
 TAG_BOXES = {station_id: (6, 4, 16, 14) for station_id in STATION_BOXES}
-TAG_BOXES[2] = (6, 4, 15, 14)
 
 # The drawn box of each room's name, in map units (x0, y0, x1, y1), measured
 # in Chromium; a station's outline keeps at least 1 unit away from it.
@@ -555,8 +555,11 @@ def test_no_way_of_the_duel_became_longer(ways_now):
 
 
 def test_the_aisles_and_free_stations_made_some_ways_much_shorter(ways_now):
-    # Measured for this to-do: 5 to 11 32 % shorter (station 11 in the aisle
-    # between the shelves), 11 to 12 17 %, 8 to 10 10 %.
+    # Measured for this to-do against main before it: 46 of the 66 ways
+    # became shorter and none longer. The largest change is 5 to 11, 32 %
+    # shorter (station 11 in the aisle between the shelves); others are
+    # 9 to 11 14.6 %, spawn to 11 13.5 %, 11 to 12 17.3 %, 8 to 10 9.9 % and
+    # 1 to 7 6.5 %.
     assert ways_now[(5, 11)] == pytest.approx(113.941, abs=ROUNDING)
     assert ways_now[(11, 12)] == pytest.approx(172.167, abs=ROUNDING)
     assert ways_now[(8, 10)] == pytest.approx(390.392, abs=ROUNDING)
@@ -650,6 +653,36 @@ def test_the_pinned_shadow_and_tag_boxes_are_the_drawn_ones(drawn, station_id):
         assert (box["left"], box["top"], box["right"], box["bottom"]) == pinned[station_id], part
 
 
+# What is drawn is what blocks (M2-1.20): the bushes, the NOVA logo and the
+# lecture rows fill their solids. Before, a bush was about 67 % drawn, the
+# logo 50 % and a row 63 %. (test_play_campus_detail.py's LEAST_DRAWN_SHARE
+# of 0.25 still holds for every solid.)
+FILLED_KINDS = ("tree", "logo", "bench")
+LEAST_FILLED_SHARE = 0.9
+
+
+def too_little_drawn(coverage, kinds=FILLED_KINDS, least=LEAST_FILLED_SHARE):
+    """The ids of the solids of `kinds` of which less than `least` is drawn."""
+    return [row["id"] for row in coverage if row["kind"] in kinds and row["share"] < least]
+
+
+def test_a_bush_drawn_as_round_as_before_is_too_little_drawn():
+    # Rejected: the old round crown, and edge case: exactly 0.9 is enough.
+    coverage = [
+        {"id": "deck-tree-1", "kind": "tree", "share": 0.67},
+        {"id": "deck-tree-2", "kind": "tree", "share": 0.9},
+        {"id": "deck-pool", "kind": "pool", "share": 0.5},  # not one of the kinds
+    ]
+    assert too_little_drawn(coverage) == ["deck-tree-1"]
+
+
+@needs_chromium
+def test_every_bush_the_logo_and_every_lecture_row_are_drawn_to_their_edges(drawn):
+    rows = [row for row in drawn["coverage"] if row["kind"] in FILLED_KINDS]
+    assert sorted(row["kind"] for row in rows) == ["bench"] * 3 + ["logo"] + ["tree"] * 6
+    assert too_little_drawn(drawn["coverage"]) == []
+
+
 @needs_chromium
 def test_the_pinned_room_name_boxes_are_the_drawn_names(drawn):
     measured = {row["id"]: row["box"] for row in drawn["roomNames"]}
@@ -676,7 +709,7 @@ def shadows_drawn(station_ids, shadows=None):
 
 @needs_node
 def test_a_drawing_without_its_own_shadow_place_gets_the_default_shadow():
-    others = sorted(set(STATION_BOXES) - {1, 3, 7})
+    others = sorted(set(STATION_BOXES) - {1, 2, 3, 7})
     drawn = shadows_drawn(others)
     for station_id in others:
         station = station_called(station_id)
@@ -684,9 +717,9 @@ def test_a_drawing_without_its_own_shadow_place_gets_the_default_shadow():
 
 
 @needs_node
-def test_stations_1_3_and_7_draw_their_shadow_at_their_own_place():
-    drawn = shadows_drawn([1, 3, 7])
-    for station_id, (dx, dy) in {1: (1, 6.5), 3: (1, 4.5), 7: (5, 8)}.items():
+def test_stations_1_2_3_and_7_draw_their_shadow_at_their_own_place():
+    drawn = shadows_drawn([1, 2, 3, 7])
+    for station_id, (dx, dy) in {1: (1, 6.5), 2: (0, 13), 3: (1, 4.5), 7: (5, 8)}.items():
         station = station_called(station_id)
         assert drawn[station_id] == [(station["x"] + dx, station["y"] + dy)], station_id
 
