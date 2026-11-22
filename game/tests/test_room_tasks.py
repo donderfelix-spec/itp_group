@@ -26,12 +26,14 @@ def test_extra_room_contents_are_solvable_and_readable(seed):
     rng = random.Random(seed)
     contents = {station: game.make_content(rng) for station, game in room_tasks.MINIGAMES.items()}
     for station, content in contents.items():
-        assert content['kind'] == 'campus_task'
+        assert content['kind'] == ('campus_challenge' if station in (7, 10, 12) else 'campus_task')
         assert room_tasks.MINIGAMES[station].min_seconds == 1
         json.dumps(content)
-    slides = contents[7]['items']
-    assert len(slides) == len({item['id'] for item in slides}) == 6
-    assert sum(item['remove'] for item in slides) == 3
+    slides = contents[7]
+    assert slides['puzzle'] == 'chart'
+    assert len({row['label'] for row in slides['rows']}) == 3
+    assert all(2 <= row['count'] <= 8 and row['sample'] == 10 for row in slides['rows'])
+    assert set(slides['initial_labels']) == {row['label'] for row in slides['rows']}
     # The requested canteen redesign deliberately replaces six whole dishes
     # with exactly sixteen individual grains/pieces on one mixed lunch tray.
     lunch = contents[9]
@@ -49,14 +51,20 @@ def test_extra_room_contents_are_solvable_and_readable(seed):
     coffee = contents[8]
     assert coffee['recipe'] and set(coffee['recipe']) <= set(coffee['controls'])
     chat = contents[10]
-    assert len(chat['words']) == len(set(chat['words']))
-    assert set(chat['words']) == set(chat['order'])
-    assert ' '.join(chat['order']) == chat['hint']
+    assert chat['puzzle'] == 'chat_logic'
+    assert {row['person'] for row in chat['schedule']} == set(chat['people'])
+    assert {row['job'] for row in chat['schedule']} == set(chat['jobs'])
+    assert sorted(row['slot'] for row in chat['schedule']) == chat['slots']
+    assert len(chat['clues']) == 5
     prices = [item['price'] for item in contents[11]['products']]
     target = contents[11]['target']
     assert max(prices) < target
     assert any(sum(three) == target for three in itertools.combinations(prices, 3))
-    assert 4 <= contents[12]['pages'] <= 6
+    rescue = contents[12]
+    assert rescue['goal'] == 6
+    assert sum(wave['cargo'] == 'page' for wave in rescue['waves']) == 8
+    assert len(rescue['waves']) == 12
+    assert all(0 <= wave['lane'] <= 2 and 1200 <= wave['duration'] <= 2200 for wave in rescue['waves'])
 
 
 def test_seed_controls_content_and_new_openings_can_have_different_content():
