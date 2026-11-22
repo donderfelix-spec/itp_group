@@ -26,11 +26,12 @@ def cleanup_content(rng, theme, good, bad):
 
 
 def slides(rng):
-    return cleanup_content(
-        rng, "slides",
-        ["Research question", "Survey results", "Sources", "Actual conclusion"],
-        ["Synergy tornado", "Blockchain-powered vibes", "Disruptive lunch strategy", "Quantum stakeholder alignment"],
-    )
+    labels = rng.sample(["Did the reading", "Brought snacks", "Opened the document", "Said 'quick call'"], 3)
+    counts = rng.sample(range(2, 9), 3)
+    rows = [{"label": label, "count": count, "sample": 10} for label, count in zip(labels, counts)]
+    return {"kind": "campus_challenge", "puzzle": "chart", "rows": rows,
+            "initial_labels": labels[1:] + labels[:1],
+            "initial_values": [(count * 10 + 30) % 100 for count in counts]}
 
 
 def coffee(rng):
@@ -64,18 +65,24 @@ def lunch(rng):
 
 
 def chat(rng):
-    sentences = [
-        "My laptop joined another group project",
-        "The seagull ate my contribution again",
-        "I thought this deadline was optional",
-        "Our spreadsheet has developed trust issues",
+    people = rng.sample(["Mara", "Tiago", "Ines", "Rui"], 4)
+    jobs = rng.sample(["Slides", "Survey", "Budget", "Sources"], 4)
+    clues = [
+        {"from": people[0], "text": f"I present before {people[2]}. Also, I have the {jobs[0]}."},
+        {"from": people[1], "text": f"My slot is immediately after {people[0]}'s."},
+        {"from": people[2], "text": f"I go immediately after {people[1]}. My deliverable is the {jobs[2]}."},
+        {"from": people[3], "text": "I'm last. Please leave some coffee."},
+        {"from": "Pinned message", "text": f"The {jobs[1]} must be presented before the {jobs[2]}. The {jobs[3]} comes after the {jobs[2]}."},
     ]
-    sentence = rng.choice(sentences)
-    order = sentence.split()
-    words = list(order)
-    rng.shuffle(words)
-    return {"kind": "campus_task", "puzzle": "order", "words": words,
-            "order": order, "hint": sentence}
+    rng.shuffle(clues)
+    displayed = list(people)
+    rng.shuffle(displayed)
+    options = list(jobs)
+    rng.shuffle(options)
+    return {"kind": "campus_challenge", "puzzle": "chat_logic", "people": displayed,
+            "jobs": options, "slots": [9, 10, 11, 12], "clues": clues,
+            "schedule": [{"person": person, "job": job, "slot": slot}
+                         for person, job, slot in zip(people, jobs, [9, 10, 11, 12])]}
 
 
 def budget(rng):
@@ -91,7 +98,12 @@ def budget(rng):
 
 
 def seagull(rng):
-    return {"kind": "campus_task", "puzzle": "seagull", "pages": rng.randint(4, 6)}
+    cargo = ["page"] * 8 + ["coffee"] * 4
+    rng.shuffle(cargo)
+    return {"kind": "campus_challenge", "puzzle": "seagull_defence", "goal": 6,
+            "waves": [{"lane": rng.randrange(3), "cargo": item,
+                       "duration": rng.choice([1600, 1800, 2000]) - index * 25}
+                      for index, item in enumerate(cargo)]}
 
 
 MINIGAMES = {

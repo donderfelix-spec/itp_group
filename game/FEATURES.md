@@ -106,6 +106,8 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 
 ## Area 4: Minigames and extra modes
 
+Stations 7, 10 and 12 use chart reconstruction from survey evidence, a chat deduction puzzle and timed paper rescue across three lanes. Each has its own brief, feedback and retry controls.
+
 | Feature | Milestone | Status |
 |---|---|---|
 | Frame for minigames: open at a station, close, report “done” | M2 | Done |
