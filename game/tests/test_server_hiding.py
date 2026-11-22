@@ -238,11 +238,16 @@ def test_a_free_rider_who_is_a_ghost_does_not_hide_but_the_living_still_do_not_g
 def test_a_meeting_does_not_reveal_the_hidden_free_rider(connect, clock):
     connections, [fr], [caller, far, _] = classic_round(connect)
     put(fr, IN_THE_SPOT)
+    button = CAMPUS["button"]
+    put(caller, (button["x"], button["y"]))
     clock.wait(46)  # the emergency button unlocks 45 seconds after the start
     connections[caller].send_json({"type": "emergency"})
     for connection in connections.values():
-        while connection.receive_json()["type"] != "meeting_state":
-            pass
+        while True:
+            message = connection.receive_json()
+            assert message["type"] != "error", message
+            if message["type"] == "meeting_state":
+                break
     assert classic_for(fr).phase == "meeting"
 
     assert fr not in names_in(positions_now(connections)[far])

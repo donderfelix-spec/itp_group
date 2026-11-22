@@ -10,7 +10,7 @@ test takes about a minute).
   refused with "The emergency button unlocks in N seconds.", shown at the top.
 - After 45 s the button is drawn at campus.button, (365, 375), radius 11, on
   every page.
-- Two units outside the range (r + 2) there is no hint and E opens nothing.
+- Two units outside the range (use_range, 25) there is no hint and E opens nothing.
 - At the edge of the range the button reads "E Emergency"; E (pressed twice
   quickly) opens one emergency meeting for all four players, called by that
   player, and the second press is refused.

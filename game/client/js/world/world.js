@@ -149,6 +149,9 @@ Game.world = Game.world || {};
   var failStatusReceivedAt = 0;
   var emergencyStatus = null;
   var emergencyStatusReceivedAt = 0;
+  // True once the server accepted the own emergency call of this round: each
+  // player has one per round, so the red button offers nothing more (M3-3.22).
+  var ownCallUsed = false;
   var ownIsGhost = false;
   var players = new Map(); // name -> player record, see newPlayer()
   var pressedKeys = {}; // event.code -> true while the key is held down
@@ -1085,6 +1088,21 @@ Game.world = Game.world || {};
     emergencyStatusReceivedAt = performance.now();
   }
 
+  // Every `meeting_state` of an emergency meeting names its caller. When that
+  // is the own player, the own call of this round is used up. A report or a
+  // meeting called by someone else changes nothing.
+  function noteMeetingState(message) {
+    if (!message || message.reason !== "emergency") return;
+    if (ownName === null || message.trigger_player_id !== ownName) return;
+    ownCallUsed = true;
+    updateUseButton(stationInRange()); // put right at once, not only by the next frame
+  }
+
+  // A new Classic round (a new `classic_role`) gives every player a call again.
+  function forgetOwnCall() {
+    ownCallUsed = false;
+  }
+
   function addBloodSheet(message) {
     if (!message || typeof message.sheet_id !== "string" || !message.position) return;
     var x = message.position.x;
@@ -1103,14 +1121,16 @@ Game.world = Game.world || {};
   }
 
   // Forgets what a Classic round left on the map: the F-sheets, the time the
-  // red button unlocks and the own Free Rider look. main.js calls it when the
-  // round is over, and stop() calls it too. Otherwise the lobby and the next
-  // round, also a Duel, would still draw the red button and show "Report",
+  // red button unlocks, whether the own call is used and the own Free Rider
+  // look. main.js calls it when the round is over, and stop() calls it too.
+  // Otherwise the lobby and the next round, also a Duel, would still draw
+  // the red button and show "Report",
   // "E Emergency" or "Let fail".
   function clearClassicRound() {
     bloodSheets.clear();
     emergencyStatus = null;
     emergencyStatusReceivedAt = 0;
+    forgetOwnCall();
     setOwnFreeRider(false);
     // The buttons are put right at once, not only by the next frame.
     updateUseButton(stationInRange());
@@ -1139,11 +1159,11 @@ Game.world = Game.world || {};
   }
 
   function isAtEmergencyButton() {
-    if (!campus || !campus.button || !emergencyHandler || !emergencyIsUnlocked()) return false;
+    if (ownCallUsed || ownIsGhost || !campus || !campus.button || !emergencyHandler || !emergencyIsUnlocked()) return false;
     var position = ownServerPosition();
     if (!position) return false;
     var button = campus.button;
-    return Math.hypot(position.x - button.x, position.y - button.y) <= (button.r || 0) + REPORT_RANGE;
+    return Math.hypot(position.x - button.x, position.y - button.y) <= campus.use_range;
   }
 
   function useActionInRange() {
@@ -1228,7 +1248,8 @@ Game.world = Game.world || {};
   // stylesheet gives the two looks.
   function updateUseButton(idInRange) {
     if (!useButton) return;
-    if (ownIsFreeRider) {
+    var emergencyNearby = isAtEmergencyButton();
+    if (ownIsFreeRider && !emergencyNearby) {
       var secondsLeft = failCooldownSeconds();
       var fill = window.ClassicFailButton.fillFraction(
         failStatus, failStatusReceivedAt, performance.now(), FAIL_COOLDOWN_SECONDS
@@ -1236,10 +1257,7 @@ Game.world = Game.world || {};
       useButton.classList.add("fail-button");
       useButtonHasFailLook = true;
       useButton.style.setProperty("--fail-fill", (fill * 100) + "%");
-      var emergencyNearby = isAtEmergencyButton();
-      useButton.textContent = emergencyNearby
-        ? "E Emergency"
-        : secondsLeft > 0
+      useButton.textContent = secondsLeft > 0
         ? "Let fail (" + secondsLeft + " s)"
         : (failInRange ? "Let fail (" + FAIL_RANGE_TILES + " tiles)" : "Let fail");
       var shouldDisableFail = !isFailButtonActive() || inputPaused;
@@ -1253,9 +1271,7 @@ Game.world = Game.world || {};
       useButton.classList.remove("fail-button");
       useButtonHasFailLook = false;
     }
-    var emergencyNearby = isAtEmergencyButton();
     var shouldBeDisabled = (idInRange === null && !emergencyNearby) || inputPaused;
-    if (!useButton) return;
     useButton.textContent = emergencyNearby ? "E Emergency" : USE_BUTTON_TEXT;
     if (useButton.disabled === shouldBeDisabled) return;
     // Some browsers swallow key events while a switched-off button has the
@@ -1854,6 +1870,14 @@ Game.world = Game.world || {};
   function walkingDirection() {
     var isMoving = sentDirection.dx !== 0 || sentDirection.dy !== 0;
     return { dx: sentDirection.dx, dy: sentDirection.dy, since: isMoving ? walkingSince : null };
+  }
+
+  // The world listens to these two messages itself, so main.js does not have
+  // to pass them on. Pages and tests that load the world without net.js
+  // have no Game.net: there the own call simply always counts as unused.
+  if (Game.net && typeof Game.net.on === "function") {
+    Game.net.on("meeting_state", noteMeetingState);
+    Game.net.on("classic_role", forgetOwnCall);
   }
 
   Game.world.start = start;

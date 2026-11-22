@@ -395,6 +395,7 @@ REJECTION_TEXTS = {
     "skip_discussion_rejected": "You cannot skip this discussion right now.",
     "report_rejected": "You cannot report that F-sheet right now. Stand at the sheet and try again.",
     "emergency_rejected": "You cannot call an emergency meeting right now.",
+    "emergency_out_of_reach": "Walk to the red button to call a meeting.",
     "guest_no_statistics": "Guests have no statistics. Sign up to keep yours.",
     "statistics_unavailable": "Statistics are unavailable right now.",
     "too_many_attempts": "Too many attempts. Try again in a minute.",
