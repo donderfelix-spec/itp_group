@@ -5,8 +5,9 @@ meeting snapshot arrived. A living player standing next to a sheet that was
 still on the map then lost the Report button, even though the server still
 had the sheet.
 
-The test drives the real client files (hud-actions.js, world.js, meeting.js)
-in a Node vm with a small DOM stub. Sheet A is reported in a meeting, sheet B
+The test drives the real client files (draw.js, hud-actions.js, world.js,
+meeting.js) in a Node vm with a small DOM stub; only the map and character
+drawing are stand-ins. Sheet A is reported in a meeting, sheet B
 stays on the map, and the living player stands next to sheet B.
 """
 
@@ -77,10 +78,15 @@ sandbox.window = sandbox;
 sandbox.addEventListener = () => {};
 sandbox.removeEventListener = () => {};
 vm.createContext(sandbox);
+// draw.js comes before world.js, as in index.html: world.js takes the real
+// Game.world.chooseLabels (which name labels are drawn) from it.
+vm.runInContext(fs.readFileSync(root + '/client/js/world/draw.js', 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(root + '/client/js/classic/hud-actions.js', 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(root + '/client/js/world/world.js', 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(root + '/client/js/classic/meeting.js', 'utf8'), sandbox);
 const world = sandbox.Game.world;
+// Stand-ins for the map and character drawing (draw.js, characters.js): the
+// test is about the Report button, not about what the canvas shows.
 world.drawMap = () => {};
 world.drawCharacter = () => {};
 world.drawStationGlow = () => {};
