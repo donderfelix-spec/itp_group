@@ -127,7 +127,11 @@ Game.world = Game.world || {};
   var FAIL_RANGE_TILES = 20;
   var FAIL_COOLDOWN_SECONDS = 15;
   var REPORT_KEY_CODE = "KeyR";
-  var REPORT_RANGE = 8;
+  // How near an F-sheet the Report button lights up; the server checks the
+  // same number (rules.REPORT_RANGE, S-180).
+  var SHEET_REPORT_RANGE = 8;
+  // Only the red button's "E Emergency" hint still reads this, as on main.
+  var REPORT_RANGE = 2;
   var EMERGENCY_DELAY_SECONDS = 45;
 
   // ---- State -----------------------------------------------------------
@@ -1126,7 +1130,7 @@ Game.world = Game.world || {};
     var position = ownServerPosition();
     if (!position) return null;
     var nearest = null;
-    var nearestDistance = REPORT_RANGE;
+    var nearestDistance = SHEET_REPORT_RANGE;
     bloodSheets.forEach(function (sheet, sheetId) {
       if (sheet.reported) return;
       var distance = Math.hypot(position.x - sheet.x, position.y - sheet.y);
@@ -1281,7 +1285,7 @@ Game.world = Game.world || {};
     }
     var sheet = nearestSheetInRange();
     reportButton.hidden = !window.ClassicHudActions.reportVisible(
-      !ownIsGhost, sheet ? sheet.distance : Infinity, REPORT_RANGE
+      !ownIsGhost, sheet ? sheet.distance : Infinity, SHEET_REPORT_RANGE
     ) || inputPaused;
   }
 
