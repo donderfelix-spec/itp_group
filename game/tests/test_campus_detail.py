@@ -233,11 +233,14 @@ def test_the_lecture_hall_has_a_lectern_on_the_stage():
 def test_the_ctt_has_a_central_aisle_between_its_two_halves_of_tables():
     left = sorted((solid for solid in SOLIDS if solid["kind"] == "table-row"), key=lambda solid: solid["y"])
     right = sorted((solid for solid in SOLIDS if solid["kind"] == "study-table"), key=lambda solid: solid["y"])
-    assert len(left) == len(right) == 8
-    for left_table, right_table in zip(left, right):
-        assert left_table["y"] == right_table["y"]
+    # M2-1.20 took out the first study table: station 10 stands in its place.
+    assert len(left) == 8 and len(right) == 7
+    rows_by_y = {table["y"]: table for table in left}
+    for right_table in right:
+        left_table = rows_by_y[right_table["y"]]  # every study table has its row beside it
         # Wide enough for two players side by side (round 9).
         assert right_table["x"] - (left_table["x"] + left_table["w"]) >= 24
+    for left_table in left:
         # tests/test_movement.py walks straight down at x 85 to 95 into the first row.
         assert left_table["x"] <= 85 and left_table["x"] + left_table["w"] >= 95
 
