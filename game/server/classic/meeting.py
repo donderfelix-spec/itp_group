@@ -208,8 +208,11 @@ def meeting_snapshot(meeting: dict, now: float) -> dict:
         "voted": list(current.get("votes", {})),
         "vote_targets": dict(current.get("votes", {})),
         # Skip agreements are public, like the fact that someone has voted;
-        # they never reveal a vote target.
-        "skip_voted": list(current.get("skip_votes", ())),
+        # they never reveal a vote target. A set has no fixed order, so the
+        # names are sorted: every snapshot lists them the same way.
+        # (vote_targets and voted follow the dict's order of the votes, which
+        # is the same every time.)
+        "skip_voted": sorted(current.get("skip_votes", ())),
         "ejected_id": (
             current["vote_result"].ejected_id
             if current.get("vote_result") is not None

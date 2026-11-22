@@ -134,6 +134,17 @@ def test_the_snapshot_follows_a_changed_and_a_withdrawn_vote():
     assert meeting_snapshot(state, 10.0)["vote_targets"] == {}
 
 
+def test_skip_voted_is_sorted_and_vote_targets_keep_the_order_of_the_votes():
+    state = meeting(FIVE, skips={"D", "A", "C"})
+    assert meeting_snapshot(state, 10.0)["skip_voted"] == ["A", "C", "D"]
+    state = meeting(FIVE)
+    for voter, target in (("F", "A"), ("B", "F"), ("D", "F")):
+        state = cast_vote(state, voter, target)
+    snapshot = meeting_snapshot(state, 10.0)
+    assert list(snapshot["vote_targets"]) == ["F", "B", "D"]
+    assert snapshot["voted"] == ["F", "B", "D"]
+
+
 def test_a_new_meeting_has_no_votes_and_no_skips():
     snapshot = meeting_snapshot(start_discussion(["A", "B"], [], 0.0), 1.0)
     assert snapshot["vote_targets"] == {}
