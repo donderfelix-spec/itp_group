@@ -1,8 +1,8 @@
 """Who is sent whose position: line of sight and hiding spots.
 
-Plain functions: no network, no clock. The server leaves a hidden player out
-of the `positions` message, so a browser far away never learns where that
-player is. Positions outside the reveal range are never transmitted.
+Plain functions: no network, no clock. The server leaves a player out of the
+`positions` message when he is outside the viewer's sight (S-185) or hidden
+from him (S-133), so a browser never learns where that player is.
 
 Limited vision applies to living Classic players. The hiding-spot rules
 additionally conceal a living Free Rider from distant High Performers.

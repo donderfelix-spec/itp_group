@@ -312,6 +312,7 @@ def test_after_the_round_ended_nobody_is_hidden(connect):
 
 def test_in_the_result_phase_of_the_round_nobody_is_hidden(connect):
     connections, [fr], [far, _, _] = classic_round(connect)
+    put(far, SPOT_WATCHERS[0])
     put(fr, IN_THE_SPOT)
     classic_for(fr).phase = "result"
     assert fr in names_in(positions_now(connections)[far])
@@ -339,6 +340,43 @@ def test_classic_sight_obeys_walls_and_range(connect, viewer_at, other_at, visib
     assert fr in names_in(told[fr]) and hp in names_in(told[hp])
     assert (hp in names_in(told[fr])) is visible
     assert (fr in names_in(told[hp])) is visible
+
+
+@pytest.mark.parametrize("phase", ["round", "meeting", "result"])
+def test_classic_sight_holds_in_every_phase(connect, phase):
+    connections, [fr], [hp, _, _] = classic_round(connect)
+    put(fr, (500.0, 390.0))
+    put(hp, (500.0, 410.0))  # behind the wall of Pingo Doce
+    classic_for(fr).phase = phase
+
+    told = positions_now(connections)
+
+    assert hp not in names_in(told[fr])
+    assert fr not in names_in(told[hp])
+
+
+@pytest.mark.parametrize("place", [(500.0, 390.0), (100.0, 330.0)], ids=["behind a wall", "beyond 150"])
+def test_the_other_free_rider_sees_a_hidden_one_only_in_his_sight(connect, place):
+    connections, [first, second], _ = classic_round(connect, SIX)
+    put(first, IN_THE_SPOT)
+    put(second, place)
+
+    told = positions_now(connections)
+
+    assert first not in names_in(told[second])
+
+
+def test_a_player_who_just_became_a_ghost_gets_the_full_view_at_once(connect):
+    connections, [fr], [victim, beyond_wall, far] = classic_round(connect)
+    put(victim, (500.0, 390.0))
+    put(beyond_wall, (500.0, 410.0))
+    put(far, (100.0, 330.0))
+    put(fr, (650.0, 128.0))
+    assert names_in(positions_now(connections)[victim]) == [victim]
+
+    classic_for(fr).eliminated = {victim}
+
+    assert sorted(names_in(positions_now(connections)[victim])) == sorted(FOUR)
 
 
 def test_ghost_sight_ignores_walls_and_range_in_classic(connect):
