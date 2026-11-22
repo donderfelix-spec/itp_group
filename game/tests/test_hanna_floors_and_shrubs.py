@@ -98,7 +98,9 @@ def counts(campus):
 # changed on purpose later (a moved solid, a new station, ...), measure these
 # again with counts() and digest() and update them here, naming the change.
 MAIN_COUNTS = {"rooms": 5, "solids": 107, "decor": 76, "stations": 12, "hiding_spots": 4, "doors": 5}
-MAIN_DIGEST = "9b1d9509b47d2463624f22f5ee959a8564cb25e11cbf8b1f7312e1735a105ab4"
+# Measured again for M3-1.1 (S-185): the map gained "classic_vision_range": 150.
+# Without that key the digest is main's old one, 9b1d9509...e1735a105ab4.
+MAIN_DIGEST = "92ebf3c9b1bf8d1a3ddb8ef55f9e795cb7d56c52c77e6d042afa964e6ede9824"
 
 # Hanna's floors (3622182): room id -> (floor colour, pattern).
 HANNAS_FLOORS = {
