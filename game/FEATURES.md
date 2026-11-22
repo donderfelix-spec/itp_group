@@ -132,3 +132,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Mon Café: put chairs in rows for the event | M4 | Later |
 | Deadline mode: shared clock, progress bar, random disruptions | M4 | Planned |
 | Duel variants: best of 3, knockout rounds | M4 | Later |
+
+## Emergency button placement
+
+The red emergency button now stands in the centre of the Main Deck.
