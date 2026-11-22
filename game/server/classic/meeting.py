@@ -27,6 +27,17 @@ def start_discussion(
     living: list[str], ghosts: list[str], now: float, round_state: dict | None = None
 ) -> dict:
     """Create a meeting state. The server supplies the current monotonic time."""
+    return _start_meeting(living, ghosts, now, round_state, "discussion", DISCUSSION_SECONDS)
+
+
+def start_voting(
+    living: list[str], ghosts: list[str], now: float, round_state: dict | None = None
+) -> dict:
+    """Open the vote immediately after an emergency call."""
+    return _start_meeting(living, ghosts, now, round_state, "voting", VOTING_SECONDS)
+
+
+def _start_meeting(living, ghosts, now, round_state, phase, duration):
     if not _valid_time(now):
         raise ValueError("Meeting time must be a finite number.")
     if len(set(living)) != len(living) or len(set(ghosts)) != len(ghosts):
@@ -34,8 +45,8 @@ def start_discussion(
     if set(living) & set(ghosts):
         raise ValueError("A player cannot be living and a ghost at once.")
     state = {
-        "phase": "discussion",
-        "deadline": float(now) + DISCUSSION_SECONDS,
+        "phase": phase,
+        "deadline": float(now) + duration,
         "living": tuple(living),
         "ghosts": tuple(ghosts),
         "messages": [],

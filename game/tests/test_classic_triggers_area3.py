@@ -6,7 +6,7 @@ import pytest
 
 from server import protocol
 from server.main import app
-from task_helpers import clock, client, connect, placeholder_at_every_station  # noqa: F401
+from task_helpers import clock, client, connect, placeholder_at_every_station, put  # noqa: F401
 from test_classic_server_features import ask, classic_for, start_classic
 
 
@@ -55,6 +55,12 @@ def receive_broadcast(connections, expected_type):
     assert all(message["type"] == expected_type for message in messages.values())
     assert len({json.dumps(message, sort_keys=True) for message in messages.values()}) == 1
     return next(iter(messages.values()))
+
+
+def stand_at_emergency_button(*names):
+    button = app.state.campus["button"]
+    for name in names:
+        put(name, (button["x"], button["y"]))
 
 
 @pytest.mark.parametrize("names", PLAYER_SETS)
@@ -120,35 +126,39 @@ def test_report_message_starts_meeting_and_websocket_scenario_a_wins_for_hp(name
 
 
 @pytest.mark.parametrize("names", PLAYER_SETS)
-def test_emergency_is_living_only_once_per_player_and_chat_vote_reach_all(names, connect, clock):
-    connections, round_state, lobby, _fr_id, ghost_id, reporter_id, _position = failed_sheet(
+def test_emergency_is_living_only_once_per_player_and_voting_reaches_all(names, connect, clock):
+    connections, round_state, _lobby, _fr_id, ghost_id, reporter_id, _position = failed_sheet(
         names, connect, clock
     )
+    living = [player for player in names if player != ghost_id]
+    another_living = next(player for player in living if player != reporter_id)
+    stand_at_emergency_button(ghost_id, reporter_id, another_living)
     clock.wait(45.0)
     connections[ghost_id].send_json({"type": "emergency"})
     assert connections[ghost_id].receive_json()["code"] == "emergency_rejected"
 
     connections[reporter_id].send_json({"type": "emergency"})
     first_meeting = receive_broadcast(connections, "meeting_state")
-    assert first_meeting["phase"] == "discussion"
+    assert first_meeting["phase"] == "voting"
+    assert first_meeting["seconds_left"] == 30
     assert round_state.meeting["reason"] == "emergency"
 
     connections[reporter_id].send_json({"type": "emergency"})
     assert connections[reporter_id].receive_json()["code"] == "emergency_rejected"
 
-    connections[reporter_id].send_json({"type": "chat", "text": "Emergency meeting."})
-    chat_state = receive_broadcast(connections, "meeting_state")
-    assert chat_state["messages"][-1]["player_id"] == reporter_id
-
-    clock.wait(45.0)
-    living = [player for player in names if player != ghost_id]
+    connections[ghost_id].send_json({"type": "vote", "target_id": reporter_id})
+    assert connections[ghost_id].receive_json()["code"] == "vote_rejected"
+    assert receive_broadcast(connections, "meeting_state") == first_meeting
     if len(living) == 3:
         targets = [living[1], living[2], living[0]]
     else:
         targets = [living[1], living[0], living[0], living[1]]
-    for player, target in zip(living, targets):
+    for index, (player, target) in enumerate(zip(living, targets)):
         connections[player].send_json({"type": "vote", "target_id": target})
-        receive_broadcast(connections, "meeting_state")
+        meeting = receive_broadcast(connections, "meeting_state")
+        assert meeting["phase"] == ("result" if index == len(living) - 1 else "voting")
+        assert player in meeting["voted"]
+        assert "votes" not in meeting
     # Everybody has voted, so the vote ended at once (Felix, 2026-11-21).
     for connection in connections.values():
         assert connection.receive_json()["type"] == "classic_roster"
@@ -167,19 +177,19 @@ def test_emergency_is_living_only_once_per_player_and_chat_vote_reach_all(names,
         assert connection.receive_json()["type"] == "positions"
 
     # The completed meeting returns to play; one other living player can still call once.
-    another_living = next(player for player in living if player != reporter_id)
     connections[reporter_id].send_json({"type": "emergency"})
     assert connections[reporter_id].receive_json()["code"] == "emergency_rejected"
     connections[another_living].send_json({"type": "emergency"})
     second_meeting = receive_broadcast(connections, "meeting_state")
-    assert second_meeting["phase"] == "discussion"
+    assert second_meeting["phase"] == "voting"
 
 
 @pytest.mark.parametrize("names", PLAYER_SETS)
 def test_emergency_button_unlocks_at_45_seconds_from_round_start(names, connect, clock):
-    connections, round_state, _lobby, fr_id, ghost_id, reporter_id, _position = failed_sheet(
+    connections, round_state, _lobby, _fr_id, ghost_id, reporter_id, _position = failed_sheet(
         names, connect, clock
     )
+    stand_at_emergency_button(reporter_id, ghost_id)
     clock.wait(44.99)
     connections[reporter_id].send_json({"type": "emergency"})
     rejected = connections[reporter_id].receive_json()
@@ -193,12 +203,38 @@ def test_emergency_button_unlocks_at_45_seconds_from_round_start(names, connect,
     meeting = receive_broadcast(connections, "meeting_state")
     assert meeting["reason"] == "emergency"
     assert meeting["trigger_player_id"] == reporter_id
+    assert meeting["phase"] == "voting"
 
     connections[reporter_id].send_json({"type": "emergency"})
     assert connections[reporter_id].receive_json()["code"] == "emergency_rejected"
     connections[ghost_id].send_json({"type": "emergency"})
     assert connections[ghost_id].receive_json()["code"] == "emergency_rejected"
     assert round_state.meeting["reason"] == "emergency"
+
+
+def test_emergency_requires_the_caller_to_be_within_range_of_the_main_deck_button(connect, clock):
+    names = PLAYER_SETS[0]
+    connections, _code, _public, _start = start_classic(connect, names)
+    caller = names[0]
+    round_state = classic_for(caller)
+    campus = app.state.campus
+    button = campus["button"]
+    assert (button["x"], button["y"], button["r"]) == (365, 375, 11)
+    reach = campus["use_range"]
+
+    put(caller, (button["x"] - reach - 0.01, button["y"]))
+    clock.wait(45.0)
+    connections[caller].send_json({"type": "emergency"})
+    assert connections[caller].receive_json()["code"] == "emergency_rejected"
+    assert round_state.meeting is None
+    assert caller not in round_state.emergency_used
+
+    put(caller, (button["x"] - reach, button["y"]))
+    connections[caller].send_json({"type": "emergency"})
+    meeting = receive_broadcast(connections, "meeting_state")
+    assert meeting["phase"] == "voting"
+    assert meeting["seconds_left"] == 30
+    assert caller in round_state.emergency_used
 
 
 def test_protocol_accepts_report_with_sheet_position_and_emergency_without_fields():

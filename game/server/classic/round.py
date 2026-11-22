@@ -101,7 +101,7 @@ class ClassicRound:
         self._sync_rule_state(updated)
         living = [player for player in self.roles if player not in self.eliminated]
         ghosts = [player for player in self.roles if player in self.eliminated]
-        self.meeting = meeting_rules.start_discussion(living, ghosts, now, updated)
+        self.meeting = meeting_rules.start_voting(living, ghosts, now, updated)
         self.meeting["reason"] = "emergency"
         self.meeting_count += 1
         self._has_news = True

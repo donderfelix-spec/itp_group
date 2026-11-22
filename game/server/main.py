@@ -1095,6 +1095,12 @@ async def answer_emergency_message(websocket: WebSocket):
         rejection["message"] = f"The emergency button unlocks in {remaining} {unit}."
         await websocket.send_json(rejection)
         return
+    position = lobby.walkers.position_of(name)
+    campus = app.state.campus
+    button = campus["button"]
+    if position is None or math.dist(position, (button["x"], button["y"])) > campus["use_range"]:
+        await websocket.send_json(protocol.rejection("emergency_rejected"))
+        return
     try:
         meeting = classic.emergency(name, now)
     except ValueError:
@@ -1103,8 +1109,8 @@ async def answer_emergency_message(websocket: WebSocket):
     meeting["reason"] = "emergency"
     meeting["trigger_player_id"] = name
     lobby.meeting = meeting
-    lobby.meeting_clock = None
-    await tell_meeting_state(lobby)
+    lobby.meeting_clock = meeting_clock_of(meeting, now)
+    await tell_meeting_state(lobby, now)
 
 
 def sync_classic_after_meeting(lobby):

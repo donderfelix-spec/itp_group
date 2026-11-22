@@ -41,10 +41,15 @@ PLAYERS = [
     {"name": "Cy", "character": "c3"},
     {"name": "Di", "character": "c4"},
 ]
-# Next to the red button of campus.json (x 642, y 249, r 11), and an F-sheet
-# within report range (2) of the own player.
-AT_THE_BUTTON = {"x": 640, "y": 249}
-SHEET = {"type": "classic_fail", "sheet_id": "f-sheet-1", "target_id": "Bo", "position": {"x": 641, "y": 250}}
+# At the inclusive emergency action range, with an F-sheet within report
+# range (2) of the own player.
+CAMPUS = json.loads((CLEANUP_IN_NODE.parent.parent / "client/js/world/campus.json").read_text())
+BUTTON = CAMPUS["button"]
+AT_THE_BUTTON = {"x": BUTTON["x"] - CAMPUS["use_range"], "y": BUTTON["y"]}
+SHEET = {
+    "type": "classic_fail", "sheet_id": "f-sheet-1", "target_id": "Bo",
+    "position": {"x": AT_THE_BUTTON["x"] + 1, "y": AT_THE_BUTTON["y"] + 1},
+}
 # Unlocks 45 seconds after the round started (DESIGN: emergency meeting).
 EMERGENCY_STATUS = {"type": "classic_emergency_status", "emergency_ready_at": 145, "server_time": 100}
 FAIL_STATUS = {"type": "classic_fail_status", "available": True, "in_range": True, "cooldown_until": None, "server_time": 100}
@@ -153,18 +158,43 @@ def shows_nothing_of_classic(look):
 
 @needs_node
 def test_the_harness_sees_every_classic_element_during_the_round():
-    during = run_page(classic_round_as_free_rider())["looks"][0]
+    outside_range = {**AT_THE_BUTTON, "x": AT_THE_BUTTON["x"] - 1}
+    during, outside = run_page(classic_round_as_free_rider() + [
+        ["receive", {"type": "positions", "players": [dict(name=OWN, **outside_range)]}],
+        ["wait", 500],
+        ["look"],
+    ])["looks"]
     assert during["sheetIds"] == ["f-sheet-1"]
     assert during["sheetsDrawn"] == 1
     assert during["emergencyButtonDrawn"] is True
     assert during["useButtonText"] == "E Emergency"
-    assert during["useButtonHasFailLook"] is True
+    assert during["useButtonDisabled"] is False
+    assert during["useButtonHasFailLook"] is False
+    assert outside["useButtonHasFailLook"] is True
+    assert outside["useButtonText"].startswith("Let fail")
     assert during["reportButtonShown"] is True
     assert during["ownNameDrawn"] is True
     assert during["ownNameRedOnMap"] is True
     assert during["ownNameRedInLobby"] is True
     assert during["ownNameRedInRound"] is True
     assert during["meetingKnowsFreeRider"] is True
+
+
+@needs_node
+def test_the_emergency_button_stays_available_to_the_free_rider_during_fail_cooldown():
+    steps = classic_round_as_free_rider() + [
+        ["receive", {**FAIL_STATUS, "available": False, "server_time": 146, "cooldown_until": 161}],
+        ["wait", 50],
+        ["look"],
+        ["key", "KeyE"],
+    ]
+    result = run_page(steps)
+    during = result["looks"][-1]
+    assert during["useButtonText"] == "E Emergency"
+    assert during["useButtonDisabled"] is False
+    assert [message for message in result["sent"] if message["type"] == "emergency"] == [
+        {"type": "emergency"},
+    ]
 
 
 @needs_node

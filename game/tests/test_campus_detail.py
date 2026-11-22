@@ -288,7 +288,7 @@ def test_the_corridor_leaves_20_units_free_in_front_of_every_door(door):
         assert not overlaps, (door["room"], solid["id"])
 
 
-def test_nothing_new_lies_beside_the_hedge_where_the_emergency_button_goes():
+def test_nothing_new_lies_beside_the_hedge():
     zone = {"x": 556, "y": 230, "w": 680 - 556, "h": 40}
     for solid in NEW_SOLIDS:
         assert not touches(solid, zone), solid["id"]

@@ -195,6 +195,10 @@ These entries follow from the team's answers and from the project description in
 | S-153 | 2026-11-21 | The meeting window closes 1.8 seconds after every result while the round goes on, also after an ejection; a repeated copy of the same result does not open it again. When the result ends the round, the end screen replaces the window at once (showing the result first is M3-3.13). | The window stood over the map after a meeting (M3-3.10). | Lennart, Felix |
 | S-154 | 2026-11-21 | Each Classic player is sent only their own task list (`task_stations` in `classic_role` and in `station_done`, to that player alone). All stations of a High Performer's list pulse, and only those. The Free Rider has no task list and cannot open a station; they fake tasks by standing at one. Their task messages are still refused with “Free Riders cannot complete tasks.”, sent only to them, and “E Use” does not light up for them at any station, so nothing on their screen or anybody else's gives them away. Replaces the fake list with a loading bar of DESIGN 5.3. | A High Performer has to know where to go (M3-3.17); a Free Rider without a list cannot reveal it through a list, and the others never learn anything about it (rule 1). | Felix (the “E Use” part: Lead proposal) |
 
+### Central emergency vote
+
+Hanna asked for the Main Deck button to open voting. It sits at (365, 375), unlocks 45 seconds into Classic and uses the station interaction range. An emergency call opens the regular vote directly. Reports keep their discussion phase. This updates the emergency-button location in S-68 and the meeting flow in S-123.
+
 ## Open decisions
 
 | Question | Affects | Thinking so far |

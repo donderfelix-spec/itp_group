@@ -93,11 +93,12 @@ def test_the_hiding_spot_still_lies_inside_the_hedge():
     assert spot["y"] + spot["r"] <= hedge["y"] + hedge["h"]
 
 
-def test_the_button_still_lies_right_of_the_hedge_without_touching_it():
-    hedge = solid("deck-hedge")
+def test_the_emergency_button_is_in_clear_space_at_the_center_of_the_deck():
     button = CAMPUS["button"]
-    assert (button["x"], button["y"], button["r"]) == (642, 249, 11)
-    assert button["x"] - button["r"] > hedge["x"] + hedge["w"]
+    assert (button["x"], button["y"], button["r"]) == (365, 375, 11)
+    for x in (button["x"] - button["r"], button["x"] + button["r"]):
+        for y in (button["y"] - button["r"], button["y"] + button["r"]):
+            assert is_free(x, y, SOLIDS, WIDTH, HEIGHT)
 
 
 # Rejected: nobody can stand in the old gap

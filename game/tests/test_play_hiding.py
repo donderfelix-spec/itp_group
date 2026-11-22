@@ -30,7 +30,7 @@ long and land somewhere else every time, so a player is put where a walk
 starts (as `task_helpers.put` does for the stations) and then walks with real
 key presses. The server runs in this process (uvicorn in a thread), so the
 test can put players and set the server's clock forward instead of waiting
-45 seconds for the emergency button, 75 for a meeting and 15 per fail.
+45 seconds for the emergency button, 30 for the emergency vote and 15 per fail.
 
 Skipped when Node, Playwright or Chromium is missing. Screenshots go to the
 folder in HIDING_SCREENSHOTS, if that is set.
@@ -724,22 +724,20 @@ def classic(server):
         clock.skip(50)
         caller = other1
         press_at_button(browser, caller, names[caller])
-        wait_for_meeting_phase(browser, LABELS, "discussion", 1)
+        wait_for_meeting_phase(browser, LABELS, "voting", 1)
         assert lobby_of(names[fr]).classic_round.phase == "meeting"
         browser.shot(caller, "8_meeting_seen_by_caller")
         browser.shot(fr, "8_meeting_seen_by_hidden_free_rider")
         # The pages hold every character during the meeting, but the server
         # still sends positions when somebody's place changes (it does not
         # stop walking yet, M3-3.13): a player is put a little further.
-        discussion = {label: told_after(browser, label, "meeting_state") for label in LABELS}
+        meeting_started = {label: told_after(browser, label, "meeting_state") for label in LABELS}
         for step_ in range(3):
             put(names[caller], (BUTTON["x"] + 8, BUTTON["y"] + 2 * step_))
             put(names[victim], (SPAWN[0] - 30, SPAWN[1] + 10 * step_))
             time.sleep(0.2)
         time.sleep(0.3)
-        in_meeting = {label: browser.frames(label, discussion[label]) for label in LABELS}
-        clock.skip(46)
-        wait_for_meeting_phase(browser, LABELS, "voting", 1)
+        in_meeting = {label: browser.frames(label, meeting_started[label]) for label in LABELS}
         clock.skip(31)
         wait_for_meeting_phase(browser, LABELS, "result", 1)
         time.sleep(0.5)
@@ -763,7 +761,7 @@ def classic(server):
                 for label in (far, near, caller, fr)
             },
             "living_draws_ghost_during_meeting": {
-                label: len(browser.drawn(label, character_of(browser, victim, names[victim]), discussion[label]))
+                label: len(browser.drawn(label, character_of(browser, victim, names[victim]), meeting_started[label]))
                 for label in (far, near, caller, fr)
             },
         }
@@ -785,9 +783,9 @@ def classic(server):
         # Round end by a vote: `near` calls the second meeting, all vote him out.
         clock.skip(5)
         press_at_button(browser, near, names[near])
-        wait_for_meeting_phase(browser, LABELS, "discussion", 2)
-        clock.skip(46)
-        wait_for_meeting_phase(browser, LABELS, "voting", 2)
+        for label in LABELS:
+            browser.wait(label, f"""window.__received.some((r) => r.m.type === 'meeting_state' &&
+                r.m.phase === 'voting' && r.m.trigger_player_id === {json.dumps(names[near])})""")
         for label in (far, near, caller):
             browser.wait(label, f"""document.querySelector('.classic-vote-player[data-target-id="{names[fr]}"]') !== null""")
             browser.call("click", label=label, selector=f'.classic-vote-player[data-target-id="{names[fr]}"]')
