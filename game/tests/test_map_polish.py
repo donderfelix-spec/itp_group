@@ -153,6 +153,11 @@ def test_with_the_fountain_in_its_old_place_the_canteen_aisle_was_blocked():
 
 # No gap a player only just squeezes into, anywhere
 
+def blocking(solids):
+    """The solids that stop a player: not the walkable hedge (hiding, S-98)."""
+    return [solid for solid in solids if not solid.get("walkable", False)]
+
+
 def free_places(solids):
     """For every whole-numbered place: may a player's centre stand there?
 
@@ -161,7 +166,7 @@ def free_places(solids):
     place is asked in four look-ups instead of against every solid.
     """
     solid_unit = [[False] * WIDTH for _ in range(HEIGHT)]
-    for solid in solids:
+    for solid in blocking(solids):
         for y in range(max(0, int(solid["y"])), min(HEIGHT, -int(-(solid["y"] + solid["h"]) // 1))):
             row = solid_unit[y]
             for x in range(max(0, int(solid["x"])), min(WIDTH, -int(-(solid["x"] + solid["w"]) // 1))):
@@ -218,7 +223,7 @@ def reachable_squeeze_gaps(solids):
     """Pairs of solids with a gap of 10 to 13 between them that a player's centre reaches."""
     reached = reachable_places(solids)
     found = []
-    for first, second in itertools.combinations(solids, 2):
+    for first, second in itertools.combinations(blocking(solids), 2):
         lane = lane_between(first, second)
         if lane is None or lane[1] not in SQUEEZE_GAPS:
             continue
@@ -372,6 +377,18 @@ def test_no_two_station_objects_overlap():
         assert not overlap(station_box(first), station_box(second)), (first, second)
 
 
+def hiding_square(spot):
+    """The square around a hiding spot's circle."""
+    return {"x": spot["x"] - spot["r"], "y": spot["y"] - spot["r"], "w": spot["r"] * 2, "h": spot["r"] * 2}
+
+
+@pytest.mark.parametrize("station_id", sorted(STATION_BOXES))
+def test_no_station_object_or_its_outline_lies_on_a_hiding_spot(station_id):
+    # Station 9 stands beside the Canteen's hiding spot at (636, 128).
+    box = station_box(station_id)
+    assert [spot for spot in CAMPUS["hiding_spots"] if overlap(box, hiding_square(spot))] == []
+
+
 def test_station_9_in_its_old_place_lay_on_the_tray_return_and_the_wall():
     # Rejected: the box check finds what M2-1.20 moved station 9 away from.
     left, top, right, bottom = STATION_BOXES[9]
@@ -414,8 +431,9 @@ def test_a_station_walled_in_cannot_be_used_from_anywhere_the_spawn_reaches():
 # The Duel's ways
 
 # Measured with paths.station_distances on the map before this to-do (main
-# at 936d9d8, the Felix mix of M2-1.19), in map units: the spawn and every
-# station with a minigame (1-5 and 7-12), 66 ways.
+# at f8cd9a3: the Felix mix of M2-1.19 with the walkable hedge of M3-1.4),
+# in map units: the spawn and every station with a minigame (1-5 and 7-12),
+# 66 ways.
 WAYS_BEFORE_THIS_TO_DO = {
     (SPAWN, 1): 598.676, (SPAWN, 2): 341.304, (SPAWN, 3): 326.274, (SPAWN, 4): 718.108, (SPAWN, 5): 262.510,
     (SPAWN, 7): 614.960, (SPAWN, 8): 296.617, (SPAWN, 9): 250.392, (SPAWN, 10): 502.794, (SPAWN, 11): 266.108,
@@ -423,13 +441,13 @@ WAYS_BEFORE_THIS_TO_DO = {
     (1, 7): 175.314, (1, 8): 506.108, (1, 9): 739.480, (1, 10): 352.853, (1, 11): 860.098,
     (1, 12): 736.215, (2, 3): 531.245, (2, 4): 716.617, (2, 5): 599.127, (2, 7): 590.274,
     (2, 8): 181.255, (2, 9): 455.362, (2, 10): 501.304, (2, 11): 602.725, (2, 12): 464.784,
-    (3, 4): 957.990, (3, 5): 558.960, (3, 7): 831.647, (3, 8): 491.245, (3, 9): 109.657,
-    (3, 10): 742.676, (3, 11): 562.558, (3, 12): 375.647, (4, 5): 975.931, (4, 7): 556.569,
+    (3, 4): 957.990, (3, 5): 542.392, (3, 7): 831.647, (3, 8): 491.245, (3, 9): 109.657,
+    (3, 10): 742.676, (3, 11): 536.049, (3, 12): 346.794, (4, 5): 975.931, (4, 7): 556.569,
     (4, 8): 648.735, (4, 9): 882.108, (4, 10): 277.941, (4, 11): 979.529, (4, 12): 855.647,
-    (5, 7): 872.784, (5, 8): 554.441, (5, 9): 483.078, (5, 10): 760.617, (5, 11): 168.284,
+    (5, 7): 872.784, (5, 8): 554.441, (5, 9): 466.510, (5, 10): 760.617, (5, 11): 168.284,
     (5, 12): 214.510, (7, 8): 522.392, (7, 9): 755.765, (7, 10): 341.255, (7, 11): 876.382,
     (7, 12): 752.500, (8, 9): 415.362, (8, 10): 433.421, (8, 11): 558.039, (8, 12): 424.784,
-    (9, 10): 666.794, (9, 11): 486.676, (9, 12): 299.765, (10, 11): 764.215, (10, 12): 640.333,
+    (9, 10): 666.794, (9, 11): 460.167, (9, 12): 270.912, (10, 11): 764.215, (10, 12): 640.333,
     (11, 12): 208.167,
 }
 
