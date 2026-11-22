@@ -70,13 +70,52 @@ Game.world = Game.world || {};
     ctx.lineCap = "butt";
   };
 
+  // A deck bush is trimmed square (M2-1.20): its crown fills its solid to
+  // the corners, so that what is drawn is what blocks. Its ground shadow is
+  // the band along the bottom of the solid, below the crown.
   art.kinds.tree = function (ctx, bush) {
     var x = bush.x + bush.w / 2;
     var y = bush.y + bush.h / 2;
     var radius = Math.min(bush.w, bush.h) / 2;
-    util.ellipse(ctx, x, y + radius * 0.67, radius * 0.78, radius * 0.17, "rgba(46, 42, 59, 0.18)", 0);
-    leafyCrown(ctx, x, y, radius, bush.x + bush.y);
+    util.box(ctx, x - radius * 0.98, y + radius * 0.55, radius * 1.96, radius * 0.43,
+      radius * 0.12, "rgba(46, 42, 59, 0.22)", 0);
+    leafyCrown(ctx, x, y, radius, bush.x + bush.y, true);
   };
+
+  // How far a square crown reaches at `angle`, for a radius of 1: the edge
+  // of a square with rounded corners (a "superellipse"), with small lobes
+  // that stay inside it (at most 0.99 of the way: 13.86 of a bush's 14).
+  function squareReach(angle, phase) {
+    var roundness = 7; // 2 is a circle; the larger, the closer to a square
+    var edge = Math.pow(Math.pow(Math.abs(Math.cos(angle)), roundness)
+      + Math.pow(Math.abs(Math.sin(angle)), roundness), -1 / roundness);
+    return edge * (0.965 + 0.025 * Math.cos(angle * 9 + phase));
+  }
+
+  // The outline of the low foliage, for a radius of 1. Round: lobed and a
+  // little flattened. Square: the trimmed square, lifted a little so that
+  // the ground shadow shows below it (top at -0.97, bottom at 0.85).
+  function crownPath(ctx, phase, square) {
+    ctx.beginPath();
+    for (var edge = 0; edge < 48; edge++) {
+      var angle = edge / 48 * Math.PI * 2;
+      var px;
+      var py;
+      if (square) {
+        var squareEdge = squareReach(angle, phase);
+        px = Math.cos(angle) * squareEdge;
+        py = Math.sin(angle) * squareEdge * 0.92 - 0.06;
+      } else {
+        var reach = 0.82 + 0.06 * Math.cos(angle * 7 + phase) + 0.035 * Math.sin(angle * 11);
+        var depth = Math.sin(angle);
+        px = Math.cos(angle) * reach * (1 + Math.max(0, depth) * 0.13);
+        py = depth * reach * 0.82 - 0.025;
+      }
+      if (edge === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+  }
 
   var shadowLeaves = ["#29401D", "#3B5325", "#4F682A", "#657C33"];
   var sunlitLeaves = ["#4E6828", "#66832E", "#7C983B", "#99AE49", "#B6C75B"];
@@ -92,31 +131,31 @@ Game.world = Game.world || {};
     ctx.fill();
   }
 
-  function leafyCrown(ctx, x, y, radius, seed) {
+  // Shoots and small leaves on low foliage, after Hanna's reference photo.
+  // `square` trims the crown to the square around it and keeps every leaf
+  // inside it (the deck bushes); without it the crown is round (the hedge).
+  function leafyCrown(ctx, x, y, radius, seed, square) {
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(radius, radius);
 
     // Low, compact foliage under the individual leaves and shoots.
     var phase = util.noise(seed, 4) * Math.PI * 2;
-    ctx.beginPath();
-    for (var edge = 0; edge < 48; edge++) {
-      var angle = edge / 48 * Math.PI * 2;
-      var reach = 0.82 + 0.06 * Math.cos(angle * 7 + phase) + 0.035 * Math.sin(angle * 11);
-      var depth = Math.sin(angle);
-      var px = Math.cos(angle) * reach * (1 + Math.max(0, depth) * 0.13);
-      var py = depth * reach * 0.82 - 0.025;
-      if (edge === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
+    crownPath(ctx, phase, square);
     ctx.fillStyle = "#2D421F";
     ctx.fill();
+    // A square crown spreads its leaves further, into its corners; the
+    // clip cuts off whatever would reach past the trimmed edge.
+    var spread = 1;
+    if (square) {
+      ctx.clip();
+      spread = 1.25;
+    }
 
     // Fan thin shoots out of the base. Alternating leaves follow each stem.
     for (var shoot = 0; shoot < 12; shoot++) {
       var angle = -Math.PI + (shoot + 0.15 + util.noise(seed, shoot) * 0.7) / 12 * Math.PI;
-      var reach = 0.75 + util.noise(shoot, seed) * 0.19;
+      var reach = (0.75 + util.noise(shoot, seed) * 0.19) * spread;
       var tipX = Math.cos(angle) * reach;
       var tipY = Math.sin(angle) * reach * 0.83 - 0.04;
       var baseX = tipX * 0.2;
@@ -147,7 +186,7 @@ Game.world = Game.world || {};
     // Smaller foreground leaves overlap into pockets of light and shade.
     for (var leaf = 0; leaf < 52; leaf++) {
       var angle = util.noise(seed + leaf, 31) * Math.PI * 2;
-      var reach = Math.sqrt(util.noise(leaf * 1.9, seed)) * 0.75;
+      var reach = Math.sqrt(util.noise(leaf * 1.9, seed)) * 0.75 * spread;
       var leafX = Math.cos(angle) * reach;
       var leafY = Math.sin(angle) * reach * 0.79 + 0.09;
       var size = 0.14 + util.noise(seed, leaf + 18) * 0.15;
