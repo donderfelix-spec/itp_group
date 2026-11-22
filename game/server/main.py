@@ -622,8 +622,17 @@ async def tell_the_rest_after_a_leave(lobby, new_host, stop_news):
     goes back to the lobby (S-101).
     """
     if stop_news:
+        if new_host is not None:
+            # The host notice comes before the stop notice: the browser shows
+            # only the newest notice, and the players must read why the
+            # round ended.
+            host_notice = host_left_notice(new_host)
+            stop_news = {
+                name: messages[:-1] + [host_notice, messages[-1]]
+                for name, messages in stop_news.items()
+            }
         await asyncio.gather(*(tell_farewell(name, lobby, messages) for name, messages in stop_news.items()))
-        await tell_lobby(lobby, new_host)
+        await tell_lobby(lobby)
         return
     await tell_lobby(lobby, new_host)
     try:
@@ -673,6 +682,10 @@ async def tell_lobby(lobby, new_host=None):
     await asyncio.gather(*(tell_member(name, lobby, new_host) for name in lobby.names()))
 
 
+def host_left_notice(new_host: str) -> dict:
+    return protocol.notice(f"The host left. {new_host} is the new host.")
+
+
 async def tell_member(name: str, lobby, new_host):
     """Send one member the notice about the new host (if any), then the lobby's state.
 
@@ -683,7 +696,7 @@ async def tell_member(name: str, lobby, new_host):
     # If the host has changed again in the meantime, the notice is skipped:
     # it would name a host who is not the host any more.
     if new_host is not None and is_member(name, lobby) and lobby.host == new_host:
-        delivered = await send_to(name, protocol.notice(f"The host left. {new_host} is the new host."))
+        delivered = await send_to(name, host_left_notice(new_host))
         if not delivered:
             return
     if is_member(name, lobby):
