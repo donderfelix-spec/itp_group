@@ -598,6 +598,8 @@ def stop_round_if_it_no_longer_fits(lobby) -> dict:
     classic = lobby.classic_round
     if classic is None or round_still_fits(classic.roles, lobby.names()):
         return {}
+    # When the last player left, the empty lobby is stopped too; nobody is
+    # left to tell, so the dict below is empty, like for a round that goes on.
     open_stations = {name: lobby.tasks.open_station_of(name) for name in lobby.names()}
     lobby.end_round()  # also ends a running meeting
     # Everybody is sent the positions at the next tick, as after any end:
@@ -624,7 +626,12 @@ async def tell_the_rest_after_a_leave(lobby, new_host, stop_news):
         await tell_lobby(lobby, new_host)
         return
     await tell_lobby(lobby, new_host)
-    await tell_classic_after_a_leave(lobby)
+    try:
+        await tell_classic_after_a_leave(lobby)
+    except Exception as problem:
+        # The caller is a player's own handler: a fault here must not close
+        # that player's connection. Only the kind of error is logged.
+        logger.error("Telling the lists after a leave failed: %s", type(problem).__name__)
     # The round goes on without this player, or ends if nobody is left to wait for.
     await tell_round_news(lobby)
 
@@ -637,8 +644,15 @@ async def tell_classic_after_a_leave(lobby):
     """
     if lobby.classic_round is None:
         return
-    if lobby.meeting is not None and lobby.meeting.get("phase") != "result":
-        await tell_meeting_state(lobby)
+    if lobby.meeting is not None and not lobby.meeting.get("applied"):
+        # As in `answer_vote_message`: the time of the vote may have run out
+        # since the last tick. Then this snapshot is the result: it is
+        # applied once, and the tick must not send the same one again.
+        now = seconds_now()
+        lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
+        sync_classic_after_meeting(lobby)
+        lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
+        await tell_meeting_state(lobby, now)
     await tell_classic_roster(lobby)
 
 

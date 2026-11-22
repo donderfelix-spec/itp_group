@@ -414,6 +414,27 @@ def test_a_leaver_in_the_vote_is_gone_from_the_voters_and_so_are_the_votes_for_h
     assert fr in connections and last in connections
 
 
+def test_a_leave_after_the_vote_time_ran_out_sends_the_result_once(connect, clock):
+    # The gap between the end of the vote's time and the next tick: the
+    # leave sends the result, and the tick must not send it again.
+    connections, lobby, _frs, [caller, leaver, *_] = classic_round(connect)
+    start_emergency(connections, caller, clock)
+    clock.wait(DISCUSSION_SECONDS + VOTING_SECONDS)  # no tick in between
+
+    told = leave(connections, leaver)
+    tick(connections)
+    later = everything_now(connections)
+
+    assert lobby.meeting["applied"] is True
+    for name in connections:
+        results = [
+            message for message in told[name] + later[name]
+            if message["type"] == "meeting_state" and message["phase"] == "result"
+        ]
+        assert len(results) == 1
+        assert leaver not in results[0]["living"]
+
+
 def test_a_leave_that_ends_the_round_during_a_meeting_sends_the_result(connect, clock):
     connections, lobby, [fr], [caller, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
