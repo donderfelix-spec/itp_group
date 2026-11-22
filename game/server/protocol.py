@@ -371,5 +371,18 @@ def duel_result(ranking, time_up: bool) -> dict:
     return {"type": "duel_result", "ranking": listed, "time_up": time_up}
 
 
+def vote_counts(counts) -> list:
+    """`counts` maps each living player to the votes they have, as `[{name, votes}]` (S-100).
+
+    Only the numbers leave the server. Who voted for whom never does.
+    """
+    listed = []
+    for name, votes in counts.items():
+        if not isinstance(name, str) or isinstance(votes, bool) or not isinstance(votes, int) or votes < 0:
+            raise ValueError("A vote count is a player name and a whole number of zero or more.")
+        listed.append({"name": name, "votes": votes})
+    return listed
+
+
 def notice(message: str) -> dict:
     return {"type": "notice", "message": message}

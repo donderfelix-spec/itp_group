@@ -5,6 +5,7 @@ import math
 from typing import Literal, NamedTuple
 
 from rules import check_winner
+from server import protocol
 
 
 DISCUSSION_SECONDS = 45
@@ -128,6 +129,19 @@ def resolve_vote_result(state: dict) -> dict:
     return updated
 
 
+def count_votes(state: dict) -> dict:
+    """How many votes each player has: the living, and the player voted out at the result.
+
+    Every stored vote had a living target when it was cast (`cast_vote`), so
+    a player voted out by the result keeps the count of the vote (S-100).
+    Who voted for whom stays hidden.
+    """
+    counts = {player_id: 0 for player_id in state.get("living", ())}
+    for target_id in state.get("votes", {}).values():
+        counts[target_id] = counts.get(target_id, 0) + 1
+    return counts
+
+
 def advance_meeting(meeting: dict, now: float) -> dict:
     """Advance elapsed server-side phases, without changing the input state."""
     if not _valid_time(now):
@@ -161,6 +175,13 @@ def meeting_snapshot(meeting: dict, now: float) -> dict:
             {"player_id": item["player_id"], "text": item["text"]}
             for item in current["messages"]
         ],
+        # Only the number of votes per living player, from the vote on. During
+        # discussion there are no votes yet, so nothing is sent.
+        "vote_counts": (
+            protocol.vote_counts(count_votes(current))
+            if current["phase"] != "discussion"
+            else []
+        ),
         # Who has voted is public, but the selected target stays hidden until
         # the result is calculated and is never sent to the clients.
         "voted": list(current.get("votes", {})),

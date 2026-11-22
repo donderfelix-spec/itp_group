@@ -22,6 +22,8 @@ Game.classicMeeting = Game.classicMeeting || {};
   var voteResult;
   var voteListSignature = "";
   var pendingVoteTarget = null;
+  // The vote buttons of the list on screen, each with its count label.
+  var voteButtons = [];
   // The result stays on screen for a while, then the view closes by itself.
   // A result that was closed is not shown again if the server repeats it.
   var RESULT_MILLISECONDS = 8000;
@@ -92,6 +94,7 @@ Game.classicMeeting = Game.classicMeeting || {};
     pendingVoteTarget = null;
     voteListSignature = "";
     if (votePlayers) votePlayers.replaceChildren();
+    voteButtons = [];
     if (voteResult) voteResult.hidden = true;
     if (screen) screen.hidden = true;
   }
@@ -139,6 +142,7 @@ Game.classicMeeting = Game.classicMeeting || {};
     if (signature !== voteListSignature) {
       voteListSignature = signature;
       votePlayers.replaceChildren();
+      voteButtons = [];
       state.living.forEach(function (playerId) {
         var button = document.createElement("button");
         button.type = "button";
@@ -149,16 +153,28 @@ Game.classicMeeting = Game.classicMeeting || {};
         avatar.textContent = playerId.charAt(0).toUpperCase();
         var name = document.createElement("span");
         name.textContent = playerId;
-        button.append(avatar, name);
+        var count = document.createElement("span");
+        count.className = "classic-vote-count";
+        button.append(avatar, name, count);
+        button.voteCountLabel = count;
+        voteButtons.push(button);
         button.addEventListener("click", function () { castVote(playerId); });
         votePlayers.append(button);
       });
     }
     var hasVoted = state.voted.includes(ownName) || pendingVoteTarget !== null;
-    Array.from(votePlayers.children).forEach(function (button) {
+    voteButtons.forEach(function (button) {
       button.disabled = !state.living.includes(ownName) || hasVoted;
+      button.voteCountLabel.textContent = String(voteCountOf(button.dataset.targetId));
     });
     if (state.voted.includes(ownName)) pendingVoteTarget = null;
+  }
+
+  // The number of votes the server sent for this player; 0 if there is none.
+  function voteCountOf(playerId) {
+    var entries = state && Array.isArray(state.vote_counts) ? state.vote_counts : [];
+    var entry = entries.find(function (item) { return item.name === playerId; });
+    return entry && Number.isInteger(entry.votes) ? entry.votes : 0;
   }
 
   function castVote(targetId) {
