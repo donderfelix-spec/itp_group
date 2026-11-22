@@ -196,6 +196,8 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 
 - [x] **M3-4.23** Move the red emergency button to the centre of the Main Deck (Hanna, Felix, 2026-11-22), from (642, 249) beside the hedge to (365, 375); it clears furniture, hiding spots, stations, the deck's name and the spawn, and no walking way changes. Done: S-147, `tests/test_emergency_button_place.py`, `tests/test_play_emergency_button_centre.py`, `tests/test_hedge_gap.py`
 
+- [x] **M3-4.24** Draw the emergency button as an alarm switch (Hanna, 2026-11-22), kept inside its circle of radius 11. Done: S-149, `tests/test_emergency_button_art.py`
+
 ## M4: Extension
 
 - [ ] **M4-3.1** Sabotage “Wi-Fi outage”
