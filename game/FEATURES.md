@@ -92,12 +92,12 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Find and report a failed player | M3 | Playable with known defects (M3-3.15) |
 | Report from 8 map units, also by the Free Rider; let fail from 20 map units with Q or F; F-sheets 30 % larger (S-180, S-181) | M3 | Done (M3-4.25 to M3-4.28) |
 | Emergency meeting with the red button in the centre of the Main Deck (S-147), drawn as an alarm switch (S-149), limited per player, range checked by the server, hint only for the living (S-170) | M3 | Playable with known defects (M3-3.15: the wording “E Call meeting”) |
-| Meeting with text chat and time limit; the window closes after the result (S-153) | M3 | Playable with known defects (M3-3.13) |
+| Meeting with text chat and time limit; the window closes after the result (S-153) and always fits the screen (S-173) | M3 | Playable with known defects (M3-3.13) |
 | Own task list per player, only its stations pulse; the Free Rider has none (S-154) | M3 | Done |
-| Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie; votes are public and can be changed, after a report already during the discussion, 75 % Skip ends the meeting (S-160 to S-162) | M3 | Done |
+| Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie; votes are public and can be changed, after a report already during the discussion, 75 % Skip ends the meeting (S-160 to S-162); each vote button shows its number of votes in a fixed field (S-173) | M3 | Done |
 | Result of the vote: character drifts out to sea, display whether it was a Free Rider | M3 | Playable with known defects (text only, no drifting yet, M3-3.5) |
 | Ghosts keep doing their tasks, but they do not talk and do not vote; ghosts see the dead as “Dead” in the Players list (S-164) | M3 | Done (M3-3.9, M3-3.20, 2026-11-22) |
-| Check the win conditions and show the end screen that reveals the roles | M3 | Done (M3-3.11, 2026-11-22) |
+| Check the win conditions and show the end screen that reveals the roles; only the host sees “New Round” (S-173) | M3 | Done (M3-3.11, 2026-11-22) |
 | A player who leaves a Classic round counts as failed; the round stops when too few players are left for its Free Riders (S-157, S-158); a leaver's Skip goes too, and 75 % Skip of those left ends the meeting (S-165) | M3 | Done (M3-3.8, M3-3.11, 2026-11-22) |
 | Free Riders can only fake tasks | M3 | Planned (M3-3.17) |
 | Sabotage “WiFi down”: tasks locked until someone restarts the router | M4 | Planned |
