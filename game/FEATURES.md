@@ -77,7 +77,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | If someone leaves the game, the round continues, and the host changes if needed | M2 | Done |
 | A player who lost the connection in a lobby is put back into it after signing in again, without typing the code (S-109) | M3 | Done |
 | Players who were disconnected for a short time come back into their running round | M4 | Later |
-| Each client gets only the information that its player is allowed to know | M3 | Planned |
+| Each client gets only the information that its player is allowed to know | M3 | Done (M3-2.1, 2026-11-22; known limit S-168) |
 | Game reachable at a public URL, deployed automatically from `main` | M0 | Done |
 | Several lobbies at the same time | M1 | Done |
 
