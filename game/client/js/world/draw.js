@@ -904,14 +904,19 @@ Game.world = Game.world || {};
   var PULSE_MILLISECONDS = 1400;
   // How far the outline reaches beyond the object, in map units: the dark
   // edge and the yellow inside it, when the pulse is low and when it is high.
-  var OUTLINE_GROWTH = { low: { dark: 2.6, yellow: 1.6 }, high: { dark: 4.2, yellow: 3.1 } };
+  // These are the widths the outline has had on screen so far: it was grown
+  // by 2.6, 1.6, 4.2 and 3.1, and its soft edge added about a fifth. Since
+  // its edge is made hard (see hardenEdge), it grows by all of it (M2-1.20).
+  var OUTLINE_GROWTH = { low: { dark: 3.1, yellow: 1.9 }, high: { dark: 5, yellow: 3.7 } };
   // Half the size of the square an object (and its outline) is drawn into.
   var OBJECT_HALF_SIZE = 20;
   // How the outline grows (see grownBy): in passes of at most this many map
-  // units, each in this many directions. Counted in map units, a station
-  // needs the same 2 or 3 passes per layer at every zoom.
+  // units, each in GROW_DIRECTIONS directions, the last pass of a layer in
+  // LAST_PASS_DIRECTIONS (rounder). Counted in map units, the four layers of
+  // a station need the same five passes at every zoom (2, 1, 1 and 1).
   var GROW_PASS_UNITS = 1.5;
   var GROW_DIRECTIONS = 16;
+  var LAST_PASS_DIRECTIONS = 32;
 
   function stationObject(station) {
     var art = Game.world.art;
@@ -1055,53 +1060,103 @@ Game.world = Game.world || {};
     var grownSoFar = 0;
     for (var i = 0; i < OUTLINE_LAYERS.length; i++) {
       var layer = OUTLINE_LAYERS[i];
-      var grown = grownBy(source, layer.growth - grownSoFar, scale, size);
-      if (!grown) {
+      // The reach in whole pixels, so the edge lies as far out at every zoom.
+      var pixels = reachInPixels(layer.growth, scale) - reachInPixels(grownSoFar, scale);
+      var grown = grownBy(source, pixels, growPasses(layer.growth - grownSoFar), size);
+      // The next layer grows from the hard edge: a soft one would spread.
+      var shown = grown && softened(grown, size);
+      if (!shown) {
         return;
       }
-      var grownCtx = grown.getContext("2d");
-      grownCtx.globalCompositeOperation = "source-in";
-      grownCtx.fillStyle = layer.colour;
-      grownCtx.fillRect(0, 0, size, size);
-      silhouettes.set(silhouetteKey(station, scale, layer.growth, layer.colour), grown);
+      var shownCtx = shown.getContext("2d");
+      shownCtx.globalCompositeOperation = "source-in";
+      shownCtx.fillStyle = layer.colour;
+      shownCtx.fillRect(0, 0, size, size);
+      silhouettes.set(silhouetteKey(station, scale, layer.growth, layer.colour), shown);
       source = grown;
       grownSoFar = layer.growth;
     }
   }
 
-  // The shape on the canvas `source` grown by `growth` map units (drawn at
-  // `scale` pixels per unit), on a new canvas. It grows in small passes:
-  // each pass draws the shape of the last pass in GROW_DIRECTIONS
-  // directions, at most GROW_PASS_UNITS away. The copies then lie close
-  // enough together (0.55 units) that the tip of a thin leg or handle (0.7
-  // units) grows round; one wide pass left a fringe of stripes there
-  // (M2-1.20). Two canvases take turns, so a pass never draws onto the shape
-  // it reads.
-  function grownBy(source, growth, scale, size) {
-    var passes = growPasses(growth);
-    var step = growth / passes * scale; // in pixels
+  // The shape on the canvas `source` grown by `pixels`, in `passes` passes,
+  // on a new canvas. Each pass draws the shape of the last pass in many
+  // directions, at most GROW_PASS_UNITS away. Neighbouring copies then lie
+  // at most about 0.6 units apart (0.3 in the last pass), less than a thin
+  // leg or handle is wide (0.7 units), so its tip grows round; one wide pass
+  // left a fringe of stripes there (M2-1.20). Two canvases take turns, so a pass
+  // never draws onto the shape it reads.
+  function grownBy(source, pixels, passes, size) {
     var canvases = [newCanvas(size), newCanvas(size)];
     if (!canvases[0] || !canvases[1]) {
       return null;
     }
     var current = source;
     for (var pass = 0; pass < passes; pass++) {
+      // Whole pixels per pass that add up to `pixels`.
+      var step = Math.round((pass + 1) * pixels / passes) - Math.round(pass * pixels / passes);
+      var directions = pass === passes - 1 ? LAST_PASS_DIRECTIONS : GROW_DIRECTIONS;
       var next = canvases[pass % 2];
       var nextCtx = next.getContext("2d");
       nextCtx.clearRect(0, 0, size, size);
       nextCtx.drawImage(current, 0, 0);
-      for (var direction = 0; direction < GROW_DIRECTIONS; direction++) {
-        var angle = direction / GROW_DIRECTIONS * Math.PI * 2;
-        nextCtx.drawImage(current, Math.cos(angle) * step, Math.sin(angle) * step);
+      for (var direction = 0; direction < directions; direction++) {
+        var angle = direction / directions * Math.PI * 2;
+        // On whole pixels: a copy between pixels is blurred, and the blur
+        // of many copies would push the edge out further at a low zoom.
+        nextCtx.drawImage(current, Math.round(Math.cos(angle) * step), Math.round(Math.sin(angle) * step));
       }
       current = next;
     }
-    // Where only a few copies overlap, the edge is still half see-through;
-    // drawn over itself twice it becomes solid.
-    var currentCtx = current.getContext("2d");
-    currentCtx.drawImage(current, 0, 0);
-    currentCtx.drawImage(current, 0, 0);
+    hardenEdge(current, size);
     return current;
+  }
+
+  // The hard-edged shape on `source` drawn again on a new canvas, a little
+  // soft (as much as a line drawn by the canvas), so that it does not look
+  // stepped: four copies, half a pixel apart, each a quarter of it, added
+  // up. The edge stays where it was.
+  function softened(source, size) {
+    var target = newCanvas(size);
+    if (!target) {
+      return null;
+    }
+    var ctx = target.getContext("2d");
+    ctx.clearRect(0, 0, size, size);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.25;
+    ctx.drawImage(source, -0.5, -0.5);
+    ctx.drawImage(source, 0.5, -0.5);
+    ctx.drawImage(source, -0.5, 0.5);
+    ctx.drawImage(source, 0.5, 0.5);
+    ctx.restore();
+    return target;
+  }
+
+  // Makes the soft edge of a grown shape hard: a pixel at least three
+  // quarters covered becomes solid, one at most a quarter covered empty, and
+  // one half covered stays half (a narrow soft step). The edge then lies
+  // where the shape really ends, at every zoom and after any number of
+  // passes; the copies of a pass add up their soft edges and would push it
+  // out.
+  function hardenEdge(canvas, size) {
+    var ctx = canvas.getContext("2d");
+    var image = typeof ctx.getImageData === "function" ? ctx.getImageData(0, 0, size, size) : null;
+    if (!image || !image.data) {
+      return; // a canvas stand-in (a test in Node)
+    }
+    var pixels = image.data;
+    for (var i = 3; i < pixels.length; i += 4) {
+      pixels[i] = Math.max(0, Math.min(255, (pixels[i] - 64) * 2));
+    }
+    ctx.putImageData(image, 0, 0);
+  }
+
+  // How far a layer that reaches `growth` map units past the object is
+  // grown, in whole pixels: one pixel less, because softening its edge (see
+  // softened) makes it reach about one pixel further on screen.
+  function reachInPixels(growth, scale) {
+    return growth > 0 ? Math.max(0, Math.round(growth * scale) - 1) : 0;
   }
 
   // How many passes the outline grows `growth` map units in: the same at
