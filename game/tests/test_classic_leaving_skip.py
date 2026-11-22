@@ -109,7 +109,9 @@ def test_a_leave_that_brings_the_skips_to_75_percent_ends_the_meeting_once(conne
         assert len(results) == 1
         assert results[0]["ejected_id"] is None
         assert leaver not in results[0]["living"] and leaver not in results[0]["skip_voted"]
-    assert last in connections
+    # The one who neither pressed Skip nor left is still living and saw the result once.
+    assert last not in lobby.classic_round.eliminated
+    assert len(results_in(told[last] + later[last])) == 1
 
 
 def test_a_leave_ends_the_meeting_before_anything_is_sent(connect, clock, monkeypatch):
