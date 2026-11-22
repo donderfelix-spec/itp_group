@@ -288,9 +288,27 @@ Game.world = Game.world || {};
     util.circle(ctx, x, y, top, WOOD, 1);
     util.circle(ctx, x, y, top * 0.72, null, 0.3, "#C99A5E");
     util.circle(ctx, x - top * 0.3, y - top * 0.3, top * 0.25, "rgba(255, 255, 255, 0.35)", 0);
-    // A cup on the table.
-    util.circle(ctx, x + top * 0.35, y + top * 0.1, 0.9, "#FFFFFF", 0.35);
+    coffeeAndCake(ctx, x, y, top);
   };
+
+  // A cup of coffee and a slice of cake on a table top of `radius`.
+  function coffeeAndCake(ctx, x, y, radius) {
+    util.circle(ctx, x - radius * 0.3, y - radius * 0.15, 1.8, "#FFF8EA", 0.3);
+    util.circle(ctx, x - radius * 0.3, y - radius * 0.15, 1.1, "#855239", 0.2);
+    util.line(ctx, x - radius * 0.3 + 1.1, y - radius * 0.15, x - radius * 0.3 + 1.6, y - radius * 0.15, "#FFFFFF", 0.6);
+    util.ellipse(ctx, x + radius * 0.28, y + radius * 0.2, 2.2, 1.8, "#FFF8EA", 0.3);
+    ctx.beginPath();
+    ctx.moveTo(x + radius * 0.05, y + radius * 0.3);
+    ctx.lineTo(x + radius * 0.43, y - radius * 0.04);
+    ctx.lineTo(x + radius * 0.48, y + radius * 0.36);
+    ctx.closePath();
+    ctx.fillStyle = "#E8C293";
+    ctx.fill();
+    ctx.strokeStyle = "#98633F";
+    ctx.lineWidth = 0.4;
+    ctx.stroke();
+    util.circle(ctx, x + radius * 0.32, y + radius * 0.15, 0.55, "#BC4D4A", 0);
+  }
 
   // A high wooden table along the window, with round bar stools on its
   // room side; everything lies inside the solid.

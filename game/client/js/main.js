@@ -23,8 +23,11 @@ window.Game = window.Game || {};
     too_many_attempts: 'attempts',
   };
 
-  // The stations with a minigame (1 to 5; station 6 is not in use yet).
-  const STATIONS_IN_USE = [1, 2, 3, 4, 5];
+  // The stations with a minigame (station 6 is not in use yet). Must equal
+  // the stations of MINIGAMES in server/modes/minigames.py (checked by
+  // tests/test_client_stations_in_use.py). Classic checks the own task list
+  // from the server against it (rememberClassicTasks).
+  const STATIONS_IN_USE = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12];
   // Errors after which no task is open on the server, so no window may stay.
   // `task_failed` is in the list because a fault while closing or finishing
   // is answered with this error only: no `station_closed` follows it.
@@ -36,6 +39,10 @@ window.Game = window.Game || {};
   // The stations this player has finished in the running round. The server
   // keeps the real list; this one only decides which stations glow.
   let finishedStations = new Set();
+  // The own unfinished Classic stations, sent to this player alone
+  // (`task_stations`). A Free Rider's list is empty: no station pulses for
+  // them and "E Use" lights up nowhere; they fake tasks by standing at one.
+  let classicTasks = [];
   // True from the moment this browser asked to log out until the server
   // answers. It tells a wanted `signed_out` from one that came unasked.
   let logOutWasAsked = false;
@@ -72,9 +79,11 @@ window.Game = window.Game || {};
     clearClassicLeftovers();
     Game.classicRound.hide();
     Game.duel.reset();
+    callTaskNavigation('reset');
     Game.countdown.reset();
     roundIsRunning = false;
     finishedStations = new Set();
+    classicTasks = [];
     if (!worldIsRunning) return;
     worldIsRunning = false;
     callWorld('stop');
@@ -129,10 +138,14 @@ window.Game = window.Game || {};
 
   // Which stations glow and can be used: outside a round none. In a Duel
   // only the player's next station, and none once all are done (S-94). In
-  // any other round the ones in use that this player has not finished yet.
+  // Classic the own unfinished list (M3-3.17). In any other round the ones
+  // in use that this player has not finished yet.
   function usableStations() {
     if (!roundIsRunning) return [];
-    if (mode === 'duel') {
+    // A station finished here never pulses again, even if a later list
+    // from the server was malformed and so did not replace the old one.
+    if (mode === 'classic') return classicTasks.filter((station) => !finishedStations.has(station));
+    if (hasOneTaskAtATime()) {
       const next = Game.duel.nextStation();
       return next === null ? [] : [next];
     }
@@ -140,7 +153,24 @@ window.Game = window.Game || {};
   }
 
   function showUsableStations() {
-    callWorld('setUsableStations', usableStations());
+    const stations = usableStations();
+    callWorld('setUsableStations', stations);
+    // Only Duel and Solo have one next task to point at; in Classic the
+    // card and arrow stay away, also when one station is left.
+    callTaskNavigation('setTarget', hasOneTaskAtATime() && stations.length === 1 ? stations[0] : null);
+  }
+
+  // Duel and Solo give each player one next station at a time.
+  function hasOneTaskAtATime() {
+    return mode === 'duel' || mode === 'solo';
+  }
+
+  // The card and the arrow (minigames/task_navigation.js) show the one
+  // station this player has to go to next, or none. Like callWorld.
+  function callTaskNavigation(functionName, ...values) {
+    if (Game.taskNavigation && typeof Game.taskNavigation[functionName] === 'function') {
+      Game.taskNavigation[functionName](...values);
+    }
   }
 
   function noteThePhase(phase) {
@@ -149,7 +179,10 @@ window.Game = window.Game || {};
       finishedStations = new Set();
       callWorld('startOfRound'); // everybody stands and faces right
     }
-    if (!isRound) Game.minigames.close(); // no round, no task
+    if (!isRound) {
+      Game.minigames.close(); // no round, no task
+      classicTasks = [];
+    }
     roundIsRunning = isRound;
   }
 
@@ -257,6 +290,19 @@ window.Game = window.Game || {};
     callWorld('setPlayers', message.players);
   }
 
+  function rememberClassicTasks(message) {
+    const stations = message && message.task_stations;
+    if (mode !== 'classic' || !roundIsRunning || !Array.isArray(stations)
+        || stations.length > STATIONS_IN_USE.length || new Set(stations).size !== stations.length
+        || !stations.every((station) => Number.isInteger(station) && STATIONS_IN_USE.includes(station))) return;
+    classicTasks = stations.slice();
+  }
+
+  function whenClassicRole(message) {
+    rememberClassicTasks(message);
+    showUsableStations();
+  }
+
   function whenStationOpened(message) {
     const isReadable = Number.isInteger(message.station)
       && typeof message.title === 'string'
@@ -277,6 +323,7 @@ window.Game = window.Game || {};
 
   function whenStationDone(message) {
     finishedStations.add(message.station);
+    if (mode === 'classic') rememberClassicTasks(message);
     showUsableStations();
     Game.minigames.showDone();
   }
@@ -285,6 +332,13 @@ window.Game = window.Game || {};
   function whenDuelState(message) {
     Game.duel.showState(message);
     showUsableStations();
+  }
+
+  // Everybody's progress: the clock of the Duel panel and, from what
+  // duel.js could read of it, the "2/3" and the bar in the player list.
+  function whenDuelProgress(message) {
+    Game.duel.showProgress(message);
+    Game.lobby.showProgress(Game.duel.progress());
   }
 
   // The round is over. The server has closed an open task already; the
@@ -349,11 +403,12 @@ window.Game = window.Game || {};
   Game.net.on('left_lobby', whenLeftLobby);
   Game.net.on('positions', whenPositions);
   Game.net.on('classic_roster', whenClassicRoster);
+  Game.net.on('classic_role', whenClassicRole);
   Game.net.on('station_opened', whenStationOpened);
   Game.net.on('station_closed', Game.minigames.close);
   Game.net.on('station_done', whenStationDone);
   Game.net.on('duel_state', whenDuelState);
-  Game.net.on('duel_progress', Game.duel.showProgress);
+  Game.net.on('duel_progress', whenDuelProgress);
   Game.net.on('duel_result', whenDuelResult);
   Game.net.on('classic_fail', whenClassicFail);
   Game.net.on('classic_fail_status', whenClassicFailStatus);

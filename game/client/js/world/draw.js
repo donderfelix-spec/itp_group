@@ -16,6 +16,7 @@ Game.world = Game.world || {};
 
   // Colours from DESIGN.md, section 1, and from the sketch design/map.svg.
   var YELLOW = "#FFD23F";
+  var CREAM = "#F4EFE3";
   var CORAL = "#F2695C";
   var GREEN = "#5FA86B";
   var WATER = "#9CD3E6";
@@ -435,7 +436,8 @@ Game.world = Game.world || {};
     ctx.lineCap = "butt";
   }
 
-  // A young tree: a square gravel bed with the green crown in the middle.
+  // A tree, drawn plain when art/deck.js is missing: a light square the size
+  // of its solid with a round green crown in the middle.
   function drawTree(ctx, bed) {
     box(ctx, bed, 3, "#D9D2C2", 2);
     circle(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2, bed.w * 0.32, GREEN, 2);
@@ -889,46 +891,171 @@ Game.world = Game.world || {};
     }
   }
 
-  // Task stations: yellow dots with their number.
-  function drawStations(ctx, campus) {
+  // ---- Task stations (Felix, 2026-11-21) -------------------------------
+
+  // Every station shows its object from art/stations.js and a small tag
+  // with its number (M2-1.10), always: in the lobby, in a round and after
+  // the last task. The stations that matter to the player now get a thick
+  // yellow outline with a dark edge around the object's own shape, which
+  // pulses. Objects are drawings only: they are not solid.
+
+  // How long one pulse of the outline takes, in milliseconds
+  // (DESIGN.md, section 4: "pulses slowly").
+  var PULSE_MILLISECONDS = 1400;
+  // How far the outline reaches beyond the object, in map units: the dark
+  // edge and the yellow inside it, when the pulse is low and when it is high.
+  var OUTLINE_GROWTH = { low: { dark: 2.6, yellow: 1.6 }, high: { dark: 4.2, yellow: 3.1 } };
+  // Half the size of the square an object (and its outline) is drawn into.
+  var OBJECT_HALF_SIZE = 20;
+
+  function stationObject(station) {
+    var art = Game.world.art;
+    var drawings = art && art.stations;
+    return drawings && typeof drawings[station.id] === "function" ? drawings[station.id] : null;
+  }
+
+  // Swings between 0 and 1 and back, once per pulse.
+  function pulseAt(now) {
+    return 0.5 - 0.5 * Math.cos((Number(now) || 0) / PULSE_MILLISECONDS * Math.PI * 2);
+  }
+
+  // The object of a station, its soft shadow and its number tag.
+  function drawStationObject(ctx, station, drawObject) {
+    ctx.save();
+    ctx.translate(station.x, station.y);
+    ctx.fillStyle = "rgba(46, 42, 59, 0.16)";
+    ctx.beginPath();
+    ctx.ellipse(1, 10.5, 11, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    drawObject(ctx);
+    ctx.restore();
+    drawNumberTag(ctx, station);
+  }
+
+  // The station's number in a small cream tag at the lower right of the object.
+  function drawNumberTag(ctx, station) {
+    var x = station.x + 11;
+    var y = station.y + 9;
+    circle(ctx, x, y, 4.2, CREAM, 1);
+    text(ctx, String(station.id), x, y + 0.3, 5);
+  }
+
+  // ---- The outline: the object's shape, grown a little -----------------
+
+  // Silhouettes already made: "station id/pixels per unit/growth/colour" -> canvas.
+  var silhouettes = new Map();
+  // The zoom the kept silhouettes were made for. Only one zoom is kept: a
+  // window being resized passes many, and each would hold its own canvases.
+  var silhouetteScale = null;
+
+  function newCanvas(size) {
+    if (typeof document === "undefined" || typeof document.createElement !== "function") {
+      return null; // no page (a test in Node): no outline, the object stays
+    }
+    var made = document.createElement("canvas");
+    made.width = size;
+    made.height = size;
+    return made;
+  }
+
+  // The object drawn in one colour and grown by `growth` map units, as a
+  // canvas of the square around the station, at `scale` pixels per unit.
+  // It is made once and kept: drawing it again each frame is cheap.
+  function silhouette(station, drawObject, scale, growth, colour) {
+    if (scale !== silhouetteScale) {
+      silhouettes.clear();
+      silhouetteScale = scale;
+    }
+    var key = station.id + "/" + scale + "/" + growth + "/" + colour;
+    if (silhouettes.has(key)) {
+      return silhouettes.get(key);
+    }
+    var size = Math.ceil(OBJECT_HALF_SIZE * 2 * scale);
+    var shape = newCanvas(size);
+    var grown = newCanvas(size);
+    if (!shape || !grown) {
+      return null;
+    }
+    var shapeCtx = shape.getContext("2d");
+    shapeCtx.setTransform(scale, 0, 0, scale, size / 2, size / 2);
+    drawObject(shapeCtx);
+    // Grow the shape: draw it again and again, moved a little in every
+    // direction, then paint all of it in one colour.
+    var grownCtx = grown.getContext("2d");
+    var reach = growth * scale;
+    for (var ring = 1; ring <= 2; ring++) {
+      for (var step = 0; step < 16; step++) {
+        var angle = step / 16 * Math.PI * 2;
+        grownCtx.drawImage(shape, Math.cos(angle) * reach * ring / 2, Math.sin(angle) * reach * ring / 2);
+      }
+    }
+    grownCtx.globalCompositeOperation = "source-in";
+    grownCtx.fillStyle = colour;
+    grownCtx.fillRect(0, 0, size, size);
+    silhouettes.set(key, grown);
+    return grown;
+  }
+
+  // Pixels per map unit of the drawing now, rounded so that zooming a
+  // little does not make new silhouettes every frame.
+  function pixelsPerUnit(ctx) {
+    var matrix = typeof ctx.getTransform === "function" ? ctx.getTransform() : null;
+    var scale = matrix ? Math.hypot(matrix.a, matrix.b) : 1;
+    return Math.max(0.5, Math.round(scale * 4) / 4);
+  }
+
+  function drawSilhouette(ctx, station, drawObject, growth, colour, alpha) {
+    var scale = pixelsPerUnit(ctx);
+    var shape = silhouette(station, drawObject, scale, growth, colour);
+    if (!shape || alpha <= 0) {
+      return;
+    }
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    var half = OBJECT_HALF_SIZE;
+    ctx.drawImage(shape, station.x - half, station.y - half, half * 2, half * 2);
+    ctx.restore();
+  }
+
+  // The outline of one station: `strength` from 0 (pulse low) to 1 (high).
+  // The wide outline fades in over the narrow one, so the yellow seems to
+  // grow and shrink.
+  function drawOutline(ctx, station, drawObject, strength) {
+    drawSilhouette(ctx, station, drawObject, OUTLINE_GROWTH.high.dark, OUTLINE, strength);
+    drawSilhouette(ctx, station, drawObject, OUTLINE_GROWTH.low.dark, OUTLINE, 1);
+    drawSilhouette(ctx, station, drawObject, OUTLINE_GROWTH.high.yellow, YELLOW, strength);
+    drawSilhouette(ctx, station, drawObject, OUTLINE_GROWTH.low.yellow, YELLOW, 1);
+  }
+
+  // Every station's object; the ones in `pulsing` (a list of ids; anything
+  // else means none) with the pulsing outline. `now` is the frame's time.
+  function drawStations(ctx, campus, pulsing, now) {
     var stations = list(campus.stations);
+    var strength = pulseAt(now);
     for (var i = 0; i < stations.length; i++) {
       var station = stations[i];
-      circle(ctx, station.x, station.y, station.r, YELLOW, 2.5);
-      text(ctx, String(station.id), station.x, station.y + 0.5, station.r * 1.1);
+      var drawObject = stationObject(station);
+      if (!drawObject) {
+        continue; // station 6, or the art file did not load
+      }
+      if (list(pulsing).indexOf(station.id) !== -1) {
+        drawOutline(ctx, station, drawObject, strength);
+      }
+      drawStationObject(ctx, station, drawObject);
     }
   }
 
-  // How long one pulse of the glowing border takes, in milliseconds
-  // (DESIGN.md, section 4: "pulses slowly").
-  var PULSE_MILLISECONDS = 1400;
-
-  // The border around the station the player can use right now: a yellow
-  // ring that grows and shrinks a little. `now` is the time of the frame in
-  // milliseconds; nothing is remembered between two frames.
-  function drawStationGlow(ctx, station, now) {
-    if (!ctx || !station) {
+  // The station the player can use right now ("E Use"): its outline at
+  // full strength, without pulsing, and the object again on top of it.
+  function drawStationGlow(ctx, station) {
+    var drawObject = ctx && station ? stationObject(station) : null;
+    if (!drawObject) {
       return;
     }
-    // Swings between 0 and 1 and back, once per pulse.
-    var pulse = 0.5 - 0.5 * Math.cos(now / PULSE_MILLISECONDS * Math.PI * 2);
-    var radius = station.r + 3.5 + pulse * 2;
     ctx.save();
-    // A soft, see-through yellow halo that gets stronger with the pulse.
-    ctx.globalAlpha = 0.25 + 0.4 * pulse;
-    circle(ctx, station.x, station.y, radius, null, 0);
-    ctx.strokeStyle = YELLOW;
-    ctx.lineWidth = 7 + 3 * pulse;
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    // The ring itself: yellow on a slightly thicker dark ring, so it has an
-    // outline and shows on every floor colour.
-    ctx.strokeStyle = OUTLINE;
-    ctx.lineWidth = 4.4;
-    ctx.stroke();
-    ctx.strokeStyle = YELLOW;
-    ctx.lineWidth = 2.2;
-    ctx.stroke();
+    ctx.lineJoin = "round";
+    drawOutline(ctx, station, drawObject, 1);
+    drawStationObject(ctx, station, drawObject);
     ctx.restore();
   }
 
@@ -936,8 +1063,10 @@ Game.world = Game.world || {};
 
   // Draws the map in map units. `view` ({x, y, w, h}, optional) is the part
   // of the world that is visible; without it the whole map is assumed.
+  // `pulsingStations` is the list of station ids whose outline pulses and
+  // `now` the time of the frame (see drawStations).
   // The order matters: what is drawn later lies on top.
-  function drawMap(ctx, campus, view, emergencyVisible) {
+  function drawMap(ctx, campus, view, emergencyVisible, pulsingStations, now) {
     if (!ctx || !campus || !campus.colours) {
       return;
     }
@@ -947,7 +1076,7 @@ Game.world = Game.world || {};
     drawStaticPart(ctx, campus, view);
     drawHidingSpots(ctx, campus);
     drawButton(ctx, campus, emergencyVisible === true);
-    drawStations(ctx, campus);
+    drawStations(ctx, campus, pulsingStations, now);
     ctx.restore();
   }
 
@@ -1010,5 +1139,8 @@ Game.world = Game.world || {};
 
   Game.world.drawMap = drawMap;
   Game.world.drawStationGlow = drawStationGlow;
+  Game.world.roomAt = roomAt;
+  // How many outline silhouettes are kept, for tests/test_station_objects.js.
+  Game.world.outlineCacheSize = function () { return silhouettes.size; };
   Game.world.chooseLabels = chooseLabels;
 })();

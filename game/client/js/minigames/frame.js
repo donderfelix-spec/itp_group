@@ -33,7 +33,7 @@ window.Game = window.Game || {};
 (function () {
   const DONE_TEXT = 'Done';
   const CLOSE_LABEL = 'Close';
-  const DONE_VISIBLE_MS = 1000;
+  const DONE_VISIBLE_MS = 500;
   const FALLBACK_KIND = 'placeholder';
   const DONE_RETRY_MS = 250;
   // What Tab can reach inside the window. Switched-off controls and those
@@ -223,7 +223,11 @@ window.Game = window.Game || {};
     const card = container.querySelector('.minigame-window');
     card.querySelector('.minigame-body').remove();
     card.querySelector('.minigame-instructions').remove();
-    card.querySelector('.minigame-close').disabled = true;
+    // The window closes by itself in a moment, so the × goes (Felix,
+    // 2026-11-21). Hidden, it is out of the Tab order as well.
+    const closeButton = card.querySelector('.minigame-close');
+    closeButton.disabled = true;
+    closeButton.hidden = true;
     const doneText = element('p', 'minigame-done', DONE_TEXT);
     doneText.setAttribute('role', 'status');
     card.append(doneText);

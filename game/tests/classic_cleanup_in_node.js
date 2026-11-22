@@ -42,6 +42,8 @@ const sent = [];
 const errors = [];
 const handlers = {};
 let clock = 0;
+let nextTimer = 1;
+const timers = new Map();
 
 // ---- A canvas context that writes down every text it draws ------------
 
@@ -212,6 +214,8 @@ const minigames = {
 
 // The map drawing of draw.js: only the red button is written down.
 let emergencyButtonDrawn = null;
+// The stations the last frame let pulse (the fifth argument of drawMap).
+let pulsingStations = null;
 
 const page = {
   console: {
@@ -225,8 +229,12 @@ const page = {
   fetch: () => Promise.resolve({ ok: true, json: () => Promise.resolve(campus) }),
   requestAnimationFrame: (callback) => { nextFrame = callback; return 1; },
   cancelAnimationFrame: () => { nextFrame = null; },
-  setTimeout: () => 0,
-  clearTimeout() {},
+  setTimeout(callback, delay) {
+    const id = nextTimer++;
+    timers.set(id, { callback, at: clock + Number(delay || 0) });
+    return id;
+  },
+  clearTimeout(id) { timers.delete(id); },
   addEventListener(type, listener) {
     if (!windowListeners[type]) windowListeners[type] = [];
     windowListeners[type].push(listener);
@@ -255,7 +263,10 @@ page.Game = {
   minigames: minigames,
   world: {
     characters: [],
-    drawMap(ctx, map, view, emergencyVisible) { emergencyButtonDrawn = emergencyVisible === true; },
+    drawMap(ctx, map, view, emergencyVisible, pulsing) {
+      emergencyButtonDrawn = emergencyVisible === true;
+      pulsingStations = Array.isArray(pulsing) ? pulsing.slice() : pulsing;
+    },
     drawStationGlow() {},
     drawCharacter() {},
     chooseLabels: (labels) => ({ shown: labels, hidden: new Set() }),
@@ -301,6 +312,18 @@ function runFrame() {
   mapTexts = context.texts;
 }
 
+function runDueTimers() {
+  for (const [id, timer] of [...timers]) {
+    if (timer.at > clock) continue;
+    timers.delete(id);
+    try {
+      timer.callback();
+    } catch (problem) {
+      errors.push(String(problem && problem.stack || problem));
+    }
+  }
+}
+
 function mapButton(className) {
   return element('map-box').children.find((child) => child.classList.contains(className)) || null;
 }
@@ -326,6 +349,11 @@ function look() {
     ownNameRedInRound: element('classic-own-name').classList.contains('free-rider-name'),
     meetingKnowsFreeRider: meetingKnowsFreeRider,
     focusedId: document.activeElement ? document.activeElement.id : null,
+    pulsing: pulsingStations,
+    useButtonDisabled: useButton ? useButton.disabled : null,
+    voteButtons: element('classic-vote-players').children.map((button) => ({
+      target: button.dataset.targetId, text: button.textContent, disabled: button.disabled,
+    })),
   };
 }
 
@@ -346,6 +374,7 @@ const STEPS = {
     const end = clock + milliseconds;
     while (clock < end) {
       clock = Math.min(end, clock + FRAME_MILLISECONDS);
+      runDueTimers();
       runFrame();
     }
   },
@@ -361,6 +390,15 @@ const STEPS = {
   click(id) {
     element(id).focus();
     (element(id).listeners.click || []).forEach((listener) => listener({ preventDefault() {} }));
+  },
+  // Clicks the vote button for this target ("" is Skip).
+  clickVote(targetId) {
+    const button = element('classic-vote-players').children.find(
+      (candidate) => candidate.dataset.targetId === targetId
+    );
+    if (!button) throw new Error('Vote target not found: ' + JSON.stringify(targetId));
+    button.focus();
+    (button.listeners.click || []).forEach((listener) => listener({ preventDefault() {} }));
   },
   // Calls a function of the page directly, for example ["call", "world", "stop"].
   call(part, functionName) {

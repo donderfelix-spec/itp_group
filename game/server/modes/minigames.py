@@ -36,6 +36,7 @@ from server.modes import build_tray
 from server.modes import self_checkout
 from server.modes import shelve_books
 from server.modes import sort_slides
+from server.modes import room_tasks
 from server.modes.placeholder import placeholder
 
 # Station id -> its minigame. The titles are the ones of DESIGN.md, section 8.
@@ -46,3 +47,8 @@ MINIGAMES = {
     4: shelve_books.MINIGAME,
     5: self_checkout.MINIGAME,
 }
+
+# Extra stations leave the original five minigames and the reserved wave
+# station (6) intact. Duel, Solo and Classic draw from the whole active
+# registry (S-124).
+MINIGAMES.update(room_tasks.MINIGAMES)

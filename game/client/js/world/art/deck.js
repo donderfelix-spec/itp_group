@@ -1,5 +1,5 @@
 // The art of the Main Deck and the corridor (M2-1.4): the reflecting pool
-// with its stone edge, a step and reflections, young trees with gravel beds,
+// with its stone edge, a step and reflections, round leafy bushes,
 // the hedge, benches, lamp posts, a bike rack, drains, the glass front, the
 // beach with towels, parasols and surfboards and a surfboard rack; in the
 // corridor a terrazzo floor, the taupe slat wall with "ACADEMIC HALL",
@@ -70,45 +70,70 @@ Game.world = Game.world || {};
     ctx.lineCap = "butt";
   };
 
-  // A young tree: a gravel bed, and above it a round crown of leaves with
-  // volume, its shadow falling on the paving.
-  art.kinds.tree = function (ctx, bed) {
-    util.box(ctx, bed.x, bed.y, bed.w, bed.h, 2, "#D9D2C2", 1);
-    ctx.fillStyle = "#B8AE98";
-    for (var i = 0; i < 26; i++) {
-      var x = bed.x + 2 + util.noise(bed.x + i, bed.y) * (bed.w - 4);
-      var y = bed.y + 2 + util.noise(bed.y, bed.x + i * 1.7) * (bed.h - 4);
-      ctx.fillRect(x, y, 0.8, 0.8);
-    }
-    util.circle(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2 + 2, 2, "#7A5434", 0.6); // the trunk
-    // The crown reaches at most about 1 unit past its bed (the drawings of a tile reach 4).
-    util.foliage(ctx, bed.x + bed.w / 2, bed.y + bed.h / 2 - 2, bed.w * 0.4, util.LEAVES, 7);
+  // Bushes with rounded lobes, without planters or square borders.
+  art.kinds.tree = function (ctx, bush) {
+    leafyCrown(ctx, bush.x + bush.w / 2, bush.y + bush.h / 2,
+      Math.min(bush.w, bush.h) / 2, bush.x);
   };
 
-  // The hedge, drawn as a planted green bed of campus landscaping: lawn in a
-  // low stone border, three rounded shrubs with volume and a few flowers.
-  art.kinds.hedge = function (ctx, bed) {
-    util.shadowBelow(ctx, bed.x + 2, bed.y + bed.h, bed.w - 4, 1.6);
-    util.box(ctx, bed.x, bed.y, bed.w, bed.h, 4, "#D9D2C2", 1.2);
-    util.box(ctx, bed.x + 2.2, bed.y + 2.2, bed.w - 4.4, bed.h - 4.4, 3, "#8CC56F", 0.6);
-    // Short strokes of grass.
-    util.strokeAll(ctx, "#76B05C", 0.4, function () {
-      for (var i = 0; i < 24; i++) {
-        var x = bed.x + 4 + util.noise(i, bed.x) * (bed.w - 8);
-        var y = bed.y + 4 + util.noise(bed.y, i) * (bed.h - 8);
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + 0.5, y - 1.2);
-      }
-    });
-    var flowers = ["#F2695C", "#F2C53D", "#FFFFFF", "#E8A0B4"];
-    for (var f = 0; f < 10; f++) {
-      var fx = bed.x + 5 + util.noise(f * 3.1, bed.y) * (bed.w - 10);
-      var fy = bed.y + bed.h * 0.65 + util.noise(bed.x, f * 1.7) * (bed.h * 0.2);
-      util.circle(ctx, fx, fy, 0.9, flowers[f % flowers.length], 0.3);
+  // Uneven rounded lobes form a bush silhouette; large leaves add texture.
+  function leafyCrown(ctx, x, y, radius, seed) {
+    ctx.save();
+    ctx.beginPath();
+    var phase = util.noise(seed, 4) * Math.PI;
+    for (var edge = 0; edge <= 96; edge++) {
+      var angle = edge / 96 * Math.PI * 2;
+      var reach = radius * (0.87 + 0.09 * Math.cos(angle * 7 + phase)
+        + 0.035 * Math.sin(angle * 3 + phase));
+      var px = x + Math.cos(angle) * reach;
+      var py = y + Math.sin(angle) * reach;
+      if (edge === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
     }
-    var radius = bed.h * 0.3;
-    [0.2, 0.5, 0.8].forEach(function (share, index) {
-      util.foliage(ctx, bed.x + bed.w * share, bed.y + bed.h * (index === 1 ? 0.42 : 0.5), radius * (index === 1 ? 1.15 : 1), util.LEAVES, 6);
+    ctx.closePath();
+    ctx.fillStyle = "#43864D";
+    ctx.fill();
+    ctx.strokeStyle = util.OUTLINE;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    ctx.clip();
+    [[-0.35, -0.3, 0.47], [0.38, -0.18, 0.42], [-0.2, 0.4, 0.45]].forEach(function (clump, index) {
+      util.circle(ctx, x + radius * clump[0], y + radius * clump[1],
+        radius * clump[2], index === 0 ? "#659C50" : "#3B7B47", 0);
+    });
+    util.ellipse(ctx, x + radius * 0.35, y + radius * 0.4,
+      radius * 0.9, radius * 0.85, "#347043", 0);
+    util.line(ctx, x, y + radius * 0.75, x - radius * 0.12, y - radius * 0.25, "#756044", 1.1);
+    util.line(ctx, x - radius * 0.04, y + radius * 0.3, x + radius * 0.53, y - radius * 0.12, "#756044", 0.75);
+    util.line(ctx, x - radius * 0.1, y, x - radius * 0.55, y - radius * 0.35, "#756044", 0.65);
+    // Broad pointed leaves with a central vein leave some woody forks visible.
+    for (var i = 0; i < 22; i++) {
+      var angle = util.noise(seed + i, 31) * Math.PI * 2;
+      var reach = Math.sqrt(util.noise(i * 1.9, seed)) * radius * 0.72;
+      var lx = x + Math.cos(angle) * reach;
+      var ly = y + Math.sin(angle) * reach * 0.78;
+      var length = radius * (0.21 + util.noise(seed, i) * 0.1);
+      var direction = angle - 0.6;
+      var dx = Math.cos(direction) * length;
+      var dy = Math.sin(direction) * length;
+      ctx.beginPath();
+      ctx.moveTo(lx - dx, ly - dy);
+      ctx.quadraticCurveTo(lx - dy * 0.9, ly + dx * 0.9, lx + dx, ly + dy);
+      ctx.quadraticCurveTo(lx + dy * 0.9, ly - dx * 0.9, lx - dx, ly - dy);
+      ctx.fillStyle = i % 3 === 0 ? "#8BAC62" : i % 3 === 1 ? "#60964F" : "#3C7041";
+      ctx.fill();
+      util.line(ctx, lx - dx * 0.7, ly - dy * 0.7, lx + dx * 0.75, ly + dy * 0.75, "#ACC27C", 0.23);
+    }
+    ctx.restore();
+  }
+
+  // Round bushes also form the hedge; the hiding footprint stays the same.
+  art.kinds.hedge = function (ctx, bed) {
+    var radius = bed.h * 0.49;
+    [0.18, 0.4, 0.62, 0.82].forEach(function (share, index) {
+      var x = bed.x + bed.w * share;
+      var y = bed.y + bed.h * (index % 2 ? 0.44 : 0.51);
+      leafyCrown(ctx, x, y, radius * (index % 2 ? 1 : 0.9), bed.x + index * 7);
     });
   };
 
@@ -247,18 +272,6 @@ Game.world = Game.world || {};
       util.line(ctx, rack.x + 2.5 + wheel, y, rack.x + rack.w - 0.5 - wheel, y, colour, 1.4);
       util.line(ctx, rack.x + rack.w - 0.5 - wheel, y - wheel * 0.9, rack.x + rack.w - 0.5 - wheel, y + wheel * 0.9, util.OUTLINE, 0.8);
     });
-  };
-
-  // A gravel bed around a tree's bed, with small plants.
-  art.decor["gravel-ring"] = function (ctx, item) {
-    util.box(ctx, item.x, item.y, item.w, item.h, 3, "#E0D9C9", 0.5, "#CFC7B6");
-    var plants = ["#5FA86B", "#7DBE7A", "#E8A0B4"];
-    for (var i = 0; i < 12; i++) {
-      var angle = i / 12 * Math.PI * 2;
-      var x = item.x + item.w / 2 + Math.cos(angle) * item.w * 0.44;
-      var y = item.y + item.h / 2 + Math.sin(angle) * item.h * 0.44;
-      util.circle(ctx, x, y, 1.1, util.pick(plants, i, item.x), 0.3);
-    }
   };
 
   // A drain: a thin dark grate in the paving.

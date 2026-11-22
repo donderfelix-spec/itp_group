@@ -17,7 +17,7 @@ All features of the game with their status. Whoever finishes a feature or plans 
 - **M3 Classic:** A complete Classic round with Free Rider, meeting and vote is playable. Status 2026-11-21: playable with known defects, see M3-3.9 to M3-3.18 in [TODO.md](TODO.md).
 - **M4 Extensions:** Sabotage, Deadline mode, finished characters, sound, phone.
 
-As of 2026-11-19. Milestone 1 is on `main` and deployed.
+As of 2026-11-21. Milestone 1 is on `main` and deployed.
 
 ## Area 1: Campus and characters
 
@@ -32,9 +32,9 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E done; R and Q come with Classic) | M2 | In progress |
 | Choose a character from the list of stereotypes | M2 | Done |
 | Display of the current room | M2 | Planned |
-| Nicer, more detailed map: every room furnished from photos of the campus, floor patterns, wall faces, doors, drawn from tiles (S-122) | M2 | Done |
+| Nicer, more detailed map: every room furnished from photos of the campus, floor patterns, wall faces, doors, drawn from tiles (S-122); walkways between fewer pieces, Hanna's Pingo Doce and round bushes (S-141) | M2 | Done |
 | Larger characters in a three-quarter view, facing only left or right; held objects stay in the same hand | M2 | Done |
-| A small personal motif on every outfit and a softer face (M2-1.18, S-124) | M2 | Done |
+| A small personal motif on every outfit and a softer face (M2-1.18, S-142) | M2 | Done |
 | Walking animation: moving feet, head turned in the walking direction | M2 | Done |
 | Running animation: flight phase, small hop, pumping arms, legs fixed at the hips, steps tied to the distance covered | M2 | Done |
 | Hair, buns and headwear follow the head when it turns in the walking direction | M2 | Done |
@@ -91,8 +91,9 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | Free Rider fails a nearby player, followed by a cooldown | M3 | Playable with known defects (M3-3.9, M3-3.13, M3-3.15, M3-3.16) |
 | Find and report a failed player | M3 | Playable with known defects (M3-3.15) |
 | Emergency meeting with the red button on the Main Deck, limited per player | M3 | Playable with known defects (M3-3.15) |
-| Meeting with text chat and time limit | M3 | Playable with known defects (M3-3.10, M3-3.13) |
-| Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie | M3 | Playable with known defects (no Skip yet, M3-3.12) |
+| Meeting with text chat and time limit; the window closes after the result (S-153) | M3 | Playable with known defects (M3-3.13) |
+| Own task list per player, only its stations pulse; the Free Rider has none (S-154) | M3 | Done |
+| Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie; ends early once everybody has voted (S-151, S-152) | M3 | Done |
 | Result of the vote: character drifts out to sea, display whether it was a Free Rider | M3 | Playable with known defects (text only, no drifting yet, M3-3.5) |
 | Ghosts keep doing their tasks, but they do not talk and do not vote | M3 | Playable with known defects (M3-3.9) |
 | Check the win conditions and show the end screen that reveals the roles | M3 | Playable with known defects (M3-3.11) |
@@ -114,7 +115,13 @@ As of 2026-11-19. Milestone 1 is on `main` and deployed.
 | CTT Student Hall: sort books by number onto the shelf | M2 | Done |
 | Pingo Doce: scan products until exactly the target amount comes out | M2 | Done |
 | Duel: three stations per player, own random route with a walking distance of equal length | M2 | Done |
-| Duel: progress of the opponents as 1/3 at the edge | M2 | Done |
+| Duel: progress of every player as 1/3 with a bar in the Players list of the panel (S-130) | M2 | Done |
+| Six more minigames at stations 7 to 12, in Duel, Solo and Classic (S-124) | M2 | Done |
+| Solo mode for one player, without statistics (S-125) | M2 | Done |
+| Duel: every player starts at a different station, up to 8 players (S-126) | M2 | Done |
+| Stations as objects with a pulsing outline when they matter (S-128) | M2 | Done |
+| Card at the top left with room and next task, direction arrow (S-129) | M2 | Done |
+| “Done” for 0.5 s without a close button (S-127) | M2 | Done |
 | Duel: leaderboard with times at the end | M2 | Done |
 | Beach exit: “Catch the wave”, click at the right moment (first “If time allows” minigame) | M4 | Planned |
 | Canteen: stop the microwave at the right moment | M4 | Planned |

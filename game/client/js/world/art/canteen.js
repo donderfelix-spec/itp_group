@@ -155,10 +155,9 @@ Game.world = Game.world || {};
     var top = { x: table.x + inset, y: table.y + inset, w: table.w - 2 * inset, h: table.h - 2 * inset };
     util.shadowBelow(ctx, top.x, top.y + top.h, top.w, 0.8);
     util.box(ctx, top.x, top.y, top.w, top.h, 1.4, "#F4EBDA", 1);
-    if (util.noise(table.x, table.y) < 0.75) {
-      tray(ctx, top.x + 1.2, top.y + 1.4, top.w * 0.55, top.h * 0.36, true);
-    }
-    if (util.noise(table.y, table.x) < 0.5) {
+    tray(ctx, top.x + 1.2, top.y + 1.4, top.w * 0.55, top.h * 0.36, true);
+    // A second tray on the tables whose number is odd, so they do not all look the same.
+    if (Number(table.id.slice(-1)) % 2 === 1) {
       tray(ctx, top.x + top.w * 0.4, top.y + top.h * 0.56, top.w * 0.55, top.h * 0.36, true);
     }
   };

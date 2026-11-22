@@ -11,6 +11,9 @@ DISCUSSION_SECONDS = 45
 VOTING_SECONDS = 30
 MAX_CHAT_LENGTH = 200
 CHAT_COOLDOWN_SECONDS = 2.0
+# The vote for nobody (DESIGN.md 5.6). An empty name can never be a player's
+# name (protocol.NAME_PATTERN needs 3 to 16 characters), so it cannot clash.
+SKIP = ""
 MeetingPhase = Literal["discussion", "voting", "result"]
 
 
@@ -71,14 +74,17 @@ def send_chat(meeting: dict, player_id: str, text: str, now: float) -> dict:
 
 
 def cast_vote(state: dict, voter_id: str, target_id: str) -> dict:
-    """Return a new state with one final vote from a living voter."""
+    """Return a new state with one final vote from a living voter.
+
+    The target is a living player or SKIP, the vote for nobody.
+    """
     living = state.get("living", ())
     if state.get("phase") != "voting":
         raise ValueError("Voting is not open.")
     if voter_id not in living:
         raise ValueError("Only living players may vote.")
-    if target_id not in living:
-        raise ValueError("Votes must target a living player.")
+    if target_id != SKIP and target_id not in living:
+        raise ValueError("Votes must target a living player or Skip.")
     if voter_id in state.get("votes", {}):
         raise ValueError("A player's vote is final.")
     updated = deepcopy(state)
@@ -86,8 +92,35 @@ def cast_vote(state: dict, voter_id: str, target_id: str) -> dict:
     return updated
 
 
+def everyone_has_voted(state: dict) -> bool:
+    """True when every living player has voted, for a player or for Skip."""
+    living = set(state.get("living", ()))
+    return bool(living) and living <= set(state.get("votes", {}))
+
+
+def end_voting_if_everyone_voted(state: dict, now: float) -> dict:
+    """End the vote early once every living player has voted.
+
+    Otherwise the state is returned unchanged and the vote ends with its
+    time (advance_meeting).
+    """
+    if not _valid_time(now):
+        raise ValueError("Meeting time must be a finite number.")
+    if state.get("phase") != "voting" or not everyone_has_voted(state):
+        return state
+    updated = deepcopy(state)
+    updated["phase"] = "result"
+    updated["deadline"] = float(now)
+    return resolve_vote_result(updated)
+
+
 def tally_votes(state: dict) -> EjectResult:
-    """Count votes only after voting ends; tied leaders cause no ejection."""
+    """Count votes only after voting ends.
+
+    Living players who voted Skip or did not vote at all count as Skip
+    (DESIGN.md 5.6). Nobody goes when two players tie for the most votes,
+    or when Skip has at least as many votes as the leading player.
+    """
     if state.get("phase") != "result":
         raise ValueError("Votes stay hidden until voting ends.")
     living = set(state.get("living", ()))
@@ -101,6 +134,11 @@ def tally_votes(state: dict) -> EjectResult:
 
     counts = {player_id: valid_votes.count(player_id) for player_id in set(valid_votes)}
     most_votes = max(counts.values())
+    skips = len(living) - len(valid_votes)
+    if skips > most_votes:
+        return EjectResult(None, False, None)
+    if skips == most_votes:
+        return EjectResult(None, True, None)
     leaders = [player_id for player_id, count in counts.items() if count == most_votes]
     if len(leaders) != 1:
         return EjectResult(None, True, None)

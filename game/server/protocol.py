@@ -40,14 +40,14 @@ CHARACTERS = (
 )
 
 # The modes that are built and can be chosen (S-91). Classic follows later.
-MODES = ("duel", "classic")
+MODES = ("duel", "classic", "solo")
 # The mode of a new lobby.
 DEFAULT_MODE = "duel"
 # The name of each mode as the players read it.
-MODE_NAMES = {"duel": "Duel", "classic": "Classic"}
+MODE_NAMES = {"duel": "Duel", "classic": "Classic", "solo": "Solo"}
 # How many players a round of each mode needs at least (S-53). The only place
 # on the server where these numbers stand.
-MIN_PLAYERS = {"duel": 2, "classic": 4}
+MIN_PLAYERS = {"duel": 2, "classic": 4, "solo": 1}
 
 # A lobby is waiting for its host to start, counting down to the start of
 # the round (S-102), or its round is running.
@@ -106,6 +106,18 @@ def _check_name(value):
     if not isinstance(value, str) or not NAME_PATTERN.fullmatch(value):
         raise ProtocolError("bad_name", "Usernames are 3–16 letters or numbers.")
     return value
+
+
+# The `target_id` of a vote for nobody ("Skip", DESIGN.md 5.6). It is the
+# same value as server.classic.meeting.SKIP; a name is never empty.
+SKIP_VOTE = ""
+
+
+def _check_vote_target(value):
+    """A vote names a player or is SKIP_VOTE."""
+    if value == SKIP_VOTE:
+        return value
+    return _check_name(value)
 
 
 def _is_safe_text(value: str) -> bool:
@@ -238,7 +250,7 @@ CLIENT_MESSAGES = {
     "report": {"sheet_id": _check_sheet_id, "position": _check_position},
     "emergency": {},
     "chat": {"text": _check_chat_text},
-    "vote": {"target_id": _check_name},
+    "vote": {"target_id": _check_vote_target},
     # Statistics (S-40). Neither carries a name: the profile is always the
     # one of the account the connection is signed in with.
     "get_profile": {},
@@ -287,6 +299,18 @@ def error(problem: ProtocolError) -> dict:
 def rejection(code: str) -> dict:
     """The error message for a refused action. An unknown code raises KeyError."""
     return {"type": "error", "code": code, "message": REJECTIONS[code]}
+
+
+# Choosing or starting Solo with two or more players (Felix, 2026-11-21).
+# Its own constant and not in REJECTIONS: tests/test_protocol.py from main
+# pins REJECTIONS to exactly the codes agreed until then.
+SOLO_NEEDS_ONE_PLAYER = "solo_needs_one_player"
+SOLO_NEEDS_ONE_PLAYER_TEXT = "Solo is only for one player alone."
+
+
+def solo_needs_one_player() -> dict:
+    """The error message for Solo in a lobby with more than one player."""
+    return {"type": "error", "code": SOLO_NEEDS_ONE_PLAYER, "message": SOLO_NEEDS_ONE_PLAYER_TEXT}
 
 
 def too_few_players(mode: str) -> dict:

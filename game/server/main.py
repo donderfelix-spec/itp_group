@@ -329,7 +329,9 @@ async def handle_get_profile(websocket: WebSocket) -> dict:
     records = await ask_statistics_store(app.state.statistics_store.records_of, name)
     if records is None:
         return protocol.rejection("statistics_unavailable")
-    rows = statistics.profile_rows(records, protocol.MODES)
+    # Practice has no competitive record, even though it is selectable.
+    ranked_modes = [mode for mode in protocol.MODES if mode != "solo"]
+    rows = statistics.profile_rows(records, ranked_modes)
     return protocol.profile(name, rows, statistics.best_duel_seconds(records))
 
 
@@ -407,11 +409,15 @@ async def ask_statistics_store(method, *values):
 def duel_result_to_write(lobby, ranking):
     """What a finished Duel adds to the statistics, as `(mode, changes)`. Never raises.
 
-    Returns None when there is nothing to write (only guests played). Called
+    Returns None for Solo rounds or when only guests played. Called
     at the one place a round ends, so each round gives exactly one result.
     Nothing is written here: that happens later and off the event loop (see
     `write_result_later`), so the end of the round is not delayed.
     """
+    # Solo reuses the Duel engine, but practice must never add real
+    # Duel rounds, wins or best times to an account or the leaderboard.
+    if lobby.mode != "duel":
+        return None
     try:
         changes = statistics.changes_from_duel(ranking, account_names(lobby.names()))
         return (statistics.DUEL, changes) if changes else None
@@ -483,6 +489,8 @@ def rejection_for(name: str, rejection_code: str) -> dict:
     if rejection_code == "too_few_players":
         # The only rejection without a fixed text: it names the lobby's mode.
         return protocol.too_few_players(app.state.lobbies.lobby_of(name).mode)
+    if rejection_code == protocol.SOLO_NEEDS_ONE_PLAYER:
+        return protocol.solo_needs_one_player()
     return protocol.rejection(rejection_code)
 
 
@@ -896,7 +904,11 @@ def handle_finish_station(lobby, name: str, message: dict) -> list:
     # station again, instead of being left with a station that the server
     # counts but the browser still shows as open.
     try:
-        return [protocol.station_done(station)] + count_for_the_mode(lobby, name, station, now)
+        answers = [protocol.station_done(station)] + count_for_the_mode(lobby, name, station, now)
+        if lobby.classic_round is not None:
+            # This reply goes only to its acting player, never the lobby.
+            answers[0]["task_stations"] = classic_task_stations(lobby.classic_round, name)
+        return answers
     except Exception:
         take_back_the_count(lobby, name, station)
         raise
@@ -920,6 +932,21 @@ def take_back_the_count(lobby, name: str, station: int):
     lobby.tasks.take_back(name, station)
     if lobby.duel is not None:
         lobby.duel.take_back(name, station)
+    if lobby.classic_round is not None:
+        lobby.classic_round.completed_tasks.get(name, set()).discard(str(station))
+
+
+def classic_task_stations(classic, name: str) -> list:
+    """Only this High Performer's ordered, unfinished task stations.
+
+    Free Riders cannot complete tasks in the upstream Classic rules, so
+    their private task list is empty. Other players' assignments never
+    enter this value, including when the viewer is a ghost.
+    """
+    if classic.roles.get(name) != "HP":
+        return []
+    finished = classic.completed_tasks.get(name, set())
+    return [int(station) for station in classic.tasks.get(name, ()) if station not in finished]
 
 
 TASK_HANDLERS = {
@@ -1104,11 +1131,20 @@ def update_meeting_clock(lobby):
     now = seconds_now()
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
     sync_classic_after_meeting(lobby)
-    snapshot = classic_meeting.meeting_snapshot(lobby.meeting, now)
-    clock = (snapshot["phase"], snapshot["seconds_left"])
+    clock = meeting_clock_of(lobby.meeting, now)
     if clock != lobby.meeting_clock:
         lobby.meeting_clock = clock
         run_in_background(publish_meeting_and_round_result(lobby, now))
+
+
+def meeting_clock_of(meeting, now):
+    """The (phase, seconds left) that the players last saw of a meeting.
+
+    The tick publishes a snapshot only when this changes, so whoever else
+    publishes a snapshot records it too (see `answer_vote_message`).
+    """
+    snapshot = classic_meeting.meeting_snapshot(meeting, now)
+    return (snapshot["phase"], snapshot["seconds_left"])
 
 
 async def answer_chat_message(websocket: WebSocket, message: dict):
@@ -1167,11 +1203,18 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
         lobby.meeting = classic_meeting.cast_vote(
             lobby.meeting, name, message["target_id"]
         )
+        lobby.meeting = classic_meeting.end_voting_if_everyone_voted(lobby.meeting, now)
     except ValueError:
         await websocket.send_json(protocol.rejection("vote_rejected"))
     sync_classic_after_meeting(lobby)
+    if lobby.meeting is not None:
+        # This snapshot is the news of the moment: the tick must not send the
+        # same one again (after an early end it would repeat the result).
+        lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
     await tell_meeting_state(lobby, now)
-    if lobby.meeting.get("phase") == "result":
+    # A handler that ended the round meanwhile (two last votes at once) may
+    # have cleared the meeting while this one waited.
+    if lobby.meeting is not None and lobby.meeting.get("phase") == "result":
         await tell_classic_roster(lobby)
         lobby.walkers._everybody_needs_news()
         tell_positions(lobby)
@@ -1251,6 +1294,7 @@ def set_up_classic(lobby):
 ROUND_SETUPS = {
     "duel": set_up_duel,
     "classic": set_up_classic,
+    "solo": set_up_duel,
 }
 
 
@@ -1295,7 +1339,10 @@ async def tell_classic_start(name: str, lobby, classic):
         return
     reveal = classic.role_reveal(name)
     if reveal is not None:
-        await send_to(name, {"type": "classic_role", **reveal})
+        await send_to(name, {
+            "type": "classic_role", **reveal,
+            "task_stations": classic_task_stations(classic, name),
+        })
         if reveal["role"] == "FR":
             await send_to(name, {"type": "you_are_fr"})
             await tell_classic_fail_status(lobby, name)
