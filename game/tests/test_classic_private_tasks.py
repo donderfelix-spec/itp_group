@@ -19,13 +19,13 @@ def test_role_packet_contains_only_its_own_private_task_destinations(connect):
         assert 'task_stations' not in message
     for name, received in messages.items():
         card = next(message for message in received if message['type'] == 'classic_role')
-        assert card['task_stations'] == expected_tasks(classic, name)[:1]
+        assert card['task_stations'] == expected_tasks(classic, name)
         expected_fields = {'type', 'role', 'task_stations'}
         if classic.roles[name] == 'FR':
             expected_fields.add('other_free_riders')
             assert card['task_stations'] == []
         else:
-            assert len(card['task_stations']) == 1
+            assert len(card['task_stations']) == 4
         assert set(card) == expected_fields
         for message in received:
             if message['type'] != 'classic_role':
@@ -42,7 +42,7 @@ def test_completion_reveals_own_remaining_tasks_and_never_broadcasts_them(connec
         assert ask(players[name], {'type': 'open_station', 'station': station})['type'] == 'station_opened'
         clock.wait(1.1)
         assert ask(players[name], {'type': 'finish_station'}) == {
-            'type': 'station_done', 'station': station, 'task_stations': original[index + 1:index + 2],
+            'type': 'station_done', 'station': station, 'task_stations': original[index + 1:],
         }
         own_updates = news(players[name])
         assert own_updates and all(message['type'] == 'classic_progress' for message in own_updates)

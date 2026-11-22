@@ -1072,7 +1072,7 @@ def take_back_the_count(lobby, name: str, station: int):
 
 
 def classic_task_stations(classic, name: str) -> list:
-    """Only this High Performer's single active task station.
+    """Only this High Performer's ordered, unfinished task stations.
 
     Free Riders cannot complete tasks in the upstream Classic rules, so
     their private task list is empty. Other players' assignments never
@@ -1080,7 +1080,8 @@ def classic_task_stations(classic, name: str) -> list:
     """
     if classic.roles.get(name) != "HP":
         return []
-    return classic.stations_needed(name, set(), ())
+    finished = classic.completed_tasks.get(name, set())
+    return [int(station) for station in classic.tasks.get(name, ()) if station not in finished]
 
 
 TASK_HANDLERS = {
