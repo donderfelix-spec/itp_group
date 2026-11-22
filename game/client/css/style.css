@@ -1679,11 +1679,15 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 /* ---- Duel: the panel during the round and the ranking, built by js/minigames/duel.js ---- */
 
-/* In the lobby panel, where the character selection stands outside a round. */
-.duel-panel {
+/* The panel of the running round's mode (Duel, Solo or Classic), at the top
+   of the middle of the lobby panel, above the player list, so it is seen
+   without scrolling (M2-2.11, S-143). The same rhythm in every mode; the
+   margin keeps it apart from the "Players" heading below. */
+.round-panel {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-bottom: 8px;
 }
 
 .duel-next {
@@ -2304,8 +2308,26 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 /* ---- Classic round HUD and results ---- */
 
-.classic-progress { margin-top: 18px; }
-.classic-own-name { margin: 0 0 8px; font-weight: 800; }
+/* Place and spacing come from .round-panel, like the Duel panel's. */
+.classic-own-name { font-weight: 800; }
+/* "Group progress" under the own tasks: a heading of the panel, not of the page. */
+.round-panel h3 { margin: 0; }
+/* Classic's own tasks: a bullet per station, in the card of Duel's "Next: ...".
+   A finished task stays in its place with its bullet, only faded (not
+   crossed out, asked by Felix); open tasks keep full contrast. */
+.round-task-list { margin: 0; padding-left: 20px; }
+.round-task-done { opacity: 0.45; }
+.round-task-list + .round-task-note { margin-top: 6px; }
+
+/* Read by screen readers, not seen. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 .classic-progress-track { height: 18px; overflow: hidden; border: var(--outline); border-radius: 999px; background: white; }
 .classic-progress-fill { width: 0; height: 100%; background: var(--green); transition: width 180ms ease-out; }
 .classic-overlay { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(46, 42, 59, 0.78); }
