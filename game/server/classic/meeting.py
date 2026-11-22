@@ -89,11 +89,26 @@ def agree_to_skip_discussion(meeting: dict, player_id: str, now: float) -> dict:
         return updated
     updated["votes"].pop(player_id, None)
     skips.add(player_id)
-    if 4 * len(updated["skip_votes"]) >= 3 * len(living):
-        updated["phase"] = "result"
-        updated["deadline"] = float(now)
-        return resolve_vote_result(updated)
-    return updated
+    return end_if_enough_skips(updated, now)
+
+
+def end_if_enough_skips(meeting: dict, now: float) -> dict:
+    """End an open vote at once when Skip has 75 % of the living players.
+
+    Called after a Skip, and after a player left: fewer living players can
+    bring the Skips that are already there up to 75 %. Otherwise the state
+    is returned unchanged.
+    """
+    if not _valid_time(now):
+        raise ValueError("Meeting time must be a finite number.")
+    living = set(meeting.get("living", ()))
+    skips = living.intersection(meeting.get("skip_votes", ()))
+    if not voting_is_open(meeting) or not living or 4 * len(skips) < 3 * len(living):
+        return meeting
+    updated = deepcopy(meeting)
+    updated["phase"] = "result"
+    updated["deadline"] = float(now)
+    return resolve_vote_result(updated)
 
 
 def voting_is_open(state: dict) -> bool:
@@ -123,8 +138,10 @@ def cast_vote(state: dict, voter_id: str, target_id: str) -> dict:
 def remove_player(meeting: dict, player_id: str) -> dict:
     """Return a new meeting state without a player who left the round (M3-3.11).
 
-    The player is out of `living` and `ghosts`. Their own vote is gone, and
-    so are the votes for them; the tally then counts as it always does. The
+    The player is out of `living` and `ghosts`. Their own vote and Skip are
+    gone, and so are the votes for them; the tally then counts as it always
+    does. Whether the Skips left now reach 75 % is checked by the caller,
+    which knows the time (`end_if_enough_skips`). The
     meeting's copy of the round, from which the winner of the vote is
     worked out, counts them as failed and without their open tasks.
     """
@@ -136,6 +153,7 @@ def remove_player(meeting: dict, player_id: str) -> dict:
         for voter, target in meeting.get("votes", {}).items()
         if voter != player_id and target != player_id
     }
+    updated["skip_votes"] = set(meeting.get("skip_votes", ())) - {player_id}
     if "eliminated" in updated:
         updated["eliminated"] = set(updated["eliminated"]) | {player_id}
     if "tasks" in updated and "completed_tasks" in updated:

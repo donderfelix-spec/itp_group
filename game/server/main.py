@@ -653,6 +653,8 @@ async def tell_classic_after_a_leave(lobby):
         # applied once, and the tick must not send the same one again.
         now = seconds_now()
         lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
+        # With one living player fewer, the Skips may now be 75 % (S-162).
+        lobby.meeting = classic_meeting.end_if_enough_skips(lobby.meeting, now)
         sync_classic_after_meeting(lobby)
         finished_now = lobby.meeting.get("applied", False)
         lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
