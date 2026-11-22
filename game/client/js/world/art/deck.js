@@ -1,5 +1,5 @@
-// The art of the Main Deck and the corridor (M2-1.4): the reflecting pool
-// with its stone edge, a step and reflections, round leafy bushes,
+// The art of the Main Deck and the corridor (M2-1.4): the study tables,
+// leafy bushes,
 // the hedge, benches, lamp posts, a bike rack, drains, the glass front, the
 // beach with towels, parasols and surfboards and a surfboard rack; in the
 // corridor a terrazzo floor, the taupe slat wall with "ACADEMIC HALL",
@@ -18,56 +18,36 @@ Game.world = Game.world || {};
   }
   var util = art.util;
 
-  // The shallow pool: a light stone edge, a step down into the water, the
-  // tiles of the bottom, reflections of the sky and the trees, and ripples.
-  art.kinds.pool = function (ctx, pool) {
-    util.box(ctx, pool.x, pool.y, pool.w, pool.h, 3, "#E6E0D2", 1.4);
-    // The joints of the stone edge.
-    util.strokeAll(ctx, "#CFC7B6", 0.4, function () {
-      for (var joint = pool.x + 12; joint < pool.x + pool.w - 4; joint += 12) {
-        ctx.moveTo(joint, pool.y + 0.6);
-        ctx.lineTo(joint, pool.y + 3);
-        ctx.moveTo(joint, pool.y + pool.h - 3);
-        ctx.lineTo(joint, pool.y + pool.h - 0.6);
+  // The study area uses the deck-pool map entry so its footprint stays stable.
+  art.kinds.pool = function (ctx, area) {
+    var tableWidth = (area.w - 8) / 2;
+    var tableDepth = area.h - 24;
+    var top = area.y + 12;
+
+    for (var table = 0; table < 2; table++) {
+      var left = area.x + 2 + table * (tableWidth + 4);
+      // Seats tuck under the two long sides, with the backrests facing out.
+      for (var seat = 0; seat < 4; seat++) {
+        var x = left + tableWidth * (seat + 0.5) / 4;
+        util.chair(ctx, x, area.y + 7, 11, "#25262A", "up");
+        util.chair(ctx, x, area.y + area.h - 7, 11, "#25262A", "down");
       }
-    });
-    var edge = 3;
-    var water = { x: pool.x + edge, y: pool.y + edge, w: pool.w - 2 * edge, h: pool.h - 2 * edge };
-    util.box(ctx, water.x, water.y, water.w, water.h, 1.5, "#9CD3E6", 0.8);
-    ctx.save();
-    util.roundedPath(ctx, water.x, water.y, water.w, water.h, 1.5);
-    ctx.clip();
-    // The step: a lighter band just inside the edge, where the water is shallow.
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(water.x + 1.5, water.y + 1.5, water.w - 3, water.h - 3);
-    ctx.strokeStyle = "rgba(46, 42, 59, 0.12)";
-    ctx.lineWidth = 0.5;
-    ctx.strokeRect(water.x + 3, water.y + 3, water.w - 6, water.h - 6);
-    // The tiles on the bottom of the pool, faint through the water.
-    util.strokeAll(ctx, "rgba(255, 255, 255, 0.22)", 0.4, function () {
-      for (var x = water.x + 8; x < water.x + water.w; x += 8) {
-        ctx.moveTo(x, water.y);
-        ctx.lineTo(x, water.y + water.h);
-      }
-      for (var y = water.y + 8; y < water.y + water.h; y += 8) {
-        ctx.moveTo(water.x, y);
-        ctx.lineTo(water.x + water.w, y);
-      }
-    });
-    // Reflections: a pale patch of sky and the dark green of a tree.
-    util.ellipse(ctx, water.x + water.w * 0.7, water.y + water.h * 0.35, water.w * 0.14, water.h * 0.16, "rgba(255, 255, 255, 0.35)", 0);
-    util.ellipse(ctx, water.x + water.w * 0.12, water.y + water.h * 0.7, water.w * 0.07, water.h * 0.2, "rgba(78, 150, 89, 0.25)", 0);
-    // The shade of the edge on the water.
-    ctx.fillStyle = "rgba(46, 42, 59, 0.12)";
-    ctx.fillRect(water.x, water.y, water.w, 2);
-    ctx.restore();
-    ctx.lineCap = "round";
-    [[0.1, 0.36, 0.38], [0.52, 0.66, 0.86], [0.2, 0.78, 0.36]].forEach(function (wave) {
-      var y = pool.y + pool.h * wave[1];
-      util.line(ctx, pool.x + pool.w * wave[0], y, pool.x + pool.w * wave[2], y, "#DDF0FA", 1.4);
-    });
-    ctx.lineCap = "butt";
+
+      util.shadowBelow(ctx, left, top + tableDepth, tableWidth, 1.5);
+      util.box(ctx, left, top, tableWidth, tableDepth, 2, "#FFFFFF", 1.1);
+      util.line(ctx, left + 2, top + tableDepth - 2, left + tableWidth - 2,
+        top + tableDepth - 2, "#D9DDE2", 0.7);
+
+      // A laptop, an open notebook and a small plant on each table.
+      var centre = left + tableWidth / 2;
+      util.box(ctx, centre - 18, top + 7, 10, 6, 1, "#676B74", 0.6);
+      util.box(ctx, centre - 18, top + 6, 10, 3, 0.7, "#B7D6E4", 0.6);
+      util.box(ctx, centre + 9, top + tableDepth - 11, 11, 7, 0.8, "#FFF1D1", 0.6);
+      util.line(ctx, centre + 14.5, top + tableDepth - 10, centre + 14.5,
+        top + tableDepth - 5, "#BAA881", 0.6);
+      util.circle(ctx, centre, top + tableDepth / 2, 3.2, "#BF8262", 0.6);
+      util.ellipse(ctx, centre - 0.5, top + tableDepth / 2 - 0.8, 2.4, 1.8, "#6E9C61", 0.5);
+    }
   };
 
   // A deck bush is trimmed square (M2-1.20): its crown fills its solid to
