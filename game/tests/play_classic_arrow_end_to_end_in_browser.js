@@ -94,27 +94,40 @@ async function frame(g, type, timeout = 10000) {
 
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// The arrow of the newest frame, once the character has stopped gliding.
-async function arrowOf(g) {
-  await pause(1200);
+// The arrow of the newest frame once the character stands at `spot`: the
+// server has sent the new position and the drawn character has reached it.
+async function arrowOf(g, spot) {
+  await g.page.waitForFunction(([x, y]) => {
+    const frame = window.__arrow.frame;
+    const at = (position, near) => position && Math.abs(position.x - x) <= near && Math.abs(position.y - y) <= near;
+    return Boolean(frame) && at(frame.server, 0.01) && at(frame.drawn, 0.5);
+  }, spot, { timeout: 10000 });
   return g.page.evaluate(() => window.__arrow.frame);
 }
 
-// A free spot 90 to 140 map units from `stationId`, found with the page's own map.
-async function spotNear(g, stationId) {
-  return g.page.evaluate((id) => {
+// The arrow fades out from 60 units on, so the spot keeps this far from
+// every station of the player's own list: there the arrow is fully drawn.
+const AWAY_FROM_EVERY_OWN_STATION = 70;
+
+// A free spot 90 to 200 map units from the first of `stationIds` and at
+// least AWAY_FROM_EVERY_OWN_STATION from all of them, found with the page's own map.
+async function spotNear(g, stationIds) {
+  const spot = await g.page.evaluate(([ids, away]) => {
     const campus = window.__campus;
     const free = Game.taskNavigation.create(campus);
-    const station = campus.stations.find((entry) => entry.id === id);
-    for (let distance = 90; distance <= 140; distance += 10) {
+    const own = ids.map((id) => campus.stations.find((entry) => entry.id === id));
+    const farFromAll = (x, y) => own.every((station) => Math.hypot(station.x - x, station.y - y) >= away);
+    for (let distance = 90; distance <= 200; distance += 10) {
       for (let turn = 0; turn < 16; turn++) {
-        const x = Math.round(station.x + Math.cos(turn * Math.PI / 8) * distance);
-        const y = Math.round(station.y + Math.sin(turn * Math.PI / 8) * distance);
-        if (free.isFree(x, y)) return [x, y];
+        const x = Math.round(own[0].x + Math.cos(turn * Math.PI / 8) * distance);
+        const y = Math.round(own[0].y + Math.sin(turn * Math.PI / 8) * distance);
+        if (free.isFree(x, y) && farFromAll(x, y)) return [x, y];
       }
     }
     return null;
-  }, stationId);
+  }, [stationIds, AWAY_FROM_EVERY_OWN_STATION]);
+  if (!spot) throw new Error('No free spot away from stations ' + stationIds);
+  return spot;
 }
 
 // Stands at `station`, presses E and clicks "Finish task"; waits for station_done.
@@ -172,9 +185,9 @@ async function finish(g, station) {
     const victim = highPerformers[1];
 
     // 1. The worker stands a few tiles from its first station.
-    const spot = await spotNear(worker, worker.tasks[0]);
+    const spot = await spotNear(worker, worker.tasks);
     await put([[worker.name, spot], [freeRider.name, spot]]);
-    const start = await arrowOf(worker);
+    const start = await arrowOf(worker, spot);
     const card = await worker.page.evaluate(() => ({
       here: document.getElementById('task-card-here').textContent,
       taskHidden: document.getElementById('task-card-task').hidden,
@@ -193,12 +206,12 @@ async function finish(g, station) {
     await finish(worker, first);
     open.splice(open.indexOf(first), 1);
     await put([[worker.name, spot]]);
-    const afterOne = await arrowOf(worker);
+    const afterOne = await arrowOf(worker, spot);
 
     // 3. It finishes all the others: no arrow any more.
     for (const id of open.slice()) await finish(worker, id);
     await put([[worker.name, spot]]);
-    const afterAll = await arrowOf(worker);
+    const afterAll = await arrowOf(worker, spot);
     out.worker = { tasks: worker.tasks, spot, start, card, first, afterOne, afterAll, campus: { stations: campus.stations } };
 
     // 4. The Free Rider fails another High Performer, which then walks on as a ghost.
@@ -210,10 +223,10 @@ async function finish(g, station) {
       await pause(300);
       failed = victim.received.find((m) => m.type === 'classic_fail');
     }
-    const ghostSpot = await spotNear(victim, at);
+    const ghostSpot = await spotNear(victim, victim.tasks);
     await put([[victim.name, ghostSpot], [freeRider.name, 'spawn']]);
     out.ghost = { failed: Boolean(failed && failed.target_id === victim.name), tasks: victim.tasks,
-      arrow: await arrowOf(victim) };
+      arrow: await arrowOf(victim, ghostSpot) };
     out.freeRider = { ever: await freeRider.page.evaluate(() => window.__arrow.ever) };
   } finally {
     await browser.close();
