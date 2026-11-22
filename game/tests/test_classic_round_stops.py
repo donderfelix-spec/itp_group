@@ -251,6 +251,8 @@ def test_when_the_host_leaves_everybody_hears_the_stop_and_the_new_host(connect)
     new_host = {"type": "notice", "message": f"The host left. {lobby.host} is the new host."}
     for messages in told.values():
         assert new_host in messages
+        # The stop notice comes last, so the page's message line shows it.
+        assert messages.index(new_host) < messages.index(STOPPED)
 
 
 def test_the_next_round_in_the_same_lobby_starts_normally_after_a_stop(connect):
