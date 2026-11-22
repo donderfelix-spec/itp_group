@@ -68,6 +68,7 @@ def round_with_a_ghost(connect):
 def test_during_a_meeting_the_living_are_not_sent_the_ghost(connect, clock):
     connections, lobby, ghost, living = round_with_a_ghost(connect)
     clock.wait(46)  # the emergency button unlocks 45 seconds after the start
+    put(living[0], (app.state.campus["button"]["x"], app.state.campus["button"]["y"]))
     connections[living[0]].send_json({"type": "emergency"})
     for connection in connections.values():
         next_of_type(connection, "meeting_state")
@@ -84,6 +85,7 @@ def test_during_a_meeting_the_living_are_not_sent_the_ghost(connect, clock):
 def test_during_a_meeting_the_lobby_state_of_the_living_has_no_ghost(connect, clock):
     connections, lobby, ghost, living = round_with_a_ghost(connect)
     clock.wait(46)
+    put(living[0], (app.state.campus["button"]["x"], app.state.campus["button"]["y"]))
     connections[living[0]].send_json({"type": "emergency"})
     for connection in connections.values():
         next_of_type(connection, "meeting_state")

@@ -15,6 +15,7 @@
 //   ["key", code]          the player presses and releases this key
 //   ["openMinigame"]       a minigame window opens (the world's input pauses)
 //   ["click", id]          the player clicks the element with this id
+//   ["clickUseButton"]     the player clicks the button "E Use" on the map
 //   ["call", part, name]   calls Game[part][name]() directly; world.start
 //                          gets the map canvas and a sender of moves
 //   ["look"]               writes down what the page shows now
@@ -430,6 +431,13 @@ const STEPS = {
   click(id) {
     element(id).focus();
     (element(id).listeners.click || []).forEach((listener) => listener({ preventDefault() {} }));
+  },
+  // Clicks the button "E Use" on the map (it has no id), as a player would.
+  clickUseButton() {
+    const button = mapButton('use-button');
+    if (!button) throw new Error('The use button is not on the page.');
+    button.focus();
+    (button.listeners.click || []).forEach((listener) => listener({ preventDefault() {} }));
   },
   // Clicks the vote button for this target ("" is Skip).
   clickVote(targetId) {
