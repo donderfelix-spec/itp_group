@@ -180,9 +180,11 @@ window.Game = window.Game || {};
   function showUsableStations() {
     const stations = usableStations();
     callWorld('setUsableStations', stations);
-    // Only Duel and Solo have one next task to point at; in Classic the
-    // card and arrow stay away, also when one station is left.
+    // Only Duel and Solo have one next task for the card and the arrow. In
+    // Classic the card shows no task, and the arrow points at the nearest
+    // of the own open tasks; a Free Rider has none, so no arrow.
     callTaskNavigation('setTarget', hasOneTaskAtATime() && stations.length === 1 ? stations[0] : null);
+    callTaskNavigation('setTargets', mode === 'classic' && classicRole === 'HP' ? stations : []);
   }
 
   // Duel and Solo give each player one next station at a time.
