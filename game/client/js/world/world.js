@@ -918,6 +918,9 @@ Game.world = Game.world || {};
       if (entry && isName(entry.name) && isNumber(entry.x) && isNumber(entry.y)) {
         var player = playerNamed(entry.name);
         listed.add(entry.name);
+        // The server says so only to those who may know (S-192): the
+        // player himself, the other Free Riders and the ghosts.
+        player.toldHidden = entry.hidden === true;
         // Only the own character is bridged (M2-1.16); the others are
         // played from the queue as before.
         var receive = isOwn(player) && isBridging() ? receiveOwnPosition : receivePosition;
@@ -1642,7 +1645,7 @@ Game.world = Game.world || {};
     ctx.save();
     // A ghost (Classic) is drawn half transparent; only other ghosts see it.
     if (player.isGhost) ctx.globalAlpha = 0.38;
-    else if (isOwn(player) && ownIsHiddenNow) ctx.globalAlpha = HIDDEN_ALPHA;
+    else if (isShownHidden(player)) ctx.globalAlpha = HIDDEN_ALPHA;
     try {
       Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
       ctx.restore();
@@ -1747,9 +1750,70 @@ Game.world = Game.world || {};
     // Where labels would cover each other, only one of them is drawn; a
     // label never moves away from its own head (S-117).
     useNameFont();
-    var choice = Game.world.chooseLabels(visible.map(labelAboveHead), hiddenNames);
+    var labels = visible.map(labelAboveHead);
+    var choice = Game.world.chooseLabels(labels, hiddenNames);
     hiddenNames = choice.hidden;
     choice.shown.forEach(drawLabel);
+    // The crossed-out eye of a hidden player (S-192), also when his name
+    // gives way to another one: the symbol alone tells hidden from ghost.
+    visible.forEach(function (entry, index) {
+      if (isShownHidden(entry.player)) drawHiddenSymbol(labels[index]);
+    });
+  }
+
+  // ---- A hidden player (M3-1.6, S-192) --------------------------------
+
+  // Drawn half transparent with a crossed-out eye above the name: the own
+  // hidden Free Rider (the server told him, `classic_hiding`) and a player
+  // the server flags as hidden in `positions`. A living High Performer is
+  // never sent a hidden player, so he never sees either.
+  function isShownHidden(player) {
+    return player.toldHidden === true || (isOwn(player) && ownIsHiddenNow);
+  }
+
+  // The symbol: a cream badge with a dark ring, a dark eye and a coral
+  // stroke across it, in full colour so it stays readable at the game's
+  // zoom and at the soft edge of the view. In map units.
+  var HIDDEN_SYMBOL_RADIUS = 3.6;
+  var HIDDEN_SYMBOL_GAP = 1; // between the badge and the name label
+  var HIDDEN_SLASH_COLOUR = "#C43E3E";
+
+  function drawHiddenSymbol(label) {
+    var r = HIDDEN_SYMBOL_RADIUS;
+    var x = label.x;
+    var y = label.y - label.height / 2 - HIDDEN_SYMBOL_GAP - r;
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = SURFACE;
+    ctx.fill();
+    ctx.lineWidth = 0.7;
+    ctx.strokeStyle = OUTLINE;
+    ctx.stroke();
+    // The eye: an almond and its pupil.
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.68, y);
+    ctx.quadraticCurveTo(x, y - r * 0.62, x + r * 0.68, y);
+    ctx.quadraticCurveTo(x, y + r * 0.62, x - r * 0.68, y);
+    ctx.lineWidth = 0.6;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x, y, r * 0.2, 0, Math.PI * 2);
+    ctx.fillStyle = OUTLINE;
+    ctx.fill();
+    // The stroke across it, with a cream edge so it stands out on the eye.
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.6, y - r * 0.6);
+    ctx.lineTo(x + r * 0.6, y + r * 0.6);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = SURFACE;
+    ctx.stroke();
+    ctx.lineWidth = 0.8;
+    ctx.strokeStyle = HIDDEN_SLASH_COLOUR;
+    ctx.stroke();
+    ctx.restore();
   }
 
   function drawBloodSheets() {

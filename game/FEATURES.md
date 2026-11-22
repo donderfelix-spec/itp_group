@@ -44,7 +44,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Walking diagnostic for the team: with `?debug` in the address a panel measures the connection and the drawing while walking and copies the numbers as text | M2 | Done |
 | Limited view: You only see what is nearby and not behind a wall | M3 | Planned |
 | Show failed players as ghosts | M3 | Planned |
-| Four hiding spots in Classic in which the Free Rider is visible only within 35 map units (S-131 to S-140), drawn as objects of the map: boxes, a beanbag, a potted plant and a hollow in the hedge (S-190); the Free Rider hides on purpose with E (S-191) | M3 | Done |
+| Four hiding spots in Classic (S-131 to S-140), drawn as objects of the map: boxes, a beanbag, a potted plant and a hollow in the hedge (S-190); the Free Rider hides on purpose with E and is then sent to no High Performer; himself, the other Free Rider and ghosts see him with a crossed-out eye (S-191, S-192) | M3 | Done |
 | Overview map with your own open tasks | M3 | Planned |
 | Finished graphics for rooms and characters instead of placeholders | M4 | Planned |
 | Sounds and music | M4 | Later |

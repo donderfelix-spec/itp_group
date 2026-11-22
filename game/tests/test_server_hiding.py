@@ -1,8 +1,8 @@
 """Hiding through the real server: who is sent a Free Rider in a hiding spot (M3-1.4).
 
 `tell_positions` sends every member the positions. In a Classic round a
-living Free Rider who hides is left out for every living High Performer
-farther than 35 map units away (S-131 to S-133). Since M3-1.6 (S-191) he
+living Free Rider who hides is left out for every living High Performer, at
+any distance (S-192; before, he was sent within 35 map units, S-133). Since M3-1.6 (S-191) he
 hides by pressing E at a hiding object (`hide_at` below), not by standing
 in the spot, and a meeting ends hiding (replaces S-138). Ghosts see him
 (S-136), other Free Riders see him (S-137). Classic's own filter stays:
@@ -121,7 +121,8 @@ def classic_round(connect, names=FOUR):
 # Accepted: the Free Rider hides from living High Performers farther than 35
 
 
-def test_a_free_rider_in_a_spot_is_left_out_beyond_35_and_sent_within_35(connect):
+def test_a_hidden_free_rider_is_left_out_for_high_performers_at_any_distance(connect):
+    # Before S-192: left out beyond 35 and sent within 35. Now never sent.
     connections, [fr], [far, at_35, near] = classic_round(connect)
     hide_at(connections, fr, IN_THE_SPOT)
     put(far, beside_the_spot(35.5))
@@ -131,10 +132,12 @@ def test_a_free_rider_in_a_spot_is_left_out_beyond_35_and_sent_within_35(connect
     told = positions_now(connections)
 
     assert fr not in names_in(told[far])
-    assert fr in names_in(told[at_35])
-    assert fr in names_in(told[near])
-    # The Free Rider himself gets everybody, his own position included.
+    assert fr not in names_in(told[at_35])
+    assert fr not in names_in(told[near])
+    # The Free Rider himself gets everybody, his own position included,
+    # and is told that he hides (S-192).
     assert sorted(names_in(told[fr])) == sorted(FOUR)
+    assert [entry.get("hidden") for entry in told[fr]["players"] if entry["name"] == fr] == [True]
 
 
 @pytest.mark.parametrize("index", [0, 1, 2, 3])
@@ -212,6 +215,8 @@ def test_leaving_the_spot_makes_the_free_rider_visible_in_the_next_positions(con
     connections, [fr], [far, _, _] = classic_round(connect)
     hide_at(connections, fr, IN_THE_SPOT)
     assert fr not in names_in(positions_now(connections)[far])
+    # Since S-191 he leaves by a step (a move message), not by being put.
+    connections[fr].send_json({"type": "move", "dx": 1, "dy": 0})
     put(fr, beside_the_spot(SPOT["r"] + 1))
     assert fr in names_in(positions_now(connections)[far])
 
@@ -227,6 +232,8 @@ def test_a_ghost_sees_the_hidden_free_rider_and_the_living_still_see_no_ghost(co
     told = positions_now(connections)
 
     assert sorted(names_in(told[ghost])) == sorted(FOUR)
+    # The ghost is told that he hides (S-192).
+    assert [entry.get("hidden") for entry in told[ghost]["players"] if entry["name"] == fr] == [True]
     assert fr not in names_in(told[far])
     assert ghost not in names_in(told[far])
     assert ghost not in names_in(told[fr])
@@ -237,6 +244,8 @@ def test_a_second_free_rider_sees_the_hidden_one(connect):
     hide_at(connections, first, IN_THE_SPOT)
     told = positions_now(connections)
     assert first in names_in(told[second])
+    # The other Free Rider is told that he hides (S-192).
+    assert [entry.get("hidden") for entry in told[second]["players"] if entry["name"] == first] == [True]
     for name in high_performers:
         assert first not in names_in(told[name])
 

@@ -320,3 +320,65 @@ def test_the_text_follows_the_hiding_also_when_the_own_character_is_drawn_as_a_c
     inside, outside = run_page(steps)["drawings"]
     assert inside["hiddenHintShown"] is True
     assert outside["hiddenHintShown"] is False
+
+
+# The crossed-out eye of a hidden player (S-192)
+
+
+def hidden_entry(name, place):
+    return dict(name=name, hidden=True, **place)
+
+
+def positions_with(*entries):
+    return [["receive", {"type": "positions", "players": list(entries)}], ["wait", 400]]
+
+
+def other_alphas(look, character):
+    return [drawn["alpha"] for drawn in look["charactersDrawn"] if drawn["character"] == character]
+
+
+@needs_node
+def test_the_own_hidden_free_rider_has_the_crossed_out_eye():
+    look = run_page(classic_round() + hide_in_spot() + [["lookAtDrawing"]])["drawings"][0]
+    assert shows_hiding(look)
+    assert look["hiddenSymbols"] == 1
+
+
+@needs_node
+def test_stepping_out_takes_the_eye_away():
+    out = stand(OUTSIDE) + told_hidden(False)
+    look = run_page(classic_round() + hide_in_spot() + out + [["lookAtDrawing"]])["drawings"][0]
+    assert look["hiddenSymbols"] == 0
+
+
+@needs_node
+def test_the_other_free_rider_sees_the_hidden_partner_half_transparent_with_the_eye():
+    partner_at = {"x": SPOT["x"], "y": SPOT["y"]}
+    steps = classic_round() + positions_with(dict(name=OWN, **OUTSIDE), hidden_entry(OTHER, partner_at)) + [["lookAtDrawing"]]
+    look = run_page(steps)["drawings"][0]
+    assert other_alphas(look, OTHER_CHARACTER) == [HIDDEN_ALPHA]
+    assert own_drawn(look)["alpha"] == 1
+    assert look["hiddenSymbols"] == 1
+    # "Hidden" in the panel is only about the own character.
+    assert look["hiddenHintShown"] is False
+
+
+@needs_node
+def test_a_ghost_sees_the_hidden_player_with_the_eye_and_another_ghost_without():
+    ghosts = {"Ana", "Cy"}
+    roster = {"type": "classic_roster", "players": [dict(entry, ghost=entry["name"] in ghosts) for entry in PLAYERS]}
+    steps = classic_round("HP") + [["receive", roster]] + positions_with(
+        dict(name=OWN, **OUTSIDE), hidden_entry(OTHER, {"x": SPOT["x"], "y": SPOT["y"]}), dict(name="Cy", x=300, y=330),
+    ) + [["lookAtDrawing"]]
+    look = run_page(steps)["drawings"][0]
+    assert other_alphas(look, OTHER_CHARACTER) == [HIDDEN_ALPHA]
+    assert other_alphas(look, "c3") == [GHOST_ALPHA]
+    # One eye: the hidden player's, not the other ghost's nor the own.
+    assert look["hiddenSymbols"] == 1
+
+
+@needs_node
+def test_without_the_flag_nobody_gets_the_eye():
+    look = run_page(classic_round() + stand(OUTSIDE, (OTHER, {"x": 300, "y": 330})) + [["lookAtDrawing"]])["drawings"][0]
+    assert look["hiddenSymbols"] == 0
+    assert other_alphas(look, OTHER_CHARACTER) == [1]

@@ -2,8 +2,9 @@
 
 A living Free Rider in a Classic round who stands within reach (`use_range`,
 25) of a hiding spot presses E: the browser sends `hide`. The server puts
-him on the spot's centre, he stands still and is hidden: living High
-Performers farther than 35 units are not sent his position. Standing in a
+him on the spot's centre, he stands still and is hidden: no living High
+Performer is sent his position, however near (S-192). He himself, the other
+Free Riders and the ghosts still get him, with `"hidden": true`. Standing in a
 spot no longer hides by itself. A step, E again (`leave_hiding`), a meeting
 and leaving the lobby end hiding. While hidden he cannot fail, report or
 call the emergency meeting. Only he is told whether he hides
@@ -23,7 +24,9 @@ from server.classic.round import ClassicRound, HideRefused
 from server.main import app
 from task_helpers import client, clock, connect, placeholder_at_every_station, put  # noqa: F401
 from test_classic_server_features import classic_for, player
-from test_server_hiding import CAMPUS, FOUR, SIX, SPOT, classic_round, names_in, next_positions, positions_now
+from test_server_hiding import (
+    CAMPUS, FOUR, SIX, SPOT, classic_round, names_in, next_positions, positions_arrived, positions_now,
+)
 from test_server_duel import REAL_TICK, duel_of, lobby_of
 
 CENTRE = (float(SPOT["x"]), float(SPOT["y"]))
@@ -202,13 +205,24 @@ def test_every_spot_can_be_hidden_in(connect, index):
         assert fr not in names_in(told[name])
 
 
-def test_a_high_performer_within_35_still_gets_him_and_one_beyond_does_not(connect):
-    connections, [fr], [at_35, beyond, _] = hidden_in_the_spot(connect)
+def test_no_high_performer_gets_him_however_near(connect):
+    connections, [fr], [beside, at_35, beyond] = hidden_in_the_spot(connect)
+    put(beside, (CENTRE[0] + 1, CENTRE[1]))
     put(at_35, (CENTRE[0] + 35, CENTRE[1]))
     put(beyond, (CENTRE[0] + 35.5, CENTRE[1]))
     told = positions_now(connections)
-    assert fr in names_in(told[at_35])
-    assert fr not in names_in(told[beyond])
+    for name in (beside, at_35, beyond):
+        assert fr not in names_in(told[name])
+
+
+def test_no_message_to_a_living_high_performer_carries_the_hidden_flag(connect):
+    connections, [fr], high_performers = hidden_in_the_spot(connect)
+    told = positions_now(connections)
+    for name in high_performers:
+        assert all(set(entry) == {"name", "x", "y"} for entry in told[name]["players"])
+        assert "hidden" not in json.dumps(told[name])
+    # He himself is told, and only about himself.
+    assert [entry["name"] for entry in told[fr]["players"] if entry.get("hidden")] == [fr]
 
 
 def test_only_the_free_rider_is_told_and_the_others_get_no_trace(connect):
@@ -281,13 +295,46 @@ def test_a_meeting_ends_hiding_and_tells_him(connect, clock):
     assert classic_for(fr).phase == "meeting"
 
 
-def test_after_the_meeting_he_must_press_e_again(connect, clock):
-    connections, [fr], [caller, far, _] = hidden_in_the_spot(connect)
-    classic = classic_for(fr)
-    classic.end_all_hiding()
-    classic.phase = "round"
-    put(far, (100.0, 330.0))
+def test_a_report_ends_hiding_and_tells_him(connect, clock):
+    connections, [fr], [victim, reporter, far] = classic_round(connect)
+    # He fails a High Performer first (not hidden), then hides.
+    put(fr, below_the_spot(15))
+    put(victim, below_the_spot(18))
+    connections[fr].send_json({"type": "fail"})
+    sheet = answer(connections[reporter], ("classic_fail",))
+    assert press_hide(connections, fr) == {"type": "classic_hiding", "hidden": True}
+    put(reporter, (sheet["position"]["x"], sheet["position"]["y"]))
+    connections[reporter].send_json({"type": "report", "sheet_id": sheet["sheet_id"], "position": sheet["position"]})
+    assert answer(connections[fr]) == {"type": "classic_hiding", "hidden": False}
+    assert classic_for(fr).phase == "meeting"
+    assert classic_for(fr).hidden == {}
+    positions_arrived(connections[far])  # the older positions, sent while he hid
     assert fr in names_in(positions_now(connections)[far])
+
+
+def test_leaving_the_lobby_while_hidden_ends_hiding_for_good(connect):
+    connections, [fr], [far, _, _] = hidden_in_the_spot(connect)
+    classic = classic_for(fr)
+    connections[fr].send_json({"type": "leave_lobby"})
+    answer(connections[fr], ("left_lobby", "error"))
+    assert classic.hidden == {}
+
+
+def test_hiding_twice_answers_hidden_and_changes_nothing(connect):
+    connections, [fr], _ = hidden_in_the_spot(connect)
+    connections[fr].send_json({"type": "hide"})
+    assert answer(connections[fr]) == {"type": "classic_hiding", "hidden": True}
+    assert classic_for(fr).hidden == {fr: SPOT}
+
+
+def test_a_blocked_step_still_ends_hiding_and_everybody_is_told_again(connect):
+    connections, [fr], [far, _, _] = hidden_in_the_spot(connect)
+    lobby = app.state.lobbies.lobby_of(fr)
+    for name in FOUR:
+        lobby.walkers.mark_told(name)
+    connections[fr].send_json({"type": "move", "dx": 1, "dy": 0})
+    assert answer(connections[fr]) == {"type": "classic_hiding", "hidden": False}
+    assert sorted(lobby.walkers.names_to_tell()) == sorted(FOUR)
 
 
 def test_the_end_of_the_round_sends_him_to_everybody(connect):
@@ -325,9 +372,10 @@ def test_a_free_rider_who_is_a_ghost_cannot_hide(connect):
     assert press_hide(connections, fr) == protocol.rejection("hide_rejected")
 
 
-def test_nobody_hides_during_a_meeting(connect):
+@pytest.mark.parametrize("phase", ["meeting", "result"])
+def test_nobody_hides_during_a_meeting_or_its_result(connect, phase):
     connections, [fr], _ = classic_round(connect)
-    classic_for(fr).phase = "meeting"
+    classic_for(fr).phase = phase
     put(fr, CENTRE)
     assert press_hide(connections, fr) == protocol.rejection("hide_rejected")
 

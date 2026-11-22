@@ -128,7 +128,7 @@ class Step:
     members: frozenset  # who is in the lobby
     ghosts: frozenset  # who has failed, was voted out or left
     ejected: tuple  # (name, role) of everybody voted out so far
-    hidden: str | None  # a Free Rider standing in a hiding spot, far from every High Performer
+    hidden: str | None  # a Free Rider who pressed E in the hedge and hides (S-191, S-192)
     victim: str | None  # who was failed in this step
     final: bool  # the round ends in this step
     roles: tuple  # (name, role) of everybody, fixed by the test
@@ -183,12 +183,19 @@ class Recorder:
     def place(self, special=None):
         """Put every member far from everybody else, except the players in `special`.
 
-        A Free Rider placed in the hedge counts as hidden for the checks.
+        A Free Rider placed in the hedge counts as hidden for the checks; he
+        hides by pressing E (see `walk`). One who hid and is placed elsewhere
+        first steps out with E again (`leave_hiding`, S-191).
         """
         special = special or {}
+        was_hidden = self.hidden
         for name, place in zip(self.connections, FAR_PLACES):
             put(name, special.get(name, place))
         self.hidden = next((name for name, place in special.items() if place == HEDGE), None)
+        classic = classic_for(next(iter(self.connections)))
+        if was_hidden and was_hidden != self.hidden and classic is not None and classic.is_hidden(was_hidden):
+            self.connections[was_hidden].send_json({"type": "leave_hiding"})
+            self.step(f"{was_hidden} steps out of hiding", {was_hidden: ["classic_hiding"]}, actor=was_hidden)
 
     def everybody_needs_positions(self):
         app.state.lobbies.lobby_of(next(iter(self.connections))).walkers._everybody_needs_news()
@@ -323,17 +330,33 @@ def check_classic_progress(record):
 
 def check_positions(record):
     step = record.step
-    assert all(set(entry) == {"name", "x", "y"} for entry in record.message["players"])
+    for entry in record.message["players"]:
+        assert set(entry) in ({"name", "x", "y"}, {"name", "x", "y", "hidden"}), entry
+        assert entry.get("hidden", True) is True, entry
     names = {entry["name"] for entry in record.message["players"]}
+    flagged = {entry["name"] for entry in record.message["players"] if entry.get("hidden")}
     assert names <= step.members
     if record.state != "ghost":
         assert not names & step.ghosts, f"a living player was sent ghost positions {names & step.ghosts} (S-155)"
+    if record.state == "HP":
+        assert not flagged, f"a living High Performer was told that {sorted(flagged)} hides (S-192)"
+    else:
+        assert flagged <= {step.hidden}, f"{sorted(flagged)} flagged as hidden, but only {step.hidden} hides"
     if step.hidden is not None and step.hidden not in step.ghosts:
         if record.state == "HP":
-            assert step.hidden not in names, "a far High Performer was sent the hidden Free Rider (S-133)"
+            assert step.hidden not in names, "a High Performer was sent the hidden Free Rider (S-192)"
         else:
-            # The hider himself, the other Free Rider (S-137) and the ghosts (S-136) see him.
+            # The hider himself, the other Free Rider (S-137) and the ghosts
+            # (S-136) see him, and are told that he hides (S-192).
             assert step.hidden in names
+            assert step.hidden in flagged, f"{record.viewer} was not told that {step.hidden} hides (S-192)"
+
+
+def check_classic_hiding(record):
+    """Only a living Free Rider is told whether he himself hides (S-191)."""
+    assert record.state == "FR", "somebody who is no living Free Rider was told about hiding"
+    assert set(record.message) == {"type", "hidden"}
+    assert record.message["hidden"] is (record.viewer == record.step.hidden)
 
 
 def check_classic_roster(record):
@@ -419,7 +442,8 @@ KNOWN_CLASSIC_TYPES = {
     "you_are_fr": ("only a Free Rider, at the start", check_you_are_fr),
     "classic_fail_status": ("only Free Riders (also one voted out, finding 5)", check_classic_fail_status),
     "classic_progress": ("everybody, public: only the bar and the clocks", check_classic_progress),
-    "positions": ("everybody; ghosts only to ghosts (S-155); hidden Free Rider per S-133, S-136, S-137", check_positions),
+    "positions": ("everybody; ghosts only to ghosts (S-155); a hidden Free Rider never to a living High Performer, flagged for the others (S-136, S-137, S-192)", check_positions),
+    "classic_hiding": ("only the living Free Rider about himself (S-191)", check_classic_hiding),
     "classic_roster": ("everybody; the living without the ghosts (S-155, S-164)", check_classic_roster),
     "classic_fail": ("everybody, public by decision S-159 and S-163: the victim with character", check_classic_fail),
     "meeting_state": ("everybody, identical; votes and Skips public by decision S-160 and S-162", check_meeting_state),
@@ -549,8 +573,11 @@ def free_rider_tries_a_task(rec, free_rider):
 
 
 def walk(rec, name, hidden_free_rider=None):
-    """The tick sends everybody the positions; `hidden_free_rider` stands in the hedge."""
+    """The tick sends everybody the positions; `hidden_free_rider` stands in the hedge and hides with E."""
     rec.place({hidden_free_rider: HEDGE} if hidden_free_rider else {})
+    if hidden_free_rider and not classic_for(hidden_free_rider).is_hidden(hidden_free_rider):
+        rec.connections[hidden_free_rider].send_json({"type": "hide"})
+        rec.step(f"{hidden_free_rider} presses E in the hedge", {hidden_free_rider: ["classic_hiding"]}, actor=hidden_free_rider)
     rec.everybody_needs_positions()
     rec.tick()
     rec.step(name, with_extra(everybody(rec, "positions"), living_free_riders(rec), "classic_fail_status"))
@@ -583,7 +610,12 @@ def report(rec, reporter, sheet_id):
     rec.connections[reporter].send_json(
         {"type": "report", "sheet_id": sheet_id, "position": {"x": SHEET_PLACE[0], "y": SHEET_PLACE[1]}}
     )
-    rec.step(f"{reporter} reports", everybody(rec, "meeting_state"), actor=reporter)
+    # The meeting ends hiding (S-191): the one who hid is told.
+    expected = everybody(rec, "meeting_state")
+    if rec.hidden is not None:
+        expected = with_extra(expected, [rec.hidden], "classic_hiding")
+        rec.hidden = None
+    rec.step(f"{reporter} reports", expected, actor=reporter)
 
 
 def meeting_action(rec, actor, message, name):
@@ -737,7 +769,7 @@ def play_six(connect, clock, monkeypatch) -> Recorder:
 SEEN_IN_EVERY_ROUND = {
     "lobby_state", "classic_role", "you_are_fr", "classic_fail_status", "classic_progress", "positions",
     "classic_fail", "classic_roster", "meeting_state", "classic_result", "error", "left_lobby",
-    "station_opened", "station_done",
+    "station_opened", "station_done", "classic_hiding",
 }
 
 
@@ -787,6 +819,35 @@ def test_somebody_elses_role_fails_and_the_own_role_passes():
             "type": "classic_fail_status", "available": True, "in_range": True,
             "cooldown_until": None, "server_time": 0.0,
         }))
+
+
+def test_a_hidden_flag_to_a_living_high_performer_fails_and_to_a_ghost_passes():
+    message = {"type": "positions", "players": [{"name": "Mara", "x": 1.0, "y": 2.0, "hidden": True}]}
+    with pytest.raises(AssertionError, match="told that"):
+        check_record(Record(a_step(), "Ines", "HP", message))
+    check_record(Record(a_step(hidden="Mara"), "Tiago", "ghost", message))
+    check_record(Record(a_step(hidden="Mara"), "Mara", "FR", message))
+
+
+def test_the_hidden_free_rider_in_the_positions_of_a_high_performer_fails_at_any_distance():
+    message = {"type": "positions", "players": [{"name": "Mara", "x": 1.0, "y": 2.0}, {"name": "Ines", "x": 1.0, "y": 3.0}]}
+    with pytest.raises(AssertionError, match="hidden Free Rider"):
+        check_record(Record(a_step(hidden="Mara"), "Ines", "HP", message))
+
+
+def test_a_ghost_or_free_rider_not_told_that_he_hides_fails():
+    message = {"type": "positions", "players": [{"name": "Mara", "x": 1.0, "y": 2.0}]}
+    with pytest.raises(AssertionError, match="was not told"):
+        check_record(Record(a_step(hidden="Mara"), "Tiago", "ghost", message))
+
+
+def test_classic_hiding_to_anybody_but_a_living_free_rider_fails():
+    message = {"type": "classic_hiding", "hidden": True}
+    check_record(Record(a_step(hidden="Mara"), "Mara", "FR", message))
+    with pytest.raises(AssertionError, match="no living Free Rider"):
+        check_record(Record(a_step(hidden="Mara"), "Ines", "HP", message))
+    with pytest.raises(AssertionError, match="no living Free Rider"):
+        check_record(Record(a_step(hidden="Mara"), "Tiago", "ghost", message))
 
 
 def test_a_rejection_for_somebody_else_fails():

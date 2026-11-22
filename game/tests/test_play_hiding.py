@@ -71,7 +71,10 @@ from server.world.movement import is_free
 CAMPUS = app.state.campus
 SOLIDS, WIDTH, HEIGHT = CAMPUS["solids"], CAMPUS["width"], CAMPUS["height"]
 SPAWN = (CAMPUS["spawn"]["x"], CAMPUS["spawn"]["y"])
-REVEAL_RANGE = CAMPUS["hide_reveal_range"]
+# The reveal range of S-133. Retired by S-192: a hidden Free Rider is sent to
+# no living High Performer at all. The plays still measure against it, to
+# show that even a High Performer well within it does not get him.
+REVEAL_RANGE = 35
 SPOTS = {name: spot for name, spot in zip(("hedge", "pingo-doce", "ctt", "canteen"), CAMPUS["hiding_spots"])}
 HEDGE = next(solid for solid in SOLIDS if solid["id"] == "deck-hedge")
 BUTTON = CAMPUS["button"]
@@ -85,8 +88,6 @@ NPM = shutil.which("npm")
 SCREENSHOTS = os.environ.get("HIDING_SCREENSHOTS")
 
 KEYS = {(1, 0): "KeyD", (-1, 0): "KeyA", (0, 1): "KeyS", (0, -1): "KeyW"}
-# Positions carry one decimal: a distance this close to 35 may go either way.
-ROUNDING = 0.2
 # A page draws a player it was told about within this time, and stops
 # drawing one it was told is gone within this time (a few frames).
 DRAW_LAG_MS = 120
@@ -433,17 +434,14 @@ def character_of(browser, label, name):
 
 
 def visibility_mistakes(frames, own, hider, hider_at):
-    """The frames in which `hider` was listed though farther than 35 units, or missing though within."""
+    """The frames in which the hidden `hider` was listed (at any distance, S-192) or the own position is missing."""
     mistakes = []
     for t, listed in frames:
         if own not in listed:
             mistakes.append((t, "own position missing"))
             continue
-        distance = math.dist(listed[own], hider_at)
-        if abs(distance - REVEAL_RANGE) <= ROUNDING:
-            continue
-        if (hider in listed) != (distance <= REVEAL_RANGE):
-            mistakes.append((t, round(distance, 1), hider in listed))
+        if hider in listed:
+            mistakes.append((t, round(math.dist(listed[own], hider_at), 1), True))
     return mistakes
 
 
@@ -970,7 +968,8 @@ def test_the_four_spots_are_the_ones_of_the_map():
     assert {name: (spot["x"], spot["y"]) for name, spot in SPOTS.items()} == {
         "hedge": (595, 249), "pingo-doce": (549, 468), "ctt": (136, 524), "canteen": (636, 128),
     }
-    assert REVEAL_RANGE == 35
+    # The reveal range is retired (S-192).
+    assert "hide_reveal_range" not in CAMPUS
 
 
 def test_five_players_have_exactly_one_free_rider_on_the_role_cards(classic):
@@ -996,12 +995,13 @@ def test_the_free_rider_walks_into_the_spot_and_is_hidden_from_far_high_performe
 
 
 @pytest.mark.parametrize("spot_index", range(4), ids=list(SPOTS))
-def test_a_high_performer_walking_past_gets_the_free_rider_exactly_within_35_units(classic, spot_index):
+def test_a_high_performer_walking_past_never_gets_the_hidden_free_rider(classic, spot_index):
+    # Before S-192 he got him exactly within 35 units; now never, also within.
     record = classic["spots"][spot_index]
     assert record["near_closest"] <= REVEAL_RANGE
     assert record["near_mistakes"] == []
-    assert record["near_listed_some"]
-    assert record["near_draws_fr_when_close"]
+    assert not record["near_listed_some"]
+    assert not record["near_draws_fr_when_close"]
     assert record["near_last_listed"] is False
 
 
