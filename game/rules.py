@@ -54,20 +54,24 @@ def free_riders_for(player_count: int) -> int:
     return 1 if player_count <= 5 else 2
 
 
-def round_still_fits(roles: Mapping[str, Role], present_names: Collection[str]) -> bool:
+def round_still_fits(
+    roles: Mapping[str, Role], present_names: Collection[str], eliminated: Collection[str]
+) -> bool:
     """Whether a running Classic round may go on after players left (M3-3.8).
 
-    `present_names` are the players still in the lobby. Everybody of them
-    with a role counts, living or ghost. The round must stop when fewer than
-    4 are left, or more Free Riders than S-48 gives that many players. Too
-    few Free Riders never stop it: if the last one leaves, the High
-    Performers win by the usual rule.
+    `present_names` are the players still in the lobby. Every one of them
+    with a role counts as a player, living or ghost. Only the Free Riders
+    who are present and alive count as Free Riders: a Free Rider voted out
+    can no longer fail anybody (Lead decision, 2026-11-22). The round must
+    stop when fewer than 4 players are left, or more living Free Riders than
+    S-48 gives that many players. Too few Free Riders never stop it: if the
+    last one leaves, the High Performers win by the usual rule.
     """
     present = [name for name in present_names if name in roles]
     if len(present) < MIN_CLASSIC_PLAYERS:
         return False
-    free_riders = sum(1 for name in present if roles[name] == "FR")
-    return free_riders <= free_riders_for(len(present))
+    living_free_riders = sum(1 for name in present if roles[name] == "FR" and name not in eliminated)
+    return living_free_riders <= free_riders_for(len(present))
 
 
 def assign_roles(player_ids: Sequence[str], rng: RandomSource) -> dict[str, Role]:

@@ -596,7 +596,7 @@ def stop_round_if_it_no_longer_fits(lobby) -> dict:
     goes on or no Classic round is running.
     """
     classic = lobby.classic_round
-    if classic is None or round_still_fits(classic.roles, lobby.names()):
+    if classic is None or round_still_fits(classic.roles, lobby.names(), classic.eliminated):
         return {}
     # When the last player left, the empty lobby is stopped too; nobody is
     # left to tell, so the dict below is empty, like for a round that goes on.

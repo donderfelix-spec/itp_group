@@ -51,22 +51,40 @@ def test_round_still_fits_for_every_number_of_players_and_free_riders(present, f
     allowed = 1 if present <= 5 else 2
     expected = present >= 4 and free_riders <= allowed
 
-    assert round_still_fits(roles, names) is expected
+    assert round_still_fits(roles, names, set()) is expected
 
 
 def test_ghosts_count_as_players_still_in_the_round():
     # A ghost is still in the round: four players, one of them failed.
-    assert round_still_fits(roles_of(5, 1), ["P0", "P1", "P2", "P3"]) is True
+    assert round_still_fits(roles_of(5, 1), ["P0", "P1", "P2", "P3"], {"P3"}) is True
+
+
+def test_a_free_rider_voted_out_does_not_count_as_a_free_rider():
+    # 6 players with 2 Free Riders; P0 was voted out, then a High Performer
+    # left: 5 present, 1 living Free Rider. The round goes on.
+    roles = roles_of(6, 2)
+    present = ["P0", "P1", "P2", "P3", "P4"]
+    assert round_still_fits(roles, present, {"P0"}) is True
+    # The same with both Free Riders alive: too many for five.
+    assert round_still_fits(roles, present, set()) is False
+
+
+def test_a_ghost_free_rider_with_four_present_still_counts_as_a_player():
+    # 4 present, the only Free Rider is a ghost: 4 players, 0 living Free
+    # Riders. Too few Free Riders never stop the round.
+    assert round_still_fits(roles_of(5, 1), ["P0", "P1", "P2", "P3"], {"P0"}) is True
+    # Fewer than 4 present stops it, whoever is a ghost.
+    assert round_still_fits(roles_of(5, 1), ["P0", "P1", "P2"], {"P0"}) is False
 
 
 def test_names_without_a_role_do_not_count():
     # Somebody without a role in this round (it cannot happen while a round
     # runs, but the rule does not count them).
-    assert round_still_fits(roles_of(4, 1), ["P0", "P1", "P2", "Zoe"]) is False
+    assert round_still_fits(roles_of(4, 1), ["P0", "P1", "P2", "Zoe"], set()) is False
 
 
 def test_no_player_left_does_not_fit():
-    assert round_still_fits(roles_of(4, 1), []) is False
+    assert round_still_fits(roles_of(4, 1), [], set()) is False
 
 
 # Helpers for the network
@@ -264,6 +282,19 @@ def test_with_six_a_free_rider_leaves_and_the_round_goes_on(connect):
 
     told = leave(connections, leaver)
 
+    assert lobby.round_is_running() and lobby.classic_round is not None
+    assert all(STOPPED not in messages for messages in told.values())
+
+
+def test_with_six_a_free_rider_voted_out_does_not_make_a_leave_stop_the_round(connect):
+    connections, lobby, [ghost_fr, _living_fr], [leaver, *_] = classic_round(connect, SIX)
+    # As after a vote that ejected him: he is a ghost and can fail nobody.
+    lobby.classic_round.eliminated.add(ghost_fr)
+    drain(connections)
+
+    told = leave(connections, leaver)
+
+    # 5 present with 1 living Free Rider: that fits.
     assert lobby.round_is_running() and lobby.classic_round is not None
     assert all(STOPPED not in messages for messages in told.values())
 
