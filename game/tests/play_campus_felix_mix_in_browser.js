@@ -240,6 +240,44 @@ function windowAround(p, axis, dir, aim, ok, spare) {
   return best ? best.run : null;
 }
 
+// One server step on a diagonal moves about 4.7 units on each axis (6.7
+// divided by the square root of 2): shorter than a straight step.
+const DIAGONAL_STEP = 6.7 / Math.SQRT2;
+
+// A leg that stopped a little past the window where it must turn (for
+// example 0.6 past the CTT door's x 100-105, narrower than one straight
+// step) is corrected with one diagonal step: back along the leg and already
+// on towards the next leg. Only when the step fits and the map is free for
+// it; otherwise the attempt is planned again as before. Returns where the
+// player stands then.
+async function stepBackIntoWindow(page, leg, next, window) {
+  const p = await where(page);
+  const edge = leg.dir > 0 ? window[1] : window[0];
+  const overshoot = (p[leg.axis] - edge) * leg.dir;
+  if (!(overshoot > 0 && overshoot < DIAGONAL_STEP)) return p;
+  const back = -leg.dir;
+  const target = { x: p.x, y: p.y };
+  target[leg.axis] += back * DIAGONAL_STEP;
+  target[next.axis] += next.dir * DIAGONAL_STEP;
+  // The server moves the x axis first, then the y axis (movement.py).
+  if (!sweepFree(p.x, p.y, target.x, p.y) || !sweepFree(target.x, p.y, target.x, target.y)) return p;
+  const keys = [KEY[leg.axis][back], KEY[next.axis][next.dir]];
+  for (const key of keys) await page.keyboard.down(key);
+  const began = Date.now();
+  try {
+    for (;;) {
+      await pause(2);
+      const q = await where(page);
+      if (q.x !== p.x || q.y !== p.y || Date.now() - began > 1000) break;
+    }
+  } finally {
+    for (const key of keys) await page.keyboard.up(key);
+  }
+  const q = await settle(page);
+  debug('step back', JSON.stringify({ from: p, to: q, window }));
+  return q;
+}
+
 // Walks to `goal` ({x, y}) and stops within `tol` on both axes. Returns the end position.
 async function walkTo(page, goal, tol = 4) {
   for (let attempt = 0; attempt < 10; attempt++) {
@@ -282,8 +320,12 @@ async function walkTo(page, goal, tol = 4) {
       // Past the far end: let go at once and plan again from there.
       const past = (q) => (leg.dir > 0 ? q[leg.axis] > range[1] : q[leg.axis] < range[0]);
       const trail = await hold(page, leg.axis, leg.dir, (q) => inRange(q) || past(q));
-      const end = trail[trail.length - 1][leg.axis];
-      if (!(end >= loose[0] && end <= loose[1])) failed = true;
+      let end = trail[trail.length - 1][leg.axis];
+      const inLoose = (v) => v >= loose[0] && v <= loose[1];
+      if (!inLoose(end) && next && next.axis !== leg.axis) {
+        end = (await stepBackIntoWindow(page, leg, next, loose))[leg.axis];
+      }
+      if (!inLoose(end)) failed = true;
     }
     const p1 = await where(page);
     if (Math.abs(p1.x - goal.x) <= tol && Math.abs(p1.y - goal.y) <= tol) return p1;
