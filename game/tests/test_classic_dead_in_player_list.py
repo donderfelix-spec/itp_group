@@ -68,3 +68,15 @@ def test_the_dead_stay_marked_when_the_lobby_changes_during_the_round():
 def test_after_the_round_nobody_is_marked_dead():
     steps = classic_round_as_free_rider() + [GHOSTS_VIEW, lobby_state("lobby"), ["look"]]
     assert run_page(steps)["looks"][-1]["deadInList"] == []
+
+
+@needs_node
+def test_a_late_roster_after_the_round_changes_nothing_in_the_lobby():
+    # The living's roster without the ghost Di arrives after the round ended.
+    living_view = roster(entry("Ana", "c1"), entry("Bo", "c2"), entry("Cy", "c3"))
+    steps = classic_round_as_free_rider() + [
+        lobby_state("lobby"), GHOSTS_VIEW, living_view, ["look"],
+    ]
+    seen = run_page(steps)["looks"][-1]
+    assert seen["deadInList"] == []
+    assert seen["listNames"] == ["Ana", "Bo", "Cy", "Di"]

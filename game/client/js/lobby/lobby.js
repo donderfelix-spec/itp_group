@@ -451,7 +451,9 @@ window.Game = window.Game || {};
   }
 
   function setPlayers(players) {
-    if (!latestState || !Array.isArray(players)) return;
+    // Only during a round: a late classic_roster after the round ended must
+    // not leave "Dead" marks or hide ghosts on the lobby screen.
+    if (!latestState || latestState.phase !== 'round' || !Array.isArray(players)) return;
     deadNames = new Set(players.filter((player) => player && player.ghost === true).map((player) => player.name));
     latestState.players = players;
     showPlayers(latestState);

@@ -370,6 +370,9 @@ function look() {
     meetingKnowsFreeRider: meetingKnowsFreeRider,
     selectedVoteTarget: selectedVote ? selectedVote.dataset.targetId : null,
     voteIconLabels: voteIconLabels,
+    // The names in the side panel's Players list, in their order.
+    listNames: element('lobby-players').children
+      .map((row) => row.children.find((child) => child.classList.contains('player-name')).textContent),
     // The rows of the side panel's Players list marked dead, with their markers.
     deadInList: element('lobby-players').children
       .filter((row) => row.classList.contains('player-dead'))
