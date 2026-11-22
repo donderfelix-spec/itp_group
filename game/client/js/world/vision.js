@@ -20,8 +20,13 @@
     return { x: origin.x + dx * distance, y: origin.y + dy * distance };
   }
 
+  // The one range of the fog and of the server (positions_in_sight).
+  function rangeOf(campus) {
+    return campus.classic_vision_range || 150;
+  }
+
   function boundary(campus, origin) {
-    var range = campus.classic_vision_range || 150;
+    var range = rangeOf(campus);
     var walls = campus.solids.filter(function (wall) {
       return wall.kind === "wall"
         && wall.x <= origin.x + range && wall.x + wall.w >= origin.x - range
@@ -49,13 +54,37 @@
     ctx.closePath();
   }
 
-  function darken(ctx, view, points) {
+  var FOG = "rgba(34, 36, 54, 0.74)";
+  var CLEAR = "rgba(34, 36, 54, 0)";
+  // The view fades into the fog over its outer part: clear up to this share
+  // of the range, then darker until it reaches the full fog at the range.
+  var FADE_FROM = 0.6;
+
+  // Darkens the map outside the view. With `origin` and `range` the floor
+  // inside the view also fades softly into the fog towards the range, so
+  // there is no hard edge where the range ends. Only the map is darkened:
+  // players, F-sheets and the station glow are drawn afterwards, on top,
+  // so everybody the server sends stays fully visible.
+  function darken(ctx, view, points, origin, range) {
     ctx.save();
     ctx.beginPath();
     ctx.rect(view.x, view.y, view.w, view.h);
     trace(ctx, points);
-    ctx.fillStyle = "rgba(34, 36, 54, 0.74)";
+    ctx.fillStyle = FOG;
     ctx.fill("evenodd");
+    if (origin && range > 0) {
+      var inner = range * FADE_FROM;
+      var fade = ctx.createRadialGradient(origin.x, origin.y, inner, origin.x, origin.y, range);
+      // Two stops only: Chrome draws a two-stop gradient about 2.5 times
+      // faster without a GPU than one with a stop in between.
+      fade.addColorStop(0, CLEAR);
+      fade.addColorStop(1, FOG);
+      // Only the view itself is filled; that is cheaper than a clip.
+      ctx.beginPath();
+      trace(ctx, points);
+      ctx.fillStyle = fade;
+      ctx.fill();
+    }
     ctx.restore();
   }
 
@@ -65,5 +94,5 @@
     ctx.clip();
   }
 
-  Game.world.vision = { boundary: boundary, darken: darken, clip: clip };
+  Game.world.vision = { rangeOf: rangeOf, boundary: boundary, darken: darken, clip: clip, FADE_FROM: FADE_FROM };
 })();

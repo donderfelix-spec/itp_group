@@ -1752,7 +1752,7 @@ Game.world = Game.world || {};
     var vision = Game.world.vision;
     var sight = classicVision && !ownIsGhost && vision ? vision.boundary(campus, centre) : null;
     if (sight) {
-      vision.darken(ctx, view, sight);
+      vision.darken(ctx, view, sight, centre, vision.rangeOf(campus));
       ctx.save();
       vision.clip(ctx, sight);
     }
