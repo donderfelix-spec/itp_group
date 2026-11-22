@@ -511,6 +511,7 @@ def test_an_emergency_discussion_rejects_votes_over_the_websocket(connect, clock
     )
     clock.wait(45.0)  # the red button unlocks after 45 seconds
     caller = reporter_id
+    lobby.walkers._walkers[caller].position = (main.app.state.campus["button"]["x"], main.app.state.campus["button"]["y"])
     connections[caller].send_json({"type": "emergency"})
     meeting_now = receive_broadcast(connections, "meeting_state")
     assert meeting_now["phase"] == "discussion"

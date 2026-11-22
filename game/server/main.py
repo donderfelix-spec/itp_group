@@ -29,6 +29,7 @@ from server.accounts.leaderboard_cache import LeaderboardCache
 from server.accounts.statistics_store import make_statistics_store
 from server.accounts.store import StoreUnavailable, make_account_store
 from server.classic import meeting as classic_meeting
+from server.classic.emergency_button import emergency_button_in_reach
 from server.classic.round import ClassicRound
 from server.modes import duel, minigames, tasks
 from server.net.attempts import AttemptLimits
@@ -1227,6 +1228,12 @@ async def answer_emergency_message(websocket: WebSocket):
         unit = "second" if remaining == 1 else "seconds"
         rejection["message"] = f"The emergency button unlocks in {remaining} {unit}."
         await websocket.send_json(rejection)
+        return
+    # Only a player at the red button may press it (M3-3.15, S-170).
+    position = lobby.walkers.position_of(name)
+    campus = app.state.campus
+    if not emergency_button_in_reach(position, campus["button"], campus["use_range"]):
+        await websocket.send_json(protocol.rejection("emergency_out_of_reach"))
         return
     try:
         meeting = classic.emergency(name, now)

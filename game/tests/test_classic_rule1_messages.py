@@ -729,6 +729,7 @@ def play_six(connect, clock, monkeypatch) -> Recorder:
     # An emergency meeting that ends with everybody's Skip.
     rec.connections["Ines"].send_json({"type": "emergency"})
     rec.step("ghost presses the emergency button", {"Ines": ["error"]}, actor="Ines", quiet_for_others=True)
+    put("Luca", (app.state.campus["button"]["x"], app.state.campus["button"]["y"]))
     rec.connections["Luca"].send_json({"type": "emergency"})
     rec.step("Luca calls an emergency meeting", everybody(rec, "meeting_state"), actor="Luca")
     refused_meeting_action(rec, "Sofia", vote("Mara"), "vote in the discussion")

@@ -44,6 +44,7 @@ PLAYERS = [
 # Next to the map's emergency button, with an F-sheet within report range.
 CAMPUS_FILE = Path(__file__).resolve().parents[1] / "client/js/world/campus.json"
 BUTTON = json.loads(CAMPUS_FILE.read_text(encoding="utf-8"))["button"]
+USE_RANGE = json.loads(CAMPUS_FILE.read_text(encoding="utf-8"))["use_range"]
 AT_THE_BUTTON = {"x": BUTTON["x"] - 2, "y": BUTTON["y"]}
 SHEET = {
     "type": "classic_fail", "sheet_id": "f-sheet-1", "target_id": "Bo",
@@ -207,18 +208,43 @@ def test_walking_ghosts_are_half_transparent_on_a_ghosts_page_only():
 
 @needs_node
 def test_the_harness_sees_every_classic_element_during_the_round():
-    during = run_page(classic_round_as_free_rider())["looks"][0]
+    outside_range = {**AT_THE_BUTTON, "x": BUTTON["x"] - USE_RANGE - 1}
+    during, outside = run_page(classic_round_as_free_rider() + [
+        ["receive", {"type": "positions", "players": [dict(name=OWN, **outside_range)]}],
+        ["wait", 500],
+        ["look"],
+    ])["looks"]
     assert during["sheetIds"] == ["f-sheet-1"]
     assert during["sheetsDrawn"] == 1
     assert during["emergencyButtonDrawn"] is True
     assert during["useButtonText"] == "E Emergency"
-    assert during["useButtonHasFailLook"] is True
+    assert during["useButtonDisabled"] is False
+    assert during["useButtonHasFailLook"] is False
+    assert outside["useButtonHasFailLook"] is True
+    assert outside["useButtonText"].startswith("Let fail")
     assert during["reportButtonShown"] is True
     assert during["ownNameDrawn"] is True
     assert during["ownNameRedOnMap"] is True
     assert during["ownNameRedInLobby"] is True
     assert during["ownNameRedInRound"] is True
     assert during["meetingKnowsFreeRider"] is True
+
+
+@needs_node
+def test_the_emergency_button_stays_available_to_the_free_rider_during_fail_cooldown():
+    steps = classic_round_as_free_rider() + [
+        ["receive", {**FAIL_STATUS, "available": False, "server_time": 146, "cooldown_until": 161}],
+        ["wait", 50],
+        ["look"],
+        ["key", "KeyE"],
+    ]
+    result = run_page(steps)
+    during = result["looks"][-1]
+    assert during["useButtonText"] == "E Emergency"
+    assert during["useButtonDisabled"] is False
+    assert [message for message in result["sent"] if message["type"] == "emergency"] == [
+        {"type": "emergency"},
+    ]
 
 
 @needs_node
