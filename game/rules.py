@@ -46,6 +46,34 @@ class ClassicState(TypedDict):
     timers_paused: NotRequired[bool]
 
 
+MIN_CLASSIC_PLAYERS = 4
+
+
+def free_riders_for(player_count: int) -> int:
+    """How many Free Riders a Classic round of this many players has (S-48)."""
+    return 1 if player_count <= 5 else 2
+
+
+def round_still_fits(
+    roles: Mapping[str, Role], present_names: Collection[str], eliminated: Collection[str]
+) -> bool:
+    """Whether a running Classic round may go on after players left (M3-3.8).
+
+    `present_names` are the players still in the lobby. Every one of them
+    with a role counts as a player, living or ghost. Only the Free Riders
+    who are present and alive count as Free Riders: a Free Rider voted out
+    can no longer fail anybody (Lead decision, 2026-11-22). The round must
+    stop when fewer than 4 players are left, or more living Free Riders than
+    S-48 gives that many players. Too few Free Riders never stop it: if the
+    last one leaves, the High Performers win by the usual rule.
+    """
+    present = [name for name in present_names if name in roles]
+    if len(present) < MIN_CLASSIC_PLAYERS:
+        return False
+    living_free_riders = sum(1 for name in present if roles[name] == "FR" and name not in eliminated)
+    return living_free_riders <= free_riders_for(len(present))
+
+
 def assign_roles(player_ids: Sequence[str], rng: RandomSource) -> dict[str, Role]:
     """Assign the required number of Free Riders using the supplied RNG."""
     players = list(player_ids)
@@ -56,8 +84,7 @@ def assign_roles(player_ids: Sequence[str], rng: RandomSource) -> dict[str, Role
     if len(set(players)) != len(players):
         raise ValueError("Player IDs must be unique.")
 
-    free_rider_count = 1 if len(players) <= 5 else 2
-    free_riders = set(rng.sample(players, free_rider_count))
+    free_riders = set(rng.sample(players, free_riders_for(len(players))))
     return {
         player_id: "FR" if player_id in free_riders else "HP"
         for player_id in players
@@ -106,6 +133,25 @@ def progress(state: ClassicState) -> float:
     if total_tasks == 0:
         return 0.0
     return min(1.0, completed_count / total_tasks)
+
+
+def tasks_after_leaving(
+    tasks: Mapping[str, Sequence[str]],
+    completed_tasks: Mapping[str, Collection[str]],
+    player_id: str,
+) -> dict[str, list[str]]:
+    """Return the task lists once `player_id` has left the round (M3-3.11).
+
+    DESIGN.md, section 5: the open tasks of a player who leaves disappear
+    from the progress bar. So only the tasks they finished stay theirs:
+    those keep counting, the others no longer count toward the total. The
+    given lists are not changed.
+    """
+    finished = set(completed_tasks.get(player_id, ()))
+    updated = {player: list(stations) for player, stations in tasks.items()}
+    if player_id in updated:
+        updated[player_id] = [station for station in updated[player_id] if station in finished]
+    return updated
 
 
 def check_winner(state: ClassicState) -> Literal["HP", "FR"] | None:

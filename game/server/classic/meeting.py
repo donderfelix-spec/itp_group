@@ -4,7 +4,7 @@ from copy import deepcopy
 import math
 from typing import Literal, NamedTuple
 
-from rules import check_winner
+from rules import check_winner, tasks_after_leaving
 
 
 DISCUSSION_SECONDS = 45
@@ -117,6 +117,29 @@ def cast_vote(state: dict, voter_id: str, target_id: str) -> dict:
         del updated["votes"][voter_id]
     else:
         updated["votes"][voter_id] = target_id
+    return updated
+
+
+def remove_player(meeting: dict, player_id: str) -> dict:
+    """Return a new meeting state without a player who left the round (M3-3.11).
+
+    The player is out of `living` and `ghosts`. Their own vote is gone, and
+    so are the votes for them; the tally then counts as it always does. The
+    meeting's copy of the round, from which the winner of the vote is
+    worked out, counts them as failed and without their open tasks.
+    """
+    updated = deepcopy(meeting)
+    updated["living"] = tuple(name for name in meeting.get("living", ()) if name != player_id)
+    updated["ghosts"] = tuple(name for name in meeting.get("ghosts", ()) if name != player_id)
+    updated["votes"] = {
+        voter: target
+        for voter, target in meeting.get("votes", {}).items()
+        if voter != player_id and target != player_id
+    }
+    if "eliminated" in updated:
+        updated["eliminated"] = set(updated["eliminated"]) | {player_id}
+    if "tasks" in updated and "completed_tasks" in updated:
+        updated["tasks"] = tasks_after_leaving(updated["tasks"], updated["completed_tasks"], player_id)
     return updated
 
 

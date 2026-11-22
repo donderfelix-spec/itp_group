@@ -16,6 +16,7 @@ action was accepted, otherwise a key of `protocol.REJECTIONS` or
 
 import math
 
+from server.classic import meeting as classic_meeting
 from server.net.walking import Walkers
 from server.protocol import (
     CHARACTERS,
@@ -184,6 +185,11 @@ class Lobby:
             self.tasks.remove(name)
         if self.duel is not None:
             self.duel.remove(name)
+        # In Classic the leaver counts as failed and leaves any meeting (M3-3.11).
+        if self.classic_round is not None:
+            self.classic_round.remove_player(name)
+        if self.meeting is not None:
+            self.meeting = classic_meeting.remove_player(self.meeting, name)
         if name != self.host:
             return None
         # The first name left is the player who has been here longest.

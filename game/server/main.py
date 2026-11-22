@@ -36,7 +36,7 @@ from server.net.lobbies import Lobbies
 from server.net.repeated_faults import RepeatedFaults
 from server.net.sessions import GUEST_NUMBERS, Sessions
 from server.protocol import PROTOCOL_VERSION, ProtocolError, error, parse_client_message, welcome
-from rules import FAIL_COOLDOWN_SECONDS, FAIL_RANGE_TILES, can_fail, check_winner, end_reason
+from rules import FAIL_COOLDOWN_SECONDS, FAIL_RANGE_TILES, can_fail, check_winner, end_reason, round_still_fits
 from server.classic.round import EMERGENCY_DELAY_SECONDS
 from server.world import paths, visibility
 from server.world.campus import load_campus
@@ -567,10 +567,10 @@ async def tell_member_the_countdown(name: str, lobby):
 async def handle_leave_lobby(websocket: WebSocket, name: str, message: dict):
     lobby, new_host, rejection_code = app.state.lobbies.leave(name)
     if rejection_code is None:
+        # Decided at once, before anything is sent (M3-3.8).
+        stop_news = stop_round_if_it_no_longer_fits(lobby)
         await websocket.send_json(protocol.left_lobby())
-        await tell_lobby(lobby, new_host)
-        # The round goes on without this player, or ends if nobody is left to wait for.
-        await tell_round_news(lobby)
+        await tell_the_rest_after_a_leave(lobby, new_host, stop_news)
     return rejection_code
 
 
@@ -581,8 +581,88 @@ async def take_out_of_lobby(name: str):
     """
     lobby, new_host, rejection_code = app.state.lobbies.leave(name)
     if rejection_code is None:
+        stop_news = stop_round_if_it_no_longer_fits(lobby)
+        await tell_the_rest_after_a_leave(lobby, new_host, stop_news)
+
+
+ROUND_STOPPED_TEXT = "Too many players left. The round was stopped."
+
+
+def stop_round_if_it_no_longer_fits(lobby) -> dict:
+    """Stop a Classic round whose players no longer fit its Free Riders (M3-3.8).
+
+    Called right after a player left, before anything is sent: no win check
+    can come first, and a stopped round has no winner and no end screen.
+    Returns what each member still has to be told, `{name: [messages]}`:
+    a closed station if one was open, then the notice. Empty if the round
+    goes on or no Classic round is running.
+    """
+    classic = lobby.classic_round
+    if classic is None or round_still_fits(classic.roles, lobby.names(), classic.eliminated):
+        return {}
+    # When the last player left, the empty lobby is stopped too; nobody is
+    # left to tell, so the dict below is empty, like for a round that goes on.
+    open_stations = {name: lobby.tasks.open_station_of(name) for name in lobby.names()}
+    lobby.end_round()  # also ends a running meeting
+    # Everybody is sent the positions at the next tick, as after any end:
+    # a Free Rider who was hidden (M3-1.4) is visible again.
+    lobby.walkers._everybody_needs_news()
+    stopped = protocol.notice(ROUND_STOPPED_TEXT)
+    return {
+        name: ([] if station is None else [protocol.station_closed(station)]) + [stopped]
+        for name, station in open_stations.items()
+    }
+
+
+async def tell_the_rest_after_a_leave(lobby, new_host, stop_news):
+    """Tell the players who stay what a player's leaving changed. Never raises.
+
+    The same for every way of leaving: "Leave", logging out, a lost
+    connection or signing in elsewhere. `stop_news` is what
+    `stop_round_if_it_no_longer_fits` returned: if the round was stopped,
+    everybody gets that news and then the lobby's state, so every browser
+    goes back to the lobby (S-101).
+    """
+    if stop_news:
+        await asyncio.gather(*(tell_farewell(name, lobby, messages) for name, messages in stop_news.items()))
         await tell_lobby(lobby, new_host)
-        await tell_round_news(lobby)
+        return
+    await tell_lobby(lobby, new_host)
+    try:
+        await tell_classic_after_a_leave(lobby)
+    except Exception as problem:
+        # The caller is a player's own handler: a fault here must not close
+        # that player's connection. Only the kind of error is logged.
+        logger.error("Telling the lists after a leave failed: %s", type(problem).__name__)
+    # The round goes on without this player, or ends if nobody is left to wait for.
+    await tell_round_news(lobby)
+
+
+async def tell_classic_after_a_leave(lobby):
+    """In Classic, a leaver is out of the lists (M3-3.11): send the new ones.
+
+    A running meeting is sent again, without the leaver among the living and
+    the voters. A finished one is not: its result was already shown.
+    """
+    if lobby.classic_round is None:
+        return
+    finished_now = False
+    if lobby.meeting is not None and not lobby.meeting.get("applied"):
+        # As in `answer_vote_message`: the time of the vote may have run out
+        # since the last tick. Then this snapshot is the result: it is
+        # applied once, and the tick must not send the same one again.
+        now = seconds_now()
+        lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
+        sync_classic_after_meeting(lobby)
+        finished_now = lobby.meeting.get("applied", False)
+        lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
+        await tell_meeting_state(lobby, now)
+    await tell_classic_roster(lobby)
+    if finished_now:
+        # As after any result: everybody gets the positions again, so the
+        # living stop drawing a player who was voted out.
+        lobby.walkers._everybody_needs_news()
+        tell_positions(lobby)
 
 
 async def tell_lobby(lobby, new_host=None):
@@ -619,7 +699,9 @@ def is_member(name: str, lobby) -> bool:
 def state_of(lobby, viewer=None) -> dict:
     players = lobby.players()
     classic = lobby.classic_round
-    if classic is not None and classic.phase == "round" and viewer not in classic.eliminated:
+    # In every phase of a Classic round (also in a meeting and its result)
+    # the living are not sent the ghosts (M3-3.20). Ghosts see everybody.
+    if classic is not None and viewer not in classic.eliminated:
         players = [pair for pair in players if pair[0] not in classic.eliminated]
     return protocol.lobby_state(lobby.code, lobby.host, players, lobby.mode, lobby.phase)
 
@@ -789,7 +871,9 @@ def tell_positions(lobby):
         taking_positions.add(connection)
         positions = lobby.walkers.positions()
         classic = lobby.classic_round
-        if classic is not None and classic.phase == "round" and name not in classic.eliminated:
+        # In every phase of a Classic round (also in a meeting and its result)
+        # the living are not sent where the ghosts are (M3-3.20).
+        if classic is not None and name not in classic.eliminated:
             positions = [entry for entry in positions if entry[0] not in classic.eliminated]
         if classic is not None:
             # On top of that, a Free Rider in a hiding spot is only sent to
@@ -1111,16 +1195,22 @@ async def answer_emergency_message(websocket: WebSocket):
 
 
 def sync_classic_after_meeting(lobby):
-    """Return Classic to play and retain any ejection from a finished meeting."""
+    """Apply a finished meeting's result to Classic, exactly once (M3-3.9).
+
+    The finished meeting stays in `lobby.meeting` until the next meeting
+    replaces it or the round ends, and this function is called again by
+    the tick and the handlers. The flag "applied" makes every later call do
+    nothing: before, each call set the ghosts back to the meeting's list,
+    and a player failed after the meeting came back to life.
+    """
     classic = lobby.classic_round
     meeting = lobby.meeting
     if classic is None or meeting is None or meeting.get("phase") != "result":
         return
-    classic.eliminated = set(meeting.get("eliminated", classic.eliminated))
-    classic.phase = "round"
-    classic.timers_paused = False
-    classic.meeting = meeting
-    classic._has_news = True
+    if meeting.get("applied"):
+        return
+    meeting["applied"] = True
+    classic.apply_meeting_result(meeting)
 
 
 async def publish_meeting_and_round_result(lobby, now):

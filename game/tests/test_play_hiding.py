@@ -877,19 +877,27 @@ def classic(server):
         leave_mark = {label: browser.now(label) for label in stay}
         browser.call("click", label=fr3, selector="#lobby-leave")
         wait_until(lambda: lobby_of(names[fr3]) is None, "the Free Rider left")
+        # He was the last Free Rider: the High Performers win at once (M3-3.11).
+        wait_until(lambda: lobby_of(names[stay[0]]).phase == "lobby", "the end of round 3")
         time.sleep(0.5)
+        # What the others saw of him before he comes back: he joins again below.
+        others_draw_him = {label: len(browser.drawn(label, fr3_character, leave_mark[label] + 300)) for label in stay}
+        others_lists = {label: sorted(browser.frames(label, leave_mark[label])[-1][1]) if browser.frames(label, leave_mark[label]) else None for label in stay}
+        results3 = {label: browser.messages(label, "classic_result", leave_mark[label]) for label in stay}
         join_mark = browser.now(fr3)
         browser.call("fill", label=fr3, selector="#join-code", text=code)
         browser.call("click", label=fr3, selector="#join-submit")
-        rejection = browser.wait(fr3, f"window.__received.filter((r) => r.t > {join_mark} && r.m.type === 'error').map((r) => r.m).pop() || null")
+        rejoin = browser.wait(fr3, f"window.__received.filter((r) => r.t > {join_mark} && (r.m.type === 'lobby_state' || r.m.type === 'error')).map((r) => r.m).pop() || null")
         time.sleep(0.3)
         seen["leave_while_hidden"] = {
             "hint_before": hint_before,
             "hint_after": browser.hidden_hint(fr3)["shown"],
-            "rejection": rejection,
-            "rejection_shown": browser.js(fr3, f"document.body.innerText.includes({json.dumps(rejection['message'])})"),
-            "others_draw_him": {label: len(browser.drawn(label, fr3_character, leave_mark[label] + 300)) for label in stay},
-            "others_lists": {label: sorted(browser.frames(label, leave_mark[label])[-1][1]) if browser.frames(label, leave_mark[label]) else None for label in stay},
+            "results": {label: [(r["winner"], r["reason"]) for r in found] for label, found in results3.items()},
+            "lobby_phase": lobby_of(names[stay[0]]).phase,
+            "rejoin": rejoin,
+            "rejoined": lobby_of(names[fr3]) is lobby_of(names[stay[0]]),
+            "others_draw_him": others_draw_him,
+            "others_lists": others_lists,
             "health": json.loads(urllib.request.urlopen(base + "/health", timeout=5).read()),
             "left": names[fr3],
         }
@@ -1013,11 +1021,10 @@ def test_a_meeting_does_not_reveal_the_hidden_free_rider(classic):
 
 
 def test_living_pages_do_not_draw_the_ghost_during_a_meeting(classic):
-    # The server does send the ghost's position to the living during a
-    # meeting (`living_frames_with_ghost_during_meeting` is recorded above):
-    # Classic's own filter in `tell_positions` only works in the phase
-    # "round". That defect was on main before hiding and is M3-3.20 in
-    # TODO.md (Laurin). Here only what the pages draw is checked.
+    # Since M3-3.20 the server no longer sends the ghost's position to the
+    # living during a meeting (`living_frames_with_ghost_during_meeting` is
+    # recorded above; tests/test_classic_ghost_positions_meeting.py checks
+    # it). Here only what the pages draw is checked.
     meeting = classic["meeting"]
     assert meeting["living_draws_ghost_during_meeting"] == {
         label: 0 for label in meeting["living_draws_ghost_during_meeting"]
@@ -1068,11 +1075,15 @@ def test_only_the_free_rider_of_the_round_ever_saw_hidden(classic):
     assert shown[classic["fr2"]]["round 2"] > 0
 
 
-def test_a_free_rider_who_leaves_while_hidden_is_gone_for_all_and_cannot_come_back_in(classic):
+def test_a_free_rider_who_leaves_while_hidden_is_gone_for_all(classic):
     left = classic["leave_while_hidden"]
     assert left["hint_before"] and not left["hint_after"]
-    assert left["rejection"] == {"type": "error", "code": "round_running", "message": "This round has already started."}
-    assert left["rejection_shown"]
+    # He was the last Free Rider: leaving counts as failed, so the High
+    # Performers win at once and the lobby is open again (M3-3.11).
+    assert left["results"] == {label: [("HP", "all_free_riders_eliminated")] for label in left["results"]}
+    assert left["lobby_phase"] == "lobby"
+    assert left["rejoin"]["type"] == "lobby_state" and left["rejoin"]["phase"] == "lobby"
+    assert left["rejoined"]
     assert left["others_draw_him"] == {label: 0 for label in left["others_draw_him"]}
     assert all(lists is None or left["left"] not in lists for lists in left["others_lists"].values())
     assert left["health"]["status"] == "ok"
