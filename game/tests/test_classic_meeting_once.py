@@ -13,7 +13,7 @@ import random
 import time
 
 from server import main
-from server.classic.meeting import DISCUSSION_SECONDS, SKIP, VOTING_SECONDS
+from server.classic.meeting import DISCUSSION_SECONDS, VOTING_SECONDS
 from server.classic.round import ClassicRound
 from server.main import app
 from task_helpers import client, clock, connect, placeholder_at_every_station, put  # noqa: F401
@@ -103,24 +103,46 @@ def start_emergency(connections, caller, clock):
         assert connection.receive_json()["type"] == "meeting_state"
 
 
-# Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
 def everybody_votes(connections, lobby, clock, target_of, last="positions"):
-    """After the discussion every living player votes `target_of(voter)`.
+    """After the discussion every living player votes `target_of(voter)`, then the vote's time runs out.
 
-    The last vote ends the meeting at once. Returns what each member was
-    sent, up to the message of type `last`: the positions that follow the
-    result, or the lobby state when the result ends the round. The votes
-    are cast one after the other, each once everybody has its snapshot, so
-    no two vote handlers run at the same time.
+    Votes can change (S-160), so all votes cast do not end the vote; the
+    tick ends it with its time. Returns what each member was sent, up to
+    the message of type `last`: the positions that follow the result, or
+    the lobby state when the result ends the round. The votes are cast one
+    after the other, each once everybody has its snapshot, so no two vote
+    handlers run at the same time.
     """
     clock.wait(DISCUSSION_SECONDS)
     living = [name for name in FIVE if name not in lobby.classic_round.eliminated]
     told = {name: [] for name in connections}
-    for voter in living[:-1]:
+    for voter in living:
         connections[voter].send_json({"type": "vote", "target_id": target_of(voter)})
         for name, messages in everybody_until(connections, "meeting_state").items():
             told[name] += messages
-    connections[living[-1]].send_json({"type": "vote", "target_id": target_of(living[-1])})
+    clock.wait(VOTING_SECONDS)
+    ticks(connections, count=1)
+    for name in connections:
+        told[name] += read_until(connections[name], "classic_roster")  # the result, then the roster
+        told[name] += read_until(connections[name], last)
+    return told
+
+
+def everybody_skips(connections, lobby, clock, last="positions"):
+    """After the discussion the living press Skip until 75 % have (S-162): the meeting ends at once.
+
+    With five living players the fourth Skip ends it. Returns what each
+    member was sent, up to the message of type `last`, like `everybody_votes`.
+    """
+    clock.wait(DISCUSSION_SECONDS)
+    living = [name for name in FIVE if name not in lobby.classic_round.eliminated]
+    needed = -(-3 * len(living) // 4)  # 75 %, rounded up
+    told = {name: [] for name in connections}
+    for skipper in living[:needed - 1]:
+        connections[skipper].send_json({"type": "skip_discussion"})
+        for name, messages in everybody_until(connections, "meeting_state").items():
+            told[name] += messages
+    connections[living[needed - 1]].send_json({"type": "skip_discussion"})
     for name, messages in everybody_until(connections, last).items():
         told[name] += messages
     return told
@@ -157,8 +179,7 @@ def count_applications(monkeypatch):
 def test_a_failure_after_a_meeting_stays_failed_across_ticks(connect, clock):
     connections, lobby, fr, [caller, victim, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
-    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
-    everybody_votes(connections, lobby, clock, lambda voter: SKIP)
+    everybody_skips(connections, lobby, clock)
     assert lobby.meeting["applied"] is True
 
     fail(connections, fr, victim)
@@ -173,7 +194,6 @@ def test_an_ejection_is_applied_once(connect, clock, monkeypatch):
     connections, lobby, _fr, [caller, ejected, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
 
-    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
     told = everybody_votes(connections, lobby, clock, lambda voter: ejected if voter != ejected else caller)
     ticks(connections)
 
@@ -189,8 +209,7 @@ def test_the_result_of_an_early_end_is_sent_once(connect, clock):
     connections, lobby, _fr, [caller, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
 
-    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
-    told = everybody_votes(connections, lobby, clock, lambda voter: SKIP)
+    told = everybody_skips(connections, lobby, clock)
     ticks(connections)
     clock.wait(VOTING_SECONDS)
     ticks(connections)
@@ -230,8 +249,7 @@ def test_a_vote_that_comes_after_the_time_ran_out_gets_the_result_sent_once(conn
     start_emergency(connections, caller, clock)
     clock.wait(DISCUSSION_SECONDS + VOTING_SECONDS)  # no tick in between
 
-    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
-    connections[voter].send_json({"type": "vote", "target_id": SKIP})
+    connections[voter].send_json({"type": "vote", "target_id": caller})
     assert connections[voter].receive_json()["code"] == "vote_rejected"
     told = everybody_until(connections, "classic_roster")  # the result, then the roster
     ticks(connections)
@@ -245,8 +263,7 @@ def test_a_vote_that_comes_after_the_time_ran_out_gets_the_result_sent_once(conn
 def test_a_second_meeting_can_start_after_the_first(connect, clock):
     connections, lobby, _fr, [first_caller, second_caller, *_] = classic_round(connect)
     start_emergency(connections, first_caller, clock)
-    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
-    everybody_votes(connections, lobby, clock, lambda voter: SKIP)
+    everybody_skips(connections, lobby, clock)
     ticks(connections)
 
     connections[second_caller].send_json({"type": "emergency"})
@@ -263,7 +280,6 @@ def test_a_vote_that_ejects_the_free_rider_still_ends_the_round(connect, clock):
     connections, lobby, fr, [caller, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
 
-    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
     told = everybody_votes(connections, lobby, clock, lambda voter: fr if voter != fr else caller, last="lobby_state")
 
     assert lobby.classic_round is None and lobby.meeting is None  # the round ended
@@ -280,15 +296,13 @@ def test_chat_and_vote_after_the_meeting_are_refused_and_apply_nothing_again(con
     calls = count_applications(monkeypatch)
     connections, lobby, fr, [caller, other, victim, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
-    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
-    everybody_votes(connections, lobby, clock, lambda voter: SKIP)
+    everybody_skips(connections, lobby, clock)
     fail(connections, fr, victim)
 
     connections[other].send_json({"type": "chat", "text": "Too late?"})
     assert connections[other].receive_json()["code"] == "chat_rejected"
     read_until(connections[other], "meeting_state")  # the meeting's result, sent again with the refusal
-    # Depends on S-151/S-152 (Skip as vote "", early end): adapt to Lennart's vote rules.
-    connections[other].send_json({"type": "vote", "target_id": SKIP})
+    connections[other].send_json({"type": "vote", "target_id": caller})
     assert connections[other].receive_json()["code"] == "vote_rejected"
     ticks(connections)
 
