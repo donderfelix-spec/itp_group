@@ -1227,7 +1227,7 @@ async def answer_emergency_message(websocket: WebSocket):
         rejection["message"] = f"The emergency button unlocks in {remaining} {unit}."
         await websocket.send_json(rejection)
         return
-    # Only a player at the red button may press it (M3-3.19).
+    # Only a player at the red button may press it (M3-3.15, S-170).
     position = lobby.walkers.position_of(name)
     campus = app.state.campus
     if not emergency_button_in_reach(position, campus["button"], campus["use_range"]):

@@ -1,4 +1,4 @@
-"""Only a player at the red button may call an emergency meeting (M3-3.19).
+"""Only a player at the red button may call an emergency meeting (M3-3.15, S-170).
 
 Three parts:
 - the plain rule `emergency_button_in_reach` (rule 4: no network, no clock);
