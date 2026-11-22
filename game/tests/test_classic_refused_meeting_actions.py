@@ -9,8 +9,6 @@ over the real WebSocket endpoint are in test_classic_rule1_messages.py.
 import asyncio
 import random
 
-import pytest
-
 from server import main
 from server.classic.meeting import CHAT_COOLDOWN_SECONDS, start_discussion
 from server.classic.round import ClassicRound
@@ -204,6 +202,22 @@ def test_a_vote_refused_because_the_time_ran_out_sends_the_result_once(monkeypat
         assert len(results) == 1
 
 
+def test_a_chat_refused_because_the_vote_ended_sends_the_result_once(monkeypatch):
+    # Edge (review M1): the vote's time ran out before the next tick and a
+    # living player chats. The sender gets the refusal, and everybody gets
+    # the result exactly once, from the tick.
+    lobby, sockets = lobby_in_a_meeting(monkeypatch, now=176.0)
+    lobby.meeting["phase"] = "voting"
+    lobby.meeting["deadline"] = 175.0
+    send(sockets, "Tiago", CHAT)
+    assert codes(sockets["Tiago"]) == ["chat_rejected"]
+    run_the_tick_sends(monkeypatch, lobby)
+    for socket in sockets.values():
+        results = [m for m in socket.messages if m["type"] == "meeting_state" and m["phase"] == "result"]
+        assert len(results) == 1
+    assert codes(sockets["Tiago"]).count("chat_rejected") == 1
+
+
 # Finding 3: after the meeting
 
 
@@ -232,14 +246,6 @@ def test_the_tick_does_not_send_a_finished_meeting_again(monkeypatch):
     assert all(socket.messages == [] for socket in sockets.values())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Finding 3, not fixed: test_classic_meeting_once.py::"
-        "test_chat_and_vote_after_the_meeting_are_refused_and_apply_nothing_again expects the "
-        "finished meeting to be sent to everybody again after a refused chat (rule 7)."
-    ),
-)
 def test_a_chat_after_the_meeting_is_heard_only_by_its_sender(monkeypatch):
     lobby, sockets = lobby_after_the_result(monkeypatch)
     send(sockets, "Mara", CHAT)

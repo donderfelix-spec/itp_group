@@ -296,6 +296,8 @@ def check_lobby_state(record):
 def check_classic_role(record):
     message, step, viewer = record.message, record.step, record.viewer
     assert step.name == "start" and record.state in ("HP", "FR")
+    keys = {"type", "role", "task_stations"} | ({"other_free_riders"} if message["role"] == "FR" else set())
+    assert set(message) == keys
     assert message["role"] == step.role_of(viewer), "classic_role names somebody else's role"
     if message["role"] == "FR":
         assert sorted(message["other_free_riders"]) == sorted(step.free_riders() - {viewer})
@@ -321,6 +323,7 @@ def check_classic_progress(record):
 
 def check_positions(record):
     step = record.step
+    assert all(set(entry) == {"name", "x", "y"} for entry in record.message["players"])
     names = {entry["name"] for entry in record.message["players"]}
     assert names <= step.members
     if record.state != "ghost":
@@ -351,13 +354,23 @@ def check_classic_fail(record):
     assert record.message["target_id"] == record.step.victim
 
 
+MEETING_STATE_KEYS = {
+    "type", "phase", "seconds_left", "living", "ghosts", "reason", "trigger_player_id", "reported_sheet_id",
+    "messages", "voted", "vote_targets", "skip_voted", "ejected_id", "revealed_role", "tie", "winner",
+    "characters",
+}
+
+
 def check_meeting_state(record):
     # Public by decision: votes and Skips (S-160, S-162), the result and the
     # role of the player voted out (DESIGN 5.7). Who is living and who is a
     # ghost is public since the victim is (S-159).
     message, step = record.message, record.step
+    assert set(message) == MEETING_STATE_KEYS
+    assert all(set(item) == {"player_id", "text"} for item in message["messages"])
     living = set(message["living"])
     assert living == step.members - step.ghosts
+    assert set(message["ghosts"]) == step.ghosts & step.members
     # The result still shows the votes that ejected a player.
     voters = living | {message["ejected_id"]} - {None}
     assert set(message["vote_targets"]) <= voters and set(message["vote_targets"].values()) <= voters
@@ -650,7 +663,8 @@ def play_five(connect, clock, monkeypatch) -> Recorder:
     meeting_action(rec, "Luca", vote("Mara"), "Luca votes Mara instead")
     meeting_action(rec, "Rui", vote("Mara"), "Rui votes Mara")
     meeting_action(rec, "Mara", vote("Ines"), "Mara votes Ines")
-    leave(rec, "Tiago", ["lobby_state", "meeting_state", "classic_roster", "classic_progress"])
+    # A living High Performer leaves: his vote is gone, Mara still has the most.
+    leave(rec, "Luca", ["lobby_state", "meeting_state", "classic_roster", "classic_progress"])
 
     clock.wait(DISCUSSION_SECONDS + VOTING_SECONDS)
     rec.tick()
@@ -686,9 +700,8 @@ def play_six(connect, clock, monkeypatch) -> Recorder:
     rec.tick()
     meeting_result(rec, ejected="Tiago")
 
-    # The meeting is over: chat, vote and Skip are refused.
-    # Finding 3, the chat: the old result still goes to everybody (see the report of M3-2.1).
-    refused_meeting_action(rec, "Rui", chat("Too late?"), "chat after the meeting", quiet_for_others=False)
+    # The meeting is over: chat, vote and Skip are refused (finding 3).
+    refused_meeting_action(rec, "Rui", chat("Too late?"), "chat after the meeting")
     refused_meeting_action(rec, "Luca", vote("Mara"), "vote after the meeting")
     refused_meeting_action(rec, "Sofia", SKIP, "Skip after the meeting")
     rec.tick()

@@ -1316,11 +1316,6 @@ async def answer_chat_message(websocket: WebSocket, message: dict):
         # Only the sender hears about a refused chat (M3-2.1). If the time
         # moved the meeting on meanwhile, the tick sends that to everybody.
         await websocket.send_json(protocol.rejection("chat_rejected"))
-        if lobby.meeting.get("applied"):
-            # A finished meeting is still sent to everybody again here, as
-            # before: test_classic_meeting_once.py expects it, and changing
-            # that test needs the team's approval (rule 7, M3-2.1).
-            await tell_meeting_state(lobby, now)
         return
     lobby.meeting = classic_meeting.send_chat(lobby.meeting, name, message["text"], now)
     await tell_meeting_state(lobby, now)
