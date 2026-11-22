@@ -20,10 +20,14 @@ CAMPUS = load_campus()
 NEW_STATIONS = [7, 8, 9, 10, 11, 12]
 
 # Measured on main (d2be14d) with paths.station_distances, in map units.
+# Measured again for the map of M2-1.19 (S-141), which took a lecture row,
+# a café table and column and two canteen tables out: the ways through the
+# Lecture Hall and Mon Café became shorter (1 to 2: 597.019 -> 573.990).
+# The stations still change no way (the map is the same with and without them).
 DISTANCES_ON_MAIN = {
-    (SPAWN, 1): 614.676, (SPAWN, 2): 345.990, (SPAWN, 3): 326.274, (SPAWN, 4): 718.108, (SPAWN, 5): 262.510,
-    (1, 2): 597.019, (1, 3): 831.362, (1, 4): 584.167, (1, 5): 872.500,
-    (2, 3): 535.931, (2, 4): 723.647, (2, 5): 603.813,
+    (SPAWN, 1): 598.676, (SPAWN, 2): 341.304, (SPAWN, 3): 326.274, (SPAWN, 4): 718.108, (SPAWN, 5): 262.510,
+    (1, 2): 573.990, (1, 3): 815.362, (1, 4): 568.167, (1, 5): 856.500,
+    (2, 3): 531.245, (2, 4): 716.617, (2, 5): 599.127,
     (3, 4): 957.990, (3, 5): 558.960,
     (4, 5): 975.931,
 }

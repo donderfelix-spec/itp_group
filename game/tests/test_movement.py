@@ -273,9 +273,9 @@ STRAIGHT_AT = [
     ("deck-tree-1",          175, 252,  1,  0),   # tree
     ("deck-hedge",           595, 300,  0, -1),   # hedge
     ("deck-logo",            300, 420,  0,  1),   # logo
-    ("lecture-hall-bench-4", 125, 150,  0, -1),   # furniture, one per room
-    ("mon-cafe-table-1",     350, 150,  0, -1),
-    ("canteen-table-5",      565, 150,  0, -1),
+    ("lecture-hall-bench-3", 125, 150,  0, -1),   # furniture, one per room (the last row, S-141)
+    ("mon-cafe-table-3",     385, 150,  0, -1),
+    ("canteen-table-4",      508, 150,  0, -1),
     ("ctt-table-row-1",       90, 245,  0,  1),
     ("pingo-doce-shelf-2",   524, 415,  0,  1),
 ]
