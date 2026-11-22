@@ -20,10 +20,15 @@
 //           whether the character walks, leans or is mirrored.
 //
 // Output (stdout): JSON {characterId: {poseName: [drawing, ...]}} where a
-// drawing is {op, colour, width, text, part, design: [minX, minY, maxX, maxY],
-// body: [...], screenMiddleX}. `part` is "clothes" for what is drawn on the
-// body box before the first arm, "before" and "after" for the rest.
+// drawing is {op, colour, width, alpha, text, part, design: [minX, minY,
+// maxX, maxY], body: [...], screenMiddleX}. `part` is "clothes" for what is
+// drawn on the body box before the first arm, "before" and "after" for the
+// rest. `alpha` is the canvas's globalAlpha at the moment of the drawing.
 // screenMiddleX is the middle on the screen: > 0 is on the right.
+//
+// The environment variable CHARACTER_IDS can hold a JSON list of ids to
+// draw instead of the eight characters (test_outfit_details.py, M2-1.18):
+// an id the page does not know is drawn as its plain grey figure.
 
 const fs = require('fs');
 const path = require('path');
@@ -216,7 +221,10 @@ function recordingCanvas(drawings) {
   let current = new PointPath((point) => apply(state.matrix, point));
   const record = (op, points, colour, extra) => {
     const scale = Math.sqrt(Math.abs(state.matrix[0] * state.matrix[3] - state.matrix[1] * state.matrix[2]));
-    drawings.push({ op, colour, width: op === 'stroke' ? state.lineWidth * scale : 0, points, matrix: state.matrix.slice(), ...extra });
+    drawings.push({
+      op, colour, width: op === 'stroke' ? state.lineWidth * scale : 0, alpha: state.globalAlpha,
+      points, matrix: state.matrix.slice(), ...extra,
+    });
   };
   const pointsOf = (path) => (path ? path.points.map((point) => apply(state.matrix, point)) : current.points.slice());
   return {
@@ -292,6 +300,7 @@ function report(look, drawings, mirrored) {
     op: d.op,
     colour: d.colour,
     width: Math.round(d.width * 1000) / 1000,
+    alpha: d.alpha,
     text: d.text,
     part: i <= bodyIndex + 1 ? 'before' : i < firstArm ? 'clothes' : 'after',
     design: box(d.points.map(toDesign)),
@@ -300,13 +309,27 @@ function report(look, drawings, mirrored) {
   }));
 }
 
-const result = {};
-world.characters.forEach((look) => {
-  result[look.id] = {};
+// The body colour of the plain grey figure (PLAIN_LOOK in characters.js),
+// which report() needs to find the body box of an unknown id.
+const PLAIN_BODY = '#B9B4A6';
+
+function looksToDraw() {
+  if (!process.env.CHARACTER_IDS) return world.characters;
+  return JSON.parse(process.env.CHARACTER_IDS).map((id) => {
+    const known = world.characters.find((look) => look.id === id);
+    return { id, colour: known ? known.colour : PLAIN_BODY };
+  });
+}
+
+// No prototype, so that an id like "__proto__" becomes a key of its own.
+const result = Object.create(null);
+looksToDraw().forEach((look) => {
+  const poses = {};
   Object.entries(POSES).forEach(([name, pose]) => {
     const drawings = [];
     world.drawCharacter(recordingCanvas(drawings), look.id, 0, 0, 112, pose);
-    result[look.id][name] = report(look, drawings.filter((d) => d.points.length), Boolean(pose && pose.mirrored));
+    poses[name] = report(look, drawings.filter((d) => d.points.length), Boolean(pose && pose.mirrored));
   });
+  result[String(look.id)] = poses;
 });
 process.stdout.write(JSON.stringify(result));
