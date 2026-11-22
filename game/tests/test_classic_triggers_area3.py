@@ -212,7 +212,7 @@ def test_emergency_requires_the_caller_to_be_within_range_of_the_main_deck_butto
     put(caller, (button["x"] - reach - 0.01, button["y"]))
     clock.wait(45.0)
     connections[caller].send_json({"type": "emergency"})
-    assert connections[caller].receive_json()["code"] == "emergency_rejected"
+    assert connections[caller].receive_json()["code"] == "emergency_out_of_reach"
     assert round_state.meeting is None
     assert caller not in round_state.emergency_used
 
