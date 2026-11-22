@@ -43,9 +43,19 @@ window.Game = window.Game || {};
   // (`task_stations`). A Free Rider's list is empty: no station pulses for
   // them and "E Use" lights up nowhere; they fake tasks by standing at one.
   let classicTasks = [];
+  // The own Classic role from `classic_role`, "HP" or "FR"; null outside a
+  // Classic round. Only for the own task card (showClassicTasks).
+  let classicRole = null;
+  // The own list as `classic_role` gave it at the start of the round. The
+  // card keeps every task in this order and fades the finished ones.
+  let classicStartTasks = [];
   // True from the moment this browser asked to log out until the server
   // answers. It tells a wanted `signed_out` from one that came unasked.
   let logOutWasAsked = false;
+  // True from the click on "Leave lobby" until the world starts in the next
+  // lobby. The world only stops when the answer `left_lobby` arrives, and
+  // until then no `move` may be sent (see sendMove).
+  let leaveWasAsked = false;
   // The code of the lobby this player is in, from the last `lobby_state`.
   // null outside a lobby.
   let lobbyCode = null;
@@ -63,12 +73,24 @@ window.Game = window.Game || {};
   }
 
   function sendMove(dx, dy) {
+    // On the way out of the lobby: a walking key released now must send
+    // nothing. The server may have taken the player out already and would
+    // answer "You are not in a lobby." (M2-2.12)
+    // world.js still updates its own direction and prediction for about one
+    // round trip; harmless, because the world stops at `left_lobby`.
+    if (leaveWasAsked) return;
     Game.net.send({ type: 'move', dx: dx, dy: dy });
+  }
+
+  // From lobby.js, right after "Leave lobby" has sent `leave_lobby`.
+  function whenLeaveWasAsked() {
+    leaveWasAsked = true;
   }
 
   function startWorld() {
     if (worldIsRunning) return;
     worldIsRunning = true;
+    leaveWasAsked = false; // a new lobby: walking is sent again
     callWorld('start', document.getElementById('map'), sendMove);
   }
 
@@ -84,6 +106,9 @@ window.Game = window.Game || {};
     roundIsRunning = false;
     finishedStations = new Set();
     classicTasks = [];
+    classicRole = null;
+    classicStartTasks = [];
+    showClassicTasks();
     if (!worldIsRunning) return;
     worldIsRunning = false;
     callWorld('stop');
@@ -182,6 +207,9 @@ window.Game = window.Game || {};
     if (!isRound) {
       Game.minigames.close(); // no round, no task
       classicTasks = [];
+      classicRole = null;
+      classicStartTasks = [];
+      showClassicTasks();
     }
     roundIsRunning = isRound;
   }
@@ -300,7 +328,23 @@ window.Game = window.Game || {};
 
   function whenClassicRole(message) {
     rememberClassicTasks(message);
+    const isOwnRole = mode === 'classic' && roundIsRunning && ['HP', 'FR'].includes(message && message.role);
+    if (isOwnRole) {
+      classicRole = message.role;
+      classicStartTasks = classicTasks.slice(); // as rememberClassicTasks accepted it
+    }
     showUsableStations();
+    showClassicTasks();
+  }
+
+  // The card with the own Classic tasks in the panel: the start list, the
+  // open ones being the stations that glow. A ghost keeps its tasks (DESIGN,
+  // rule 9).
+  function showClassicTasks() {
+    // Like callWorld: a page put together without this part keeps working.
+    if (typeof Game.lobby.showClassicTasks !== 'function') return;
+    const open = classicTasks.filter((station) => !finishedStations.has(station));
+    Game.lobby.showClassicTasks(classicRole, classicStartTasks, open);
   }
 
   function whenStationOpened(message) {
@@ -325,6 +369,7 @@ window.Game = window.Game || {};
     finishedStations.add(message.station);
     if (mode === 'classic') rememberClassicTasks(message);
     showUsableStations();
+    if (mode === 'classic') showClassicTasks();
     Game.minigames.showDone();
   }
 
@@ -383,7 +428,7 @@ window.Game = window.Game || {};
   }
 
   Game.forms.setup(askToLogOut);
-  Game.lobby.setup();
+  Game.lobby.setup(whenLeaveWasAsked);
   Game.duel.setup();
   Game.classicMeeting.setup();
   Game.classicRound.setup();

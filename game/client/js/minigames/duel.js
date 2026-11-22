@@ -294,5 +294,6 @@ window.Game = window.Game || {};
     progress: progressOfPlayers,
     reset: reset,
     formatTime: formatTime,
+    stationName: stationName,
   };
 })();
