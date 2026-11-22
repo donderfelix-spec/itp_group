@@ -155,12 +155,12 @@ def failure_state():
     }
 
 
-def test_fail_is_allowed_at_exactly_five_fields_and_rejected_beyond_range():
+def test_fail_is_allowed_at_exactly_twenty_map_units_and_rejected_beyond_range():
     state = failure_state()
-    state["positions"]["hp"] = (5.0, 0.0)
+    state["positions"]["hp"] = (20.0, 0.0)
     assert can_fail(state, "fr", "hp", 100.0)
 
-    state["positions"]["hp"] = (6.0, 0.0)
+    state["positions"]["hp"] = (21.0, 0.0)
     assert not can_fail(state, "fr", "hp", 100.0)
 
 

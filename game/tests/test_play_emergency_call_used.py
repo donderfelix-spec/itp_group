@@ -20,7 +20,7 @@ other, spare):
    player's call hides nothing.
 3. The Free Rider calls at the button; after that meeting, at the button, he
    sees the fail look: "Let fail" (switched off with nobody near), then
-   "Let fail (5 tiles)" with the spare beside him. E sends nothing; a click
+   "Let fail" with the spare beside him (no tile count, S-181). E sends nothing; a click
    on the use button sends `fail` (not `emergency`) and the spare is out.
 4. The other High Performer reports the spare's sheet; after that report
    meeting he still sees "E Emergency" at the button. He calls, and the
@@ -346,7 +346,7 @@ def test_the_free_riders_call_opens_a_meeting_that_names_him(played):
 
 def test_after_his_call_the_free_rider_at_the_button_sees_the_fail_look(played):
     assert played["fr_after_alone"] == {"text": "Let fail", "disabled": True, "failLook": True}
-    assert played["fr_after_with_target"] == {"text": "Let fail (5 tiles)", "disabled": False, "failLook": True}
+    assert played["fr_after_with_target"] == {"text": "Let fail", "disabled": False, "failLook": True}
 
 
 def test_after_his_call_e_of_the_free_rider_at_the_button_sends_no_emergency(played):
