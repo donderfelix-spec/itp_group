@@ -90,7 +90,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Shared progress bar of the group work | M3 | Done |
 | Free Rider fails a nearby player, followed by a cooldown | M3 | Playable with known defects (M3-3.13, M3-3.15, M3-3.16) |
 | Find and report a failed player | M3 | Playable with known defects (M3-3.15) |
-| Emergency meeting with the red button on the Main Deck, limited per player | M3 | Playable with known defects (M3-3.15) |
+| Emergency meeting with the red button in the centre of the Main Deck (S-147), limited per player | M3 | Playable with known defects (M3-3.15) |
 | Meeting with text chat and time limit; the window closes after the result (S-153) | M3 | Playable with known defects (M3-3.13) |
 | Own task list per player, only its stations pulse; the Free Rider has none (S-154) | M3 | Done |
 | Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie; ends early once everybody has voted (S-151, S-152) | M3 | Done |
