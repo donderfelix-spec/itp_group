@@ -32,7 +32,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E done; R and Q come with Classic) | M2 | In progress |
 | Choose a character from the list of stereotypes | M2 | Done |
 | Display of the current room | M2 | Planned |
-| Nicer, more detailed map: every room furnished from photos of the campus, floor patterns, wall faces, doors, drawn from tiles (S-122); walkways between fewer pieces, Hanna's Pingo Doce and round bushes (S-141) | M2 | Done |
+| Nicer, more detailed map: every room furnished from photos of the campus, floor patterns, wall faces, doors, drawn from tiles (S-122); walkways between fewer pieces, Hanna's Pingo Doce and round bushes (S-141); stations standing free, aisles without dead ends, everything that blocks drawn to its edges (S-144) | M2 | Done |
 | Larger characters in a three-quarter view, facing only left or right; held objects stay in the same hand | M2 | Done |
 | A small personal motif on every outfit and a softer face (M2-1.18, S-142) | M2 | Done |
 | Walking animation: moving feet, head turned in the walking direction | M2 | Done |
@@ -116,11 +116,13 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Pingo Doce: scan products until exactly the target amount comes out | M2 | Done |
 | Duel: three stations per player, own random route with a walking distance of equal length | M2 | Done |
 | Duel: progress of every player as 1/3 with a bar in the Players list of the panel (S-130) | M2 | Done |
+| Panel of the mode at the top of the side panel in every mode (Duel and Solo: next task and clock; Classic: own tasks and group progress), visible without scrolling with eight players (S-143) | M2 | Done |
 | Six more minigames at stations 7 to 12, in Duel, Solo and Classic (S-124) | M2 | Done |
 | Solo mode for one player, without statistics (S-125) | M2 | Done |
 | Duel: every player starts at a different station, up to 8 players (S-126) | M2 | Done |
 | Stations as objects with a pulsing outline when they matter (S-128) | M2 | Done |
 | Card at the top left with room and next task, direction arrow (S-129) | M2 | Done |
+| Classic: the direction arrow points at the nearest own open task (S-145) | M3 | Done |
 | “Done” for 0.5 s without a close button (S-127) | M2 | Done |
 | Duel: leaderboard with times at the end | M2 | Done |
 | Beach exit: “Catch the wave”, click at the right moment (first “If time allows” minigame) | M4 | Planned |

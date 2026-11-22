@@ -102,6 +102,7 @@ Game.world = Game.world || {};
     var deskDepth = Math.min(6, bench.h * 0.4);
     var chairSize = 7.4;
     var steps = 12;
+    riser(ctx, bench, deskDepth);
     for (var x = bench.x + 9; x <= bench.x + bench.w - 8; x += 15) {
       var chairY = bench.y + deskDepth + bowAt((x - bench.x) / bench.w) + chairSize / 2 + 0.3;
       util.chair(ctx, x, chairY, chairSize, "#34313E", "down");
@@ -123,6 +124,18 @@ Game.world = Game.world || {};
     ctx.lineWidth = 1;
     ctx.stroke();
   };
+
+  // The raised step the chairs of a row stand on, behind its desk and as
+  // wide as the row (M2-1.20): the floor between the chairs belongs to the
+  // row and does not look free. Its outline lies just inside the solid.
+  function riser(ctx, bench, deskDepth) {
+    var lineWidth = 0.7;
+    var top = bench.y + deskDepth;
+    var height = bench.h - deskDepth - lineWidth / 2;
+    util.box(ctx, bench.x + lineWidth / 2, top, bench.w - lineWidth, height, 0.8, "#B98E5E", lineWidth);
+    // The nosing of the step at its back edge.
+    util.line(ctx, bench.x + 1, top + height - 1.2, bench.x + bench.w - 1, top + height - 1.2, "#D8B98C", 0.6);
+  }
 
   // ---- The floor -------------------------------------------------------
 

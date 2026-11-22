@@ -36,8 +36,12 @@ window.Game = window.Game || {};
   // In a Duel or Solo round: how many stations each player has done, from
   // `duel_progress` (see showProgress). null outside such a round.
   let progress = null;
+  let leaveHandler = null; // see setup
 
-  function setup() {
+  // `whenLeaveAsked` (from main.js) runs once "Leave lobby" has sent
+  // `leave_lobby`, so that no `move` follows it (M2-2.12).
+  function setup(whenLeaveAsked) {
+    leaveHandler = whenLeaveAsked;
     allCharacters().forEach(addCharacterButton);
     MODES.forEach(addModeButton);
     startButton.addEventListener('click', () => {
@@ -444,8 +448,60 @@ window.Game = window.Game || {};
     showCharacters(players);
   }
 
+  // ---- The own Classic tasks (S-154), in the card of Duel's "Next: ..." ----
+
+  // What the card shows, as plain data. `role` is "HP" or "FR"; `allTasks`
+  // is the own list from the start of the round (`classic_role`), `open`
+  // the stations still to do. Every task keeps its place in the start list
+  // and is only marked done. An open station that is not in the start list
+  // (the start list is unknown) is added at the end; a finished one is
+  // never made up. A Free Rider has no real tasks (S-154).
+  function classicTaskCard(role, allTasks, open) {
+    if (role === 'FR') return { items: [], note: 'Fake tasks: stand at a station to look busy.', allDone: false };
+    const added = open.filter((station) => !allTasks.includes(station));
+    const items = allTasks.concat(added).map((station) => ({ station: station, done: !open.includes(station) }));
+    const allDone = open.length === 0;
+    return { items: items, note: allDone ? 'All your tasks are done.' : null, allDone: allDone };
+  }
+
+  // From main.js whenever the own list changes. Without a role (outside a
+  // Classic round) the card is hidden and empty.
+  function showClassicTasks(role, allTasks, open) {
+    const card = document.getElementById('classic-task');
+    const hasRole = role === 'HP' || role === 'FR';
+    card.hidden = !hasRole;
+    const shown = hasRole ? classicTaskCard(role, allTasks || [], open || []) : { items: [], note: null, allDone: false };
+    const parts = [];
+    if (shown.items.length > 0) parts.push(taskList(shown.items));
+    if (shown.note) parts.push(makeText('p', 'round-task-note', shown.note));
+    card.replaceChildren(...parts);
+    card.classList.toggle('duel-next-finished', shown.allDone); // green like Duel when all are done
+  }
+
+  // One bullet per task. A done task stays, faded (style.css); a hidden
+  // "(done)" tells screen readers what the fading shows.
+  function taskList(items) {
+    const list = document.createElement('ul');
+    list.className = 'round-task-list';
+    items.forEach((item) => {
+      const row = makeText('li', item.done ? 'round-task-done' : '', stationName(item.station));
+      if (item.done) row.appendChild(makeText('span', 'visually-hidden', ' (done)'));
+      list.appendChild(row);
+    });
+    return list;
+  }
+
+  // Duel's names (minigames/duel.js); "Station 7" until the map file is read.
+  function stationName(station) {
+    const hasNames = Game.duel && typeof Game.duel.stationName === 'function';
+    return hasNames ? Game.duel.stationName(station) : 'Station ' + station;
+  }
+
   function leaveLobby() {
-    Game.net.ask({ type: 'leave_lobby' });
+    // `ask` sends nothing while another answer is awaited: then the player
+    // is not leaving yet and may go on walking.
+    const wasSent = Game.net.ask({ type: 'leave_lobby' });
+    if (wasSent && typeof leaveHandler === 'function') leaveHandler();
   }
 
   Game.lobby = {
@@ -455,6 +511,8 @@ window.Game = window.Game || {};
     setPlayers: setPlayers,
     showProgress: showProgress,
     leaveLobby: leaveLobby,
+    classicTaskCard: classicTaskCard,
+    showClassicTasks: showClassicTasks,
     show: show
   };
 })();
