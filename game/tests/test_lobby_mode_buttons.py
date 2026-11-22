@@ -12,8 +12,10 @@ yellow and a locked mode that is not chosen in grey. Now:
 - no page logs a console error or warning.
 
 Checked alone with Duel chosen, alone with Solo chosen and with two
-players, at 1280x800 and 320x640. Skipped when Node, Playwright or
-Chromium is missing.
+players, at 1280x800 and 320x640. At 1280x800 also with 1, 2, 3 and 4
+players (Felix, 2026-11-22: a mode fits only between its minimum and maximum, so
+Classic is locked below 4), with Classic chosen by 4 players and after
+one of them left. Skipped when Node, Playwright or Chromium is missing.
 """
 
 import contextlib
@@ -32,6 +34,11 @@ from test_play_campus_detail import NODE, node_environment, playwright_works
 GAME = Path(__file__).resolve().parents[1]
 BROWSER_SCRIPT = Path(__file__).with_name("lobby_mode_buttons_in_browser.js")
 SUN = "rgb(255, 210, 63)"
+WHY_TEXTS = {
+    "duel": "Duel needs at least 2 players.",
+    "solo": "Solo is only for one player alone.",
+    "classic": "Classic needs at least 4 players.",
+}
 INK = "rgb(46, 42, 59)"
 
 needs_chromium = pytest.mark.skipif(not playwright_works(), reason="Node with Playwright and Chromium is needed")
@@ -91,9 +98,10 @@ def test_no_page_logs_a_console_error_or_warning(played):
 
 @needs_chromium
 def test_both_viewports_and_all_three_states_were_looked_at(played):
-    assert set(played["situations"]) == {"wide", "narrow"}
-    for situations in played["situations"].values():
-        assert set(situations) == {"alone_duel", "alone_solo", "two"}
+    assert set(played["situations"]) == {"wide", "narrow", "counts"}
+    for viewport in ("wide", "narrow"):
+        assert set(played["situations"][viewport]) == {"alone_duel", "alone_solo", "two"}
+    assert set(played["situations"]["counts"]) == {"one", "two", "three", "four", "four_classic", "three_classic"}
 
 
 @needs_chromium
@@ -104,7 +112,12 @@ def test_the_expected_modes_are_locked_and_chosen(played):
         expected = {
             "alone_duel": (["duel"], ["classic", "duel"]),
             "alone_solo": (["solo"], ["classic", "duel"]),
-            "two": (["duel"], ["solo"]),
+            "two": (["duel"], ["classic", "solo"]),
+            "one": (["duel"], ["classic", "duel"]),
+            "three": (["duel"], ["classic", "solo"]),
+            "four": (["duel"], ["solo"]),
+            "four_classic": (["classic"], ["solo"]),
+            "three_classic": (["classic"], ["classic", "solo"]),
         }[name]
         assert (chosen, unfit) == expected, (viewport, name)
 
@@ -139,7 +152,10 @@ def test_the_chosen_mode_that_does_not_fit_keeps_its_dark_frame_and_shadow(playe
 
 @needs_chromium
 def test_a_chosen_mode_that_fits_is_still_yellow(played):
-    for viewport, name, mode in [("wide", "alone_solo", "solo"), ("narrow", "alone_solo", "solo"), ("wide", "two", "duel"), ("narrow", "two", "duel")]:
+    for viewport, name, mode in [
+        ("wide", "alone_solo", "solo"), ("narrow", "alone_solo", "solo"),
+        ("wide", "two", "duel"), ("narrow", "two", "duel"), ("counts", "four_classic", "classic"),
+    ]:
         chosen = button(played["situations"][viewport][name], mode)
         assert chosen["background"] == SUN and chosen["pixel"] == [255, 210, 63], (viewport, name)
 
@@ -179,3 +195,29 @@ def test_every_question_mark_shows_an_outline_on_keyboard_focus(played):
             outline = why["outline"]
             assert outline["focused"] and outline["focusVisible"], (viewport, name, why["mode"])
             assert outline["style"] != "none" and outline["width"] >= 2, (viewport, name, why["mode"])
+
+
+@needs_chromium
+def test_exactly_the_modes_that_do_not_fit_are_locked_and_show_their_question_mark(played):
+    for viewport, name, situation in every_situation(played):
+        unfit = {b["mode"] for b in situation["buttons"] if b["unfit"]}
+        locked_modes = {b["mode"] for b in locked(situation)}
+        assert locked_modes == unfit, (viewport, name)  # the others can be chosen
+        assert {why["mode"]: why["text"] for why in situation["whys"]} == {mode: WHY_TEXTS[mode] for mode in unfit}, (viewport, name)
+
+
+@needs_chromium
+def test_classic_chosen_by_four_stays_chosen_after_another_lobby_state(played):
+    classic = button(played["situations"]["counts"]["four_classic"], "classic")
+    assert classic["chosen"] and not classic["disabled"] and classic["background"] == SUN
+
+
+@needs_chromium
+def test_classic_stays_chosen_but_locked_when_a_player_leaves(played):
+    situation = played["situations"]["counts"]["three_classic"]
+    classic = button(situation, "classic")
+    assert classic["chosen"] and classic["unfit"] and classic["disabled"]
+    assert classic["boxShadow"] == f"{INK} 3px 3px 0px 0px" and classic["borderColor"] == INK
+    assert classic["pixel"] == button(situation, "solo")["pixel"]  # the same grey as Solo
+    assert "classic" in {why["mode"] for why in situation["whys"]}
+    assert situation["start"] == {"disabled": True, "hint": "Classic needs 1 more player"}

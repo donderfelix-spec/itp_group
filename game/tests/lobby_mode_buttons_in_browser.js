@@ -12,9 +12,14 @@
 //               centre hits it, whether a click on a corner of its tap square opens
 //               (and pins) its text and a second click closes it, its
 //               outline on keyboard focus, and that the room for the
-//               button's text ends left of it)
+//               button's text ends left of it), and the start button
+//               "counts"    the same at 1280x800 with 1 to 4 players, with
+//               Classic chosen by 4 ("four_classic") and after one of
+//               them left ("three_classic")
 // With a shots folder, it also saves the mode area of the host's panel at
-// deviceScaleFactor 2 as modes_alone_duel.png and modes_two.png there.
+// deviceScaleFactor 2 as modes_alone_duel.png, modes_two.png,
+// modes_two_classic_locked.png, modes_four.png and
+// modes_three_classic_chosen.png there.
 const { chromium } = require('playwright');
 
 const base = process.argv[2];
@@ -28,6 +33,11 @@ async function guest(browser, label, viewport, scale) {
     if (m.type() === 'error' || m.type() === 'warning') problems.push(`${label} ${m.type()}: ${m.text()}`);
   });
   page.on('pageerror', (e) => problems.push(`${label} page error: ${e.message}`));
+  // How many lobby_state messages the page has received.
+  page.lobbyStates = 0;
+  page.on('websocket', (ws) => ws.on('framereceived', (f) => {
+    if (String(f.payload).includes('"lobby_state"')) page.lobbyStates += 1;
+  }));
   await page.goto(base + '/');
   await page.click('#start-guest');
   await page.waitForSelector('#screen-home:not([hidden])');
@@ -110,6 +120,7 @@ async function readWhyButtons(page) {
     });
     return {
       mode: why.dataset.mode,
+      text: document.getElementById('mode-why-' + why.dataset.mode).textContent,
       size: { w: w.width, h: w.height },
       gaps: {
         top: w.top - (b.top + parseFloat(border.borderTopWidth)),
@@ -167,7 +178,21 @@ async function readSituation(page, scale) {
     why.clickOpens = await clickOpens(page, why.mode);
     why.outline = await focusOutline(page, why.mode);
   }
-  return { buttons, whys };
+  const start = await page.evaluate(() => ({
+    disabled: document.getElementById('lobby-start').disabled,
+    hint: document.getElementById('lobby-start-hint').hidden ? '' : document.getElementById('lobby-start-hint').textContent,
+  }));
+  return { buttons, whys, start };
+}
+
+async function waitForMoreLobbyStates(page, before) {
+  for (let i = 0; i < 100 && page.lobbyStates <= before; i++) await page.waitForTimeout(50);
+  if (page.lobbyStates <= before) throw new Error('no new lobby_state arrived');
+  await page.waitForTimeout(100); // let the page draw it
+}
+
+async function waitForPlayers(page, count) {
+  await page.waitForFunction((n) => document.querySelectorAll('#lobby-players li').length === n, count);
 }
 
 async function saveModeArea(page, name) {
@@ -204,13 +229,51 @@ async function playViewport(browser, label, viewport, scale) {
   return result;
 }
 
+// 1, 2, 3 and 4 players at 1280x800 (a mode fits only between its
+// minimum and maximum). With 4 the host chooses Classic, and it stays
+// chosen after another lobby_state (a guest picks a character). Then one
+// player leaves: Classic stays chosen, but no longer fits.
+async function playCounts(browser, scale) {
+  const viewport = { width: 1280, height: 800 };
+  const host = await guest(browser, 'counts host', viewport, scale);
+  const code = await createLobby(host);
+  await host.waitForSelector('#lobby-modes:not([hidden])');
+  await waitForPlayers(host, 1);
+  const result = { one: await readSituation(host, scale) };
+  const others = [];
+  for (const [count, name] of [[2, 'two'], [3, 'three'], [4, 'four']]) {
+    const other = await guest(browser, 'counts guest ' + count, viewport, 1);
+    await join(other, code);
+    others.push(other);
+    await waitForPlayers(host, count);
+    result[name] = await readSituation(host, scale);
+    if (shotsFolder && count === 2) await saveModeArea(host, 'modes_two_classic_locked.png');
+    if (shotsFolder && count === 4) await saveModeArea(host, 'modes_four.png');
+  }
+
+  await chooseMode(host, 'classic');
+  // Another lobby_state: a guest picks another character.
+  const statesBefore = host.lobbyStates;
+  await others[0].click('#lobby-characters .character:not(:disabled):not(.character-own)');
+  await waitForMoreLobbyStates(host, statesBefore);
+  result.four_classic = await readSituation(host, scale);
+
+  await others[2].click('#lobby-leave');
+  await waitForPlayers(host, 3);
+  result.three_classic = await readSituation(host, scale);
+  if (shotsFolder) await saveModeArea(host, 'modes_three_classic_chosen.png');
+  return result;
+}
+
 (async () => {
   const browser = await chromium.launch();
   const situations = {};
   try {
     if (shotsFolder) {
       situations.wide = await playViewport(browser, 'wide', { width: 1280, height: 800 }, 2);
+      situations.counts = await playCounts(browser, 2);
     } else {
+      situations.counts = await playCounts(browser, 1);
       situations.wide = await playViewport(browser, 'wide', { width: 1280, height: 800 }, 1);
       situations.narrow = await playViewport(browser, 'narrow', { width: 320, height: 640 }, 1);
     }
