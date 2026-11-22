@@ -13,6 +13,7 @@ solid again. Walking into the walkable hedge is tested in
 """
 
 import copy
+import math
 
 import pytest
 
@@ -93,11 +94,18 @@ def test_the_hiding_spot_still_lies_inside_the_hedge():
     assert spot["y"] + spot["r"] <= hedge["y"] + hedge["h"]
 
 
-def test_the_button_still_lies_right_of_the_hedge_without_touching_it():
-    hedge = solid("deck-hedge")
+def test_the_emergency_button_is_in_clear_space_at_the_center_of_the_deck():
     button = CAMPUS["button"]
-    assert (button["x"], button["y"], button["r"]) == (642, 249, 11)
-    assert button["x"] - button["r"] > hedge["x"] + hedge["w"]
+    assert (button["x"], button["y"], button["r"]) == (365, 375, 11)
+    x, y, radius = button["x"], button["y"], button["r"]
+
+    for solid in SOLIDS:
+        closest_x = min(max(x, solid["x"]), solid["x"] + solid["w"])
+        closest_y = min(max(y, solid["y"]), solid["y"] + solid["h"])
+        assert math.dist((x, y), (closest_x, closest_y)) > radius, solid["id"]
+
+    for point in CAMPUS["hiding_spots"] + CAMPUS["stations"]:
+        assert math.dist((x, y), (point["x"], point["y"])) > radius + point["r"]
 
 
 # Rejected: nobody can stand in the old gap

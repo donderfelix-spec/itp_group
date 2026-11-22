@@ -172,7 +172,7 @@
 
   "use_range": 25,
 
-  "button": {"x": 642, "y": 249, "r": 11},
+  "button": {"x": 365, "y": 375, "r": 11},
 
   "hide_reveal_range": 35,
 

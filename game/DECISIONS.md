@@ -201,3 +201,7 @@ These entries follow from the team's answers and from the project description in
 | Question | Affects | Thinking so far |
 |---|---|---|
 | Who creates the account at Render? | Area 2 | A team member has to do this themselves, with their own GitHub account. |
+
+## Emergency button placement
+
+The emergency button moves from (642, 249) beside the hedge to (365, 375) on the Main Deck, below the deck label. Its radius remains 11. This updates S-68.
