@@ -1677,10 +1677,11 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 /* ---- Duel: the panel during the round and the ranking, built by js/minigames/duel.js ---- */
 
-/* At the top of the middle of the lobby panel, above the player list, so
-   the clock is seen without scrolling (M2-2.11). The margin keeps it apart
-   from the "Players" heading below. */
-.duel-panel {
+/* The panel of the running round's mode (Duel, Solo or Classic), at the top
+   of the middle of the lobby panel, above the player list, so it is seen
+   without scrolling (M2-2.11, S-143). The same rhythm in every mode; the
+   margin keeps it apart from the "Players" heading below. */
+.round-panel {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -2305,8 +2306,8 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 /* ---- Classic round HUD and results ---- */
 
-.classic-progress { margin-top: 18px; }
-.classic-own-name { margin: 0 0 8px; font-weight: 800; }
+/* Place and spacing come from .round-panel, like the Duel panel's. */
+.classic-own-name { font-weight: 800; }
 .classic-progress-track { height: 18px; overflow: hidden; border: var(--outline); border-radius: 999px; background: white; }
 .classic-progress-fill { width: 0; height: 100%; background: var(--green); transition: width 180ms ease-out; }
 .classic-overlay { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(46, 42, 59, 0.78); }

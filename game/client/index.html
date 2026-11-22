@@ -214,15 +214,26 @@
         </div>
 
         <div class="panel-middle">
-          <!-- Only during a Duel or Solo round: the own next task and the
-               clock, filled by js/minigames/duel.js. First in the middle, so
-               both stay visible without scrolling above eight players with
-               their progress rows (M2-2.11). Hidden, it takes no room, so the
-               lobby and Classic look as before. -->
-          <div id="duel-panel" class="duel-panel" hidden>
+          <!-- The panel of the running round's mode, first in the middle so it
+               is seen without scrolling above eight players (M2-2.11, S-143).
+               Only one of the two is ever shown; hidden, they take no room,
+               so the lobby looks as before. Both have the class round-panel
+               for the same place and spacing. -->
+          <!-- Duel or Solo: the own next task and the clock, filled by
+               js/minigames/duel.js. -->
+          <div id="duel-panel" class="duel-panel round-panel" hidden>
             <h2 id="duel-heading" class="panel-heading">Duel</h2>
             <p id="duel-next" class="duel-next" role="status"></p>
             <p id="duel-clock" class="duel-clock" aria-label="Time left"></p>
+          </div>
+          <!-- Classic: the group progress, filled by js/classic/round.js. -->
+          <div id="classic-progress" class="classic-progress round-panel" hidden aria-live="polite">
+            <h2 class="panel-heading">Group progress</h2>
+            <p id="classic-own-name" class="classic-own-name"></p>
+            <p id="classic-progress-label">0% complete</p>
+            <div class="classic-progress-track" role="progressbar" aria-label="Group task progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div id="classic-progress-fill" class="classic-progress-fill"></div>
+            </div>
           </div>
 
           <h2 class="panel-heading">Players</h2>
@@ -237,16 +248,6 @@
           <div id="lobby-character-area" class="character-area">
             <h2 class="panel-heading">Character</h2>
             <div id="lobby-characters" class="characters"></div>
-          </div>
-
-          <!-- Only during a Classic round. -->
-          <div id="classic-progress" class="classic-progress" hidden aria-live="polite">
-            <h2 class="panel-heading">Group progress</h2>
-            <p id="classic-own-name" class="classic-own-name"></p>
-            <p id="classic-progress-label">0% complete</p>
-            <div class="classic-progress-track" role="progressbar" aria-label="Group task progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-              <div id="classic-progress-fill" class="classic-progress-fill"></div>
-            </div>
           </div>
         </div>
 

@@ -1,20 +1,28 @@
-// Browser part of test_play_duel_clock.py (M2-2.11).
+// Browser part of test_play_duel_clock.py (M2-2.11, S-143).
 // Needs Playwright and Chromium.
 //
-// Usage: node play_duel_clock_in_browser.js <base-url>
+// Usage: node play_duel_clock_in_browser.js <base-url> [<screenshot-folder> <suffix>]
 // Prints one JSON object:
 //   console   every console error or warning and page error of every page
 //   lobby     the host's panel in the lobby with eight players (1280x800)
 //   duel      per window size ("1280x800", "1024x700", "320x640"): the panel
 //             of the host and of one other guest in a Duel with eight players
 //   solo      the panel of one guest alone in a Solo round, per window size
-//   classic   the host's panel in a Classic round with four players (1280x800)
+//   classic   per window size: the panel of the host and of one other guest
+//             in a Classic round with five players
+//   classicWithHint  the other guest's Classic panel at 1280x800 with one
+//             more paragraph at the end of #classic-progress, put there by
+//             this script (as the "Hidden" hint of another branch will be)
 //
 // Every panel is measured by `measurePanel` below; nothing is clicked in it
-// except what starts, leaves and joins rounds.
+// except what starts, leaves and joins rounds. With a screenshot folder,
+// duel<suffix>.png (1024x700), solo<suffix>.png and classic<suffix>.png
+// (1280x800) are saved from a player who is not the host where there is one.
 const { chromium } = require('playwright');
 
 const base = process.argv[2];
+const shotFolder = process.argv[3] || null;
+const shotSuffix = process.argv[4] || '';
 const problems = [];
 
 const SIZES = [
@@ -120,6 +128,14 @@ function measurePanel() {
   const middle = document.querySelector('.panel-middle');
   const box = middle.getBoundingClientRect();
   const firstShown = [...middle.children].find(shown);
+  const playersHeading = [...middle.children].find((el) => el.tagName === 'H2' && el.textContent === 'Players');
+  const roundHeading = [byId('duel-heading'), document.querySelector('#classic-progress h2')]
+    .find((el) => shown(el)) || null;
+  const headingStyle = (el) => {
+    if (!el) return null;
+    const style = getComputedStyle(el);
+    return [style.fontSize, style.fontWeight, style.letterSpacing, style.textTransform, style.lineHeight].join(' ');
+  };
   return {
     visible: {
       top: Math.max(box.top, 0),
@@ -150,14 +166,28 @@ function measurePanel() {
       .filter(shown).map((el) => el.getBoundingClientRect().height),
     classicProgress: rect(byId('classic-progress')),
     duelPanel: rect(byId('duel-panel')),
+    playersHeading: rect(playersHeading),
+    // The heading of the mode panel that is shown, and its look.
+    roundHeading: rect(roundHeading),
+    roundHeadingStyle: headingStyle(roundHeading),
+    playersHeadingStyle: headingStyle(playersHeading),
+    classicParts: ['classic-own-name', 'classic-progress-label'].map((id) => rect(byId(id)))
+      .concat([rect(document.querySelector('#classic-progress h2')), rect(document.querySelector('.classic-progress-track'))]),
+    classicOwnNameText: byId('classic-own-name').textContent,
+    extraParagraph: rect(byId('test-extra-paragraph')),
+    classicTrack: rect(document.querySelector('.classic-progress-track')),
   };
 }
 
 const look = (g) => g.page.evaluate(measurePanel);
 
+async function shoot(g, name) {
+  if (shotFolder) await g.page.screenshot({ path: `${shotFolder}/${name}${shotSuffix}.png` });
+}
+
 (async () => {
   const browser = await chromium.launch();
-  const out = { lobby: null, duel: {}, solo: {}, classic: null };
+  const out = { lobby: null, duel: {}, solo: {}, classic: {}, classicWithHint: null };
   try {
     // Eight guests in one lobby. The host is measured at every size, and
     // so is one guest who is not the host (no mode buttons in its panel).
@@ -181,10 +211,11 @@ const look = (g) => g.page.evaluate(measurePanel);
       await resize(host, size);
       await resize(watcher, size);
       out.duel[name] = { host: await look(host), guest: await look(watcher) };
+      if (size.width === 1024) await shoot(watcher, 'duel');
     }
 
     // Everybody leaves the Duel. One guest plays Solo alone, the host and
-    // three guests play Classic.
+    // four guests play Classic.
     await resize(host, SIZES[0]);
     for (const g of [host, ...others]) await leave(g);
 
@@ -195,15 +226,35 @@ const look = (g) => g.page.evaluate(measurePanel);
     for (const size of SIZES) {
       await resize(alone, size);
       out.solo[`${size.width}x${size.height}`] = await look(alone);
+      if (size.width === 1280) await shoot(alone, 'solo');
     }
 
     const classicCode = await createLobby(host);
-    for (const g of others.slice(0, 3)) await join(g, classicCode);
-    await waitForPlayers(host, 4);
+    const classicGuests = others.slice(0, 4);
+    for (const g of classicGuests) await join(g, classicCode);
+    await waitForPlayers(host, 5);
     await startRound(host, 'Classic');
-    await host.page.waitForSelector('#classic-progress:not([hidden])', { timeout: 10000 });
-    await waitForSteadyPanel(host);
-    out.classic = await look(host);
+    const classicWatcher = classicGuests[0];
+    for (const g of [host, classicWatcher]) {
+      await g.page.waitForSelector('#classic-progress:not([hidden])', { timeout: 10000 });
+      // The role card lies over the screen for a few seconds at the start.
+      await g.page.waitForSelector('#classic-role-card', { state: 'hidden', timeout: 15000 });
+    }
+    for (const size of SIZES) {
+      await resize(host, size);
+      await resize(classicWatcher, size);
+      out.classic[`${size.width}x${size.height}`] = { host: await look(host), guest: await look(classicWatcher) };
+      if (size.width === 1280) await shoot(classicWatcher, 'classic');
+    }
+    await resize(classicWatcher, SIZES[0]);
+    await classicWatcher.page.evaluate(() => {
+      const extra = document.createElement('p');
+      extra.id = 'test-extra-paragraph';
+      extra.textContent = 'Hidden';
+      document.getElementById('classic-progress').appendChild(extra);
+    });
+    await waitForSteadyPanel(classicWatcher);
+    out.classicWithHint = await look(classicWatcher);
   } finally {
     out.console = problems;
     console.log(JSON.stringify(out));

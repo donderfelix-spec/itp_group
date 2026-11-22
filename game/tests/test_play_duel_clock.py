@@ -1,15 +1,17 @@
-"""M2-2.11: in a Duel or Solo round the clock is seen without scrolling, also with eight players.
+"""M2-2.11 and S-143: the panel of the round's mode stands first, seen without scrolling.
 
 The clock (`#duel-clock`) and the own next task (`#duel-next`) stood below
 the player list in the scrolling middle of the side panel. With eight
 players and their progress rows (S-130) they were only seen after
 scrolling in a 1280x800 window. Now the Duel panel stands first in the
-middle of the panel.
+middle of the panel. S-143 does the same for Classic's "Group progress",
+in the same place and with the same spacing (class round-panel).
 
 Checked in Chromium (skipped when Node, Playwright or Chromium is missing),
 with the real server: eight guests in one lobby, the host starts a Duel;
 the host and one other guest are measured at 1280x800, 1024x700 and
-320x640. Then one guest plays Solo alone, and four guests play Classic.
+320x640. Then one guest plays Solo alone, and five guests play Classic,
+measured the same way.
 """
 
 import contextlib
@@ -158,14 +160,58 @@ def test_in_the_lobby_all_character_buttons_are_equally_high(played):
     assert max(heights) - min(heights) < 0.5
 
 
+# ---- Classic (S-143): the same place and spacing as the Duel panel ----
+
+
 @needs_chromium
-def test_in_classic_the_group_progress_stands_below_the_players_as_before(played):
-    panel = played["classic"]
+@pytest.mark.parametrize("size", ALL_SIZES)
+@pytest.mark.parametrize("who", WHO)
+def test_in_classic_the_group_progress_stands_first_above_the_players(played, size, who):
+    panel = played["classic"][size][who]
     assert panel["duelPanel"] is None
-    assert panel["firstShownId"] == "Players"
+    assert panel["firstShownId"] == "classic-progress"
+    assert panel["playerRows"] == 5
     assert panel["progressRows"] == [] and panel["bars"] == 0
-    assert panel["classicProgress"] is not None
-    assert panel["players"]["bottom"] <= panel["classicProgress"]["top"]
+    assert panel["classicProgress"]["bottom"] <= panel["playersHeading"]["top"]
+
+
+@needs_chromium
+@pytest.mark.parametrize("size", WIDE_SIZES)
+@pytest.mark.parametrize("who", WHO)
+def test_in_classic_heading_name_label_and_track_are_seen_without_scrolling(played, size, who):
+    panel = played["classic"][size][who]
+    assert panel["classicOwnNameText"]
+    assert panel["middleScrollTop"] == 0 and panel["pageScrollY"] == 0
+    for part in panel["classicParts"]:
+        assert part is not None and is_fully_seen(part, panel), (part, panel["visible"])
+
+
+@needs_chromium
+@pytest.mark.parametrize("size", ALL_SIZES)
+def test_duel_solo_and_classic_panels_start_at_the_same_height_with_the_same_space_below(played, size):
+    panels = [played["duel"][size]["guest"], played["solo"][size], played["classic"][size]["guest"]]
+    tops = [(panel["duelPanel"] or panel["classicProgress"])["top"] for panel in panels]
+    spaces = [panel["playersHeading"]["top"] - (panel["duelPanel"] or panel["classicProgress"])["bottom"] for panel in panels]
+    assert max(tops) - min(tops) < 0.5
+    assert max(spaces) - min(spaces) < 0.5
+
+
+@needs_chromium
+@pytest.mark.parametrize("size", ALL_SIZES)
+def test_duel_solo_and_classic_headings_look_like_the_players_heading(played, size):
+    panels = [played["duel"][size]["guest"], played["solo"][size], played["classic"][size]["guest"]]
+    for panel in panels:
+        assert panel["roundHeadingStyle"] == panel["playersHeadingStyle"]
+
+
+@needs_chromium
+def test_a_paragraph_at_the_end_of_the_classic_panel_stands_under_the_bar_above_the_players(played):
+    panel = played["classicWithHint"]
+    extra, track, box = panel["extraParagraph"], panel["classicTrack"], panel["classicProgress"]
+    assert extra is not None
+    assert extra["top"] >= track["bottom"]
+    assert extra["bottom"] <= box["bottom"]
+    assert box["bottom"] <= panel["playersHeading"]["top"]
 
 
 # ---- Edge: nothing is logged ----
