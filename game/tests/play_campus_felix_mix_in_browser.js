@@ -454,6 +454,16 @@ async function playLooks(a, b, out) {
   await shoot(a, 'look-deck-bushes-west.png');
 }
 
+// Closes the minigame window of a guest whose window opened. If it did not
+// open, there is nothing to close: test_play_campus_felix_mix.py then reports
+// that guest's station as not opened, instead of every test failing on a
+// click that waits for a button that is not there.
+async function closeIfOpen(page, record) {
+  if (!record.opened) return;
+  await page.click('.minigame-close');
+  await page.waitForSelector('#minigame', { state: 'hidden' });
+}
+
 async function playDuel(a, b, out) {
   await a.click('#lobby-modes button:has-text("Duel")');
   await a.waitForSelector('#lobby-start:not([disabled])');
@@ -482,8 +492,7 @@ async function playDuel(a, b, out) {
     out.duel[label] = { station: next, at: p, glowing, opened, windows };
   }));
   // B leaves in the middle of the round while walking; A closes its window and walks on.
-  await b.click('.minigame-close');
-  await b.waitForSelector('#minigame', { state: 'hidden' });
+  await closeIfOpen(b, out.duel.B);
   await b.keyboard.down('KeyS');
   await pause(200);
   await b.click('#lobby-leave');
@@ -492,8 +501,7 @@ async function playDuel(a, b, out) {
   // in a lobby." (a known fault of the walking keys, not of the map).
   await b.waitForSelector('#screen-home:not([hidden])', { timeout: 5000 });
   await b.keyboard.up('KeyS');
-  await a.click('.minigame-close');
-  await a.waitForSelector('#minigame', { state: 'hidden' });
+  await closeIfOpen(a, out.duel.A);
   await unfocus(a);
   const before = await where(a);
   const trail = await hold(a, 'y', 1, (q) => q.y >= before.y + 20, 3000);
