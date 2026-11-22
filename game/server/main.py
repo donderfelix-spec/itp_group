@@ -824,8 +824,9 @@ def tick(seconds: float):
     So a slow player cannot delay the tick or the other players.
     """
     for lobby in app.state.lobbies.all():
+        meeting_is_published = False
         if lobby.meeting is not None:
-            update_meeting_clock(lobby)
+            meeting_is_published = update_meeting_clock(lobby)
         try:
             if lobby.classic_round is None:
                 has_positions = lobby.walkers.advance(seconds, app.state.campus)
@@ -851,10 +852,14 @@ def tick(seconds: float):
         try:
             # A round whose time is up ends here, with no message from a
             # browser needed. A try of its own: a fault in the walking above
-            # must not keep a round from ending.
-            farewells, result = end_round_if_over(lobby)
-            if farewells:
-                run_in_background(tell_round_ended(lobby, farewells, result))
+            # must not keep a round from ending. When the meeting's news was
+            # just started above, that send asks this itself, after the
+            # result: else a vote whose time ends the round would never show
+            # its result (the round ended and cleared the meeting first).
+            if not meeting_is_published:
+                farewells, result = end_round_if_over(lobby)
+                if farewells:
+                    run_in_background(tell_round_ended(lobby, farewells, result))
         except Exception as problem:
             log_tick_fault("The check for the end of a round failed", lobby.code, problem)
 
@@ -1224,15 +1229,21 @@ async def publish_meeting_and_round_result(lobby, now):
         await tell_round_ended(lobby, farewells, result)
 
 
-def update_meeting_clock(lobby):
-    """Advance a meeting from the server clock and publish each clock second."""
+def update_meeting_clock(lobby) -> bool:
+    """Advance a meeting from the server clock and publish each clock second.
+
+    Returns whether a publish was started; it also ends the round if the
+    meeting's result decided it.
+    """
     now = seconds_now()
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
     sync_classic_after_meeting(lobby)
     clock = meeting_clock_of(lobby.meeting, now)
-    if clock != lobby.meeting_clock:
-        lobby.meeting_clock = clock
-        run_in_background(publish_meeting_and_round_result(lobby, now))
+    if clock == lobby.meeting_clock:
+        return False
+    lobby.meeting_clock = clock
+    run_in_background(publish_meeting_and_round_result(lobby, now))
+    return True
 
 
 def meeting_clock_of(meeting, now):
