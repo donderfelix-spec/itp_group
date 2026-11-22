@@ -33,7 +33,7 @@ def step(x, y, dx, dy, seconds, solids, map_width, map_height):
     # A player should never be inside a solid. If it happens anyway (a wrong
     # spawn point, a teleport), that solid does not block this step, so the
     # player can walk out instead of being stuck forever.
-    solids = [solid for solid in solids if not overlaps(x, y, solid)]
+    solids = [solid for solid in solids if not solid.get("walkable", False) and not overlaps(x, y, solid)]
 
     dx = _direction(dx)
     dy = _direction(dy)
@@ -53,7 +53,8 @@ def step(x, y, dx, dy, seconds, solids, map_width, map_height):
 def overlaps(x, y, solid) -> bool:
     """Does the player square at `(x, y)` overlap this solid? Touching is not overlapping."""
     return (
-        x + PLAYER_HALF_SIZE > solid["x"]
+        not solid.get("walkable", False)
+        and x + PLAYER_HALF_SIZE > solid["x"]
         and x - PLAYER_HALF_SIZE < solid["x"] + solid["w"]
         and y + PLAYER_HALF_SIZE > solid["y"]
         and y - PLAYER_HALF_SIZE < solid["y"] + solid["h"]

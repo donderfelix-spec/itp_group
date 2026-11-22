@@ -290,7 +290,10 @@ def test_walking_straight_at_a_solid_for_3_seconds_ends_outside_it(solid_id, x, 
     assert is_free(end_x, end_y, SOLIDS, WIDTH, HEIGHT)
     assert (end_x, end_y) != (x, y), "the player should have walked up to the solid"
     # No visible gap is left: the player ends touching the solid.
-    assert gap_to(end_x, end_y, solid) <= 1
+    if solid.get("walkable", False):
+        assert end_y < solid["y"]  # the current hedge is entered and crossed
+    else:
+        assert gap_to(end_x, end_y, solid) <= 1
 
 
 @pytest.mark.parametrize("solid_id, x, y, dx, dy", STRAIGHT_AT)
@@ -300,7 +303,11 @@ def test_running_at_a_solid_with_the_longest_step_does_not_pass_it(solid_id, x, 
         # 5 seconds are capped at 0.1 seconds: 9 units, the longest step there is.
         end_x, end_y = step(end_x, end_y, dx, dy, 5, SOLIDS, WIDTH, HEIGHT)
     assert is_free(end_x, end_y, SOLIDS, WIDTH, HEIGHT)
-    assert gap_to(end_x, end_y, solid_called(solid_id)) <= 1
+    solid = solid_called(solid_id)
+    if solid.get("walkable", False):
+        assert end_y < solid["y"]
+    else:
+        assert gap_to(end_x, end_y, solid) <= 1
 
 
 def test_a_player_touching_a_wall_stays_exactly_there():
