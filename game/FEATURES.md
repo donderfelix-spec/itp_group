@@ -106,8 +106,6 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 
 ## Area 4: Minigames and extra modes
 
-Stations 7, 10 and 12 use chart reconstruction from survey evidence, a chat deduction puzzle and timed paper rescue across three lanes. Each has its own brief, feedback and retry controls.
-
 | Feature | Milestone | Status |
 |---|---|---|
 | Frame for minigames: open at a station, close, report “done” | M2 | Done |
@@ -121,6 +119,7 @@ Stations 7, 10 and 12 use chart reconstruction from survey evidence, a chat dedu
 | Duel: progress of every player as 1/3 with a bar in the Players list of the panel (S-130) | M2 | Done |
 | Panel of the mode at the top of the side panel in every mode (Duel and Solo: next task and clock; Classic: own tasks and group progress), visible without scrolling with eight players (S-143) | M2 | Done |
 | Six more minigames at stations 7 to 12, in Duel, Solo and Classic (S-124) | M2 | Done |
+| Stations 7, 10 and 12 reworked: rebuild a misleading chart from survey counts, deduce a schedule from chat clues, catch falling pages in three lanes; each with its own brief, feedback and retry (S-188) | M2 | Done |
 | Solo mode for one player, without statistics (S-125) | M2 | Done |
 | Duel: every player starts at a different station, up to 8 players (S-126) | M2 | Done |
 | Stations as objects with a pulsing outline when they matter (S-128) | M2 | Done |
