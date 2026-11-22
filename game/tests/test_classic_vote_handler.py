@@ -127,3 +127,44 @@ def test_the_tick_still_publishes_a_new_clock_second_after_a_skip(monkeypatch):
     monkeypatch.setattr(main, "seconds_now", lambda: 151.0)
     main.update_meeting_clock(lobby)  # one second later
     assert len(scheduled) == 1
+
+
+# ---- A rejected vote or Skip ---------------------------------------------------
+
+def messages_to_others(sockets, sender):
+    return {name: list(socket.messages) for name, socket in sockets.items() if name != sender}
+
+
+def lobby_after_the_result(monkeypatch):
+    """The vote ended at 175.0 and its result was sent; now it is 180.0."""
+    lobby, sockets = lobby_in_a_vote(monkeypatch, now=176.0)
+    main.update_meeting_clock(lobby)  # what the tick did: the result
+    assert lobby.meeting["phase"] == "result"
+    monkeypatch.setattr(main, "seconds_now", lambda: 180.0)
+    for socket in sockets.values():
+        socket.messages.clear()
+    return lobby, sockets
+
+
+def test_a_vote_rejected_after_the_result_is_sent_to_nobody_else(monkeypatch):
+    monkeypatch.setattr(main, "run_in_background", lambda work: work.close())
+    lobby, sockets = lobby_after_the_result(monkeypatch)
+    asyncio.run(main.answer_vote_message(sockets["Mara"], {"type": "vote", "target_id": "Tiago"}))
+    assert [message["code"] for message in sockets["Mara"].messages] == ["vote_rejected"]
+    assert messages_to_others(sockets, "Mara") == {"Tiago": [], "Ines": []}
+
+
+def test_a_skip_rejected_after_the_result_is_sent_to_nobody_else(monkeypatch):
+    monkeypatch.setattr(main, "run_in_background", lambda work: work.close())
+    lobby, sockets = lobby_after_the_result(monkeypatch)
+    asyncio.run(skip(sockets["Tiago"]))
+    assert [message["code"] for message in sockets["Tiago"].messages] == ["skip_discussion_rejected"]
+    assert messages_to_others(sockets, "Tiago") == {"Mara": [], "Ines": []}
+
+
+def test_a_ghosts_rejected_vote_during_the_vote_is_sent_to_nobody_else(monkeypatch):
+    lobby, sockets = lobby_in_a_vote(monkeypatch)
+    asyncio.run(main.answer_vote_message(sockets["Ines"], {"type": "vote", "target_id": "Mara"}))
+    assert [message["code"] for message in sockets["Ines"].messages] == ["vote_rejected"]
+    assert messages_to_others(sockets, "Ines") == {"Mara": [], "Tiago": []}
+

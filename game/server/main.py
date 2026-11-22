@@ -1206,6 +1206,7 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
         return
 
     now = seconds_now()
+    phase_before = lobby.meeting["phase"]
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
     sync_classic_after_meeting(lobby)
     try:
@@ -1213,7 +1214,10 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
             lobby.meeting, name, message["target_id"]
         )
     except ValueError:
+        phase_changed = lobby.meeting["phase"] != phase_before
         await websocket.send_json(protocol.rejection("vote_rejected"))
+        if not phase_changed:
+            return  # nothing changed, so the others need not hear anything
     sync_classic_after_meeting(lobby)
     if lobby.meeting is not None:
         # This snapshot is the news of the moment: the tick must not send the
@@ -1246,12 +1250,16 @@ async def answer_skip_discussion_message(websocket: WebSocket):
         return
 
     now = seconds_now()
+    phase_before = lobby.meeting["phase"]
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
     sync_classic_after_meeting(lobby)
     try:
         lobby.meeting = classic_meeting.agree_to_skip_discussion(lobby.meeting, name, now)
     except ValueError:
+        phase_changed = lobby.meeting["phase"] != phase_before
         await websocket.send_json(protocol.rejection("skip_discussion_rejected"))
+        if not phase_changed:
+            return  # nothing changed, so the others need not hear anything
     sync_classic_after_meeting(lobby)
     # The rejection above waited: another handler may have ended the round.
     if lobby.meeting is not None:
