@@ -38,6 +38,7 @@ Game.world = Game.world || {};
   // drawn at its lower edge, so a character stands in front of a wall the
   // way it collides with it.
   var FEET_BELOW_POSITION = 5;
+  var GHOST_ALPHA = 0.5;
 
   // The server sends positions once per tick, 15 times per second (S-72).
   var TICK_MILLISECONDS = 1000 / 15;
@@ -161,13 +162,15 @@ Game.world = Game.world || {};
   var failHandler = null; // called when the player presses Q in Classic
   var reportHandler = null; // called with an F-sheet id and position on R
   var emergencyHandler = null; // called on E at the red button
-  var bloodSheets = new Map(); // sheet id -> map position
+  var bloodSheets = new Map(); // sheet id -> position, character and reported flag
   var useButton = null; // the button for E, while the world runs
   // Whether `useButton` has the Free Rider's look (class "fail-button"). Kept
   // here, so the class is taken off once and not touched on every frame.
   var useButtonHasFailLook = false;
   var reportButton = null;
   var inputPaused = false; // true while a minigame is open, see setInputPaused()
+  var overviewOpen = false;
+  var classicVision = false;
   // When the positions messages of the last GAP_MEMORY_MILLISECONDS arrived,
   // oldest first. One list for the world: every message lists all players.
   var arrivalTimes = [];
@@ -919,7 +922,7 @@ Game.world = Game.world || {};
         receive(player, entry.x, entry.y, now, delay);
       }
     });
-    if (ownHidingCheck) {
+    if (classicVision || ownHidingCheck) {
       players.forEach(function (player, name) {
         // The server always lists the own player.
         if (!listed.has(name) && !isOwn(player)) forgetPosition(player);
@@ -927,10 +930,8 @@ Game.world = Game.world || {};
     }
   }
 
-  // While hiding is possible (a Classic round, see setOwnHidingCheck), a
-  // player the server left out of the positions is not drawn any more: a
-  // Free Rider hiding far away (M3-1.4) must not stay standing where he was
-  // last seen. Once he is listed again, his first position is drawn at once
+  // In Classic, a player who left sight or entered hiding disappears from
+  // the latest positions. Once listed again, the first position is drawn at once
   // (see receivePosition), without a glide from the old place.
   function forgetPosition(player) {
     emptyQueue(player);
@@ -1111,6 +1112,7 @@ Game.world = Game.world || {};
     bloodSheets.clear();
     emergencyStatus = null;
     emergencyStatusReceivedAt = 0;
+    ownIsGhost = false;
     setOwnFreeRider(false);
     // The buttons are put right at once, not only by the next frame.
     updateUseButton(stationInRange());
@@ -1370,7 +1372,7 @@ Game.world = Game.world || {};
     if (isShortcut || isTyping(event)) {
       return;
     }
-    if (inputPaused) {
+    if (inputPaused || overviewOpen) {
       // A minigame is open: the keys do nothing on the map, but the arrow
       // keys must not scroll the page behind the window either.
       if (event.code.indexOf("Arrow") === 0) {
@@ -1433,6 +1435,14 @@ Game.world = Game.world || {};
       releaseAllKeys();
       // The server makes the player stand now: steps the browser made up
       // are not waited for any longer.
+      forgetBridgedSteps(performance.now());
+    }
+  }
+
+  function setOverviewOpen(open) {
+    overviewOpen = open === true;
+    if (overviewOpen) {
+      releaseAllKeys();
       forgetBridgedSteps(performance.now());
     }
   }
@@ -1518,6 +1528,7 @@ Game.world = Game.world || {};
   function visiblePlayers(now) {
     var visible = [];
     players.forEach(function (player) {
+      if (player.isGhost && !ownIsGhost) return;
       var position = drawnPosition(player, now);
       if (position) {
         visible.push({ player: player, x: position.x, y: position.y });
@@ -1546,17 +1557,18 @@ Game.world = Game.world || {};
   // sent: the turned view, mirrored when the character faces left.
   function drawPlayer(entry, now) {
     var player = entry.player;
+    var figureAlpha = player.isGhost ? GHOST_ALPHA : 1;
     pose.mirrored = player.facingLeft;
     pose.walkPhase = walkPhase(player, now);
     pose.stride = stride(player, now);
     if (!canDrawCharacter(player.character)) {
-      drawStandIn(entry.x, entry.y);
+      drawStandIn(entry.x, entry.y, figureAlpha);
       return;
     }
     var camera = ctx.getTransform();
     ctx.save();
     // A ghost (Classic) is drawn half transparent; only other ghosts see it.
-    if (player.isGhost) ctx.globalAlpha = 0.38;
+    if (player.isGhost) ctx.globalAlpha = figureAlpha;
     else if (isOwn(player) && ownIsHiddenNow) ctx.globalAlpha = HIDDEN_ALPHA;
     try {
       Game.world.drawCharacter(ctx, player.character, entry.x, figureMiddleY(entry.y), CHARACTER_HEIGHT, pose);
@@ -1572,7 +1584,7 @@ Game.world = Game.world || {};
       // Not tried again: it would fail on every frame (M1-1.11).
       brokenCharacters.add(player.character);
       warnOnce("The character \"" + player.character + "\" could not be drawn; it is shown as a circle.", problem);
-      drawStandIn(entry.x, entry.y);
+      drawStandIn(entry.x, entry.y, figureAlpha);
     }
   }
 
@@ -1601,11 +1613,14 @@ Game.world = Game.world || {};
   }
 
   // A circle in the outline colour where the body of the character would be.
-  function drawStandIn(x, y) {
+  function drawStandIn(x, y, alpha) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
     ctx.beginPath();
     ctx.arc(x, figureMiddleY(y), STAND_IN_RADIUS, 0, Math.PI * 2);
     ctx.fillStyle = OUTLINE;
     ctx.fill();
+    ctx.restore();
   }
 
   function useNameFont() {
@@ -1669,6 +1684,10 @@ Game.world = Game.world || {};
 
   function drawBloodSheets() {
     bloodSheets.forEach(function (sheet) {
+      if (!sheet.reported && typeof sheet.character === "string" &&
+        typeof Game.world.drawFallenCharacter === "function") {
+        Game.world.drawFallenCharacter(ctx, sheet.character, sheet.x, sheet.y - 5, CHARACTER_HEIGHT);
+      }
       ctx.save();
       ctx.translate(sheet.x, sheet.y);
       ctx.rotate(-0.12);
@@ -1711,8 +1730,16 @@ Game.world = Game.world || {};
       drawLoadingText(); // the map file is still on its way
       return;
     }
-    var view = aimCamera(cameraCentre(now));
+    var centre = cameraCentre(now);
+    var view = aimCamera(centre);
     Game.world.drawMap(ctx, campus, view, emergencyIsUnlocked(), stationsThatPulse(), now);
+    var vision = Game.world.vision;
+    var sight = classicVision && !ownIsGhost && vision ? vision.boundary(campus, centre) : null;
+    if (sight) {
+      vision.darken(ctx, view, sight);
+      ctx.save();
+      vision.clip(ctx, sight);
+    }
     drawBloodSheets();
     var idInRange = stationInRange();
     if (idInRange !== null) {
@@ -1724,9 +1751,10 @@ Game.world = Game.world || {};
     // (minigames/task_navigation.js). A task is never shown while one is open.
     if (Game.taskNavigation) {
       var own = players.get(ownName);
-      Game.taskNavigation.draw(ctx, campus, cameraCentre(now), own ? own.server : null, inputPaused);
+      Game.taskNavigation.draw(ctx, campus, centre, own ? own.server : null, inputPaused || overviewOpen);
     }
     drawPlayers(now);
+    if (sight) ctx.restore();
   }
 
   // The browser calls this before every repaint of the screen, and not at
@@ -1813,6 +1841,8 @@ Game.world = Game.world || {};
     }
     removeUseButton();
     running = false;
+    overviewOpen = false;
+    classicVision = false;
     usableStations = null; // the next lobby starts with all stations again
     players.clear();
     clearClassicRound();
@@ -1877,6 +1907,13 @@ Game.world = Game.world || {};
   Game.world.bloodSheetIds = function () { return Array.from(bloodSheets.keys()); };
   Game.world.stationInRange = stationInRange;
   Game.world.setInputPaused = setInputPaused;
+  Game.world.setOverviewOpen = setOverviewOpen;
+  Game.world.setClassicVision = function (active) { classicVision = active === true; };
+  Game.world.overviewData = function () {
+    return running && campus
+      ? { campus: campus, position: ownServerPosition(), stations: stationsThatPulse().slice() }
+      : null;
+  };
   Game.world.setOwnHidingCheck = setOwnHidingCheck;
   Game.world.nearestStationInRange = nearestStationInRange;
   Game.world.ownDrawnPosition = ownDrawnPosition;

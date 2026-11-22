@@ -47,7 +47,7 @@ The map is based on the real campus in Carcavelos: light buildings, a large pave
 - At the bottom, a glass front closes off the deck. You can see the beach and the sea, but you cannot go out.
 - Every room has exactly one door to the deck and two task stations (1 to 5 in the corners of the map, so that you really have to walk in Duel, and 7 to 11 at other places); station 12 stands on the Main Deck (S-124). A station is drawn as an object of its room, for example a coffee machine or a book cart (S-128); it is drawn like the furniture around it (thin lines, the room's colours, about the size of a chair or a small table), stands on free floor against a wall or furniture, and neither it nor its outline lies on furniture or a wall. Everything that blocks is drawn to its edges (S-144).
 - You only ever see the section around your own character, about one room in size. The camera follows the character.
-- If time allows: You cannot see through walls.
+- In Classic, living players see up to 150 map units from their character. Opaque walls block their view, and open passages let them see through. The server sends only living player positions within that view, subject to the hiding rules. Ghosts keep their wider view.
 
 ## 3. Characters
 
@@ -71,7 +71,7 @@ All characters are the same size and the same speed, they differ only in how the
 - Each character exists only once per lobby, so that players can be told apart. For this reason there are at most eight players in a lobby. The name is also shown above the character. Name labels never cover each other: where two would overlap, only one is drawn, and the player's own name always wins. Of two other players the name of the character drawn on top is shown; a name that was hidden needs 4 map units of free space to the names that win against it before it comes back, so names do not flicker at the edge. All players start on the one spawn point, so there a player sees only the own name until the others walk away (S-117).
 - A moving character runs: between its steps both feet are briefly off the ground and the back foot kicks up, the body hops a little and leans slightly forward, and free hands are held higher and pump against the legs (a hand holding something pumps less). The legs turn around fixed hip points under the body. The steps follow the distance covered, about 5 steps per second. The character looks left or right in the running direction (mirrored); running up or down keeps the side it last faced (S-105, S-118).
 - Failed players are half transparent and only visible to other ghosts.
-- Where someone was failed, a crumpled sheet of paper with a red “F” and the portrait of the failed player stays on the ground until the round ends, also after it was reported (S-150, S-163).
+- Where someone was failed, the figure lies on the ground until a player reports it. A crumpled sheet of paper with a red “F” and the portrait of the failed player stays on the ground until the round ends, also after it was reported (S-150, S-163).
 
 ## 4. Screens
 
@@ -127,11 +127,11 @@ Pressing a key that would do nothing at that moment has no effect and also shows
 | E | Use a station, press the emergency button |
 | R | Report a failed player |
 | Q | Fail someone (Free Rider only) |
-| M | Overview map |
+| M | Open or close the campus overview |
 | Enter | Send chat in the meeting |
 | Esc | Close the minigame or the map |
 
-Every action also works with a mouse click on the button.
+Every action also works with a mouse click on the button. The campus overview shows the whole floor plan, your position and only your assigned open tasks. In Duel or Solo it marks your next task.
 
 **Walking diagnostic.** Opened with `?debug` at the end of the address, the page shows a small panel in the top left corner with numbers about the connection and the drawing while walking (S-120), and the buttons “Copy”, “Reset” and “Hide”. It is a tool for the team, not part of the game: without `?debug` it does not exist.
 

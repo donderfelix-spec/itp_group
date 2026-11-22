@@ -153,6 +153,55 @@ def shows_nothing_of_classic(look):
     return {key: look[key] for key in NOTHING_OF_CLASSIC} == NOTHING_OF_CLASSIC
 
 
+@needs_node
+def test_a_fallen_character_stays_at_the_sheet_until_reported():
+    sheet = dict(SHEET, character="finance_bro")
+    report = dict(
+        meeting_state("discussion")[1],
+        reason="report",
+        reported_sheet_id=sheet["sheet_id"],
+    )
+    page = run_page(signed_in_lobby() + [
+        lobby_state("round"),
+        ["receive", sheet],
+        *walk_to_the_button(),
+        ["lookAtDrawing"],
+        ["look"],
+        ["receive", report],
+        ["wait", 50],
+        ["lookAtDrawing"],
+        ["look"],
+    ])
+    before, after = page["drawings"]
+    assert before["fallenCharactersDrawn"] == [{
+        "character": sheet["character"], "x": sheet["position"]["x"], "y": sheet["position"]["y"] - 5,
+    }]
+    assert after["fallenCharactersDrawn"] == []
+    assert [look["sheetsDrawn"] for look in page["looks"]] == [1, 1]
+
+
+@needs_node
+def test_walking_ghosts_are_half_transparent_on_a_ghosts_page_only():
+    positions = [
+        dict(name=OWN, **AT_THE_BUTTON),
+        dict(name="Bo", x=AT_THE_BUTTON["x"] + 14, y=AT_THE_BUTTON["y"]),
+        dict(name="Cy", x=AT_THE_BUTTON["x"] - 14, y=AT_THE_BUTTON["y"]),
+    ]
+    steps = signed_in_lobby() + [lobby_state("round")]
+    for ghost_names in ({"Bo"}, {OWN, "Bo"}):
+        steps += [
+            ["receive", {"type": "classic_roster", "players": [
+                dict(player, ghost=player["name"] in ghost_names) for player in PLAYERS
+            ]}],
+            ["receive", {"type": "positions", "players": positions}],
+            ["wait", 500],
+            ["lookAtDrawing"],
+        ]
+    living_page, ghost_page = run_page(steps)["drawings"]
+    assert {row["character"]: row["alpha"] for row in living_page["charactersDrawn"]} == {"c1": 1, "c3": 1}
+    assert {row["character"]: row["alpha"] for row in ghost_page["charactersDrawn"]} == {"c1": 0.5, "c2": 0.5, "c3": 1}
+
+
 # Accepted: the round shows everything, its end takes all of it away
 
 
