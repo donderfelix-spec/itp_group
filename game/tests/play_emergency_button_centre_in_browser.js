@@ -151,7 +151,7 @@ function meetingsSince(g, count) {
     out.callerScale = await caller.page.evaluate(() => window.devicePixelRatio);
     const button = await caller.page.evaluate(() => window.__campus.button);
     out.button = button;
-    const hintRadius = button.r + 2;
+    const hintRadius = await caller.page.evaluate(() => window.__campus.use_range);
 
     // 1. Before 45 s: standing on the button, nothing is drawn and E does nothing.
     await standAt(caller, [button.x, button.y]);
@@ -195,7 +195,7 @@ function meetingsSince(g, count) {
     out.scene = { frame: await caller.page.evaluate(() => window.__button.frame) };
     if (shots) await caller.page.screenshot({ path: path.join(shots, `${label}-deck.png`) });
 
-    // 5. At the edge of the hint range (distance r + 2): "E Emergency".
+    // 5. At the edge of the hint range (distance use_range): "E Emergency".
     await standAt(caller, [button.x, button.y + hintRadius]);
     await caller.page.waitForFunction(() => document.querySelector('.use-button').textContent === 'E Emergency', null, { timeout: 5000 })
       .catch(() => {});
