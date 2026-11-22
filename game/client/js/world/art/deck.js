@@ -1,9 +1,9 @@
-// The art of the Main Deck and the corridor (M2-1.4): the reflecting pool
-// with its stone edge, a step and reflections, round leafy bushes,
-// the hedge, benches, lamp posts, a bike rack, drains, the glass front, the
-// beach with towels, parasols and surfboards and a surfboard rack; in the
-// corridor a terrazzo floor, the taupe slat wall with "ACADEMIC HALL",
-// ceiling lights, sofas, wire-grid dividers, a black column and stairs.
+// The art of the Main Deck and the corridor (M2-1.4): the study tables on
+// their terrace, leafy bushes, the hedge, benches, lamp posts, a bike rack,
+// drains, the glass front, the beach with towels, parasols and surfboards
+// and a surfboard rack; in the corridor a terrazzo floor with its name
+// "Academic Hall", the taupe slat wall, ceiling lights, sofas, wire-grid
+// dividers, a black column and stairs.
 // Places and sizes come from campus.json; see art/common.js for the rules.
 
 "use strict";
@@ -18,137 +18,203 @@ Game.world = Game.world || {};
   }
   var util = art.util;
 
-  // The shallow pool: a light stone edge, a step down into the water, the
-  // tiles of the bottom, reflections of the sky and the trees, and ripples.
-  art.kinds.pool = function (ctx, pool) {
-    util.box(ctx, pool.x, pool.y, pool.w, pool.h, 3, "#E6E0D2", 1.4);
-    // The joints of the stone edge.
-    util.strokeAll(ctx, "#CFC7B6", 0.4, function () {
-      for (var joint = pool.x + 12; joint < pool.x + pool.w - 4; joint += 12) {
-        ctx.moveTo(joint, pool.y + 0.6);
-        ctx.lineTo(joint, pool.y + 3);
-        ctx.moveTo(joint, pool.y + pool.h - 3);
-        ctx.lineTo(joint, pool.y + pool.h - 0.6);
+  // The study area uses the deck-pool map entry so its footprint stays
+  // stable. The tables and chairs stand on a low wooden terrace as large as
+  // the solid (M2-1.20, M2-1.21): the whole block that stops a player is
+  // seen, also between the chairs.
+  art.kinds.pool = function (ctx, area) {
+    studyTerrace(ctx, area);
+    var tableWidth = (area.w - 8) / 2;
+    var tableDepth = area.h - 24;
+    var top = area.y + 12;
+
+    for (var table = 0; table < 2; table++) {
+      var left = area.x + 2 + table * (tableWidth + 4);
+      // Seats tuck under the two long sides, with the backrests facing out.
+      for (var seat = 0; seat < 4; seat++) {
+        var x = left + tableWidth * (seat + 0.5) / 4;
+        util.chair(ctx, x, area.y + 7, 11, "#25262A", "up");
+        util.chair(ctx, x, area.y + area.h - 7, 11, "#25262A", "down");
       }
-    });
-    var edge = 3;
-    var water = { x: pool.x + edge, y: pool.y + edge, w: pool.w - 2 * edge, h: pool.h - 2 * edge };
-    util.box(ctx, water.x, water.y, water.w, water.h, 1.5, "#9CD3E6", 0.8);
-    ctx.save();
-    util.roundedPath(ctx, water.x, water.y, water.w, water.h, 1.5);
-    ctx.clip();
-    // The step: a lighter band just inside the edge, where the water is shallow.
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(water.x + 1.5, water.y + 1.5, water.w - 3, water.h - 3);
-    ctx.strokeStyle = "rgba(46, 42, 59, 0.12)";
-    ctx.lineWidth = 0.5;
-    ctx.strokeRect(water.x + 3, water.y + 3, water.w - 6, water.h - 6);
-    // The tiles on the bottom of the pool, faint through the water.
-    util.strokeAll(ctx, "rgba(255, 255, 255, 0.22)", 0.4, function () {
-      for (var x = water.x + 8; x < water.x + water.w; x += 8) {
-        ctx.moveTo(x, water.y);
-        ctx.lineTo(x, water.y + water.h);
-      }
-      for (var y = water.y + 8; y < water.y + water.h; y += 8) {
-        ctx.moveTo(water.x, y);
-        ctx.lineTo(water.x + water.w, y);
-      }
-    });
-    // Reflections: a pale patch of sky and the dark green of a tree.
-    util.ellipse(ctx, water.x + water.w * 0.7, water.y + water.h * 0.35, water.w * 0.14, water.h * 0.16, "rgba(255, 255, 255, 0.35)", 0);
-    util.ellipse(ctx, water.x + water.w * 0.12, water.y + water.h * 0.7, water.w * 0.07, water.h * 0.2, "rgba(78, 150, 89, 0.25)", 0);
-    // The shade of the edge on the water.
-    ctx.fillStyle = "rgba(46, 42, 59, 0.12)";
-    ctx.fillRect(water.x, water.y, water.w, 2);
-    ctx.restore();
-    ctx.lineCap = "round";
-    [[0.1, 0.36, 0.38], [0.52, 0.66, 0.86], [0.2, 0.78, 0.36]].forEach(function (wave) {
-      var y = pool.y + pool.h * wave[1];
-      util.line(ctx, pool.x + pool.w * wave[0], y, pool.x + pool.w * wave[2], y, "#DDF0FA", 1.4);
-    });
-    ctx.lineCap = "butt";
+
+      util.shadowBelow(ctx, left, top + tableDepth, tableWidth, 1.5);
+      util.box(ctx, left, top, tableWidth, tableDepth, 2, TABLE_TOP, 1.1);
+      util.line(ctx, left + 2, top + tableDepth - 2, left + tableWidth - 2,
+        top + tableDepth - 2, "#F4F6F8", 0.7);
+
+      // A laptop, an open notebook and a small plant on each table.
+      var centre = left + tableWidth / 2;
+      util.box(ctx, centre - 18, top + 7, 10, 6, 1, "#676B74", 0.6);
+      util.box(ctx, centre - 18, top + 6, 10, 3, 0.7, "#B7D6E4", 0.6);
+      util.box(ctx, centre + 9, top + tableDepth - 11, 11, 7, 0.8, "#FFF1D1", 0.6);
+      util.line(ctx, centre + 14.5, top + tableDepth - 10, centre + 14.5,
+        top + tableDepth - 5, "#BAA881", 0.6);
+      util.circle(ctx, centre, top + tableDepth / 2, 3.2, "#BF8262", 0.6);
+      util.ellipse(ctx, centre - 0.5, top + tableDepth / 2 - 0.8, 2.4, 1.8, "#6E9C61", 0.5);
+    }
   };
 
-  // Bushes with rounded lobes, without planters or square borders. A bush
-  // is trimmed square: its crown fills its solid to the corners, so that
-  // what is drawn is what blocks (M2-1.20).
+  // The top of a study table: a pale grey-white laminate. Pure white would
+  // differ from the light paving by only about 50 (red + green + blue), so
+  // the drawing check (6 of 16 pixels differing by more than 60) would count
+  // the tables as not drawn; this grey differs by about 75.
+  var TABLE_TOP = "#CFD6DE";
+
+  // A low terrace of pale wooden boards, its outline just inside the solid,
+  // with a lighter back edge and a darker front edge, like the plinth of
+  // the NOVA sign: a raised platform, not a mark on the paving.
+  function studyTerrace(ctx, area) {
+    var lineWidth = 0.9;
+    var inset = lineWidth / 2;
+    util.box(ctx, area.x + inset, area.y + inset, area.w - lineWidth, area.h - lineWidth,
+      2, "#D2B48C", lineWidth);
+    // The joints between the boards run along the terrace.
+    util.strokeAll(ctx, "#B8976C", 0.4, function () {
+      for (var y = area.y + 4; y < area.y + area.h - 2; y += 4) {
+        ctx.moveTo(area.x + 1.5, y);
+        ctx.lineTo(area.x + area.w - 1.5, y);
+      }
+    });
+    util.line(ctx, area.x + 2, area.y + 1.6, area.x + area.w - 2, area.y + 1.6, "#E6D2B0", 0.8);
+    ctx.fillStyle = "rgba(46, 42, 59, 0.14)";
+    ctx.fillRect(area.x + 1, area.y + area.h - 3, area.w - 2, 2.1);
+  }
+
+  // A deck bush is trimmed square (M2-1.20): its crown fills its solid to
+  // the corners, so that what is drawn is what blocks. Its ground shadow is
+  // the band along the bottom of the solid, below the crown.
   art.kinds.tree = function (ctx, bush) {
-    leafyCrown(ctx, bush.x + bush.w / 2, bush.y + bush.h / 2,
-      Math.min(bush.w, bush.h) / 2, bush.x, true);
+    var x = bush.x + bush.w / 2;
+    var y = bush.y + bush.h / 2;
+    var radius = Math.min(bush.w, bush.h) / 2;
+    util.box(ctx, x - radius * 0.98, y + radius * 0.55, radius * 1.96, radius * 0.43,
+      radius * 0.12, "rgba(46, 42, 59, 0.22)", 0);
+    leafyCrown(ctx, x, y, radius, bush.x + bush.y, true);
   };
 
-  // How far a square crown reaches at `angle`: the edge of a square with
-  // rounded corners (a "superellipse"), with small lobes that stay inside it.
-  function squareReach(radius, angle, phase) {
+  // How far a square crown reaches at `angle`, for a radius of 1: the edge
+  // of a square with rounded corners (a "superellipse"), with small lobes
+  // that stay inside it (at most 0.99 of the way: 13.86 of a bush's 14).
+  function squareReach(angle, phase) {
     var roundness = 7; // 2 is a circle; the larger, the closer to a square
     var edge = Math.pow(Math.pow(Math.abs(Math.cos(angle)), roundness)
       + Math.pow(Math.abs(Math.sin(angle)), roundness), -1 / roundness);
-    // At most 0.97 of the way: with half of the outline's width (0.4) a
-    // bush of 28 x 28 reaches 0.97 x 14 + 0.4 = 13.98, inside its solid.
-    return radius * edge * (0.94 + 0.03 * Math.cos(angle * 9 + phase));
+    return edge * (0.965 + 0.025 * Math.cos(angle * 9 + phase));
   }
 
-  // Uneven rounded lobes form a bush silhouette; large leaves add texture.
-  // `square` trims the silhouette to the square around it (the hedge's
-  // bushes stay round).
-  function leafyCrown(ctx, x, y, radius, seed, square) {
-    ctx.save();
+  // The outline of the low foliage, for a radius of 1. Round: lobed and a
+  // little flattened. Square: the trimmed square, lifted a little so that
+  // the ground shadow shows below it (top at -0.97, bottom at 0.85).
+  function crownPath(ctx, phase, square) {
     ctx.beginPath();
-    var phase = util.noise(seed, 4) * Math.PI;
-    for (var edge = 0; edge <= 96; edge++) {
-      var angle = edge / 96 * Math.PI * 2;
-      var reach = square ? squareReach(radius, angle, phase) : radius * (0.87 + 0.09 * Math.cos(angle * 7 + phase)
-        + 0.035 * Math.sin(angle * 3 + phase));
-      var px = x + Math.cos(angle) * reach;
-      var py = y + Math.sin(angle) * reach;
+    for (var edge = 0; edge < 48; edge++) {
+      var angle = edge / 48 * Math.PI * 2;
+      var px;
+      var py;
+      if (square) {
+        var squareEdge = squareReach(angle, phase);
+        px = Math.cos(angle) * squareEdge;
+        py = Math.sin(angle) * squareEdge * 0.92 - 0.06;
+      } else {
+        var reach = 0.82 + 0.06 * Math.cos(angle * 7 + phase) + 0.035 * Math.sin(angle * 11);
+        var depth = Math.sin(angle);
+        px = Math.cos(angle) * reach * (1 + Math.max(0, depth) * 0.13);
+        py = depth * reach * 0.82 - 0.025;
+      }
       if (edge === 0) ctx.moveTo(px, py);
       else ctx.lineTo(px, py);
     }
     ctx.closePath();
-    ctx.fillStyle = "#43864D";
+  }
+
+  var shadowLeaves = ["#29401D", "#3B5325", "#4F682A", "#657C33"];
+  var sunlitLeaves = ["#4E6828", "#66832E", "#7C983B", "#99AE49", "#B6C75B"];
+
+  function bushLeaf(ctx, x, y, angle, length, colour) {
+    var dx = Math.cos(angle) * length;
+    var dy = Math.sin(angle) * length;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + dx * 0.32 - dy * 0.46, y + dy * 0.32 + dx * 0.46, x + dx, y + dy);
+    ctx.quadraticCurveTo(x + dx * 0.58 + dy * 0.32, y + dy * 0.58 - dx * 0.32, x, y);
+    ctx.fillStyle = colour;
     ctx.fill();
-    ctx.strokeStyle = util.OUTLINE;
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-    ctx.clip();
-    [[-0.35, -0.3, 0.47], [0.38, -0.18, 0.42], [-0.2, 0.4, 0.45]].forEach(function (clump, index) {
-      util.circle(ctx, x + radius * clump[0], y + radius * clump[1],
-        radius * clump[2], index === 0 ? "#659C50" : "#3B7B47", 0);
-    });
-    util.ellipse(ctx, x + radius * 0.35, y + radius * 0.4,
-      radius * 0.9, radius * 0.85, "#347043", 0);
-    util.line(ctx, x, y + radius * 0.75, x - radius * 0.12, y - radius * 0.25, "#756044", 1.1);
-    util.line(ctx, x - radius * 0.04, y + radius * 0.3, x + radius * 0.53, y - radius * 0.12, "#756044", 0.75);
-    util.line(ctx, x - radius * 0.1, y, x - radius * 0.55, y - radius * 0.35, "#756044", 0.65);
-    // Broad pointed leaves with a central vein leave some woody forks visible.
-    for (var i = 0; i < 22; i++) {
-      var angle = util.noise(seed + i, 31) * Math.PI * 2;
-      var reach = Math.sqrt(util.noise(i * 1.9, seed)) * radius * 0.72;
-      var lx = x + Math.cos(angle) * reach;
-      var ly = y + Math.sin(angle) * reach * 0.78;
-      var length = radius * (0.21 + util.noise(seed, i) * 0.1);
-      var direction = angle - 0.6;
-      var dx = Math.cos(direction) * length;
-      var dy = Math.sin(direction) * length;
+  }
+
+  // Shoots and small leaves on low foliage, after Hanna's reference photo.
+  // `square` trims the crown to the square around it and keeps every leaf
+  // inside it (the deck bushes); without it the crown is round (the hedge).
+  function leafyCrown(ctx, x, y, radius, seed, square) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(radius, radius);
+
+    // Low, compact foliage under the individual leaves and shoots.
+    var phase = util.noise(seed, 4) * Math.PI * 2;
+    crownPath(ctx, phase, square);
+    ctx.fillStyle = "#2D421F";
+    ctx.fill();
+    // A square crown spreads its leaves further, into its corners; the
+    // clip cuts off whatever would reach past the trimmed edge.
+    var spread = 1;
+    if (square) {
+      ctx.clip();
+      spread = 1.25;
+    }
+
+    // Fan thin shoots out of the base. Alternating leaves follow each stem.
+    for (var shoot = 0; shoot < 12; shoot++) {
+      var angle = -Math.PI + (shoot + 0.15 + util.noise(seed, shoot) * 0.7) / 12 * Math.PI;
+      var reach = (0.75 + util.noise(shoot, seed) * 0.19) * spread;
+      var tipX = Math.cos(angle) * reach;
+      var tipY = Math.sin(angle) * reach * 0.83 - 0.04;
+      var baseX = tipX * 0.2;
+      var baseY = 0.58 + util.noise(seed + 12, shoot) * 0.13;
+      var bend = (util.noise(seed + 20, shoot) - 0.5) * 0.64;
+      var stemX = tipX - baseX;
+      var stemY = tipY - baseY;
       ctx.beginPath();
-      ctx.moveTo(lx - dx, ly - dy);
-      ctx.quadraticCurveTo(lx - dy * 0.9, ly + dx * 0.9, lx + dx, ly + dy);
-      ctx.quadraticCurveTo(lx + dy * 0.9, ly - dx * 0.9, lx - dx, ly - dy);
-      ctx.fillStyle = i % 3 === 0 ? "#8BAC62" : i % 3 === 1 ? "#60964F" : "#3C7041";
-      ctx.fill();
-      util.line(ctx, lx - dx * 0.7, ly - dy * 0.7, lx + dx * 0.75, ly + dy * 0.75, "#ACC27C", 0.23);
+      ctx.moveTo(baseX, baseY);
+      ctx.quadraticCurveTo(baseX + stemX / 2 + bend / 2, baseY + stemY / 2, tipX, tipY);
+      ctx.strokeStyle = shoot % 3 === 0 ? "#6B6043" : "#4D592E";
+      ctx.lineWidth = 0.03;
+      ctx.lineCap = "round";
+      ctx.stroke();
+
+      for (var leaf = 0; leaf < 6; leaf++) {
+        var t = 0.28 + leaf * 0.132;
+        var side = (leaf + shoot) % 2 ? -1 : 1;
+        var leafX = baseX + stemX * t + bend * t * (1 - t);
+        var leafY = baseY + stemY * t;
+        var direction = Math.atan2(stemY, stemX + bend * (1 - 2 * t)) + side * 0.73;
+        var size = 0.15 + util.noise(seed + shoot, leaf) * 0.12 - 0.09 * t;
+        var palette = t > 0.67 ? sunlitLeaves : shadowLeaves;
+        bushLeaf(ctx, leafX, leafY, direction, size, util.pick(palette, seed + leaf * 0.9, shoot + 21));
+      }
+    }
+
+    // Smaller foreground leaves overlap into pockets of light and shade.
+    for (var leaf = 0; leaf < 52; leaf++) {
+      var angle = util.noise(seed + leaf, 31) * Math.PI * 2;
+      var reach = Math.sqrt(util.noise(leaf * 1.9, seed)) * 0.75 * spread;
+      var leafX = Math.cos(angle) * reach;
+      var leafY = Math.sin(angle) * reach * 0.79 + 0.09;
+      var size = 0.14 + util.noise(seed, leaf + 18) * 0.15;
+      var palette = leafY < 0.1 || leaf % 5 === 0 ? sunlitLeaves : shadowLeaves;
+      bushLeaf(ctx, leafX, leafY, angle - 0.6, size, util.pick(palette, leaf + 22, seed));
     }
     ctx.restore();
   }
 
-  // Round bushes also form the hedge; the hiding footprint stays the same.
+  // Overlapping bush crowns form the hedge along its existing footprint.
   art.kinds.hedge = function (ctx, bed) {
-    var radius = bed.h * 0.49;
+    var radius = bed.h * 0.45;
+    util.ellipse(ctx, bed.x + bed.w / 2, bed.y + bed.h * 0.8,
+      bed.w * 0.43, bed.h * 0.085, "rgba(46, 42, 59, 0.18)", 0);
     [0.18, 0.4, 0.62, 0.82].forEach(function (share, index) {
       var x = bed.x + bed.w * share;
-      var y = bed.y + bed.h * (index % 2 ? 0.44 : 0.51);
-      leafyCrown(ctx, x, y, radius * (index % 2 ? 1 : 0.9), bed.x + index * 7);
+      var y = bed.y + bed.h * (index % 2 ? 0.46 : 0.54);
+      leafyCrown(ctx, x, y, radius * (index % 2 ? 1 : 0.94), bed.x + index * 7);
     });
   };
 
@@ -337,9 +403,18 @@ Game.world = Game.world || {};
     util.line(ctx, band.x, band.y + band.h, band.x + band.w, band.y + band.h, util.OUTLINE, 0.8);
   };
 
-  // Raised white letters on the slat wall, with a little shadow.
+  // The size of the room names and of "Main Deck" (drawRoomNames in draw.js).
+  var NAME_SIZE = 13;
+
+  // Lettering: on the floor, a name in the game's ink, like the room names
+  // (the corridor's "Academic Hall": Felix, 2026-11-22, wanted it in black
+  // on the floor); on a wall, raised white letters with a little shadow.
   art.decor.lettering = function (ctx, item) {
     if (!item.text) {
+      return;
+    }
+    if (item.layer === "floor") {
+      util.text(ctx, item.text, item.x + item.w / 2, item.y + item.h / 2, NAME_SIZE, util.OUTLINE, item.w);
       return;
     }
     var size = item.h * 0.62;

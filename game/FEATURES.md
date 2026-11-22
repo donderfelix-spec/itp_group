@@ -32,7 +32,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E done; R and Q come with Classic) | M2 | In progress |
 | Choose a character from the list of stereotypes | M2 | Done |
 | Display of the current room | M2 | Planned |
-| Nicer, more detailed map: every room furnished from photos of the campus, floor patterns, wall faces, doors, drawn from tiles (S-122); walkways between fewer pieces, Hanna's Pingo Doce and round bushes (S-141); stations standing free, aisles without dead ends, everything that blocks drawn to its edges (S-144) | M2 | Done |
+| Nicer, more detailed map: every room furnished from photos of the campus, floor patterns, wall faces, doors, drawn from tiles (S-122); walkways between fewer pieces, Hanna's Pingo Doce and round bushes (S-141); stations standing free, aisles without dead ends, everything that blocks drawn to its edges (S-144); Hanna's room floors, leafy square bushes and study tables in place of the pool, “Academic Hall” on the corridor floor (S-148) | M2 | Done |
 | Larger characters in a three-quarter view, facing only left or right; held objects stay in the same hand | M2 | Done |
 | A small personal motif on every outfit and a softer face (M2-1.18, S-142) | M2 | Done |
 | Walking animation: moving feet, head turned in the walking direction | M2 | Done |
