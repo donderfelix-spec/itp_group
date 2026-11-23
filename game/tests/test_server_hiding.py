@@ -44,8 +44,12 @@ SIX = ("Mara", "Tiago", "Ines", "Rui", "Luca", "Sofia")
 
 
 def beside_the_spot(distance):
-    """A place `distance` units to the right of the spot's centre."""
-    return (SPOT["x"] + distance, SPOT["y"])
+    """A place `distance` units to the left of the spot's centre.
+
+    To the left since M3-1.7 (S-196): the hedge stands against the deck's
+    right wall now, so to the right of the spot there is only the wall.
+    """
+    return (SPOT["x"] - distance, SPOT["y"])
 
 
 def next_positions(connection):
@@ -193,9 +197,10 @@ def test_the_message_to_a_far_player_carries_no_trace_of_the_hidden_free_rider(c
 def test_a_free_rider_walking_into_the_spot_disappears_only_when_he_presses_e(connect):
     # Since M3-1.6 (S-191) walking in does not hide: he is seen on every step.
     connections, [fr], [far, _, _] = classic_round(connect)
-    # Below the hedge; three steps of 9 units up end in the spot, at y 253.
+    # Below the hedge; three steps of 9 units up end in the spot, at y 303
+    # (since M3-1.7 the hedge stands at the right wall: from 595, 280 to 595, 253 before).
     put(far, SPOT_WATCHERS[0])
-    put(fr, (595.0, 280.0))
+    put(fr, (644.0, 330.0))
     lobby = app.state.lobbies.lobby_of(fr)
     lobby.walkers.set_direction(fr, 0, -1)
     seen_by_far = []
@@ -204,7 +209,7 @@ def test_a_free_rider_walking_into_the_spot_disappears_only_when_he_presses_e(co
         seen_by_far.append(names_in(next_positions(connections[far])))
     lobby.walkers.set_direction(fr, 0, 0)
 
-    assert lobby.walkers.position_of(fr) == (595.0, 253.0)
+    assert lobby.walkers.position_of(fr) == (644.0, 303.0)
     assert [fr in seen for seen in seen_by_far] == [True, True, True]
     connections[fr].send_json({"type": "hide"})
     connections[fr].portal.call(REAL_TICK, 0.0)

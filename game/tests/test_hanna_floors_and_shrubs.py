@@ -97,11 +97,14 @@ def counts(campus):
 # from the looks. Hanna's drawing must not change any of it. When the map is
 # changed on purpose later (a moved solid, a new station, ...), measure these
 # again with counts() and digest() and update them here, naming the change.
-MAIN_COUNTS = {"rooms": 5, "solids": 107, "decor": 76, "stations": 12, "hiding_spots": 4, "doors": 5}
+MAIN_COUNTS = {"rooms": 5, "solids": 107, "decor": 76, "stations": 12, "hiding_spots": 7, "doors": 5}
 # Measured again for M3-1.1 (S-185): the map gained "classic_vision_range": 120,
 # and for M3-1.6 (S-192): it lost "hide_reveal_range". Main's old digest
 # (with the range of 35, without the vision range) was 9b1d9509...e1735a105ab4.
-MAIN_DIGEST = "3ef354183b87ab04899f04c1e5dabf887d8552d15d01362aab0ae3f5207b1670"
+# Measured again for M3-1.7 (S-196): stations 4, 8, 9 and 12, the hedge and
+# three hiding spots moved, three spots are new (4 -> 7, one names its
+# drawing). The digest before was 3ef35418...ae3f5207b1670.
+MAIN_DIGEST = "d14f84e3bfcdf0679bb91d860790f0d2382af8daf66b9d2ec7f7135b6c647569"
 
 # Hanna's floors (3622182): room id -> (floor colour, pattern).
 HANNAS_FLOORS = {
@@ -519,7 +522,7 @@ LEAST_HOLLOW_DARKENING = 1.5
 @needs_chromium
 def test_the_hollow_of_the_hiding_spot_stands_out_on_the_hedge(drawn):
     spot = drawn["spot"]
-    assert (spot["x"], spot["y"]) == (595, 249)
+    assert (spot["x"], spot["y"]) == (644, 297)  # (595, 249) until M3-1.7 (S-196)
     hollow = middle(spot["hollow"])
     assert contrast(hollow, middle(spot["around"])) >= LEAST_GRAPHIC_CONTRAST
     hedge = middle(spot["hedge"])
