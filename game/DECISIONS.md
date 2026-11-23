@@ -10,6 +10,8 @@ As of 2026-11-23. On 2026-11-18 the team confirmed all entries except those with
 
 ## Game idea
 
+Lennart's seagull follow-up (2026-11-23) ends the rescue as soon as the counter reaches six saved pages so players can return to the round immediately. A caught coffee deducts one page down to zero so the decoy costs progress. The mistake counter tracks missed pages and early or wrong-lane grabs.
+
 | No. | Date | Decision | Reason | By |
 |---|---|---|---|---|
 | S-01 | 2026-11-18 | Instead of the betting app, the team builds a multiplayer game in the social deduction genre that is set on the Nova SBE campus. | The team changed its mind. | Team |

@@ -225,7 +225,7 @@ window.Game = window.Game || {};
   }
 
   function defence(content, ui) {
-    ui.game.append(node('p', 'challenge-brief', 'The gulls are dropping your draft and stolen coffee. Catch 6 pages in the yellow rescue zone. Let coffee fall. Three mistakes end the attempt, then you can try again. Use lane buttons or keys 1, 2, 3.'));
+    ui.game.append(node('p', 'challenge-brief', `The gulls are dropping your draft. Catch ${content.goal} pages in the yellow rescue zone to finish. Catching coffee costs one saved page. Three missed pages or bad grabs end the attempt. Use the lane buttons or keys 1, 2, 3.`));
     const status = node('p', 'challenge-score');
     const arena = node('div', 'challenge-flight');
     arena.setAttribute('aria-label', 'Three rescue lanes');
@@ -295,7 +295,7 @@ window.Game = window.Game || {};
     function nextWave() {
       if (!running || !ui.active()) return;
       if (waveIndex === content.waves.length) {
-        if (saved >= content.goal) { running = false; ui.complete(); } else failRound();
+        failRound();
         return;
       }
       current = content.waves[waveIndex];
@@ -320,18 +320,28 @@ window.Game = window.Game || {};
       if (!running || !current || caught || !ui.active()) return;
       const elapsed = performance.now() - launch;
       if (elapsed > current.duration) return;
-      if (lane !== current.lane || current.cargo !== 'page' || elapsed < current.duration * 0.5) {
+      if (lane !== current.lane || elapsed < current.duration * 0.5) {
         mistakes += 1;
-        ui.feedback.textContent = current.cargo === 'coffee' ? 'That is coffee. Save the work, not the caffeine.' : 'Too early or wrong lane. Catch the page in the yellow zone.';
+        ui.feedback.textContent = 'Too early or wrong lane. Catch the page in the yellow zone.';
         updateStatus();
         if (mistakes >= 3) failRound();
         return;
       }
       caught = true;
-      saved += 1;
       flight.classList.add('challenge-caught');
+      if (current.cargo === 'coffee') {
+        saved = Math.max(0, saved - 1);
+        ui.feedback.textContent = 'Coffee costs one saved page. Let the cups fall.';
+        updateStatus();
+        return;
+      }
+      saved += 1;
       ui.feedback.textContent = 'Page saved. Watch the next lane.';
       updateStatus();
+      if (saved === content.goal) {
+        running = false;
+        ui.complete();
+      }
     }
 
     function onKey(event) {

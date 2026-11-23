@@ -116,6 +116,34 @@ assert.equal(rescue.done(), 1);
 assert.equal(rescue.timers.size, 0);
 rescue.stop();
 assert.equal(rescue.listeners.size, 0);
+
+// Coffee costs a saved page once per cup, and the sixth net page ends the attempt.
+const pages = samples.rescue.waves.filter((wave) => wave.cargo === 'page');
+const coffees = samples.rescue.waves.filter((wave) => wave.cargo === 'coffee');
+const scoredWaves = [coffees[0], pages[0], coffees[1], ...pages.slice(1), ...coffees.slice(2)];
+const scoredRescue = open({ ...samples.rescue, waves: scoredWaves });
+const score = scoredRescue.body.querySelectorAll('.challenge-score')[0];
+const laneNames = ['Left', 'Middle', 'Right'];
+const expectedPages = [0, 1, 0, 1, 2, 3, 4, 5, 6];
+textButton(scoredRescue, 'Protect the draft').click();
+scoredWaves.slice(0, expectedPages.length).forEach((wave, index) => {
+  scoredRescue.advance(wave.duration * 0.65);
+  const lane = textButton(scoredRescue, (wave.lane + 1) + ' · ' + laneNames[wave.lane]);
+  lane.click();
+  lane.click();
+  assert.equal(score.textContent, `${expectedPages[index]} / 6 pages · 0 / 3 mistakes · wave ${index + 1} / 12`);
+  scoredRescue.advance(0);
+  if (expectedPages[index] < 6) {
+    assert.equal(scoredRescue.done(), 0);
+    scoredRescue.advance(wave.duration * 0.35 + 250);
+  } else {
+    assert.equal(scoredRescue.done(), 1, 'the sixth net page completes before its flight ends');
+    assert.equal(scoredRescue.timers.size, 0, 'success cancels all remaining flights');
+  }
+});
+scoredRescue.advance(60000);
+assert.equal(scoredRescue.done(), 1);
+
 const closed = open(samples.rescue);
 textButton(closed, 'Protect the draft').click();
 closed.stop();
