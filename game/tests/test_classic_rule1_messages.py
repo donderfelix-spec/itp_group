@@ -559,10 +559,23 @@ def check_meeting_states_are_identical(records):
         )
 
 
+def check_each_place_told_once(records):
+    """S-202: a player is told where a sheet lies once, by `classic_fail` or `classic_sheet`."""
+    told = Counter(
+        (record.viewer, record.message["sheet_id"])
+        for record in records
+        if record.message["type"] == "classic_sheet"
+        or (record.message["type"] == "classic_fail" and "position" in record.message)
+    )
+    twice = sorted(key for key, count in told.items() if count > 1)
+    assert not twice, f"the place of a sheet was told more than once: {twice}"
+
+
 def check_all(rec):
     for record in rec.records:
         check_record(record)
     check_meeting_states_are_identical(rec.records)
+    check_each_place_told_once(rec.records)
 
 
 # Setting up a round

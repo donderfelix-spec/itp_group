@@ -42,8 +42,7 @@ def played(server_in_this_process, monkeypatch):
 
 @needs_chromium
 def test_the_place_of_a_fail_reaches_only_who_sees_it_in_the_real_game(played):
-    part = {label: name for label, name in played["names"].items()}
-    by_part = {name: label for label, name in part.items()}
+    by_part = {part: label for label, part in played["names"].items()}  # "victim" -> "guest2"
     victim_name = played["fail"][by_part["victim"]]["target_id"]
 
     for label, message in played["fail"].items():

@@ -20,6 +20,7 @@ from server.main import app
 from server.world import visibility
 from task_helpers import client, clock, connect, placeholder_at_every_station, put  # noqa: F401
 from test_classic_leaving import wait_for_background_sends
+import test_classic_meeting_once as meeting_once
 from test_classic_meeting_once import everything_sent, read_until
 from test_classic_server_features import classic_for, start_classic
 from test_server_duel import REAL_TICK
@@ -271,3 +272,63 @@ def test_a_player_who_left_is_sent_no_sheet(six):
     tick(six, 2)
     # No return into a running round (S-109): he hears nothing more of it.
     assert of_type(everything_sent(six[SECOND_FR]), "classic_sheet") == []
+
+
+# After a meeting (S-199: everybody on the Main Deck) and after a vote
+
+
+def five_with_a_sheet_at(connect, sheet):
+    """Five players far apart (random roles); the Free Rider fails a High Performer at `sheet`."""
+    connections, lobby, fr, high_performers = meeting_once.classic_round(connect)
+    victim = high_performers[0]
+    put(fr, (sheet[0] - 10.0, sheet[1]))
+    put(victim, sheet)
+    for connection in connections.values():
+        everything_sent(connection)
+    fail(connections, fr)
+    meeting_once.ticks(connections, count=2)
+    return connections, lobby, fr, high_performers
+
+
+def test_a_player_voted_out_is_sent_every_sheet_as_a_ghost(connect, clock):
+    connections, lobby, fr, [victim, out, *living] = five_with_a_sheet_at(connect, meeting_once.FAIL_PLACE)
+    spawn = (CAMPUS["spawn"]["x"], CAMPUS["spawn"]["y"])
+    assert not visibility.place_in_sight(spawn, meeting_once.FAIL_PLACE, CAMPUS)  # not from the Main Deck
+    assert not lobby.classic_round.sheets_told.get(out)  # far away: not told before
+    for connection in connections.values():
+        everything_sent(connection)
+    meeting_once.start_emergency(connections, living[0], clock)
+
+    told = meeting_once.everybody_votes(connections, lobby, clock, lambda voter: out)
+    meeting_once.ticks(connections, count=2)
+
+    assert out in lobby.classic_round.eliminated
+    sent_to_out = told[out] + everything_sent(connections[out])
+    assert [m["sheet_id"] for m in of_type(sent_to_out, "classic_sheet")] == ["f-sheet-1"]
+    for name in living:  # on the Main Deck, out of sight of the sheet
+        assert of_type(told[name] + everything_sent(connections[name]), "classic_sheet") == [], name
+
+
+def test_a_sheet_in_sight_of_the_main_deck_is_sent_when_the_meeting_puts_everybody_there(connect, clock):
+    sheet = (520.0, 380.0)
+    spawn = (CAMPUS["spawn"]["x"], CAMPUS["spawn"]["y"])
+    assert visibility.place_in_sight(spawn, sheet, CAMPUS)
+    for place in meeting_once.FAR_PLACES:
+        assert not visibility.place_in_sight(place, sheet, CAMPUS)
+    connections, lobby, fr, [victim, *living] = five_with_a_sheet_at(connect, sheet)
+    for name in living:
+        assert of_type(everything_sent(connections[name]), "classic_sheet") == [], name
+
+    for connection in connections.values():
+        everything_sent(connection)
+    meeting_once.start_emergency(connections, living[0], clock)
+    told = meeting_once.everybody_skips(connections, lobby, clock)
+    meeting_once.ticks(connections, count=2)
+
+    for name in living:
+        assert app.state.lobbies.lobby_of(name).walkers.position_of(name) == spawn, name
+        seen = of_type(told[name] + everything_sent(connections[name]), "classic_sheet")
+        assert [(m["sheet_id"], m["reported"]) for m in seen] == [("f-sheet-1", False)], name
+    # The Free Rider was told with the fail, the victim as a ghost: never twice.
+    for name in (fr, victim):
+        assert of_type(told[name] + everything_sent(connections[name]), "classic_sheet") == [], name
