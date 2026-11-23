@@ -101,14 +101,41 @@ def test_in_the_discussion_the_meeting_ends_ten_seconds_later_without_a_vote_pha
     assert ended["vote_result"].ejected_id == "Bo"
 
 
-def test_late_in_the_discussion_the_vote_that_follows_ends_at_the_ten_seconds():
-    # 5 s of discussion are left: it ends as usual, and the vote ends 10 s after the last vote.
+def test_late_in_the_discussion_the_discussion_lasts_until_the_ten_seconds():
+    # 5 s of discussion are left: the discussion runs on to the meeting's end,
+    # with no short vote phase whose clock would jump up again (S-225).
     meeting = a_meeting(phase="discussion", deadline=145.0, votes=ALL_BUT_EVE | {"Eve": "Bo"})
     updated = rules.shorten_when_everybody_voted(meeting, 140.0)
-    assert updated["deadline"] == 145.0 and updated["ends_by"] == 150.0
-    voting = rules.advance_meeting(updated, 146.0)
-    assert voting["phase"] == "voting" and voting["deadline"] == 150.0
-    assert rules.advance_meeting(updated, 150.0)["phase"] == "result"
+    assert updated["deadline"] == 150.0 and updated["ends_by"] == 150.0
+    assert rules.advance_meeting(updated, 146.0)["phase"] == "discussion"
+    assert rules.can_send_chat(updated, "Ana", "still talking", 149.0)
+    ended = rules.advance_meeting(updated, 150.0)
+    assert ended["phase"] == "result" and ended["deadline"] == 150.0
+
+
+@pytest.mark.parametrize(("phase", "deadline", "voted_at"), [
+    ("discussion", 145.0, 110.0),  # plenty of discussion left
+    ("discussion", 145.0, 140.0),  # 5 s of discussion left
+    ("discussion", 145.0, 136.0),  # 9 s of discussion left
+    ("voting", 175.0, 150.0),  # in the vote phase
+    ("voting", 175.0, 168.0),  # 7 s left: nothing changes
+])
+def test_after_everybody_voted_the_clock_only_counts_down_and_the_result_comes_at_zero(phase, deadline, voted_at):
+    meeting = a_meeting(phase=phase, deadline=deadline, votes=ALL_BUT_EVE | {"Eve": "Bo"})
+    shortened = rules.shorten_when_everybody_voted(meeting, voted_at)
+    seen = []
+    now = voted_at
+    while True:
+        snapshot = rules.meeting_snapshot(shortened, now)
+        seen.append((now, snapshot["phase"], snapshot["seconds_left"]))
+        if snapshot["phase"] == "result":
+            break
+        now += 0.5
+    clock = [left for _, _, left in seen]
+    assert clock == sorted(clock, reverse=True), seen  # never up again
+    assert clock[0] <= 10 and clock[-1] == 0
+    assert seen[-1][0] <= voted_at + 10  # the result comes at the end, not later
+    assert seen[-2][2] <= 1  # the last clock before the result shows 1 or 0
 
 
 def test_an_emergency_discussion_is_shortened_too():
