@@ -88,6 +88,8 @@ app.state.attempt_limits = AttemptLimits()
 # changing them in Render's settings restarts the server. Neither is a secret.
 app.state.origin_check = origins.check_is_on(os.environ.get("ORIGIN_CHECK"))
 app.state.allowed_origins = origins.PUBLIC_ORIGINS + origins.parse_allowed_origins(os.environ.get("ALLOWED_ORIGINS"))
+# Refused pages are logged at most once a minute, so a script cannot flood the log.
+app.state.refused_origins = RepeatedFaults()
 app.state.lobbies = Lobbies()
 # Which faults of the tick were logged lately, so that a repeating fault does not flood the log.
 app.state.repeated_faults = RepeatedFaults()
@@ -164,7 +166,11 @@ def origin_is_allowed(websocket: WebSocket) -> bool:
 
 async def refuse_handshake(websocket: WebSocket):
     """Close before accepting: the browser gets HTTP 403 and the page never connects."""
-    logger.warning("Refused a WebSocket from %s", origins.origin_host_for_log(websocket.headers.get("origin", "")))
+    log_it, swallowed = app.state.refused_origins.happened("refused origin", seconds_now())
+    if log_it:
+        host = origins.origin_host_for_log(websocket.headers.get("origin", ""))
+        more = f" ({swallowed} more refused since the last line)" if swallowed else ""
+        logger.warning("Refused a WebSocket from %s%s", host, more)
     # The other side may already be gone; there is nothing left to do then.
     with contextlib.suppress(RuntimeError, OSError, WebSocketDisconnect):
         await websocket.close(code=1008)

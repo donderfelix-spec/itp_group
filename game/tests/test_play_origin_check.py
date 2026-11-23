@@ -56,6 +56,8 @@ def game_server(**settings):
                     urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=1)
                     break
                 time.sleep(0.1)
+            else:
+                pytest.fail("The server did not start within 20 seconds")
             yield port, log
         finally:
             server.terminate()
@@ -113,12 +115,9 @@ def test_a_foreign_page_is_refused_with_403_and_logged_by_host_only(default_serv
     assert handshake(port, render_headers(origin="null")) == 403
     assert handshake(port, render_headers(origin=f"https://{PUBLIC}.evil.example")) == 403
     ours = [line for line in log_text(log).splitlines() if line.startswith("Refused")]
-    # Only the host of each refused origin, nothing else of the request.
-    assert ours[-3:] == [
-        "Refused a WebSocket from evil.example",
-        "Refused a WebSocket from null",
-        f"Refused a WebSocket from {PUBLIC}.evil.example",
-    ]
+    # Only the host of the refused origin, nothing else of the request; the
+    # next refusals within a minute are counted, not logged one by one.
+    assert ours == ["Refused a WebSocket from evil.example"]
 
 
 def test_a_program_without_origin_is_accepted(default_server):

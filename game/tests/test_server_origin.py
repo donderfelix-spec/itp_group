@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 from server.main import app
+from server.net.repeated_faults import RepeatedFaults
 
 GAME_DIR = Path(__file__).resolve().parent.parent
 
@@ -85,23 +86,33 @@ def test_other_origins_are_refused(client, origin):
     assert refused(client, {"origin": origin})
 
 
-def test_a_refusal_logs_only_the_host(client, caplog):
+def test_a_refusal_logs_only_the_host(client, caplog, settings):
+    settings.refused_origins = RepeatedFaults()
     with caplog.at_level(logging.WARNING, logger="server.main"):
         assert refused(client, {"origin": "https://evil.example:8443", "cookie": "secret-value"})
     lines = [record.getMessage() for record in caplog.records if record.name == "server.main"]
     assert lines == ["Refused a WebSocket from evil.example"]
 
 
+def test_many_refusals_within_a_minute_write_one_line(client, caplog, settings):
+    settings.refused_origins = RepeatedFaults()
+    with caplog.at_level(logging.WARNING, logger="server.main"):
+        for number in range(5):
+            assert refused(client, {"origin": f"https://evil{number}.example"})
+    lines = [record.getMessage() for record in caplog.records if record.name == "server.main"]
+    assert lines == ["Refused a WebSocket from evil0.example"]
+
+
 @pytest.fixture
 def settings():
-    """Lets a test change the two origin settings; they are put back afterwards.
+    """Lets a test change the origin settings and the log limit; they are put back afterwards.
 
     (pytest's monkeypatch cannot be used: it deletes the setting from
     `app.state` on undo instead of restoring it.)
     """
-    saved = (app.state.origin_check, app.state.allowed_origins)
+    saved = (app.state.origin_check, app.state.allowed_origins, app.state.refused_origins)
     yield app.state
-    app.state.origin_check, app.state.allowed_origins = saved
+    app.state.origin_check, app.state.allowed_origins, app.state.refused_origins = saved
 
 
 def test_the_kill_switch_lets_every_origin_in(client, settings):

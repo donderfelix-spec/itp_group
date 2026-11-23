@@ -42,7 +42,7 @@ Without the environment variable `DATABASE_URL` the server keeps accounts and st
 Two more environment variables decide which pages may open the game's WebSocket (S-207). Neither is a secret, and neither is needed locally: http://localhost:8000 and http://127.0.0.1:8000 work without them. Changing one in Render's settings restarts the service.
 
 - `ALLOWED_ORIGINS`: further sites whose pages may connect, comma separated, for example `https://itp-group.onrender.com` (a bare host such as `itp-group.onrender.com` allows http and https). The server already accepts a page from the host the request was sent to and always the deployed address https://itp-group.onrender.com; use this only if a page of the real game is refused.
-- `ORIGIN_CHECK`: `off` switches the check off. Without it, or with any other value, the check is on.
+- `ORIGIN_CHECK`: `off` switches the check off (so do `false`, `0` and `no`). Without it, or with any other value, the check is on.
 
 Run the tests:
 
