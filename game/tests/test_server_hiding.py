@@ -26,13 +26,19 @@ from test_classic_server_features import classic_for, start_classic
 from test_server_duel import REAL_TICK, duel_of, lobby_of
 
 CAMPUS = app.state.campus
-# The hiding spot in the hedge on the Main Deck (595, 249, r 9).
+# The hiding spot in the hedge on the Main Deck (644, 297, r 9; 595, 249 until M3-1.7).
 SPOT = CAMPUS["hiding_spots"][0]
 IN_THE_SPOT = (SPOT["x"], SPOT["y"])
 # Far from every hiding spot and from each other.
 FAR_PLACES = [(100.0, 330.0), (300.0, 330.0), (300.0, 400.0), (200.0, 300.0), (400.0, 300.0), (250.0, 450.0)]
 # Clear sight lines from outside the 35-unit hiding reveal range to each spot.
-SPOT_WATCHERS = [(640.0, 249.0), (549.0, 513.0), (91.0, 524.0), (591.0, 128.0)]
+# M3-1.7 (S-196) moved spots 1, 2 and 4 and added 5 to 7: the boxes' watcher
+# moved from (549, 513), which was 28 units from their new place, to the
+# other side of the aisle.
+SPOT_WATCHERS = [
+    (640.0, 249.0), (530.0, 499.0), (91.0, 524.0), (591.0, 128.0),
+    (360.0, 133.0), (90.0, 158.0), (230.0, 545.0),
+]
 FOUR = ("Mara", "Tiago", "Ines", "Rui")
 SIX = ("Mara", "Tiago", "Ines", "Rui", "Luca", "Sofia")
 
@@ -144,8 +150,8 @@ def test_a_hidden_free_rider_is_left_out_for_high_performers_at_any_distance(con
     assert [entry.get("hidden") for entry in told[fr]["players"] if entry["name"] == fr] == [True]
 
 
-@pytest.mark.parametrize("index", [0, 1, 2, 3])
-def test_every_one_of_the_four_spots_hides_the_free_rider(connect, index):
+@pytest.mark.parametrize("index", [0, 1, 2, 3, 4, 5, 6])
+def test_every_one_of_the_seven_spots_hides_the_free_rider(connect, index):
     connections, [fr], high_performers = classic_round(connect)
     spot = CAMPUS["hiding_spots"][index]
     for name in high_performers:

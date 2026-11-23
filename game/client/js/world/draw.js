@@ -877,7 +877,8 @@ Game.world = Game.world || {};
 
   // Hiding spots (M3-1.5): each shows an object that belongs to its place,
   // registered by an art file in the group "hiding" as "room-id:spot" ("spot"
-  // on the deck). They never change, so they are drawn into the tiles, after
+  // on the deck). A spot whose place has more than one spot names its own
+  // drawing with `object` (M3-1.7: the sun loungers on the deck). They never change, so they are drawn into the tiles, after
   // the furniture (the hollow lies on the hedge). Everybody sees the same
   // objects; who hides is decided by the server alone. A drawing stays
   // within DRAWING_OVERHANG of its spot's circle. Without a drawing (or if
@@ -885,7 +886,8 @@ Game.world = Game.world || {};
   var HIDING_OBJECT = "spot";
 
   function hidingObjectOf(campus, spot) {
-    return artFor("hiding", roomAt(campus, spot.x, spot.y), HIDING_OBJECT);
+    var name = typeof spot.object === "string" ? spot.object : HIDING_OBJECT;
+    return artFor("hiding", roomAt(campus, spot.x, spot.y), name);
   }
 
   function drawHidingSpots(ctx, campus, area) {
@@ -1255,7 +1257,7 @@ Game.world = Game.world || {};
       var station = stations[i];
       var drawObject = stationObject(station);
       if (!drawObject) {
-        continue; // station 6, or the art file did not load
+        continue; // the art file did not load
       }
       if (list(pulsing).indexOf(station.id) !== -1) {
         drawOutline(ctx, station, drawObject, strength);

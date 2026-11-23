@@ -206,14 +206,24 @@ Game.world = Game.world || {};
     ctx.restore();
   }
 
-  // Overlapping bush crowns form the hedge along its existing footprint.
+  // Overlapping bush crowns form the hedge along its existing footprint:
+  // four crowns along its long side. Since M3-1.7 it stands upright along
+  // the right wall, so a hedge higher than wide lines its crowns up from
+  // top to bottom and lays its shadow along its foot.
   art.kinds.hedge = function (ctx, bed) {
-    var radius = bed.h * 0.45;
-    util.ellipse(ctx, bed.x + bed.w / 2, bed.y + bed.h * 0.8,
-      bed.w * 0.43, bed.h * 0.085, "rgba(46, 42, 59, 0.18)", 0);
+    var upright = bed.h > bed.w;
+    var radius = Math.min(bed.w, bed.h) * 0.45;
+    if (upright) {
+      util.ellipse(ctx, bed.x + bed.w / 2, bed.y + bed.h - radius * 0.45,
+        bed.w * 0.36, radius * 0.36, "rgba(46, 42, 59, 0.18)", 0);
+    } else {
+      util.ellipse(ctx, bed.x + bed.w / 2, bed.y + bed.h * 0.8,
+        bed.w * 0.43, bed.h * 0.085, "rgba(46, 42, 59, 0.18)", 0);
+    }
     [0.18, 0.4, 0.62, 0.82].forEach(function (share, index) {
-      var x = bed.x + bed.w * share;
-      var y = bed.y + bed.h * (index % 2 ? 0.46 : 0.54);
+      var across = index % 2 ? 0.46 : 0.54;
+      var x = upright ? bed.x + bed.w * across : bed.x + bed.w * share;
+      var y = upright ? bed.y + bed.h * share : bed.y + bed.h * across;
       leafyCrown(ctx, x, y, radius * (index % 2 ? 1 : 0.94), bed.x + index * 7);
     });
   };
@@ -636,4 +646,55 @@ Game.world = Game.world || {};
   // below it, past DRAWING_OVERHANG of draw.js.
   art.decor["deck-door"].reach = 14;
   art.decor["deck-door-one-leaf"].reach = 14;
+
+  // ---- The hiding spot by the CTT wall (M3-1.7) -------------------------
+
+  // A sun lounger seen from above: a white frame with a striped cushion and
+  // its raised back at the top.
+  function sunLounger(ctx, x, y, w, h, colour) {
+    util.box(ctx, x, y, w, h, 1, "#F7F4EC", 0.6);
+    util.box(ctx, x + 0.8, y + 0.8, w - 1.6, h - 1.6, 0.6, colour, 0);
+    util.box(ctx, x + 0.8, y + 0.8, w - 1.6, h * 0.3, 0.6, util.darker(colour, 0.18), 0);
+    for (var stripe = y + h * 0.42; stripe < y + h - 1.5; stripe += 2.2) {
+      util.line(ctx, x + 1.2, stripe, x + w - 1.2, stripe, "#FFFFFF", 0.5);
+    }
+  }
+
+  // A beach parasol folded shut, lying on the ground: a narrow spindle of
+  // coloured cloth on its pole.
+  function foldedParasol(ctx, x1, y1, x2, y2, colour) {
+    var angle = Math.atan2(y2 - y1, x2 - x1);
+    var length = Math.hypot(x2 - x1, y2 - y1);
+    ctx.save();
+    ctx.translate(x1, y1);
+    ctx.rotate(angle);
+    util.line(ctx, 0, 0, length, 0, "#9B6B45", 0.7); // the pole
+    ctx.beginPath();
+    ctx.moveTo(length * 0.2, 0);
+    ctx.quadraticCurveTo(length * 0.55, -1.8, length * 0.9, 0);
+    ctx.quadraticCurveTo(length * 0.55, 1.8, length * 0.2, 0);
+    ctx.fillStyle = colour;
+    ctx.fill();
+    ctx.strokeStyle = util.OUTLINE;
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+    util.line(ctx, length * 0.3, 0, length * 0.85, 0, "#FFFFFF", 0.35);
+    ctx.restore();
+  }
+
+  // Sun loungers stacked for the night against the wall of the CTT Student
+  // Hall, with a folded parasol beside them. Registered by name: the deck
+  // has two hiding spots, and this one names its drawing in campus.json
+  // ("object": "sun-loungers"). Only drawn: players walk through it.
+  art.hiding["sun-loungers"] = function (ctx, spot) {
+    var x = spot.x;
+    var y = spot.y;
+    var k = spot.r / 9; // the drawing is made for a spot of radius 9
+    util.hidingShade(ctx, x, y, spot.r);
+    util.shadowBelow(ctx, x - 7 * k, y + 7.5 * k, 9 * k, 1);
+    sunLounger(ctx, x - 7.5 * k, y - 6 * k, 8 * k, 13.5 * k, "#4C8FD6");
+    sunLounger(ctx, x - 6.8 * k, y - 7 * k, 8 * k, 13.5 * k, "#F2C53D");
+    sunLounger(ctx, x - 6.1 * k, y - 8 * k, 8 * k, 13.5 * k, "#4FC1C1");
+    foldedParasol(ctx, x + 3.5 * k, y + 7 * k, x + 5.5 * k, y - 7 * k, "#F2695C");
+  };
 })();

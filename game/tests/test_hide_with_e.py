@@ -206,7 +206,9 @@ def test_standing_in_a_spot_without_pressing_e_does_not_hide(connect):
     assert fr in names_in(positions_now(connections)[far])
 
 
-@pytest.mark.parametrize("index", [0, 1, 2, 3])
+# Seven spots since M3-1.7 (S-196): 4 to 6 are the coffee sacks, the folding
+# chairs and the sun loungers.
+@pytest.mark.parametrize("index", [0, 1, 2, 3, 4, 5, 6])
 def test_every_spot_can_be_hidden_in(connect, index):
     connections, [fr], high_performers = classic_round(connect)
     spot = CAMPUS["hiding_spots"][index]

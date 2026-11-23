@@ -27,7 +27,7 @@ def campus():
 
 @pytest.fixture
 def spot(campus):
-    """The hiding spot in the hedge on the Main Deck (595, 249, r 9)."""
+    """The hiding spot in the hedge on the Main Deck (644, 297, r 9; 595, 249 until M3-1.7)."""
     return campus["hiding_spots"][0]
 
 
@@ -38,8 +38,9 @@ def names(positions):
 # The map
 
 
-def test_all_four_hiding_spots_are_reachable_positions(campus):
-    assert len(campus["hiding_spots"]) == 4
+def test_all_seven_hiding_spots_are_reachable_positions(campus):
+    # Four until M3-1.7 added three (S-196).
+    assert len(campus["hiding_spots"]) == 7
     for spot in campus["hiding_spots"]:
         assert is_free(spot["x"], spot["y"], campus["solids"], campus["width"], campus["height"])
 
@@ -80,11 +81,11 @@ def test_walkable_false_is_accepted_and_the_solid_blocks_again(campus):
     # Without its hiding spot, which would then lie inside a solid, the map is accepted.
     del campus["hiding_spots"][0]
     assert check_campus(campus) is campus
-    assert overlaps(595, 249, hedge)
+    assert overlaps(644, 297, hedge)
 
 
 def test_hiding_inside_a_solid_is_rejected(campus):
-    # Inside tree 3, left of the hedge.
+    # Inside tree 3 (left of where the hedge lay until M3-1.7).
     campus["hiding_spots"][0].update(x=534, y=249)
     with pytest.raises(CampusError, match="walkable centre"):
         check_campus(campus)
@@ -107,33 +108,37 @@ def test_invalid_hiding_radius_is_rejected(campus, radius):
 
 
 def test_walking_enters_and_exits_the_hedge(campus):
-    x, y = 595, 280
+    # Since M3-1.7 the hedge stands upright along the right wall (y 255 to 323).
+    x, y = 644, 340
     for _ in range(12):
         x, y = step(x, y, 0, -1, 0.1, campus["solids"], campus["width"], campus["height"])
-    assert y < 236
-    assert x == 595
+    assert y < 255
+    assert x == 644
 
 
 def test_walking_up_from_below_stops_in_the_hiding_spot_when_the_key_is_let_go(campus, spot):
-    x, y = 595, 280
-    # 3 steps of 9 units: from y 280 to y 253, inside the spot (249 +- 9).
+    x, y = 644, 330
+    # 3 steps of 9 units: from y 330 to y 303, inside the spot (297 +- 9).
     for _ in range(3):
         x, y = step(x, y, 0, -1, 0.1, campus["solids"], campus["width"], campus["height"])
-    assert (x, y) == (595, 253)
+    assert (x, y) == (644, 303)
     assert hiding_spot(campus, x, y) is spot
 
 
-def test_walking_sideways_through_the_hedge_stops_only_at_tree_3(campus):
-    # From the right of the hedge to the left: through the hedge, up to tree 3 (right edge 556).
-    x, y = 640, 249
+def test_walking_sideways_through_the_hedge_stops_only_at_the_wall(campus):
+    # From the left of the hedge to the right: through the hedge, up to the
+    # deck's right wall (x 657). Until M3-1.7 the hedge lay left to right and
+    # this walk went the other way, up to tree 3.
+    x, y = 600, 297
     for _ in range(20):
-        x, y = step(x, y, -1, 0, 0.1, campus["solids"], campus["width"], campus["height"])
-    assert (x, y) == (561, 249)
+        x, y = step(x, y, 1, 0, 0.1, campus["solids"], campus["width"], campus["height"])
+    assert (x, y) == (652, 297)
 
 
 def test_the_hedge_still_has_its_place_and_size(campus):
     hedge = next(solid for solid in campus["solids"] if solid["id"] == "deck-hedge")
-    assert (hedge["x"], hedge["y"], hedge["w"], hedge["h"], hedge["kind"]) == (556, 236, 68, 26, "hedge")
+    # Moved by M3-1.7 (S-196) from (556, 236, 68, 26), lying at the top right.
+    assert (hedge["x"], hedge["y"], hedge["w"], hedge["h"], hedge["kind"]) == (631, 255, 26, 68, "hedge")
 
 
 # Who hides from whom
@@ -213,8 +218,8 @@ def test_hiding_circle_includes_its_edge(campus, spot):
     assert hiding_spot(campus, spot["x"] + spot["r"] + 0.01, spot["y"]) is None
 
 
-@pytest.mark.parametrize("index", [0, 1, 2, 3])
-def test_every_one_of_the_four_spots_hides(campus, index):
+@pytest.mark.parametrize("index", [0, 1, 2, 3, 4, 5, 6])
+def test_every_one_of_the_seven_spots_hides(campus, index):
     spot = campus["hiding_spots"][index]
     positions = [("viewer", 20, 20), ("hidden", spot["x"], spot["y"] - spot["r"])]
     assert names(visible_positions(positions, "viewer", campus, {"hidden"})) == ["viewer"]

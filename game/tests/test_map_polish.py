@@ -18,9 +18,15 @@ With the real map and the real walking rule (`step`, `is_free`):
 
 The follow-up (Felix, 2026-11-22: the objects were "a bit too big" and did
 not match the furniture): every object is at most its target size plus 2,
-stands against a wall or a piece of furniture (all but stations 9 and 12,
-which no allowed place brings near one), and no way of the Duel is longer
-than on the branch before.
+stands against a wall or a piece of furniture (until M3-1.7 all but
+stations 9 and 12, which no allowed place brought near one; since M3-1.7
+they stand by a wall too), and no way of the Duel is longer than on the
+branch before. M3-1.7 (S-196) moved stations 4, 8, 9 and 12 and gave
+station 6 its object: the boxes here are those of the new places, and the
+ways of the Duel pinned here are measured with the four stations at their
+places of M2-1.20 (`ways_with_the_stations_of_m2_1_20`), so they still
+check what M2-1.20 changed. The ways since M3-1.7 are pinned in
+`test_objects_placed_anew.py`.
 
 In Chromium (skipped when Node, Playwright or Chromium is missing): the
 pixels of each station's object, outline, shadow and number tag lie on no
@@ -34,6 +40,7 @@ zoom.
 """
 
 import contextlib
+import copy
 import itertools
 import json
 import math
@@ -348,14 +355,17 @@ def test_a_lamp_post_10_from_a_wall_is_too_far():
 # draw.js adds below every object have boxes of their own below.
 # Since the follow-up of M2-1.20 (Felix, 2026-11-22) the objects are drawn
 # smaller and stand against a wall or a piece of furniture (art/stations.js).
+# Since M3-1.7 station 6 has its object too, and station 8 stands in a new
+# corner with its cup below the middle (it was -15, -19, 7, 3).
 STATION_BOXES = {
     1: (-12, -20, 18, 5),
     2: (-8, -13, 16, 13),
     3: (-19, -17, 8, 5),
     4: (-15, -5, 15, 19),
     5: (-20, -15, 5, 13),
+    6: (-9, -18, 17, 18),
     7: (-8, -20, 17, 7),
-    8: (-15, -19, 7, 3),
+    8: (-11, -11, 11, 11),
     9: (-14, -12, 14, 11),
     10: (-12, -4, 12, 17),
     11: (-12, -10, 11, 11),
@@ -370,8 +380,9 @@ OBJECT_BOXES = {
     3: (-14, -13, 3, 0),
     4: (-10, 0, 10, 14),
     5: (-15, -10, 0, 8),
+    6: (-4, -13, 10, 13),
     7: (-3, -15, 12, 2),
-    8: (-10, -14, 0, -2),
+    8: (-6, -6, 4, 6),
     9: (-9, -7, 9, 6),
     10: (-7, 1, 7, 12),
     11: (-8, -5, 6, 6),
@@ -380,11 +391,12 @@ OBJECT_BOXES = {
 
 # The size the brief asks for (width, height), in map units: 1 projector
 # screen, 2 espresso machine, 3 tray with plates, 4 book cart, 5
-# self-checkout, 7 flip chart, 8 to-go cup (on its little table), 9 lunch
-# tray, 10 laptop (on its desk), 11 basket, 12 seagull on a bin. A chair is
-# about 8-10, a café table 34, a character 39 high.
+# self-checkout, 6 surfboard upright in its stand (M3-1.7), 7 flip chart, 8
+# to-go cup (on its little table), 9 lunch tray, 10 laptop (on its desk), 11
+# basket, 12 seagull on a bin. A chair is about 8-10, a café table 34, a
+# character 39 high.
 TARGET_SIZES = {
-    1: (18, 14), 2: (13, 14), 3: (16, 11), 4: (18, 14), 5: (14, 16), 7: (13, 16),
+    1: (18, 14), 2: (13, 14), 3: (16, 11), 4: (18, 14), 5: (14, 16), 6: (14, 24), 7: (13, 16),
     8: (8, 10), 9: (16, 11), 10: (14, 10), 11: (12, 10), 12: (12, 14),
 }
 # How much larger than its target a drawn object may be in each direction.
@@ -395,7 +407,7 @@ SIZE_ALLOWANCE = 2
 # the tag's box counts). Every drawing gives its own place, along its foot.
 SHADOW_BOXES = {
     1: (-1, -1, 7, 2), 2: (-2, 7, 8, 10), 3: (-13, -1, 1, 2), 4: (-8, 11, 5, 14),
-    5: (-14, 7, -2, 10), 7: (-1, 1, 8, 4), 8: (-8, -3, -3, 0), 9: (-7, 4, 4, 7),
+    5: (-14, 7, -2, 10), 6: (-2, 12, 9, 15), 7: (-1, 1, 8, 4), 8: (-4, 6, 3, 9), 9: (-7, 4, 4, 7),
     10: (-6, 9, 3, 12), 11: (-6, 5, 3, 8), 12: (-5, 6, 4, 9),
 }
 # The shadow at draw.js's default place (no own place), and the old round
@@ -405,10 +417,10 @@ OLD_DEFAULT_SHADOW_BOX = (-10, 7, 8, 14)
 
 # The number tag at the lower right of each object (radius 3.5 since this
 # follow-up, was 4.2). Station 2's tag ends 3 units before the café's wall
-# at x 447, station 8's before table 2.
+# at x 447; station 8's sits at its object's lower right since M3-1.7.
 TAG_BOXES = {
     1: (8, -6, 16, 2), 2: (5, 2, 13, 10), 3: (-2, -6, 6, 2), 4: (5, 8, 13, 16),
-    5: (-5, 2, 3, 10), 7: (7, -4, 15, 4), 8: (-4, -7, 4, 1), 9: (4, 1, 12, 9),
+    5: (-5, 2, 3, 10), 6: (7, 7, 15, 15), 7: (7, -4, 15, 4), 8: (1, 1, 9, 9), 9: (4, 1, 12, 9),
     10: (2, 7, 10, 15), 11: (1, 0, 9, 8), 12: (2, 1, 10, 9),
 }
 
@@ -447,7 +459,8 @@ def overlap(first, second):
 
 
 def test_every_station_with_an_object_has_a_box():
-    with_objects = {station["id"] for station in CAMPUS["stations"]} - {6}  # 6 has no object yet (S-128)
+    # Station 6 has its object since M3-1.7 (before: none yet, S-128).
+    with_objects = {station["id"] for station in CAMPUS["stations"]}
     assert set(STATION_BOXES) == with_objects
 
 
@@ -524,13 +537,10 @@ def gap_between_boxes(first, second):
     return max(dx, dy)
 
 
-# Stations 9 and 12 stand in the open, drawn as things that stand free (a
-# trolley, a bin). Station 9: table 3 lies 24 above its outline, the tray
-# return 26 to the right behind the hiding spot, and any place nearer to them
-# makes a way of the Duel longer. Station 12: the nearest solid, bush 4, lies
-# 33 to the left; beside it the station would glow within a second's walk of
-# the spawn, and a place further from the spawn makes ways longer (below).
-STANDS_IN_THE_OPEN = {9, 12}
+# Until M3-1.7 stations 9 and 12 stood in the open (table 3 lay 24 above the
+# trolley's outline, bush 4 33 left of the bin's). Since M3-1.7 (S-196) they
+# stand by a wall where Felix drew them, so every station leans on something.
+STANDS_IN_THE_OPEN = set()
 # How close an outline comes to the wall or furniture its object stands against.
 LEANING_GAP = 3
 
@@ -541,14 +551,19 @@ def test_every_object_stands_against_a_wall_or_a_piece_of_furniture(station_id):
     assert min(gap_between_boxes(box, solid) for solid in SOLIDS) <= LEANING_GAP
 
 
-def test_station_9_has_no_wall_or_furniture_within_reach():
+def test_station_9_stands_against_the_canteens_bottom_wall():
+    # M3-1.7: its outline ends on the wall's edge (it stood 24 from table 3).
     box = station_box(9)
-    assert min(gap_between_boxes(box, solid) for solid in SOLIDS) == 24
+    wall = solid_called("deck-wall-top-4")
+    assert box["y"] + box["h"] == wall["y"]
+    assert not overlap(box, wall)
 
 
-def test_station_12_has_no_wall_or_furniture_within_reach():
+def test_station_12_stands_against_the_decks_right_wall():
+    # M3-1.7: its outline ends 2 units before the wall (it stood 33 from bush 4).
     box = station_box(12)
-    assert min(gap_between_boxes(box, solid) for solid in SOLIDS) == 33
+    wall = solid_called("deck-wall-right")
+    assert wall["x"] - (box["x"] + box["w"]) == 2
 
 
 def test_station_12_beside_the_bush_would_glow_within_a_second_of_the_spawn():
@@ -574,7 +589,8 @@ def hiding_square(spot):
 
 @pytest.mark.parametrize("station_id", sorted(STATION_BOXES))
 def test_no_station_object_or_its_outline_lies_on_a_hiding_spot(station_id):
-    # Station 9 stands beside the Canteen's hiding spot at (636, 128).
+    # Station 9 stands beside the Canteen's hiding spot at (646, 156), and
+    # station 12 below the hedge's at (644, 297) (M3-1.7).
     box = station_box(station_id)
     assert [spot for spot in CAMPUS["hiding_spots"] if overlap(box, hiding_square(spot))] == []
 
@@ -593,9 +609,12 @@ def test_a_station_box_that_only_touches_a_solid_is_free():
     # this follow-up 5 units above it: the tray stand stands at the counter's
     # end, 1 unit from it). Station 11's box begins exactly where shelf 3
     # ends: the basket stands as close to the shelf as its outline allows.
-    # (Station 4's book cart keeps a gap of 1 to the bookshelf.)
+    # Since M3-1.7 station 4's outline ends exactly on the bookshelf's edge
+    # and begins on the left wall's (until then the cart kept a gap of 1).
     assert station_box(3)["y"] + station_box(3)["h"] <= solid_called("canteen-table-3")["y"]
-    assert solid_called("ctt-bookshelf")["y"] - (station_box(4)["y"] + station_box(4)["h"]) == 1
+    assert solid_called("ctt-bookshelf")["y"] - (station_box(4)["y"] + station_box(4)["h"]) == 0
+    wall = solid_called("ctt-wall-left")
+    assert station_box(4)["x"] == wall["x"] + wall["w"]
     shelf = solid_called("pingo-doce-shelf-3")
     assert station_box(11)["x"] == shelf["x"] + shelf["w"]
     assert not overlap(station_box(11), shelf)
@@ -664,9 +683,25 @@ def ways_longer_than_before(measured, before=WAYS_BEFORE_THIS_TO_DO):
     ]
 
 
+# Where M3-1.7 (S-196) moved stations from: their places of M2-1.20.
+STATIONS_OF_M2_1_20 = {4: (90, 520), 8: (292, 118), 9: (609, 130), 12: (600, 350)}
+
+
+def campus_with_the_stations_of_m2_1_20():
+    """The real map with the stations M3-1.7 moved back at their places of M2-1.20.
+
+    The hedge, which M3-1.7 moved too, is walkable and changes no way.
+    """
+    campus = copy.deepcopy(CAMPUS)
+    for station in campus["stations"]:
+        if station["id"] in STATIONS_OF_M2_1_20:
+            station["x"], station["y"] = STATIONS_OF_M2_1_20[station["id"]]
+    return campus
+
+
 @pytest.fixture(scope="module")
-def ways_now():
-    return station_distances(CAMPUS, sorted(minigames.MINIGAMES))
+def ways_with_the_stations_of_m2_1_20():
+    return station_distances(campus_with_the_stations_of_m2_1_20(), sorted(minigames.MINIGAMES))
 
 
 def test_the_pinned_ways_are_every_way_between_the_spawn_and_the_duel_stations():
@@ -678,19 +713,19 @@ def test_the_pinned_ways_are_every_way_between_the_spawn_and_the_duel_stations()
     assert len(WAYS_BEFORE_THIS_TO_DO) == 66
 
 
-def test_no_way_of_the_duel_became_longer(ways_now):
-    assert ways_longer_than_before(ways_now) == []
+def test_no_way_of_the_duel_became_longer(ways_with_the_stations_of_m2_1_20):
+    assert ways_longer_than_before(ways_with_the_stations_of_m2_1_20) == []
 
 
-def test_the_aisles_and_free_stations_made_some_ways_much_shorter(ways_now):
+def test_the_aisles_and_free_stations_made_some_ways_much_shorter(ways_with_the_stations_of_m2_1_20):
     # Measured for this to-do against main before it: 46 of the 66 ways
     # became shorter and none longer. The largest change is 5 to 11, 32 %
     # shorter (station 11 in the aisle between the shelves); others are
     # 9 to 11 14.6 %, spawn to 11 13.5 %, 11 to 12 17.3 %, 8 to 10 9.9 % and
     # 1 to 7 6.5 %.
-    assert ways_now[(5, 11)] == pytest.approx(113.941, abs=ROUNDING)
-    assert ways_now[(11, 12)] == pytest.approx(172.167, abs=ROUNDING)
-    assert ways_now[(8, 10)] == pytest.approx(390.392, abs=ROUNDING)
+    assert ways_with_the_stations_of_m2_1_20[(5, 11)] == pytest.approx(113.941, abs=ROUNDING)
+    assert ways_with_the_stations_of_m2_1_20[(11, 12)] == pytest.approx(172.167, abs=ROUNDING)
+    assert ways_with_the_stations_of_m2_1_20[(8, 10)] == pytest.approx(390.392, abs=ROUNDING)
 
 
 # The follow-up of M2-1.20 (station objects drawn like the furniture) may
@@ -718,13 +753,13 @@ def test_the_pinned_ways_of_the_branch_are_the_same_66_ways():
     assert set(WAYS_ON_THE_BRANCH_BEFORE_THE_FOLLOW_UP) == set(WAYS_BEFORE_THIS_TO_DO)
 
 
-def test_no_way_of_the_duel_became_longer_than_on_the_branch(ways_now):
-    assert ways_longer_than_before(ways_now, WAYS_ON_THE_BRANCH_BEFORE_THE_FOLLOW_UP) == []
+def test_no_way_of_the_duel_became_longer_than_on_the_branch(ways_with_the_stations_of_m2_1_20):
+    assert ways_longer_than_before(ways_with_the_stations_of_m2_1_20, WAYS_ON_THE_BRANCH_BEFORE_THE_FOLLOW_UP) == []
 
 
-def test_no_way_of_the_duel_changed_in_the_follow_up(ways_now):
+def test_no_way_of_the_duel_changed_in_the_follow_up(ways_with_the_stations_of_m2_1_20):
     before = WAYS_ON_THE_BRANCH_BEFORE_THE_FOLLOW_UP
-    assert all(ways_now[pair] == pytest.approx(length, abs=ROUNDING) for pair, length in before.items())
+    assert all(ways_with_the_stations_of_m2_1_20[pair] == pytest.approx(length, abs=ROUNDING) for pair, length in before.items())
 
 
 def test_a_way_one_unit_longer_is_found_and_one_as_long_is_not():
@@ -976,7 +1011,7 @@ def test_a_drawing_without_its_own_shadow_place_gets_the_default_shadow():
 # the desk's body, the bin).
 OWN_SHADOWS = {
     1: (-1, -1, 8), 2: (-1.5, 7, 11), 3: (-12.5, -1, 14), 4: (-8, 11, 16), 5: (-13.5, 7, 12),
-    7: (-0.5, 1, 10), 8: (-7.5, -3, 7), 9: (-7, 4, 14), 10: (-5.5, 9, 11), 11: (-6, 5, 10),
+    6: (-2, 12, 12), 7: (-0.5, 1, 10), 8: (-4, 6, 8), 9: (-7, 4, 14), 10: (-5.5, 9, 11), 11: (-6, 5, 10),
     12: (-4.5, 6, 9),
 }
 
@@ -1021,7 +1056,7 @@ def test_a_drawing_without_its_own_tag_place_gets_the_tag_at_the_old_place():
 # further in where a wall or a table is close (2, 8, 11).
 OWN_TAGS = {
     1: (11.65, -1.85), 2: (9.15, 5.65), 3: (2.15, -2.35), 4: (8.65, 12.15), 5: (-0.85, 5.65),
-    7: (10.65, 0.15), 8: (0.15, -3.35), 9: (7.65, 4.65), 10: (6.15, 10.65), 11: (5.15, 4.15),
+    6: (10.65, 10.65), 7: (10.65, 0.15), 8: (4.65, 4.65), 9: (7.65, 4.65), 10: (6.15, 10.65), 11: (5.15, 4.15),
     12: (5.65, 4.65),
 }
 

@@ -44,7 +44,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Walking diagnostic for the team: with `?debug` in the address a panel measures the connection and the drawing while walking and copies the numbers as text | M2 | Done |
 | Limited view in Classic: nearby living players in direct sight, with walls casting shadows (S-185) | M3 | Done |
 | Half-transparent ghosts visible to other ghosts and fallen characters visible until reported (S-186) | M3 | Done |
-| Four hiding spots in Classic (S-131 to S-140), drawn as objects of the map: boxes, a beanbag, a potted plant and a hollow in the hedge (S-190); the Free Rider hides on purpose with E and is then sent to no High Performer; himself, the other Free Rider and ghosts see him with a crossed-out eye (S-191, S-192) | M3 | Done |
+| Seven hiding spots in Classic (S-131 to S-140), drawn as objects of the map: boxes, a beanbag, a potted plant, a hollow in the hedge (S-190), coffee sacks, folding chairs and sun loungers (S-196); the Free Rider hides on purpose with E and is then sent to no High Performer; himself, the other Free Rider and ghosts see him with a crossed-out eye (S-191, S-192) | M3 | Done |
 | Campus overview with your location and your own open tasks (S-187) | M3 | Done |
 | Finished graphics for rooms and characters instead of placeholders | M4 | Planned |
 | Sounds and music | M4 | Later |
@@ -123,7 +123,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Stations 7, 10 and 12 reworked: rebuild a misleading chart from survey counts, deduce a schedule from chat clues, catch falling pages in three lanes; each with its own brief, feedback and retry (S-189) | M2 | Done |
 | Solo mode for one player, without statistics (S-125) | M2 | Done |
 | Duel: every player starts at a different station, up to 8 players (S-126) | M2 | Done |
-| Stations as objects with a pulsing outline when they matter (S-128) | M2 | Done |
+| Stations as objects with a pulsing outline when they matter (S-128); station 6 shows its surfboard too, and stations 4, 8, 9 and 12 stand where Felix drew them (S-196) | M2 | Done |
 | Card at the top left with room and next task, direction arrow (S-129) | M2 | Done |
 | Classic: the direction arrow points at the nearest own open task (S-145) | M3 | Done |
 | Lobby: modes outside their player range (Classic below 4) locked, all in one grey, the chosen one marked by frame and shadow; smaller “?” with even gaps (S-146) | M2 | Done |

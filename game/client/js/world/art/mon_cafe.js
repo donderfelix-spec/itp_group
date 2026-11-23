@@ -379,4 +379,35 @@ Game.world = Game.world || {};
       }
     });
   };
+
+  // ---- The hiding spot beside the column (M3-1.7) -----------------------
+
+  // A sack of coffee beans seen from above: a rounded jute sack, its tied
+  // neck at the top and a printed bean on it.
+  var JUTE = "#C8A675";
+
+  function coffeeSack(ctx, x, y, w, h) {
+    util.shadowBelow(ctx, x + 0.6, y + h - 0.4, w - 1.2, 0.8);
+    util.box(ctx, x, y, w, h, Math.min(w, h) * 0.38, JUTE, 0.6);
+    ctx.fillStyle = util.darker(JUTE, 0.12);
+    ctx.fillRect(x + 0.8, y + h * 0.7, w - 1.6, h * 0.18);
+    util.ellipse(ctx, x + w / 2, y + 0.9, w * 0.2, 0.8, util.darker(JUTE, 0.25), 0.4); // the tied neck
+    util.ellipse(ctx, x + w / 2, y + h * 0.48, w * 0.15, h * 0.17, "#6B4A2E", 0); // the printed bean
+    util.line(ctx, x + w / 2, y + h * 0.36, x + w / 2, y + h * 0.6, JUTE, 0.3);
+  }
+
+  // Coffee sacks stacked in the corner beside the white column, waiting to
+  // be ground: two on the floor and one on top. Only drawn: players walk
+  // through them.
+  art.hiding["mon-cafe:spot"] = function (ctx, spot) {
+    var x = spot.x;
+    var y = spot.y;
+    var k = spot.r / 9; // the drawing is made for a spot of radius 9
+    util.hidingShade(ctx, x, y, spot.r);
+    coffeeSack(ctx, x - 7.5 * k, y - 1 * k, 7 * k, 8 * k);
+    coffeeSack(ctx, x + 0.5 * k, y - 0.5 * k, 7 * k, 8 * k);
+    coffeeSack(ctx, x - 3.5 * k, y - 6.5 * k, 7 * k, 8 * k);
+    util.circle(ctx, x + 6 * k, y - 4.5 * k, 0.55 * k, "#6B4A2E", 0); // spilt beans
+    util.circle(ctx, x + 7.2 * k, y - 3.4 * k, 0.5 * k, "#6B4A2E", 0);
+  };
 })();

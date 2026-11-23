@@ -1,6 +1,7 @@
 // The objects that stand at the task stations (Felix, 2026-11-21): one
 // thing per station, so a player sees what the task is about before opening
-// it. Station 6 ("Catch the wave") is not in use and has no object.
+// it. Station 6 ("Catch the wave") is not in use yet but has its object
+// since M3-1.7, so the beach exit shows what it will be about.
 //
 // draw.js looks them up in Game.world.art.stations by station id. Each
 // function draws its object around the station's centre (0, 0), in map
@@ -150,10 +151,10 @@ Game.world = Game.world || {};
   }
   place(3, -13.5, -12, 16, 11, trayStand);
 
-  // 4 Shelve the books: a wooden book cart with a row of books, parked in
-  // front of the bookshelf, 6.6 units from it: as close as its outline allows
-  // with a gap of 1 to the shelf. Its shadow lies under the cart, between
-  // the wheels.
+  // 4 Shelve the books: a wooden book cart with a row of books, parked by
+  // the left wall below the window (M3-1.7), as close as its outline allows:
+  // the outline touches the wall and ends on the bookshelf's edge. Its
+  // shadow lies under the cart, between the wheels.
   function bookCart(ctx) {
     var colours = [RED, BLUE, YELLOW, GREEN, PURPLE, ORANGE];
     var heights = [4.5, 5, 4, 5, 4.5, 4];
@@ -184,6 +185,23 @@ Game.world = Game.world || {};
   }
   place(5, -14.5, -9, 14, 16, selfCheckout);
 
+  // 6 Catch the wave: a surfboard standing upright in a small wooden stand,
+  // a block of wax beside it, on the deck by the exit to the beach, left
+  // of the surfboard rack, its outline 3 units from the rack (M3-1.7). The
+  // station is not in use yet (DESIGN.md, section 8); the board shows what
+  // it will be about.
+  var SURF = "#4FC1C1"; // the colour of the boards on the rack and the sand
+  function surfboardInStand(ctx) {
+    ellipse(ctx, 9, 11.5, 3.6, 11, SURF, EDGE); // the board, nose up
+    line(ctx, 9, 2.5, 9, 20.5, WHITE, DETAIL); // its stringer
+    box(ctx, 7.2, 8, 3.6, 1, 0.3, util.lighter(SURF, 0.5), 0); // a stripe across
+    box(ctx, 4, 20.5, 10, 4.5, 0.8, SHELF_WOOD, EDGE); // the stand
+    line(ctx, 5, 22.75, 13, 22.75, util.darker(SHELF_WOOD, 0.3), DETAIL);
+    box(ctx, 0, 21, 3.6, 3.2, 0.5, "#F6EBC8", EDGE); // the block of wax
+    line(ctx, 0.8, 22.6, 2.8, 22.6, "#D9C48C", DETAIL);
+  }
+  place(6, -3, -13, 14, 25, surfboardInStand, { shadow: { x: -2, y: 12, w: 12 } });
+
   // 7 De-buzzword the slides: a flip chart on an easel, one word crossed
   // out. It stands against the front wall, left of the lectern.
   function flipChart(ctx) {
@@ -200,7 +218,9 @@ Game.world = Game.world || {};
   place(7, -2, -14.5, 13, 16, flipChart, { shadow: { x: -0.5, y: 1, w: 10 } });
 
   // 8 Emergency caffeine protocol: a to-go coffee cup on a small round
-  // café table, beside the divider.
+  // café table, in the bottom left corner of the café below the third
+  // column (M3-1.7): its outline keeps clear of the high table's end, the
+  // column and the wall below.
   function coffeeOnTable(ctx) {
     box(ctx, 3.5, 9.5, 3, 2.5, 0.5, DARK, DETAIL); // the table's foot
     ellipse(ctx, 5, 8.5, 5, 2.5, CAFE_WOOD, EDGE); // the table top
@@ -208,10 +228,11 @@ Game.world = Game.world || {};
     polygon(ctx, [[2.7, 4.2], [7.3, 4.2], [7.1, 6.3], [2.9, 6.3]], KRAFT, 0); // its sleeve
     box(ctx, 1.5, 0.5, 7, 1.8, 0.6, COFFEE, EDGE); // its lid
   }
-  place(8, -9, -14, 10, 12, coffeeOnTable, { shadow: { x: -7.5, y: -3, w: 7 }, tag: { x: 0.15, y: -3.35 } });
+  place(8, -5, -6, 10, 12, coffeeOnTable);
 
-  // 9 Save the lunch: a lunch tray on a small steel trolley. The nearest
-  // furniture (table 3, the tray return) is too far for it to lean on.
+  // 9 Save the lunch: a lunch tray on a small steel trolley, parked by the
+  // canteen's bottom wall (M3-1.7), between the room's name and the potted
+  // plant in the corner.
   function lunchTrolley(ctx) {
     circle(ctx, 2.5, 11, 1, DARK, 0);
     circle(ctx, 13.5, 11, 1, DARK, 0);
@@ -263,8 +284,8 @@ Game.world = Game.world || {};
   place(11, -7, -5, 12, 10, shoppingBasket, { tag: { x: 5.15, y: 4.15 } });
 
   // 12 Seagull quality control: a seagull on a bin, holding a stolen page.
-  // A bin stands free on the deck: no wall or furniture is near enough to
-  // lean on, and beside bush 4 the station would glow too near the spawn.
+  // The bin stands by the deck's right wall below the hedge (M3-1.7),
+  // under the hedge's hollow; its tag ends 3 units before the wall.
   function seagullOnBin(ctx) {
     box(ctx, 1.5, 7, 9, 7, 0.6, "#5E6270", EDGE); // the bin
     [4, 6, 8].forEach(function (x) {

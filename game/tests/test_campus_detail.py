@@ -377,6 +377,14 @@ def test_the_new_furniture_of_pingo_doce_changes_no_walking_distance_of_the_duel
         assert after[pair] == pytest.approx(distance, abs=0.001), pair
 
 
+def with_station_4_at_its_old_place(campus):
+    """A copy of the map with station 4 where it stood until M3-1.7: in front of the bookshelf."""
+    changed = copy.deepcopy(campus)
+    station_4 = next(station for station in changed["stations"] if station["id"] == 4)
+    station_4["x"], station_4["y"] = 90, 520
+    return changed
+
+
 def test_the_walking_distances_changed_only_a_little():
     # Measured for this to-do, against the map before it (round 9, furniture
     # at the scale of the characters):
@@ -397,10 +405,13 @@ def test_the_walking_distances_changed_only_a_little():
     #   574.0) and 4.3 % longer (spawn to 2: 327.2 -> 341.3).
     # The ways to station 4 are 4 to 12 % shorter; every other way is at
     # most 3 % shorter and at most 5 % longer.
-    # These historical bounds were measured for the original five stations.
+    # These historical bounds were measured for the original five stations,
+    # with station 4 in front of the bookshelf: M3-1.7 moved it to the left
+    # wall (S-196), so both maps here keep it at its old place, and the
+    # bounds still measure only what the furniture changed.
     stations = [1, 2, 3, 4, 5]
-    before = station_distances(as_before_this_to_do(CAMPUS), stations)
-    after = station_distances(CAMPUS, stations)
+    before = station_distances(with_station_4_at_its_old_place(as_before_this_to_do(CAMPUS)), stations)
+    after = station_distances(with_station_4_at_its_old_place(CAMPUS), stations)
     for pair, distance in before.items():
         if 4 in pair:
             assert distance * 0.88 <= after[pair] <= distance * 0.96, pair

@@ -17,6 +17,8 @@
 //                           differing pixel
 //              fallback     how many pixels inside the circle differ when
 //                           its drawing is missing (the dashed circle)
+//              drawing      the name its drawing is registered under in the
+//                           art group "hiding", or null
 //
 // How it is measured: the page's own Game.world.drawMap draws the whole map
 // at 4 pixels per unit, with and without `hiding_spots`, without stations.
@@ -91,6 +93,7 @@ function measure() {
         outside: changed.filter((point) => distance(point) > spot.r + REACH).length,
         onOthers: [...onOthers].sort(),
         fallback,
+        drawing: key || null,
       };
     });
     return { spots };

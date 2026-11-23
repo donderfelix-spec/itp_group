@@ -1,14 +1,16 @@
-"""The hedge on the Main Deck touches tree 3, so no player fits between them (M1-1.5).
+"""The hedge on the Main Deck touches the deck's right wall, so no player fits between them.
 
-Before, tree 3 ended at x 556 and the hedge began at x 566: a gap of exactly
-10 units, as wide as a player. A player could stand in it and was drawn over
-both. Now the hedge begins at x 556. These tests use the real map file and
-the real walking rules.
+Until M3-1.7 the hedge lay left to right at the top right of the deck and
+began where tree 3 ends, closing a gap exactly one player wide (M1-1.5,
+S-111). Since M3-1.7 (S-196) it stands upright along the right wall, and the
+same rule moves with it: the hedge ends where the wall begins (x 657), so
+no player can squeeze in between and be drawn over both. Tree 3 now stands
+on its own. These tests use the real map file and the real walking rules.
 
 They are about a solid hedge (S-87). Since M3-1.4 the hedge is walkable for
 hiding (S-98), so these tests run on a copy of the real map with the hedge
-made solid again: the gap to tree 3 must stay closed should the hedge ever be
-solid again. Walking into the walkable hedge is tested in
+made solid again: the gap to the wall must stay closed should the hedge ever
+be solid again. Walking into the walkable hedge is tested in
 `test_hiding_visibility.py`.
 """
 
@@ -30,10 +32,10 @@ SOLIDS = CAMPUS["solids"]
 WIDTH = CAMPUS["width"]
 HEIGHT = CAMPUS["height"]
 
-# The strip between the right edge of tree 3 and the old left edge of the
-# hedge, where both had a side: from the top of the tree (y 238) to the
-# bottom of the hedge (y 262). Below y 262 there is only open deck.
-OLD_GAP = {"x": 556, "y": 238, "w": 10, "h": 24}
+# The strip at the wall that a hedge 10 units narrower would leave open:
+# from its right edge (x 647) to the wall (x 657), as high as the hedge
+# (y 255 to 323). Exactly one player wide, like the old gap at tree 3.
+WALL_GAP = {"x": 647, "y": 255, "w": 10, "h": 68}
 
 # One step of a walk, the same length as a tick of the server.
 TICK_SECONDS = 0.05
@@ -52,17 +54,17 @@ def walk(x, y, dx, dy, seconds, solids=SOLIDS):
     return positions
 
 
-def old_map():
-    """A copy of the real map with the hedge where it was before: x 566, w 58."""
-    old = copy.deepcopy(CAMPUS)
-    old_hedge = next(item for item in old["solids"] if item["id"] == "deck-hedge")
-    old_hedge["x"], old_hedge["w"] = 566, 58
-    return old
+def narrower_map():
+    """A copy of the real map with a hedge 10 units narrower: x 631, w 16, leaving a gap at the wall."""
+    narrower = copy.deepcopy(CAMPUS)
+    hedge = next(item for item in narrower["solids"] if item["id"] == "deck-hedge")
+    hedge["w"] = 16
+    return narrower
 
 
-def old_map_solids():
-    """The solids of the map with the old hedge, which left a gap to tree 3."""
-    return old_map()["solids"]
+def narrower_map_solids():
+    """The solids of the map with the narrower hedge, which leaves a gap at the wall."""
+    return narrower_map()["solids"]
 
 
 def numbers_from_to(low, high, size):
@@ -74,19 +76,19 @@ def numbers_from_to(low, high, size):
 # The map data
 
 
-def test_the_hedge_starts_where_tree_3_ends_and_keeps_its_right_edge():
+def test_the_hedge_stands_upright_and_ends_where_the_right_wall_begins():
     hedge = solid("deck-hedge")
-    tree = solid("deck-tree-3")
-    assert hedge["x"] == tree["x"] + tree["w"] == 556
-    assert hedge["x"] + hedge["w"] == 624
-    assert (hedge["y"], hedge["h"]) == (236, 26)
+    wall = solid("deck-wall-right")
+    assert hedge["x"] + hedge["w"] == wall["x"] == 657
+    assert (hedge["x"], hedge["y"], hedge["w"], hedge["h"]) == (631, 255, 26, 68)
+    assert hedge["h"] > hedge["w"]
 
 
 def test_the_hiding_spot_still_lies_inside_the_hedge():
     hedge = solid("deck-hedge")
     # Found by its position, and only x, y and r compared, so that a field
     # added later (an id, a room) does not break this test.
-    spot = next(spot for spot in CAMPUS["hiding_spots"] if (spot["x"], spot["y"]) == (595, 249))
+    spot = next(spot for spot in CAMPUS["hiding_spots"] if (spot["x"], spot["y"]) == (644, 297))
     assert spot["r"] == 9
     assert hedge["x"] <= spot["x"] - spot["r"]
     assert spot["x"] + spot["r"] <= hedge["x"] + hedge["w"]
@@ -108,45 +110,45 @@ def test_the_emergency_button_is_in_clear_space_at_the_center_of_the_deck():
         assert math.dist((x, y), (point["x"], point["y"])) > radius + point["r"]
 
 
-# Rejected: nobody can stand in the old gap
+# Rejected: nobody can stand between the hedge and the wall
 
 
-def test_no_position_in_the_old_gap_is_free():
-    # Looking every 0.5 units is enough: the old gap lies wholly inside the new
-    # hedge, so every player square that overlaps the gap also overlaps the
-    # hedge. The loop only checks that on many positions, the edges included.
+def test_no_position_between_the_hedge_and_the_wall_is_free():
+    # The strip lies wholly inside the hedge, so every player square that
+    # overlaps it also overlaps the hedge. The loop only checks that on many
+    # positions, the edges included.
     checked = 0
-    for x in numbers_from_to(551, 571, 0.5):
-        for y in numbers_from_to(231, 267, 0.5):
-            if overlaps(x, y, OLD_GAP):
+    for x in numbers_from_to(642, 662, 0.5):
+        for y in numbers_from_to(250, 328, 0.5):
+            if overlaps(x, y, WALL_GAP):
                 checked += 1
                 assert not is_free(x, y, SOLIDS, WIDTH, HEIGHT), (x, y)
     # Make sure the loop really looked at many positions.
     assert checked > 1000
 
 
-def test_the_old_map_had_room_for_a_player_in_the_gap():
-    # Shows that the test above would have caught the old gap.
-    assert is_free(561, 249, old_map_solids(), WIDTH, HEIGHT)
+def test_a_hedge_10_units_narrower_would_leave_room_for_a_player_at_the_wall():
+    # Shows that the test above would catch such a gap.
+    assert is_free(652, 289, narrower_map_solids(), WIDTH, HEIGHT)
 
 
-def test_walking_up_into_the_old_gap_stops_below_the_hedge():
-    positions = walk(561, 300, 0, -1, 3)
-    # The hedge's bottom edge is y 262 and the player is 10 high.
-    assert all(y >= 262 + 5 for _, y in positions)
-    assert positions[-1] == (561, 267)
+def test_walking_up_along_the_wall_stops_below_the_hedge():
+    positions = walk(652, 360, 0, -1, 3)
+    # The hedge's bottom edge is y 323 and the player is 10 high.
+    assert all(y >= 323 + 5 for _, y in positions)
+    assert positions[-1] == (652, 328)
 
 
-def test_walking_down_into_the_old_gap_stops_above_the_hedge():
-    positions = walk(561, 210, 0, 1, 3)
-    # The hedge's top edge is y 236, above the top of tree 3 (y 238).
-    assert all(y <= 236 - 5 for _, y in positions)
-    assert positions[-1] == (561, 231)
+def test_walking_down_along_the_wall_stops_above_the_hedge():
+    positions = walk(652, 205, 0, 1, 3)
+    # The hedge's top edge is y 255.
+    assert all(y <= 255 - 5 for _, y in positions)
+    assert positions[-1] == (652, 250)
 
 
-def test_on_the_old_map_a_player_walked_straight_through_the_gap():
-    positions = walk(561, 300, 0, -1, 3, old_map_solids())
-    assert positions[-1][1] < 230
+def test_with_a_narrower_hedge_a_player_walked_straight_along_the_wall():
+    positions = walk(652, 360, 0, -1, 3, narrower_map_solids())
+    assert positions[-1][1] < 250
 
 
 # Accepted: the ways around tree 3 and the hedge are still open
@@ -158,23 +160,31 @@ def test_a_player_can_still_walk_up_left_of_tree_3():
     assert y < 230
 
 
-def test_a_player_can_still_walk_up_right_of_the_hedge_past_the_button():
-    # Between the hedge (right edge 624) and the deck wall (x 657) there are
-    # 33 units of room. The button is not solid, so walking over it is fine.
-    x, y = walk(640, 300, 0, -1, 3)[-1]
-    assert x == 640
+def test_a_player_can_now_walk_up_right_of_tree_3_where_the_hedge_was():
+    # The old hedge lay at x 556 to 624, y 236 to 262; that is open deck now.
+    x, y = walk(590, 300, 0, -1, 3)[-1]
+    assert x == 590
     assert y < 230
 
 
-@pytest.mark.parametrize("x", [629, 652])
-def test_the_way_right_of_the_hedge_is_open_from_wall_to_hedge(x):
-    # The leftmost and rightmost lanes in that way: touching the hedge, touching the wall.
-    for y in numbers_from_to(225, 275, 1):
+def test_a_player_can_walk_up_left_of_the_hedge():
+    # The lane touching the hedge's left side (x 631) is open from below to
+    # the corridor.
+    x, y = walk(626, 360, 0, -1, 3)[-1]
+    assert x == 626
+    assert y < 230
+
+
+@pytest.mark.parametrize("x", [626, 600])
+def test_the_way_left_of_the_hedge_is_open_beside_it(x):
+    # The lane touching the hedge and one further out, along the hedge's whole height.
+    for y in numbers_from_to(245, 335, 1):
         assert is_free(x, y, SOLIDS, WIDTH, HEIGHT), (x, y)
 
 
-def test_the_duel_walking_distances_are_the_same_as_with_the_old_hedge():
-    # The gap was only 10 units wide, and with a grid step of 4 no grid point
-    # of `paths` fitted into it, so closing it changes no walking distance.
+def test_the_duel_walking_distances_are_the_same_as_with_a_narrower_hedge():
+    # A gap of 10 units at the wall would not shorten any way of the Duel:
+    # going round the hedge's left side is as short, so closing it at the
+    # wall changes no walking distance.
     stations = sorted(minigames.MINIGAMES)
-    assert station_distances(CAMPUS, stations) == station_distances(old_map(), stations)
+    assert station_distances(CAMPUS, stations) == station_distances(narrower_map(), stations)
