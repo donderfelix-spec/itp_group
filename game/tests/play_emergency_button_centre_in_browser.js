@@ -34,7 +34,7 @@ function put(places) {
 }
 
 const PROBE = () => {
-  window.__button = { frame: null };
+  window.__button = { frame: null, look: null };
   window.addEventListener('load', () => {
     const world = window.Game && window.Game.world;
     if (!world || !world.drawMap) return;
@@ -52,6 +52,7 @@ const PROBE = () => {
         const drawn = Boolean(b) && arcs.some(([x, y, r]) => x === b.x && y === b.y && r === b.r);
         window.__campus = campus;
         window.__button.frame = { visible: emergencyVisible === true, drawn };
+        window.__button.look = emergencyVisible === true ? 'ready' : emergencyVisible === 'locked' ? 'locked' : 'none';
         arcs = null;
       }
     };
@@ -153,12 +154,13 @@ function meetingsSince(g, count) {
     out.button = button;
     const hintRadius = await caller.page.evaluate(() => window.__campus.use_range);
 
-    // 1. Before 45 s: standing on the button, nothing is drawn and E does nothing.
+    // 1. Before 45 s: standing on the button, it is drawn grey and locked (S-216), and E does nothing.
     await standAt(caller, [button.x, button.y]);
     const counts = pages.map((g) => g.received.length);
     out.before = {
       seconds: (Date.now() - caller.roundAt) / 1000,
       frame: await caller.page.evaluate(() => window.__button.frame),
+      look: await caller.page.evaluate(() => window.__button.look),
       useText: await useText(caller),
     };
     await caller.page.keyboard.press('KeyE');
@@ -178,6 +180,7 @@ function meetingsSince(g, count) {
     out.unlock = {
       seconds: (Date.now() - caller.roundAt) / 1000,
       frame: await caller.page.evaluate(() => window.__button.frame),
+      look: await caller.page.evaluate(() => window.__button.look),
       others: await Promise.all(pages.map((g) => g.page.evaluate(() => window.__button.frame))),
     };
 

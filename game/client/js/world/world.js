@@ -179,7 +179,7 @@ Game.world = Game.world || {};
   var freeRiderEButton = null;
   var inputPaused = false; // true while a minigame is open, see setInputPaused()
   var overviewOpen = false;
-  var classicVision = false;
+  var classicRoundActive = false;
   // When the positions messages of the last GAP_MEMORY_MILLISECONDS arrived,
   // oldest first. One list for the world: every message lists all players.
   var arrivalTimes = [];
@@ -938,7 +938,7 @@ Game.world = Game.world || {};
         receive(player, entry.x, entry.y, now, delay);
       }
     });
-    if (classicVision || ownHidingCheck) {
+    if (classicRoundActive || ownHidingCheck) {
       players.forEach(function (player, name) {
         // The server always lists the own player.
         if (!listed.has(name) && !isOwn(player)) forgetPosition(player);
@@ -1439,7 +1439,7 @@ Game.world = Game.world || {};
 
   function emergencyIsUnlocked() {
     // Without js/classic/hud-actions.js (a page or test that loads only the
-    // world) there is no Classic, so the button stays locked and hidden.
+    // world) there is no Classic clock, so the button stays locked.
     if (!window.ClassicHudActions) return false;
     return window.ClassicHudActions.emergencyUnlocked(
       emergencyStatus, emergencyStatusReceivedAt, performance.now()
@@ -1945,11 +1945,15 @@ Game.world = Game.world || {};
     }
     var centre = cameraCentre(now);
     var view = aimCamera(centre);
-    Game.world.drawMap(ctx, campus, view, emergencyIsUnlocked(), stationsThatPulse(), now);
+    var emergencyButtonState = classicRoundActive && (emergencyIsUnlocked() || "locked");
+    Game.world.drawMap(ctx, campus, view, emergencyButtonState, stationsThatPulse(), now);
     var vision = Game.world.vision;
-    var sight = classicVision && !ownIsGhost && vision ? vision.boundary(campus, centre) : null;
+    var sight = classicRoundActive && !ownIsGhost && vision ? vision.boundary(campus, centre) : null;
     if (sight) {
-      vision.darken(ctx, view, sight, centre, vision.rangeOf(campus));
+      // Soft wall shadows (S-214); the hard fog only where no extra canvas can be made.
+      if (!vision.darkenSoftly(ctx, view, campus, centre)) {
+        vision.darken(ctx, view, sight, centre, vision.rangeOf(campus));
+      }
       ctx.save();
       vision.clip(ctx, sight);
     }
@@ -1966,8 +1970,11 @@ Game.world = Game.world || {};
       var own = players.get(ownName);
       Game.taskNavigation.draw(ctx, campus, centre, own ? own.server : null, inputPaused || overviewOpen);
     }
-    drawPlayers(now);
+    // Players and their names are drawn whole, outside the clip (S-214):
+    // the server sends only those in sight and every other one is deleted,
+    // so the hard sight line must not cut a body in two.
     if (sight) ctx.restore();
+    drawPlayers(now);
   }
 
   // The browser calls this before every repaint of the screen, and not at
@@ -2055,7 +2062,7 @@ Game.world = Game.world || {};
     removeUseButton();
     running = false;
     overviewOpen = false;
-    classicVision = false;
+    classicRoundActive = false;
     usableStations = null; // the next lobby starts with all stations again
     players.clear();
     clearClassicRound();
@@ -2129,7 +2136,7 @@ Game.world = Game.world || {};
   Game.world.stationInRange = stationInRange;
   Game.world.setInputPaused = setInputPaused;
   Game.world.setOverviewOpen = setOverviewOpen;
-  Game.world.setClassicVision = function (active) { classicVision = active === true; };
+  Game.world.setClassicRoundActive = function (active) { classicRoundActive = active === true; };
   Game.world.overviewData = function () {
     return running && campus
       ? { campus: campus, position: ownServerPosition(), stations: stationsThatPulse().slice() }
