@@ -12,7 +12,7 @@ task_helpers.put does). Then
 - one High Performer stands at its active station, presses E, waits and
   clicks "Finish task" in the page; after the server's `station_done` the
   card names the next task, and the group bar moves;
-- another High Performer stands next to the Free Rider, who presses Q; the
+- another High Performer stands next to the Free Rider, who presses F; the
   failed player (a ghost, DESIGN rule 9) still sees its active task.
 
 The browser and this test talk through the browser script's stdin and stdout:

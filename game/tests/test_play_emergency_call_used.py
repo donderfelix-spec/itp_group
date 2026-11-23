@@ -19,8 +19,8 @@ other, spare):
    Rider, who have not called, see "E Emergency" at the button: another
    player's call hides nothing.
 3. The Free Rider calls at the button; after that meeting, at the button, he
-   sees the fail look: "Let fail" (switched off with nobody near), then
-   "Let fail" with the spare beside him (no tile count, S-181). E sends nothing; a click
+   sees the fail look: "F Let fail" (switched off with nobody near), then
+   "F Let fail" with the spare beside him (no tile count, S-181; key first, S-195). E sends nothing; a click
    on the use button sends `fail` (not `emergency`) and the spare is out.
 4. The other High Performer reports the spare's sheet; after that report
    meeting he still sees "E Emergency" at the button. He calls, and the
@@ -111,7 +111,7 @@ def sent_count(browser, label):
 def call_at_button(browser, label, place, number):
     """Stand at the button, see "E Emergency", press E; wait for meeting `number` on every page."""
     stand(browser, label, place)
-    browser.wait(label, "document.querySelector('.use-button').textContent === 'E Emergency'", timeout=5000)
+    browser.wait(label, "Array.from(document.querySelectorAll('.use-button, .free-rider-e-button')).some((b) => !b.hidden && b.textContent === 'E Emergency')", timeout=5000)
     before = use_button(browser, label)
     states = {other: meeting_states(browser, other) for other in LABELS}
     browser.call("press", label=label, key="KeyE")
@@ -249,7 +249,7 @@ def played(server):  # noqa: F811 (the imported fixture)
         seen["report_state"] = first_meeting_state_since(browser, other, states[other])[0]
         end_meeting(browser, clock, 3)
         stand(browser, other, OTHER_AT_BUTTON)
-        browser.wait(other, "document.querySelector('.use-button').textContent === 'E Emergency'", timeout=5000)
+        browser.wait(other, "Array.from(document.querySelectorAll('.use-button, .free-rider-e-button')).some((b) => !b.hidden && b.textContent === 'E Emergency')", timeout=5000)
         seen["other_after_report"] = use_button(browser, other)
         shot(browser, other, "3a_other_after_report_meeting_E_Emergency")
         seen["other_call"] = call_at_button(browser, other, OTHER_AT_BUTTON, 4)
@@ -280,7 +280,7 @@ def played(server):  # noqa: F811 (the imported fixture)
         put(names[caller], free_place_at(CENTRE, 60, near=(CENTRE[0] - 60, CENTRE[1])))
         fail_far_from_the_button(browser, fr2, victim2, clock)
         stand(browser, fr, FR_AT_BUTTON)
-        browser.wait(fr, "document.querySelector('.use-button').textContent === 'E Emergency'", timeout=5000)
+        browser.wait(fr, "Array.from(document.querySelectorAll('.use-button, .free-rider-e-button')).some((b) => !b.hidden && b.textContent === 'E Emergency')", timeout=5000)
         seen["r2_old_fr"] = use_button(browser, fr)
         shot(browser, fr, "4a_round_2_round_1_free_rider_E_Emergency")
         put(names[fr], free_place_at(CENTRE, 60, near=(CENTRE[0] + 60, CENTRE[1])))
@@ -345,8 +345,8 @@ def test_the_free_riders_call_opens_a_meeting_that_names_him(played):
 
 
 def test_after_his_call_the_free_rider_at_the_button_sees_the_fail_look(played):
-    assert played["fr_after_alone"] == {"text": "Let fail", "disabled": True, "failLook": True}
-    assert played["fr_after_with_target"] == {"text": "Let fail", "disabled": False, "failLook": True}
+    assert played["fr_after_alone"] == {"text": "F Let fail", "disabled": True, "failLook": True}
+    assert played["fr_after_with_target"] == {"text": "F Let fail", "disabled": False, "failLook": True}
 
 
 def test_after_his_call_e_of_the_free_rider_at_the_button_sends_no_emergency(played):

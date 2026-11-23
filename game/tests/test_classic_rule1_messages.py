@@ -603,7 +603,7 @@ def walk(rec, name, hidden_free_rider=None):
 
 
 def refused_fail(rec, actor, beside):
-    """`actor` presses Q with only `beside` in range (a Free Rider or nobody he may fail)."""
+    """`actor` presses F with only `beside` in range (a Free Rider or nobody he may fail)."""
     rec.place({actor: FAIL_PLACE, beside: SHEET_PLACE})
     rec.connections[actor].send_json({"type": "fail"})
     rec.step(f"{actor} cannot fail {beside}", {actor: ["error"]}, actor=actor, quiet_for_others=True)
@@ -697,7 +697,7 @@ def play_five(connect, clock, monkeypatch) -> Recorder:
     free_rider_tries_a_task(rec, "Mara")
     walk(rec, "walking")
     walk(rec, "walking, Mara hidden", hidden_free_rider="Mara")
-    refused_fail(rec, "Rui", "Ines")  # a High Performer presses Q
+    refused_fail(rec, "Rui", "Ines")  # a High Performer presses F
     sheet = fail(rec, clock, "Mara", "Tiago")
     walk(rec, "ticks, Mara hidden", hidden_free_rider="Mara")
     clock.wait(1)

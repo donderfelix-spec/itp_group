@@ -569,11 +569,25 @@ input {
   background: var(--sun);
 }
 
-.use-button.fail-button {
-  background: linear-gradient(to right, #F2C84B var(--fail-fill, 100%), #D9D3C5 var(--fail-fill, 100%));
-}
+/* The Free Rider's "F Let fail" (S-195). Ready with a victim in range it
+   is the yellow of an active "E Use" (the rule above). Switched off it is
+   grey: while it charges, a darker grey fills it from left to right
+   (--fail-fill, set by world.js); charged with nobody in range, the darker
+   grey fills all of it. The letters stay ink, readable on both greys. */
 .use-button.fail-button:disabled {
-  background: linear-gradient(to right, #F2C84B var(--fail-fill, 100%), #D9D3C5 var(--fail-fill, 100%));
+  background: linear-gradient(to right, #A8A192 var(--fail-fill, 100%), #DDD8CC var(--fail-fill, 100%));
+  color: var(--ink);
+}
+
+/* The Free Rider's own E button ("E Emergency", "E Hide", "E Leave
+   hiding", S-195): only while E would do one of them, in a place of its
+   own above "R Report", so that no button moves when another appears. */
+.free-rider-e-button {
+  position: absolute;
+  right: 34px;
+  bottom: 138px;
+  z-index: 1;
+  background: var(--sun);
 }
 
 .report-button {
@@ -582,6 +596,20 @@ input {
   bottom: 86px;
   z-index: 1;
   background: var(--sun);
+}
+
+/* On a narrow window the three action buttons are a little smaller and
+   closer together, so that they cover less of the small map (S-195). They
+   keep their order and their right edge. */
+@media (max-width: 620px) {
+  .use-button,
+  .report-button,
+  .free-rider-e-button {
+    padding: 6px 14px;
+    font-size: 15px;
+  }
+  .report-button { bottom: 76px; }
+  .free-rider-e-button { bottom: 118px; }
 }
 
 /* The card at the top left of the map (minigames/task_navigation.js): the

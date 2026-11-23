@@ -227,7 +227,7 @@ async function finish(g, station) {
     await put([[victim.name, at], [freeRider.name, at]]);
     let failed = null;
     for (let attempt = 0; attempt < 20 && !failed; attempt++) {
-      await freeRider.page.keyboard.press('KeyQ');
+      await freeRider.page.keyboard.press('KeyF'); // F lets fail (S-195; Q did before)
       await pause(300);
       failed = victim.received.find((m) => m.type === 'classic_fail');
     }
