@@ -76,3 +76,25 @@ def test_another_players_message_with_the_same_text_does_not_empty_the_own_field
         discussion_with([("Bo", "Skip?")]), ["lookAtChat"],
     ])
     assert result["drawings"][0]["chatValue"] == "Skip?"
+
+
+@needs_node
+def test_a_double_enter_sends_the_text_once_and_nothing_comes_back_after_it_was_posted():
+    result = run_page(classic_round_as_free_rider() + [
+        discussion_with([]),
+        ["typeChat", "It was Bo."], ["typeChat", "It was Bo."],
+        discussion_with([(OWN, "It was Bo.")]), ["lookAtChat"],
+    ])
+    assert [m for m in result["sent"] if m["type"] == "chat"] == [{"type": "chat", "text": "It was Bo."}]
+    assert result["drawings"][-1]["chatValue"] == ""
+
+
+@needs_node
+def test_a_text_left_in_the_field_does_not_reach_the_next_meeting():
+    result = run_page(classic_round_as_free_rider() + [
+        discussion_with([]),
+        ["typeChat", "Too late?"], refusal(),
+        ["call", "classicMeeting", "hide"], discussion_with([]), ["lookAtChat"],
+    ])
+    assert result["drawings"][-1]["chatValue"] == ""
+    assert result["drawings"][-1]["chatRefused"] is False

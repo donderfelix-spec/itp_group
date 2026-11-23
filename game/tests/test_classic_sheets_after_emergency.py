@@ -11,6 +11,7 @@ meeting closes only its own sheet, as before (S-150).
 from rules import call_emergency, can_report, report_sheet
 from task_helpers import client, clock, connect  # noqa: F401
 from test_classic_round_end_cleanup import (
+    SHEET as SHEET_AFTER,
     UNLOCK_WAIT,
     classic_round_as_free_rider,
     meeting_state,
@@ -160,3 +161,17 @@ def test_after_an_emergency_meeting_an_old_sheet_is_refused_and_a_new_one_report
     connections[reporter].send_json({"type": "report", "sheet_id": new["sheet_id"], "position": new["position"]})
     state = read_until(connections[reporter], "meeting_state")[-1]
     assert state["reason"] == "report" and state["reported_sheet_id"] == new["sheet_id"]
+
+
+@needs_node
+def test_a_sheet_failed_after_the_emergency_meeting_shows_report_also_after_a_late_result_copy():
+    late_result = meeting_state("result")
+    late_result[1].update(ejected_id=None, revealed_role=None, winner=None)
+    new_sheet = dict(SHEET_AFTER, sheet_id="f-sheet-2")
+    looks = run_page(classic_round_as_free_rider() + [
+        ["wait", UNLOCK_WAIT], meeting_state("discussion"), ["call", "classicMeeting", "hide"],
+        ["receive", new_sheet], ["wait", 200], ["look"],
+        late_result, ["call", "classicMeeting", "hide"], ["wait", 200], ["look"],
+    ])["looks"]
+    assert looks[0]["reportButtonShown"] is True  # the new sheet, failed after the meeting
+    assert looks[1]["reportButtonShown"] is True  # a late copy of the result closes nothing

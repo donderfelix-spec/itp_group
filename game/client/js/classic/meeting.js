@@ -129,6 +129,8 @@ Game.classicMeeting = Game.classicMeeting || {};
     pendingChats = [];
     ownMessagesSeen = 0;
     showChatRefusal(null);
+    // A text left in the field belongs to this meeting only, not the next one.
+    if (input) input.value = "";
     screen.hidden = true;
   }
 
@@ -150,7 +152,8 @@ Game.classicMeeting = Game.classicMeeting || {};
   // pending. Its text goes back into an empty field, and the refusal text
   // shows under the field for a few seconds (DESIGN.md section 9).
   function whenChatRefused(message) {
-    if (!message || message.code !== "chat_rejected" || !state) return;
+    // `bad_chat` (protocol.py refused the text itself) answers a chat as well.
+    if (!message || !["chat_rejected", "bad_chat"].includes(message.code) || !state) return;
     var text = pendingChats.shift();
     if (input && typeof text === "string" && input.value === "") input.value = text;
     showChatRefusal(typeof message.message === "string" ? message.message : null);
@@ -325,7 +328,9 @@ Game.classicMeeting = Game.classicMeeting || {};
   function sendMessage(event) {
     event.preventDefault();
     if (!state || input.disabled || input.value.length === 0) return;
-    // The text stays in the field until the server took it (S-226).
+    // The text stays in the field until the server took it (S-226). The same
+    // text again while it waits for its answer (a double Enter) is not sent twice.
+    if (pendingChats.includes(input.value)) return;
     if (Game.net.send({ type: "chat", text: input.value })) pendingChats.push(input.value);
   }
 
