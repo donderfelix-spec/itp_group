@@ -210,7 +210,7 @@ The win and the time go into the statistics (S-40).
 
 ## 8. Minigames
 
-Every room has its fixed minigame, it does not change. But the content is shuffled anew every round. All minigames take 10 to 25 seconds, are played with the mouse (station 12 also with the keys 1, 2 and 3) and have the same header: title, one sentence of instructions, close button.
+Every room has its fixed minigame, it does not change. But the content is shuffled anew every round. All minigames take 10 to 25 seconds, are played with the mouse (station 6 also with Space or Enter, station 12 also with the keys 1, 2 and 3) and have the same header: title, one sentence of instructions, close button.
 
 After a mistake, only the wrong piece is reset, never the whole minigame.
 
@@ -223,9 +223,9 @@ A minigame opens with E or the button “E Use” at its station, only while a r
 | 3 | Canteen | Build the tray | There are six dishes at the counter. The order slip names four of them. Click these four onto the tray, the order does not matter | the four from the order slip are on the tray | the wrong dish goes back to the counter |
 | 4 | CTT Student Hall | Shelve the books | Click six numbered books onto the shelf in ascending order | all six are on the shelf | the wrong book falls back onto the stack |
 | 5 | Pingo Doce | Self-checkout | The checkout shows a target amount, for example €7.50. Six products with prices are on the belt. Scan as many as needed to get exactly that amount. A click on a scanned product puts it back | the total is exactly right | a product that takes the total above the amount is not accepted: “Unexpected item in the bagging area” |
-| 6 | Glass front to the beach on the Main Deck | Catch the wave | A surfboard lies on the water, a wave runs through the picture from left to right. Click, tap or press Space when the wave is under the board | three waves have been caught | a wrong click only costs this attempt, the hits stay |
+| 6 | Glass front to the beach on the Main Deck | Catch the wave | A surfboard lies on the water, a wave runs through the picture from left to right. Click or tap the water, press “Catch wave”, or press Space or Enter when the wave is under the board; one try per wave | three waves have been caught | a wrong click only costs this attempt, the hits stay |
 
-Station 6 is active in Duel, Solo and Classic. Three successful catches complete the minigame.
+Station 6 is active in Duel, Solo and Classic (S-221). Three successful catches complete the minigame.
 
 **Sentences and names in the minigames**
 
@@ -234,6 +234,7 @@ Station 6 is active in Duel, Solo and Classic. Three successful catches complete
 - **Sort the slides:** “Drag the slides into the right order.” Five numbered places stand above the pile. A slide dropped on its right place stays there; on a wrong or filled place it shakes and jumps back; released outside the window it returns without counting.
 - **Shelve the books:** “Click the books onto the shelf, lowest number first.” The numbers are six different numbers from 100 to 999.
 - **Self-checkout:** “Scan products until the total is exactly the target amount.” The six products are Water, Bread, Cheese, Apples, Coffee and Chocolate, with prices from €0.50 to €4.00. The display shows “Target” and “Total”, the rows are labelled “Belt” and “Bagging area”. The target is never the price of a single product, so there are always at least two clicks.
+- **Catch the wave:** “Tap the water or press Catch wave as the crest passes under the board. Catch three waves.” The button is “Catch wave”, below it “0 / 3 waves caught”. A try too early or too late says “Too early. Try the next wave.” or “Too late. Try the next wave.”, a catch “Caught! 1 / 3 waves caught.”, the third “All three waves caught!”. The server draws how long a wave takes to cross (1.8 to 2.4 seconds).
 
 About the drinks in minigame 2: Bica (Cup, Espresso), Abatanado (Cup, Espresso, Hot water), Meia de leite (Cup, Espresso, Milk), Galão (Glass, Espresso, Milk), Cappuccino (Cup, Espresso, Milk, Foam).
 
