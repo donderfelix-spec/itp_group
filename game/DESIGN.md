@@ -214,7 +214,7 @@ Every room has its fixed minigame, it does not change. But the content is shuffl
 
 After a mistake, only the wrong piece is reset, never the whole minigame.
 
-A minigame opens with E or the button “E Use” at its station, only while a round is running. While it is open the character stands still. The close button and Esc close it without counting; it can be opened again and then has new content. When it is solved, the window shows “Done” in green for 0.5 seconds and closes automatically; the close button is hidden meanwhile (S-127). A station whose minigame is not built yet shows “This task is still being built.” and a button “Finish task”.
+A minigame opens with E or the button “E Use” at its station, only while a round is running. While it is open the character stands still. The close button and Esc close it without counting; it can be opened again and then has new content. When it is solved, the window shows “Done” in green for 0.5 seconds and closes automatically; the close button is hidden meanwhile (S-127). Every station has a minigame of its own since S-221; the placeholder “This task is still being built.” with a button “Finish task” (`server/modes/placeholder.py`) is used only by tests.
 
 | No. | Room | Title | Task | Done when | After a mistake |
 |---|---|---|---|---|---|
@@ -320,6 +320,18 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Calling an emergency meeting in the first 45 seconds of a round or in the 45 seconds after a meeting (S-218) | “The emergency button unlocks in 20 seconds.” (the seconds left, “1 second” for one) |
 | A report with an F-sheet id that is not text of the right form (only when someone bypasses the page) | “That F-sheet could not be identified.” |
 | A report with a position that is not two finite numbers (only when someone bypasses the page) | “That position could not be read.” |
+| A page of another site opens the game's WebSocket (S-207) | No text: the server refuses the connection before it opens (HTTP 403), so that page only finds that it cannot connect. Our own pages, the deployed address and the sites in `ALLOWED_ORIGINS` are never refused. |
+
+The meeting window and the end screen also show these fixed lines, which are not refusals:
+
+| Situation | Message |
+|---|---|
+| Under the meeting's chat, for a living player during the discussion | “Living players can chat during the discussion.” |
+| Under the meeting's chat during the vote | “Chat is closed. Choose one living player to eject, or Skip.” |
+| Under the meeting's chat, for a ghost | “Ghosts can read the chat but cannot write.” |
+| Under the meeting's chat when the result is shown | “The vote is over.” |
+| The result of a vote with a tie or a majority for Skip | “No one was ejected.” |
+| The end screen, for a reason of the end the page does not know | “The round has ended.” |
 
 ## 10. What is deliberately not included
 
