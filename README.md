@@ -53,14 +53,18 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 Start the game, then open http://localhost:8000:
 
 ```bash
-.venv/bin/uvicorn server.main:app --reload
+.venv/bin/uvicorn server.main:app --reload --ws-max-size 4096
 ```
+
+`--ws-max-size 4096` makes the server close a connection that sends a WebSocket frame larger than 4 KiB before reading it; without it uvicorn reads frames of up to 16 MiB before the game refuses anything above 2048 bytes (S-224). The deployed game needs the same option in Render's start command, which is set in Render's settings and not in this repository, for example `uvicorn server.main:app --host 0.0.0.0 --port $PORT --ws-max-size 4096`.
+
+`DEBUG_ROLES=1` prints the roles of every Classic round to the server's log. It is a test aid for playing locally and is never set on Render.
 
 Without the environment variable `DATABASE_URL` the server keeps accounts and statistics in memory, so everything works locally and is gone after a restart. The deployed game reads `DATABASE_URL` from Render's settings and stores accounts and statistics in Postgres (Supabase).
 
 Two more environment variables decide which pages may open the game's WebSocket (S-207). Neither is a secret, and neither is needed locally: http://localhost:8000 and http://127.0.0.1:8000 work without them. Changing one in Render's settings restarts the service.
 
-- `ALLOWED_ORIGINS`: further sites whose pages may connect, comma separated, for example `https://itp-group.onrender.com` (a bare host such as `itp-group.onrender.com` allows http and https). The server already accepts a page from the host the request was sent to and always the deployed address https://itp-group.onrender.com; use this only if a page of the real game is refused.
+- `ALLOWED_ORIGINS`: further sites whose pages may connect, comma separated, for example `https://group-project-preview.onrender.com` for a second Render service (a bare host such as `group-project-preview.onrender.com` allows http and https). The server already accepts a page from the host the request was sent to and always the deployed address https://itp-group.onrender.com; use this only if a page of the real game is refused.
 - `ORIGIN_CHECK`: `off` switches the check off (so do `false`, `0` and `no`). Without it, or with any other value, the check is on.
 
 Run the tests:

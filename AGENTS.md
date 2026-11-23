@@ -30,7 +30,7 @@ Run all of these from the `game` folder.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt   # once
-.venv/bin/uvicorn server.main:app --reload                               # run the game on http://localhost:8000
+.venv/bin/uvicorn server.main:app --reload --ws-max-size 4096          # run the game on http://localhost:8000
 .venv/bin/python -m pytest                                               # run the tests
 .venv/bin/pip-audit -r requirements.txt                                  # check dependencies for known vulnerabilities
 ```

@@ -13,7 +13,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 ```
 
 ```bash
-.venv/bin/uvicorn server.main:app --reload
+.venv/bin/uvicorn server.main:app --reload --ws-max-size 4096
 ```
 
 ```bash
