@@ -391,7 +391,8 @@ Game.classicMeeting = Game.classicMeeting || {};
     var measure = function (text) { return context.measureText(text).width; };
     rowLabels(players, x, maxWidth, maxRows, measure).forEach(function (part) {
       // Only a name takes the Free Rider's red; its comma and "+N more" do not.
-      var own = part.playerId !== null && ownIsFreeRider && part.playerId === ownName;
+      var playerId = part.playerId;
+      var own = playerId !== null && ownIsFreeRider && playerId === ownName;
       context.fillStyle = own ? "#C43E3E" : "#2E2A3B";
       context.fillText(part.text, part.x, y + 24 + part.row * PLAYER_ROW);
     });
