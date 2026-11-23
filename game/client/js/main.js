@@ -223,7 +223,7 @@ window.Game = window.Game || {};
       callWorld('startOfRound'); // everybody stands and faces right
     }
     if (!isRound) {
-      Game.minigames.close(); // no round, no task
+      Game.minigames.close({ keepDone: true }); // no round, no task; a "Done" still shows its 0.5 s
       classicTasks = [];
       classicRole = null;
       showClassicTasks();

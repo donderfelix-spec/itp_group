@@ -236,7 +236,7 @@ def test_ghost_cannot_report_or_call_emergency():
         call_emergency(state, "hp")
 
 
-def test_report_starts_meeting_removes_sheet_and_cannot_be_repeated():
+def test_report_starts_meeting_keeps_sheet_and_cannot_be_repeated():
     state = meeting_state()
 
     assert can_report(state, "hp", "sheet-1", (3.0, 4.0))

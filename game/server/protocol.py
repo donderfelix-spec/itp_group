@@ -93,6 +93,7 @@ REJECTIONS = {
     "hide_rejected": "You cannot hide right now.",
     "hide_out_of_reach": "Walk up to a hiding spot to hide.",
     "leave_hiding_first": "Leave your hiding spot first.",
+    "meeting_running": "Tasks wait until the meeting is over.",
     # Statistics (S-40).
     "guest_no_statistics": "Guests have no statistics. Sign up to keep yours.",
     "statistics_unavailable": "Statistics are unavailable right now.",

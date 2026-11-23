@@ -643,6 +643,12 @@ def round_3_free_rider_leaves(play, labels, seen):
     others = [label for label in labels if label != fr]
     mark = play.marks(labels)
     play.leave(fr)
+    if fr == play.host:
+        # The roles are random: when the host is the Free Rider who leaves,
+        # the lobby has a new host, and the later rounds are started by him
+        # (M3-3.24; as in round 7).
+        new_host_name = lobby_of(b.names[others[0]]).host
+        play.host = next(label for label in others if b.names[label] == new_host_name)
     for label in others:
         b.wait(label, "!document.getElementById('classic-end-screen').hidden")
     time.sleep(0.3)

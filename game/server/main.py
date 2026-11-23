@@ -863,6 +863,47 @@ def log_tick_fault(what_failed: str, lobby_code, problem: Exception):
         logger.error("%s: %s", what_failed, kind)
 
 
+def advance_classic_walkers(lobby, seconds: float) -> bool:
+    """Move the players of a Classic round, with the meeting rules of DESIGN.md 5.8.
+
+    Nobody walks while a meeting runs. Once its result is applied, everybody
+    is put back on the Main Deck (the spawn) before anybody walks again, and
+    the Free Riders hear that their cooldown started again. Returns whether
+    positions are to be sent, like `walkers.advance`.
+    """
+    classic = lobby.classic_round
+    if classic.take_back_to_the_deck():
+        lobby.walkers.back_to_spawn()
+        run_in_background(tell_classic_fail_status(lobby))
+    if meeting_is_running(lobby):
+        return False
+    return lobby.walkers.advance(seconds, app.state.campus, ghosts=classic.eliminated)
+
+
+def meeting_is_running(lobby) -> bool:
+    """True from the start of a meeting until its result is applied to the round."""
+    return lobby.meeting is not None and not lobby.meeting.get("applied")
+
+
+async def close_every_open_task(lobby):
+    """A meeting starts: every open task window closes without counting (M3-3.23).
+
+    Each player with an open task is sent `station_closed`, before the
+    meeting, so the browser closes the window first.
+    """
+    for name in lobby.names():
+        await close_open_task_of(lobby, name)
+
+
+async def close_open_task_of(lobby, name: str):
+    """Close this player's open task, if any, and tell only this player."""
+    station = lobby.tasks.open_station_of(name) if lobby.tasks is not None else None
+    if station is None:
+        return
+    lobby.tasks.close(name)
+    await send_to(name, protocol.station_closed(station))
+
+
 def tick(seconds: float):
     """Move the players of every lobby for `seconds` and tell them the news.
 
@@ -877,9 +918,7 @@ def tick(seconds: float):
             if lobby.classic_round is None:
                 has_positions = lobby.walkers.advance(seconds, app.state.campus)
             else:
-                has_positions = lobby.walkers.advance(
-                    seconds, app.state.campus, ghosts=lobby.classic_round.eliminated
-                )
+                has_positions = advance_classic_walkers(lobby, seconds)
             if has_positions:
                 tell_positions(lobby)
                 if lobby.classic_round is not None:
@@ -1021,6 +1060,9 @@ def answers_after_fault(lobby, name: str) -> list:
 def handle_open_station(lobby, name: str, message: dict) -> list:
     if lobby.classic_round is not None and lobby.classic_round.roles.get(name) == "FR":
         return [protocol.rejection("fr_cannot_task")]
+    if lobby.classic_round is not None and meeting_is_running(lobby):
+        # No tasks during a meeting (DESIGN.md 5.8); open ones were closed at its start.
+        return [protocol.rejection("meeting_running")]
     position = lobby.walkers.position_of(name)
     opened, rejection_code = tasks.open_station(
         lobby.tasks, name, message["station"], position, seconds_now(), random
@@ -1173,6 +1215,8 @@ async def answer_fail_message(websocket: WebSocket):
         "position": {"x": target_position[0], "y": target_position[1]},
     }
     await asyncio.gather(*(send_to(player_id, event) for player_id in lobby.names()))
+    # The victim's open task window closes (M3-3.23); as a ghost they can open it again.
+    await close_open_task_of(lobby, target_id)
     await tell_classic_progress(lobby)
     await tell_classic_fail_status(lobby)
     await tell_classic_roster(lobby)
@@ -1229,6 +1273,7 @@ async def answer_report_message(websocket: WebSocket, message: dict):
     meeting["reported_sheet_id"] = message["sheet_id"]
     lobby.meeting = meeting
     lobby.meeting_clock = None
+    await close_every_open_task(lobby)
     await tell_meeting_state(lobby, now)
 
 
@@ -1280,6 +1325,7 @@ async def answer_emergency_message(websocket: WebSocket):
     meeting["trigger_player_id"] = name
     lobby.meeting = meeting
     lobby.meeting_clock = None
+    await close_every_open_task(lobby)
     await tell_meeting_state(lobby)
 
 

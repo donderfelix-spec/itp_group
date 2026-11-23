@@ -187,8 +187,9 @@ Game.classicRound = Game.classicRound || {};
     winner.textContent = message.winner === "HP" ? "High Performers win" : "Free Riders win";
     var reasons = {
       bar_full: "The progress bar is full.",
-      all_free_riders_eliminated: "All Free Riders were ejected.",
-      free_riders_reached_parity: "Free Riders reached parity.",
+      // Also when a Free Rider left the round instead of being voted out.
+      all_free_riders_eliminated: "No Free Rider is left.",
+      free_riders_reached_parity: "There are as many Free Riders as High Performers.",
     };
     reason.textContent = reasons[message.reason] || "The round has ended.";
     roles.replaceChildren();

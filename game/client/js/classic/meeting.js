@@ -256,7 +256,8 @@ Game.classicMeeting = Game.classicMeeting || {};
     } else {
       voteResult.textContent = state.ejected_id + " was not a Free Rider.";
     }
-    if (state.winner) voteResult.textContent += " " + state.winner + " wins.";
+    var winners = { HP: "High Performers win.", FR: "Free Riders win." };
+    if (winners[state.winner]) voteResult.textContent += " " + winners[state.winner];
   }
 
   function cancelResultClose() {

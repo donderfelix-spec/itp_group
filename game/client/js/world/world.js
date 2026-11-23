@@ -1443,7 +1443,9 @@ Game.world = Game.world || {};
   }
 
   function isFailButtonActive() {
-    return ownIsFreeRider && failInRange && (
+    // While hidden he cannot fail (S-191): the button stays grey and F does
+    // nothing, instead of the error "Leave your hiding spot first.".
+    return ownIsFreeRider && failInRange && !ownIsHiddenNow && (
       failAvailable || (failCooldownUntil !== null && failCooldownSeconds() === 0)
     );
   }

@@ -248,8 +248,11 @@ window.Game = window.Game || {};
 
   // Takes the window away at once. Asks nobody: main.js calls this when the
   // server closed the task, the player left or the connection is lost.
-  function close() {
+  // With `{ keepDone: true }` (the round ended) a "Done" on show keeps its
+  // 0.5 s and closes by itself, also after the last task of a round.
+  function close(options) {
     if (!isOpenNow) return;
+    if (options && options.keepDone === true && isShowingDone) return;
     isOpenNow = false;
     clearTimeout(doneTimer);
     stopRetryingDone();

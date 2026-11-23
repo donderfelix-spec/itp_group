@@ -224,7 +224,7 @@ window.Game = window.Game || {};
   }
 
   function defence(content, ui) {
-    ui.game.append(node('p', 'challenge-brief', 'The gulls are dropping your draft and stolen coffee. Catch 6 pages in the yellow rescue zone. Let coffee fall. Three mistakes restart the round. Use lane buttons or keys 1, 2, 3.'));
+    ui.game.append(node('p', 'challenge-brief', 'The gulls are dropping your draft and stolen coffee. Catch 6 pages in the yellow rescue zone. Let coffee fall. Three mistakes end the attempt, then you can try again. Use lane buttons or keys 1, 2, 3.'));
     const status = node('p', 'challenge-score');
     const arena = node('div', 'challenge-flight');
     arena.setAttribute('aria-label', 'Three rescue lanes');

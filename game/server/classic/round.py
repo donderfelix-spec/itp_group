@@ -1,5 +1,7 @@
 """Round state and action adapters for Classic mode."""
 
+import math
+
 from rules import (
     apply_fail,
     assign_roles,
@@ -53,6 +55,9 @@ class ClassicRound:
         # The Free Riders who pressed E at a hiding object (M3-1.6, S-191):
         # name -> the spot they hide in. Only the server knows it.
         self.hidden = {}
+        # Set when a meeting's result is applied: the server puts everybody
+        # back on the Main Deck before anybody walks again (DESIGN.md 5.8).
+        self._back_to_the_deck = False
 
     def state(self):
         return {
@@ -201,10 +206,25 @@ class ClassicRound:
         vote_result = meeting.get("vote_result")
         if vote_result is not None and vote_result.ejected_id is not None:
             self.eliminated.add(vote_result.ejected_id)
+        # DESIGN.md 5.8: after a meeting the Free Riders' cooldown starts
+        # again. It counts from the end of the meeting, which a finished
+        # meeting keeps as its "deadline", so no clock is needed here.
+        ended_at = meeting.get("deadline")
+        if isinstance(ended_at, (int, float)) and not isinstance(ended_at, bool) and math.isfinite(ended_at):
+            for player_id, role in self.roles.items():
+                if role == "FR" and player_id not in self.eliminated:
+                    self.last_fail_at[player_id] = float(ended_at)
+        self._back_to_the_deck = True
         self.phase = "round"
         self.timers_paused = False
         self.meeting = meeting
         self._has_news = True
+
+    def take_back_to_the_deck(self):
+        """True once after each applied meeting: now everybody goes back to the Main Deck (DESIGN.md 5.8)."""
+        due = self._back_to_the_deck
+        self._back_to_the_deck = False
+        return due
 
     def remove_player(self, player_id):
         """The player left the round (M3-3.11, DESIGN.md section 5).
