@@ -1905,6 +1905,12 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 /* ---- Minigame 6, "Catch the wave" ---- */
 
+/* The scene, in the flat style of the map (M4-4.3): a sky with a low
+   sun over the horizon, three bands of water with a slow shimmer, the swell
+   that the server times, the surfboard of the map's station 6 (S-196) with
+   its shadow, and the catch zone as a column of sunlight on the water. Only
+   the drawing: the window, the catch zone and the wave's motion (set by
+   catch_the_wave.js) are as before. */
 .surf-game {
   display: grid;
   width: 100%;
@@ -1919,56 +1925,66 @@ body:has(#screen-lobby:not([hidden])) .message {
   border: var(--outline);
   border-radius: 12px;
   background:
-    repeating-linear-gradient(175deg, transparent 0 25px, #d2f3e64d 25px 27px, transparent 27px 42px),
-    linear-gradient(#91ddd3, #48a8a9 48%, #24647b);
+    /* the water: horizon line, far, middle and near bands */
+    linear-gradient(transparent 0 34%, #F4FBF4 34% 35.2%, #7CCFCB 35.2% 52%,
+      #52AEB0 52% 70%, #2C7C93 70%),
+    /* the low sun, half behind the horizon */
+    radial-gradient(circle at 80% 34%, #FFE6A3 0 9%, #FFD23F4D 9.5% 12%, transparent 12.5%),
+    /* the sky, warm near the horizon */
+    linear-gradient(#BFE6EE, #F8E8C6 34%);
+}
+
+/* Glints of light on the water, drifting slowly. */
+.surf-scene::before {
+  content: "";
+  position: absolute;
+  inset: 36% 0 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 12px 1.5px at 30% 30%, #EFFFFA99 70%, transparent 100%) 0 0 / 96px 23px,
+    radial-gradient(ellipse 8px 1.3px at 75% 80%, #EFFFFA66 70%, transparent 100%) 0 0 / 74px 19px;
+  animation: surf-shimmer 8s linear infinite;
+}
+
+@keyframes surf-shimmer {
+  to { background-position: 128px 0, -92px 0; }
 }
 
 .surf-scene,
 .surf-catch { touch-action: manipulation; }
 .surf-scene { cursor: pointer; }
 
+/* Where a catch counts: a column of sunlight on the water, bright and
+   outlined in the sun's yellow while the crest is under the board. */
 .surf-target {
   position: absolute;
   inset: 12% auto 12% var(--board-position);
   width: var(--catch-width);
   transform: translateX(-50%);
-  border: 2px dashed #def5dd;
+  border: 2px dashed #FFF3C4;
   border-radius: 12px;
-  background: #d3eee633;
+  background: linear-gradient(#FFE9A033, #FFE9A066 55%, #FFE9A01A);
 }
 
 .surf-in-range .surf-target {
   border-style: solid;
-  border-color: #fff3a7;
-  background: #fff3a766;
+  border-color: var(--sun);
+  background: linear-gradient(#FFE9A066, #FFD23F99 55%, #FFE9A040);
+  box-shadow: 0 0 16px 4px #FFD23F88;
 }
 
+/* The swell: an inline drawing, placed and moved by catch_the_wave.js. */
 .surf-wave {
   position: absolute;
   top: 37%;
-  width: 20%;
+  width: 34%; /* a broad swell; its crest is at the middle, where the timing is */
   height: 50%;
-  transform: translateX(-50%) rotate(-7deg);
-  border-radius: 62% 40% 42% 16% / 86% 60% 20% 12%;
-  border-top: 6px solid #f1fff0;
-  background: linear-gradient(160deg, #f8fff2 0 12%, #93e8dc 26%, #207a91 79%);
-  box-shadow: -9px 5px 0 -3px #bbf2e79c;
+  transform: translateX(-50%);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='w' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23A8EFE2'/%3E%3Cstop offset='.5' stop-color='%2352B7B4'/%3E%3Cstop offset='1' stop-color='%232C7C93'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M0 100 C10 96 20 86 26 70 C30 52 36 30 42 24 C46 20 48 19 50 19 C60 19 66 27 63 36 C61 42 53 42 52 36 C51 32 55 30 57 33 C58 54 74 84 100 100 Z' fill='url(%23w)'/%3E%3Cpath d='M57 33 C58 54 74 84 100 100 L84 100 C68 82 58 60 57 33 Z' fill='%23236A7E' opacity='.5'/%3E%3Cpath d='M0 100 C10 96 20 86 26 70 C30 52 36 30 42 24 C46 20 48 19 50 19 C60 19 66 27 63 36 C61 42 53 42 52 36 C51 32 55 30 57 33 C58 54 74 84 100 100' fill='none' stroke='%232E2A3B' stroke-width='2.5' stroke-linejoin='round' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M27 68 C31 50 37 30 43 24 C47 20 50 20 52 20 C60 20 65 27 62 35' fill='none' stroke='%23F8FFF4' stroke-width='5' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M30 82 C34 64 38 50 44 40' fill='none' stroke='%23C9F6EC' stroke-width='3' stroke-linecap='round' opacity='.7' vector-effect='non-scaling-stroke'/%3E%3Ccircle cx='67' cy='26' r='2.2' fill='%23F8FFF4'/%3E%3Ccircle cx='69' cy='34' r='1.6' fill='%23F8FFF4'/%3E%3Ccircle cx='63' cy='17' r='1.5' fill='%23F8FFF4'/%3E%3Cpath d='M2 99 Q10 94 18 97 T34 96' fill='none' stroke='%23F8FFF4' stroke-width='3' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
 }
 
-.surf-wave::after {
-  content: "";
-  position: absolute;
-  right: 7%;
-  top: 2%;
-  width: 32%;
-  height: 34%;
-  border-radius: 50%;
-  border: 4px solid #e8fff3;
-  border-left-color: transparent;
-  border-bottom-color: transparent;
-  transform: rotate(17deg);
-}
-
+/* The board of the map's station 6: teal, ink outline, white stringer and
+   a lighter stripe; it lifts a little while the crest is under it. */
 .surf-board {
   position: absolute;
   left: var(--board-position);
@@ -1978,8 +1994,90 @@ body:has(#screen-lobby:not([hidden])) .message {
   transform: translate(-50%, -50%) rotate(-12deg);
   border: var(--outline);
   border-radius: 50% 52% 47% 50%;
-  background: linear-gradient(#ff8271 27%, #ffefd2 27% 44%, #f9cc68 44% 58%, #ffefd2 58% 73%, #ff8271 73%);
-  box-shadow: 0 3px 0 #205d72a8;
+  background:
+    linear-gradient(transparent 46%, #FFFFFF 46% 56%, transparent 56%),
+    linear-gradient(90deg, transparent 30%, #A7E0E0 30% 36%, transparent 36%),
+    #4FC1C1;
+  transition: translate 0.18s ease-out;
+}
+
+/* Its shadow on the water. */
+.surf-shadow {
+  position: absolute;
+  left: var(--board-position);
+  top: 58%;
+  width: clamp(44px, 19%, 92px);
+  height: clamp(6px, 2.5cqw, 11px);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #1B4F5E59;
+  transition: scale 0.18s ease-out, opacity 0.18s ease-out;
+}
+
+.surf-in-range .surf-board { translate: 0 -5px; }
+.surf-in-range .surf-shadow { scale: 0.85; opacity: 0.7; }
+
+/* A catch: foam bursts round the board and the board bobs. A try too
+   early or too late: the board wobbles. catch_the_wave.js sets the class
+   and takes it away when the animation ends. */
+.surf-splash {
+  position: absolute;
+  left: var(--board-position);
+  top: 50%;
+  width: 26%;
+  aspect-ratio: 1.6;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 18% 40%, #F8FFF4 0 9%, transparent 10%),
+    radial-gradient(circle at 82% 36%, #F8FFF4 0 8%, transparent 9%),
+    radial-gradient(circle at 30% 78%, #F8FFF4 0 7%, transparent 8%),
+    radial-gradient(circle at 70% 80%, #F8FFF4 0 9%, transparent 10%),
+    radial-gradient(circle at 50% 18%, #F8FFF4 0 7%, transparent 8%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.surf-caught .surf-splash { animation: surf-splash 0.6s ease-out; }
+.surf-caught .surf-board { animation: surf-bob 0.6s ease-out; }
+.surf-missed .surf-board { animation: surf-wobble 0.4s ease-in-out; }
+
+@keyframes surf-splash {
+  from { opacity: 1; scale: 0.4; }
+  to { opacity: 0; scale: 1.35; }
+}
+
+@keyframes surf-bob {
+  30% { translate: 0 -10px; }
+  65% { translate: 0 2px; }
+}
+
+@keyframes surf-wobble {
+  25% { rotate: -7deg; }
+  75% { rotate: 7deg; }
+}
+
+/* Three marks at the top left, one per wave to catch. The text below the
+   water says the same for screen readers. */
+.surf-marks {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  z-index: 1;
+  display: flex;
+  gap: 5px;
+}
+
+.surf-mark {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: #FFFDF5;
+}
+
+.surf-mark-done {
+  background: radial-gradient(circle, var(--ink) 0 2.5px, var(--sun) 3px);
 }
 
 .surf-controls {
@@ -1992,6 +2090,17 @@ body:has(#screen-lobby:not([hidden])) .message {
 .surf-catch { min-height: 44px; }
 .surf-score { margin: 0; font-weight: 700; }
 .surf-feedback { margin: 0; min-height: 1.4em; }
+
+/* Still pictures for those who asked for less motion. The wave keeps
+   moving: it is the game. */
+@media (prefers-reduced-motion: reduce) {
+  .surf-scene::before,
+  .surf-caught .surf-board,
+  .surf-missed .surf-board { animation: none; }
+  .surf-splash { display: none; }
+  .surf-board,
+  .surf-shadow { transition: none; }
+}
 
 /* ---- Duel: the panel during the round and the ranking, built by js/minigames/duel.js ---- */
 

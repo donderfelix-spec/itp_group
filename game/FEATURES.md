@@ -136,6 +136,7 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | Lobby: modes outside their player range (Classic below 4) locked, all in one grey, the chosen one marked by frame and shadow; smaller “?” with even gaps (S-146) | M2 | Done |
 | “Done” for 0.5 s without a close button (S-127) | M2 | Done |
 | Beach exit: “Catch the wave” at station 6, in Duel, Solo and Classic: catch three waves with a click, a tap, the button, Space or Enter (S-221) | M4 | Done (M4-4.0) |
+| “Catch the wave” drawn in the game's flat style: sky and low sun, shimmering water, a curling swell, the map's surfboard with a shadow, sunlight as catch zone, foam on a catch, three marks for the caught waves | M4 | Done (M4-4.3) |
 | Duel: leaderboard with times at the end | M2 | Done |
 | Canteen: stop the microwave at the right moment | M4 | Planned |
 | Lecture Hall: record attendance by QR code | M4 | Planned |
