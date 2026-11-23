@@ -383,6 +383,22 @@ def positions(players, hidden=()) -> dict:
     return {"type": "positions", "players": listed}
 
 
+def classic_sheet(sheet_id: str, position, character, reported: bool) -> dict:
+    """An F-sheet that came into this player's view (S-202): where it lies.
+
+    Sent once per sheet and player, only to those who may know the place
+    (`server/classic/sheets.py`). `reported` says whether it already started
+    its meeting, so the page shows no Report for it.
+    """
+    return {
+        "type": "classic_sheet",
+        "sheet_id": sheet_id,
+        "character": character,
+        "position": {"x": position[0], "y": position[1]},
+        "reported": bool(reported),
+    }
+
+
 def station_opened(station: int, title: str, content: dict) -> dict:
     """Sent only to the player who opened the station (S-93).
 

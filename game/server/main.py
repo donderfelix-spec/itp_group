@@ -895,6 +895,21 @@ def advance_classic_walkers(lobby, seconds: float) -> bool:
     return lobby.walkers.advance(walked, app.state.campus, ghosts=classic.eliminated)
 
 
+def tell_classic_sheets(lobby):
+    """Send each player the F-sheets that came into his view since the last tick (S-202).
+
+    Every tick, not only when somebody walked: a player voted out becomes
+    a ghost without a step and then sees every sheet. Never waits.
+    """
+    classic = lobby.classic_round
+    for player_id in lobby.names():
+        if player_id not in classic.roles:
+            continue
+        news = classic.sheet_news(player_id, lobby.walkers.position_of(player_id), app.state.campus)
+        for sheet_id, place, character, reported in news:
+            run_in_background(send_to(player_id, protocol.classic_sheet(sheet_id, place, character, reported)))
+
+
 def meeting_is_running(lobby) -> bool:
     """True from the start of a meeting until its result is applied to the round."""
     return lobby.meeting is not None and not lobby.meeting.get("applied")
@@ -945,6 +960,8 @@ def tick(seconds: float):
                 tell_positions(lobby)
                 if lobby.classic_round is not None:
                     run_in_background(tell_classic_fail_status(lobby))
+            if lobby.classic_round is not None:
+                tell_classic_sheets(lobby)
         except Exception as problem:
             # A fault in one lobby must not freeze the lobbies after it.
             # Only the kind of error is logged.
@@ -1228,15 +1245,29 @@ async def answer_fail_message(websocket: WebSocket):
         key=lambda player_id: math.dist(source_position, classic.positions[player_id]),
     )
     target_position = classic.positions[target_id]
-    sheet_id = classic.fail(name, target_id, now, target_position)
+    character = lobby.character_of(target_id)
+    sheet_id = classic.fail(name, target_id, now, target_position, character)
     event = {
         "type": "classic_fail",
         "target_id": target_id,
-        "character": lobby.character_of(target_id),
+        "character": character,
         "sheet_id": sheet_id,
-        "position": {"x": target_position[0], "y": target_position[1]},
     }
-    await asyncio.gather(*(send_to(player_id, event) for player_id in lobby.names()))
+    # Who failed is public at once (S-159, S-163, S-164); where, only to
+    # those who have the place in sight, the ghosts and the Free Rider who
+    # did it (S-202). The others learn it when it comes into their sight.
+    events = {}
+    for player_id in lobby.names():
+        events[player_id] = event
+        viewer_position = lobby.walkers.position_of(player_id)
+        if player_id == name or classic.may_know_sheet(
+            player_id, viewer_position, sheet_id, app.state.campus
+        ):
+            classic.mark_sheet_told(player_id, sheet_id)
+            events[player_id] = {
+                **event, "position": {"x": target_position[0], "y": target_position[1]},
+            }
+    await asyncio.gather(*(send_to(player_id, sent) for player_id, sent in events.items()))
     # The victim's open task window closes (M3-3.23); as a ghost they can open it again.
     await close_open_task_of(lobby, target_id)
     await tell_classic_progress(lobby)

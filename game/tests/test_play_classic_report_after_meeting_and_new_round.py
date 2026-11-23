@@ -12,7 +12,9 @@ Round 1 (Laurin's Report-button test, tests/test_classic_report_button_area3.py,
 played for real): the Free Rider fails one High Performer at place A and,
 after the cooldown, a second one at place B. A living player reports sheet A;
 the meeting ends with Skip. Afterwards both sheets are still drawn on every
-page (S-150), sheet A cannot be reported again, and the living player who
+page that was told them (S-150; since S-202 the Free Rider and the ghosts
+get both, a living High Performer only those that came into his sight),
+sheet A cannot be reported again, and the living player who
 walks to sheet B gets the Report button and starts a second meeting. In it
 the Free Rider is voted out: every page gets the result, then the end screen
 (S-166).
@@ -39,6 +41,7 @@ from pathlib import Path
 import pytest
 
 from server import protocol
+from server.classic.sheets import sheet_order
 from server.main import app
 from test_play_hiding import (  # noqa: F401 (server is a fixture; quiet_tick replaces the one of conftest.py)
     NODE,
@@ -260,8 +263,14 @@ def play_round_one(browser, clock, seen):
     wait_until(lambda: names[v2] in classic.eliminated, "the second fail")
     sheet_b = next(sheet for sheet in classic.f_sheets if sheet != sheet_a)
     seen["sheet_ids"] = [sheet_a, sheet_b]
+    # S-202: the Free Rider and the ghosts are told both places; a living
+    # High Performer only the sheets that came into his sight.
+    seen["knows_both"] = [fr, v1, v2]
+    # The new ghost is sent sheet A by the next tick.
+    wait_until(lambda: len(classic.sheets_told.get(names[v2], ())) == 2, "sheet A for the new ghost")
+    seen["told_before_report"] = sheets_told(browser, classic)
     for label in LABELS:
-        browser.wait(label, "Game.world.bloodSheetIds().length === 2")
+        browser.wait(label, f"Game.world.bloodSheetIds().length === {len(seen['told_before_report'][label])}")
     time.sleep(SETTLE)  # a few frames: the page draws the new sheet
     seen["before_report"] = {label: browser.screen(label) for label in LABELS}
 
@@ -285,6 +294,7 @@ def play_round_one(browser, clock, seen):
     wait_meeting_closed(browser)
     time.sleep(SETTLE)  # a few frames: the page draws and sets its buttons
     seen["after_meeting1"] = {label: browser.screen(label) for label in LABELS}
+    seen["told_after_meeting1"] = sheets_told(browser, classic)
 
     # Sheet A cannot be reported again: the reporter stands on it (walking
     # down to the wall again, wherever the meeting left him).
@@ -335,6 +345,14 @@ def play_round_one(browser, clock, seen):
     # Whether "New Round" is hidden (not in the layout): only the host sees it.
     seen["new_round_button"] = {
         label: browser.js(label, "document.getElementById('classic-new-round').offsetParent === null") for label in LABELS
+    }
+
+
+def sheets_told(browser, classic):
+    """label -> the ids of the sheets the server has told this page (S-202), in issue order."""
+    return {
+        label: sorted(classic.sheets_told.get(name, ()), key=sheet_order)
+        for label, name in browser.names.items()
     }
 
 
@@ -415,9 +433,14 @@ def played(server):
 # ---- Round 1: the Report button after a meeting --------------------------
 
 
-def test_both_fails_leave_a_sheet_on_every_page(played):
-    assert all(screen["sheets"] == played["sheet_ids"] for screen in played["before_report"].values())
-    assert all(screen["sheetsDrawn"][-1] == 2 for screen in played["before_report"].values())
+def test_both_fails_leave_a_sheet_on_every_page_that_was_told_them(played):
+    # S-202: the Free Rider and both ghosts know both places; each living
+    # High Performer draws exactly the sheets the server told him.
+    for label in played["knows_both"]:
+        assert played["told_before_report"][label] == played["sheet_ids"], label
+    for label, screen in played["before_report"].items():
+        assert sorted(screen["sheets"], key=sheet_order) == played["told_before_report"][label], label
+        assert screen["sheetsDrawn"][-1] == len(played["told_before_report"][label]), label
 
 
 def test_the_living_reporter_next_to_sheet_a_sees_report_and_the_ghost_on_it_does_not(played):
@@ -431,12 +454,16 @@ def test_reporting_sheet_a_opens_the_meeting_on_all_five_pages(played):
     assert all(screen["meeting"] for screen in played["meeting1"].values())
 
 
-def test_after_the_meeting_both_sheets_are_still_drawn_on_every_page(played):
+def test_after_the_meeting_both_sheets_are_still_drawn_on_every_page_that_was_told_them(played):
     assert played["meeting1_result"]["ejected_id"] is None
+    for label in played["knows_both"]:
+        assert played["told_after_meeting1"][label] == played["sheet_ids"], label
     for label, screen in played["after_meeting1"].items():
         assert screen["meeting"] is False, label
-        assert screen["sheets"] == played["sheet_ids"], label
-        assert screen["sheetsDrawn"][-1] == 2, label
+        # S-202: a page keeps every sheet it was told (the reporter stood at sheet A).
+        assert sorted(screen["sheets"], key=sheet_order) == played["told_after_meeting1"][label], label
+        assert screen["sheetsDrawn"][-1] == len(played["told_after_meeting1"][label]), label
+    assert played["sheet_ids"][0] in played["told_after_meeting1"][played["round1"]["reporter"]]
 
 
 def test_sheet_a_cannot_be_reported_again(played):
