@@ -119,20 +119,6 @@ const food = { kind: 'campus_task', puzzle: 'cleanup', theme: 'food', items:
     .flatMap(([kind, label, count, bad]) => Array.from({ length: count }, (_, index) => ({
       id: kind + '-' + index, label, remove: index < bad,
     }))) };
-const slide = { kind: 'campus_task', puzzle: 'cleanup', theme: 'slides', items: [
-  { id: 0, label: 'Mouldy pasta', remove: true }, { id: 1, label: 'Fresh rice', remove: false },
-  { id: 2, label: 'Walking bread', remove: true },
-] };
-{
-  const game = open(slide);
-  labelled(game, 'Fresh rice').click();
-  assert.match(game.body.querySelector('.campus-feedback').textContent, /actually/);
-  assert.equal(game.done(), 0);
-  labelled(game, 'Mouldy pasta').click();
-  assert.equal(game.done(), 0, 'one wrong or missing piece must not complete');
-  labelled(game, 'Walking bread').click();
-  finish(game);
-}
 
 function foodPiece(game, id) {
   return controls(game).find((piece) => piece.getAttribute('data-food-id') === id);
@@ -209,15 +195,6 @@ function foodPiece(game, id) {
 }
 
 {
-  const game = open({ puzzle: 'order', words: ['dog', 'My', 'it', 'ate'], order: ['My', 'dog', 'ate', 'it'], hint: 'My dog ate it' });
-  labelled(game, 'dog').click();
-  assert.equal(game.body.querySelector('.campus-sentence').children.length, 0);
-  for (const word of ['My', 'dog', 'ate', 'it']) labelled(game, word).click();
-  assert.equal(game.body.querySelector('.campus-sentence').children.length, 4);
-  finish(game);
-}
-
-{
   const game = open({ puzzle: 'budget', products: [
     { name: 'Coffee', price: 250 }, { name: 'Noodles', price: 150 }, { name: 'Company car', price: 900 },
   ], target: 400 });
@@ -232,18 +209,6 @@ function foodPiece(game, id) {
 }
 
 {
-  const game = open({ puzzle: 'seagull', pages: 5 });
-  const bird = game.body.querySelector('.campus-seagull');
-  const firstPlace = bird.style.left;
-  bird.click();
-  assert.notEqual(bird.style.left, firstPlace);
-  assert.match(bird.getAttribute('aria-label'), /page 2/);
-  for (let i = 1; i < 5; i += 1) bird.click();
-  assert.equal(game.body.querySelector('.campus-rescued-pages').children.length, 5);
-  finish(game);
-}
-
-{
   const game = open(food);
   foodPiece(game, 'rice-3').click(); // a wrong-action feedback timer
   food.items.filter((item) => item.remove).forEach((item) => foodPiece(game, item.id).click()); // a pending completion timer
@@ -251,6 +216,16 @@ function foodPiece(game, id) {
   assert.equal(game.timers.size, 0, 'closing must cancel every callback');
   game.flush();
   assert.equal(game.done(), 0, 'closing a solved window must not finish a later opening');
+}
+
+// The packets of the removed puzzles (S-208) are refused like any broken one.
+for (const content of [
+  { puzzle: 'cleanup', theme: 'slides', items: [{ id: 0, label: 'Synergy', remove: true }, { id: 1, label: 'Data', remove: false }] },
+  { puzzle: 'order', words: ['dog', 'My', 'it', 'ate'], order: ['My', 'dog', 'ate', 'it'], hint: 'My dog ate it' },
+  { puzzle: 'seagull', pages: 5 }]) {
+  const game = open(content);
+  assert.match(game.body.textContent, /could not be loaded/);
+  assert.equal(controls(game).length, 0);
 }
 
 for (const content of [null, {}, { puzzle: 'unknown' }, { puzzle: 'seagull', pages: -1 },
@@ -381,4 +356,4 @@ for (const mode of ['duel', 'solo']) {
   assert.deepEqual(env.worldCalls.at(-1), ['target', 2], 'statistics leave private navigation intact');
 }
 
-console.log('Room task checks passed: six puzzles, wrong actions, one completion, minimum time, cancellation, malformed content, Main Deck labels, Duel and Solo HUD/navigation, Solo lobby gating and upstream statistics integration.');
+console.log('Room task checks passed: three puzzles, refused old packets, wrong actions, one completion, minimum time, cancellation, malformed content, Main Deck labels, Duel and Solo HUD/navigation, Solo lobby gating and upstream statistics integration.');
