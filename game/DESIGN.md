@@ -278,7 +278,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Connection lost | “Connection lost. Reconnecting…” After the player signs in again, the page joins the lobby it was in by itself and puts the code into the join field. If that lobby is gone, full or in its countdown or round, the usual text appears at the code field (S-109). |
 | Database not reachable | “Accounts are unavailable right now. You can still play as a guest.” |
 | Host has left the lobby | “The host left. Mara is the new host.” |
-| A Classic round no longer has enough players for its Free Riders because players left | “Too many players left. The round was stopped.”  When the host’s leave stops the round, the page shows both notices in one line: “The host left. Mara is the new host. Too many players left. The round was stopped.” (S-224) |
+| A Classic round no longer has enough players for its Free Riders because players left | “Too many players left. The round was stopped.”  When the host’s leave stops the round, the page shows “The host left. Mara is the new host.” first and this notice 2.5 seconds later, each alone, so the new host reads both (S-224). |
 | The same account logged in somewhere else, so this browser was signed out | “You were signed in somewhere else.” (shown by the browser on the Start screen) |
 | Password too long | “Passwords can have at most 64 characters.” |
 | Password with a character that cannot be stored | “Passwords cannot contain that character.” |

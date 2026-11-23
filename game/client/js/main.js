@@ -425,18 +425,22 @@ window.Game = window.Game || {};
     Game.duel.showResult(message);
   }
 
-  // The page has one line for messages. Two notices that come together (the
-  // host's leave stops a Classic round: "The host left. …" and then "Too many
-  // players left. …") are shown together, so neither hides the other (S-224).
-  const NOTICES_TOGETHER_MS = 500;
-  let lastNotice = null; // { text, at }
+  // The page has one line for messages, and two notices can come at once:
+  // the host's leave can also stop a Classic round ("The host left. …", then
+  // "Too many players left. …"). So a notice waits until the one before it
+  // has stood NOTICE_READ_MS, and the new host reads both, one after the
+  // other (S-224). Not one joined line: that would be longer than the room
+  // the lobby panel keeps for a message (tests/test_lobby_message_length.py).
+  const NOTICE_READ_MS = 2500;
+  let noticeLineFreeAt = 0; // performance.now() when the next notice may show
 
   function whenNotice(message) {
     const now = performance.now();
-    const together = lastNotice !== null && now - lastNotice.at <= NOTICES_TOGETHER_MS;
-    const text = together ? lastNotice.text + ' ' + message.message : message.message;
-    lastNotice = { text: text, at: now };
-    Game.screens.showMessage(text, false);
+    const showAt = Math.max(now, noticeLineFreeAt);
+    noticeLineFreeAt = showAt + NOTICE_READ_MS;
+    const show = () => Game.screens.showMessage(message.message, false);
+    if (showAt <= now) show();
+    else setTimeout(show, showAt - now);
   }
 
   function whenError(message) {

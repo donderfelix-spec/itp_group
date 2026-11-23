@@ -1,9 +1,9 @@
 // S-224: the page has one line for messages. When the host's leave also
 // stops a Classic round the server sends "The host left. X is the new host."
-// and then "Too many players left. The round was stopped."; the page shows
-// both in one line, so the new host learns both. Notices further apart stay
-// separate. Runs the real main.js with the stand-in page of
-// classic_task_card_in_node.js.
+// and then "Too many players left. The round was stopped." at once; the page
+// shows the second 2.5 s after the first, so the new host reads both. A
+// notice that comes later is shown at once. Runs the real main.js with the
+// stand-in page of classic_task_card_in_node.js.
 // Run with: node game/tests/notices_together_in_node.js
 // (pytest does it in tests/test_notices_together.py).
 const fs = require('node:fs');
@@ -68,6 +68,7 @@ function environment() {
   const asked = [];
   const sent = [];
   const shown = [];
+  const timers = [];
   let reportHandler = null;
   let now = 0;
   let nextInterval = 1;
@@ -89,7 +90,8 @@ function environment() {
     performance: { now: () => now },
     setInterval: (action) => { const id = nextInterval++; intervals.set(id, action); return id; },
     clearInterval: (id) => intervals.delete(id),
-    setTimeout: () => 0,
+    // Timers run when the test moves the clock on (advance).
+    setTimeout: (action, delay = 0) => { timers.push({ at: now + delay, action }); return timers.length; },
     clearTimeout() {},
     // The map file with two stations, so names can be checked; read at once.
     fetch: () => Promise.resolve({ ok: true, json: () => CAMPUS }),
@@ -118,7 +120,11 @@ function environment() {
     emit: (type, payload) => handlers.get(type)(payload),
     roundStarts: () => roundStarts,
     intervalCount: () => intervals.size,
-    advance: (milliseconds) => { now += milliseconds; [...intervals.values()].forEach((action) => action()); },
+    advance: (milliseconds) => {
+      now += milliseconds;
+      [...intervals.values()].forEach((action) => action());
+      timers.filter((timer) => timer.at <= now && !timer.done).forEach((timer) => { timer.done = true; timer.action(); });
+    },
   };
 }
 
@@ -145,35 +151,48 @@ async function main() {
     return env;
   };
 
-  // Accepted: two notices that come together are one line.
+  const texts = (env) => env.shown.map(([text]) => text);
+
+  // Accepted: two notices at once are shown one after the other, each alone.
   {
     const env = await start();
     env.emit('notice', { type: 'notice', message: HOST });
     env.emit('notice', { type: 'notice', message: STOPPED });
-    check(last(env)[0] === HOST + ' ' + STOPPED, 'the host notice and the stop notice are shown together');
+    check(texts(env).join('|') === HOST, 'the host notice is shown first, alone');
+    env.advance(2499);
+    check(texts(env).join('|') === HOST, 'the stop notice waits while the host notice is read');
+    env.advance(1);
+    check(texts(env).join('|') === HOST + '|' + STOPPED, 'then the stop notice, alone and last');
     check(last(env)[1] === false, 'a notice is no error');
   }
 
-  // Rejected (kept apart): a notice long after the last one stands alone.
+  // Rejected (no waiting): a notice long after the last one is shown at once.
   {
     const env = await start();
     env.emit('notice', { type: 'notice', message: HOST });
     env.advance(5000);
     env.emit('notice', { type: 'notice', message: STOPPED });
-    check(last(env)[0] === STOPPED, 'a later notice is shown alone');
+    check(texts(env).join('|') === HOST + '|' + STOPPED, 'a later notice is shown at once');
   }
 
-  // Edge cases: a single notice; exactly at the limit; the joined line is not joined twice.
+  // Edge cases: exactly at the limit; three at once wait in turn; never joined.
   {
     const env = await start();
     env.emit('notice', { type: 'notice', message: HOST });
-    check(last(env)[0] === HOST, 'one notice is shown as it is');
-    env.advance(500);
+    env.advance(2500);
     env.emit('notice', { type: 'notice', message: STOPPED });
-    check(last(env)[0] === HOST + ' ' + STOPPED, 'exactly 500 ms apart still counts as together');
-    env.advance(501);
+    check(texts(env).length === 2, 'a notice 2.5 s after the last one is shown at once');
+  }
+  {
+    const env = await start();
     env.emit('notice', { type: 'notice', message: HOST });
-    check(last(env)[0] === HOST, 'after more than 500 ms the next notice starts a new line');
+    env.emit('notice', { type: 'notice', message: STOPPED });
+    env.emit('notice', { type: 'notice', message: HOST });
+    env.advance(2500);
+    check(texts(env).length === 2, 'the third waits for the second');
+    env.advance(2500);
+    check(texts(env).join('|') === [HOST, STOPPED, HOST].join('|'), 'all three, in order');
+    check(texts(env).every((text) => text === HOST || text === STOPPED), 'no line joins two notices');
   }
   console.log(`notices_together_in_node.js: all ${checked} checks passed`);
 }
