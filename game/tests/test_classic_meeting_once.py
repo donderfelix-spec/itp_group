@@ -12,6 +12,7 @@ meeting is refused; a new meeting can start.
 import random
 import time
 
+from rules import FAIL_COOLDOWN_SECONDS
 from server import main
 from server.classic.meeting import DISCUSSION_SECONDS, VOTING_SECONDS
 from server.classic.round import ClassicRound
@@ -183,6 +184,7 @@ def test_a_failure_after_a_meeting_stays_failed_across_ticks(connect, clock):
     everybody_skips(connections, lobby, clock)
     assert lobby.meeting["applied"] is True
 
+    clock.wait(FAIL_COOLDOWN_SECONDS)  # the cooldown starts again after a meeting (DESIGN.md 5.8)
     fail(connections, fr, victim)
     ticks(connections)
 
@@ -301,6 +303,7 @@ def test_chat_and_vote_after_the_meeting_are_refused_and_apply_nothing_again(con
     connections, lobby, fr, [caller, other, victim, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
     everybody_skips(connections, lobby, clock)
+    clock.wait(FAIL_COOLDOWN_SECONDS)  # the cooldown starts again after a meeting (DESIGN.md 5.8)
     fail(connections, fr, victim)
 
     connections[other].send_json({"type": "chat", "text": "Too late?"})
