@@ -355,12 +355,13 @@ Game.classicMeeting = Game.classicMeeting || {};
   }
 
   // For each name: its label ("Ana, "), the row and the x where it goes.
-  function playerRowStarts(players, x, maxWidth) {
+  function playerRowStarts(players, x, maxWidth, measure) {
+    var widthOf = measure || function (text) { return context.measureText(text).width; };
     var cursorX = x;
     var row = 0;
     return players.map(function (playerId, index) {
       var label = playerId + (index === players.length - 1 ? "" : ", ");
-      var width = context.measureText(label).width;
+      var width = widthOf(label);
       if (cursorX > x && cursorX + width > x + maxWidth) {
         cursorX = x;
         row += 1;
@@ -387,12 +388,57 @@ Game.classicMeeting = Game.classicMeeting || {};
       context.fillText("None", x, y + 24);
       return;
     }
-    playerRowStarts(players, x, maxWidth).forEach(function (place) {
-      if (place.row >= maxRows) return;
-      var playerId = place.playerId;
-      context.fillStyle = ownIsFreeRider && playerId === ownName ? "#C43E3E" : "#2E2A3B";
-      context.fillText(place.label, place.x, y + 24 + place.row * PLAYER_ROW);
+    var measure = function (text) { return context.measureText(text).width; };
+    rowLabels(players, x, maxWidth, maxRows, measure).forEach(function (part) {
+      // Only a name takes the Free Rider's red; its comma and "+N more" do not.
+      var playerId = part.playerId;
+      var own = playerId !== null && ownIsFreeRider && playerId === ownName;
+      context.fillStyle = own ? "#C43E3E" : "#2E2A3B";
+      context.fillText(part.text, part.x, y + 24 + part.row * PLAYER_ROW);
     });
+  }
+
+  // The texts of a list of names in at most `maxRows` rows of `maxWidth`:
+  // [{playerId, text, x, row}], a name and its comma being separate parts
+  // (playerId null for a comma and for "+N more"). When not every name fits
+  // (the compact layout has one row), the list ends in "+2 more" instead of
+  // cutting names off: names are dropped from the end until "+N more" fits
+  // after the last one shown, and a single name left that is still too long
+  // ends in "…". `measure(text)` gives a text's width.
+  function rowLabels(players, x, maxWidth, maxRows, measure) {
+    var places = playerRowStarts(players, x, maxWidth, measure);
+    var shown = places.filter(function (place) { return place.row < maxRows; });
+    var hidden = places.length - shown.length;
+    var more = "";
+    while (hidden) {
+      more = "+" + hidden + " more";
+      var last = shown[shown.length - 1];
+      if (shown.length === 1 || last.x + measure(last.playerId + ", " + more) <= x + maxWidth) break;
+      shown.pop();
+      hidden += 1;
+    }
+    var parts = [];
+    shown.forEach(function (place, index) {
+      var name = place.playerId;
+      var isLast = index === shown.length - 1;
+      if (isLast && more) name = shortenedName(name, x + maxWidth - place.x - measure(", " + more), measure);
+      parts.push({ playerId: place.playerId, text: name, x: place.x, row: place.row });
+      if (!isLast || more) {
+        parts.push({ playerId: null, text: ", ", x: place.x + measure(name), row: place.row });
+      }
+      if (isLast && more) {
+        parts.push({ playerId: null, text: more, x: place.x + measure(name + ", "), row: place.row });
+      }
+    });
+    return parts;
+  }
+
+  // The name itself if it fits in `room`, else as many letters as fit and "…".
+  function shortenedName(name, room, measure) {
+    if (measure(name) <= room) return name;
+    var cut = name;
+    while (cut.length > 1 && measure(cut + "…") > room) cut = cut.slice(0, -1);
+    return cut + "…";
   }
 
   function drawChat(width, height, layout, top) {
@@ -477,6 +523,8 @@ Game.classicMeeting = Game.classicMeeting || {};
   }
 
   Game.classicMeeting.setup = setup;
+  // For tests: how a list of names is laid out in its rows.
+  Game.classicMeeting.rowLabels = rowLabels;
   Game.classicMeeting.setOwnName = setOwnName;
   Game.classicMeeting.setOwnFreeRider = setOwnFreeRider;
   Game.classicMeeting.hide = hide;
