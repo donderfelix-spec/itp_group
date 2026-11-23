@@ -559,4 +559,29 @@ Game.world = Game.world || {};
     util.circle(ctx, item.x + item.w * 0.3, item.y + item.h * 0.7, Math.min(item.w, item.h) * 0.14, "#FFFFFF", 0.4);
     util.circle(ctx, item.x + item.w * 0.7, item.y + item.h * 0.7, Math.min(item.w, item.h) * 0.14, "#FFFFFF", 0.4);
   };
+
+  // ---- The hiding spot in the aisle (M3-1.5) ----------------------------
+
+  // A cardboard box seen from above and a little from the front: its top
+  // with a strip of tape, its front a darker strip below.
+  function cardboardBox(ctx, x, y, w, h) {
+    util.shadowBelow(ctx, x + 0.4, y + h, w - 0.8, 0.9);
+    util.box(ctx, x, y, w, h, 0.5, "#C9955B", 0.6);
+    ctx.fillStyle = "#A8733F";
+    ctx.fillRect(x + 0.3, y + h * 0.72, w - 0.6, h * 0.28 - 0.3);
+    ctx.fillStyle = "#EBD6AC";
+    ctx.fillRect(x + w / 2 - 0.45, y + 0.3, 0.9, h * 0.72 - 0.3);
+  }
+
+  // Boxes left in the aisle for restocking, in the shade of the shelves.
+  // Only drawn: players walk through them like through each other.
+  art.hiding["pingo-doce:spot"] = function (ctx, spot) {
+    var x = spot.x;
+    var y = spot.y;
+    var k = spot.r / 9; // the drawing is made for a spot of radius 9
+    util.hidingShade(ctx, x, y, spot.r);
+    cardboardBox(ctx, x - 7 * k, y - 5.5 * k, 6 * k, 5 * k);
+    cardboardBox(ctx, x - 7.5 * k, y + 0.5 * k, 7 * k, 6 * k);
+    cardboardBox(ctx, x + 0.8 * k, y + 1.5 * k, 6.5 * k, 5.5 * k);
+  };
 })();

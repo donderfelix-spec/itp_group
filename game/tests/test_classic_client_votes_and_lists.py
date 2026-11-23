@@ -35,6 +35,11 @@ def classic_round_as_high_performer(task_stations):
 
 # ---- Skip ------------------------------------------------------------------
 
+def shown_votes(look):
+    """{target: (number in its count field, its label)} as the vote buttons show them."""
+    return {target: (vote["count"], vote["label"]) for target, vote in look["votes"].items()}
+
+
 def meeting_with(phase, **changes):
     """A meeting_state step of the own player Ana, with some fields changed."""
     step = meeting_state(phase)
@@ -61,7 +66,7 @@ def test_the_skip_button_sends_skip_discussion_and_shows_the_count():
 
 
 @needs_node
-def test_votes_can_change_and_be_withdrawn_and_show_every_voters_icon():
+def test_votes_can_change_and_be_withdrawn_and_show_every_voter_in_the_count_and_label():
     steps = classic_round_as_free_rider() + [
         meeting_state("voting"),
         ["clickVote", "Bo"], meeting_with("voting", voted=["Ana", "Cy"], vote_targets={"Ana": "Bo", "Cy": "Bo"}), ["look"],
@@ -77,11 +82,17 @@ def test_votes_can_change_and_be_withdrawn_and_show_every_voters_icon():
         {"type": "vote", "target_id": "Cy"},
     ]
     assert first["selectedVoteTarget"] == "Bo"
-    assert first["voteIconLabels"] == ["Ana voted for Bo", "Cy voted for Bo"]
+    assert shown_votes(first) == {
+        "Ana": ("0", "Ana — no votes"), "Bo": ("2", "Bo — votes: Ana, Cy"), "Cy": ("0", "Cy — no votes"),
+    }
     assert changed["selectedVoteTarget"] == "Cy"
-    assert sorted(changed["voteIconLabels"]) == ["Ana voted for Cy", "Cy voted for Bo"]
+    assert shown_votes(changed) == {
+        "Ana": ("0", "Ana — no votes"), "Bo": ("1", "Bo — votes: Cy"), "Cy": ("1", "Cy — votes: Ana"),
+    }
     assert withdrawn["selectedVoteTarget"] is None
-    assert withdrawn["voteIconLabels"] == ["Cy voted for Bo"]
+    assert shown_votes(withdrawn) == {
+        "Ana": ("0", "Ana — no votes"), "Bo": ("1", "Bo — votes: Cy"), "Cy": ("0", "Cy — no votes"),
+    }
 
 
 @needs_node
@@ -114,7 +125,9 @@ def test_a_ghost_sees_the_votes_but_cannot_vote_or_skip():
     seen = result["looks"][-1]
     assert seen["skip"]["disabled"] is True
     assert all(button["disabled"] for button in seen["voteButtons"])
-    assert seen["voteIconLabels"] == ["Bo voted for Cy"]
+    assert shown_votes(seen) == {
+        "Bo": ("0", "Bo — no votes"), "Cy": ("1", "Cy — votes: Bo"), "Di": ("0", "Di — no votes"),
+    }
     assert not any(message["type"] in ("vote", "skip_discussion") for message in result["sent"])
 
 

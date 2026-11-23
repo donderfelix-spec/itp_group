@@ -143,15 +143,17 @@ def test_fail_button_is_private_to_fr_and_q_uses_the_same_handler():
     assert "type: 'fail'" in main or 'type: "fail"' in main
 
 
-@pytest.mark.parametrize(("distance", "allowed"), [(5.0, True), (6.0, False)])
-def test_fail_range_is_five_tiles(distance, allowed, connect):
+# The fail range is 25 map units since S-194 (was 20, S-180).
+@pytest.mark.parametrize(("distance", "allowed"), [(25.0, True), (26.0, False)])
+def test_fail_range_is_twenty_five_map_units(distance, allowed, connect):
     names = PLAYER_SETS[0][0]
     connections, _code, _public, _start = start_classic(connect, names)
     round_state = classic_for(names[0])
     fr_id = next(player for player, role in round_state.roles.items() if role == "FR")
     hp_id = next(player for player, role in round_state.roles.items() if role == "HP")
     lobby = app.state.lobbies.lobby_of(fr_id)
-    positions = {player: (100.0 + 10 * index, 100.0) for index, player in enumerate(names)}
+    # The others stand far apart, so only hp_id can be in the 25-unit range (S-194).
+    positions = {player: (300.0 + 50 * index, 300.0) for index, player in enumerate(names)}
     positions[fr_id] = (100.0, 100.0)
     positions[hp_id] = (100.0 + distance, 100.0)
     place_players(lobby, names, positions)

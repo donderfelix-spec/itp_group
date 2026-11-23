@@ -47,7 +47,7 @@ The map is based on the real campus in Carcavelos: light buildings, a large pave
 - At the bottom, a glass front closes off the deck. You can see the beach and the sea, but you cannot go out.
 - Every room has exactly one door to the deck and two task stations (1 to 5 in the corners of the map, so that you really have to walk in Duel, and 7 to 11 at other places); station 12 stands on the Main Deck (S-124). A station is drawn as an object of its room, for example a coffee machine or a book cart (S-128); it is drawn like the furniture around it (thin lines, the room's colours, about the size of a chair or a small table), stands on free floor against a wall or furniture, and neither it nor its outline lies on furniture or a wall. Everything that blocks is drawn to its edges (S-144).
 - You only ever see the section around your own character, about one room in size. The camera follows the character.
-- If time allows: You cannot see through walls.
+- In Classic, living players see up to 120 map units from their character (S-185). The view fades softly into the dark towards its edge (S-188). Opaque walls block their view, and open passages let them see through. The server sends only living player positions within that view, subject to the hiding rules. Ghosts keep their wider view.
 
 ## 3. Characters
 
@@ -71,7 +71,7 @@ All characters are the same size and the same speed, they differ only in how the
 - Each character exists only once per lobby, so that players can be told apart. For this reason there are at most eight players in a lobby. The name is also shown above the character. Name labels never cover each other: where two would overlap, only one is drawn, and the player's own name always wins. Of two other players the name of the character drawn on top is shown; a name that was hidden needs 4 map units of free space to the names that win against it before it comes back, so names do not flicker at the edge. All players start on the one spawn point, so there a player sees only the own name until the others walk away (S-117).
 - A moving character runs: between its steps both feet are briefly off the ground and the back foot kicks up, the body hops a little and leans slightly forward, and free hands are held higher and pump against the legs (a hand holding something pumps less). The legs turn around fixed hip points under the body. The steps follow the distance covered, about 5 steps per second. The character looks left or right in the running direction (mirrored); running up or down keeps the side it last faced (S-105, S-118).
 - Failed players are half transparent and only visible to other ghosts.
-- Where someone was failed, a crumpled sheet of paper with a red “F” and the portrait of the failed player stays on the ground until the round ends, also after it was reported (S-150, S-163).
+- Where someone was failed, the figure lies on the ground until a player reports it. A crumpled sheet of paper with a red “F” and the portrait of the failed player stays on the ground until the round ends, also after it was reported (S-150, S-163).
 
 ## 4. Screens
 
@@ -86,7 +86,7 @@ All characters are the same size and the same speed, they differ only in how the
 | 7 | Minigame | Window on top of the map, closes with Esc |
 | 8 | Meeting | Cards of all players, chat, vote, clock |
 | 9 | Vote result | Who received how many votes, the character drifts out to sea, and whether it was a Free Rider |
-| 10 | End | Who won, who was a Free Rider, “Back to lobby” |
+| 10 | End | Who won, who was a Free Rider, the statistics, “Back to the lobby”. Only the host also sees “New Round”, with “Start another round with the same lobby.” below the buttons; everybody else sees no “New Round” at all, only “Back to the lobby” and below it “The host can start the next round.” When the host changes while the screen is open, the button follows (Felix, 2026-11-22). |
 | 11 | Duel ranking | Placement with times |
 | 12 | Profile | Rounds and wins per mode, best Duel time. Opened with “Profile” on the Home screen, only for an account: “Signed in as” and the name at the top, then one row per mode with “Rounds” and “Wins”, below it “Best Duel time” written like in the Duel ranking (“1:12.4”), or “–” as long as there is none, and “Back”. A guest gets the message “Guests have no statistics. Sign up to keep yours.” instead |
 | 13 | Leaderboard | All accounts by wins. Opened with “Leaderboard” on the Home screen, also for a guest: the best 20 accounts with “Place”, “Player”, “Wins” and “Best Duel time”, ordered by wins, then by the better Duel time, then by name; the own row is yellow. Before the first round it says “No rounds played yet.”. “Back” leads to the Home screen. If time allows: filter “Friends” |
@@ -114,8 +114,9 @@ If you walk away, both disappear again; a station that matters to you keeps its 
 |---|---|---|---|---|
 | E | Task station that is on your own list | Yellow | “E Use” | Stations that you do not need or have already finished do not glow |
 | E | Emergency button | Yellow | “E Call meeting” | Only as long as you have not yet used up your meeting |
+| E | Hiding spot within 25 map units (S-191) | – | “E Hide”, while hidden “E Leave hiding” | Only the living Free Rider in a Classic round sees it. When a station or the emergency button is in reach as well, E uses the nearest of them |
 | R | “F” sheet | Coral | “R Report” | Visible to everyone who is in range |
-| Q | High Performer in range | Coral | “Q Fail” | Only the Free Rider sees the border around the High Performer and the button. During the cooldown the button stays grey and counts down the seconds |
+| Q or F | High Performer in range (25 map units, S-194) | Coral | “Let fail” | Only the Free Rider sees the border around the High Performer and the button. During the cooldown the button stays grey and counts down the seconds (“Let fail (n s)”, S-181) |
 
 Pressing a key that would do nothing at that moment has no effect and also shows no error message.
 
@@ -126,12 +127,12 @@ Pressing a key that would do nothing at that moment has no effect and also shows
 | WASD or arrow keys | Walk |
 | E | Use a station, press the emergency button |
 | R | Report a failed player |
-| Q | Fail someone (Free Rider only) |
-| M | Overview map |
+| Q or F | Fail someone (Free Rider only) |
+| M | Open or close the campus overview |
 | Enter | Send chat in the meeting |
 | Esc | Close the minigame or the map |
 
-Every action also works with a mouse click on the button.
+Every action also works with a mouse click on the button. The campus overview shows the whole floor plan, your position and only your assigned open tasks. In Duel or Solo it marks your next task.
 
 **Walking diagnostic.** Opened with `?debug` at the end of the address, the page shows a small panel in the top left corner with numbers about the connection and the drawing while walking (S-120), and the buttons “Copy”, “Reset” and “Hide”. It is a tool for the team, not part of the game: without `?debug` it does not exist.
 
@@ -144,9 +145,9 @@ Every action also works with a mouse click on the button.
 1. Everyone starts on the Main Deck. Each player sees their role for three seconds. Two Free Riders also see who the other one is.
 2. Each High Performer gets four of the eleven tasks (stations 1 to 5 and 7 to 12, S-124), chosen in a random order by the server. Exactly one is active at a time. Finishing it reveals the next randomly ordered task until all four are done. Every finished task fills the shared progress bar.
 3. Every player sees only their own current task; only that station pulses and can be opened. The Free Rider has no task list and cannot open a station: they fake tasks by standing at one, and no station pulses for them (S-154).
-4. The Free Rider can fail a High Performer who is in range (5 fields). After that, the Free Rider has to wait 15 seconds. The Free Rider starts with the ability loaded and cannot fail another Free Rider.
-5. Reporting happens right on the spot: For any living player who stands within 2 fields of an “F” sheet, the button “Report” lights up (key R). Pressing it starts the meeting for everyone at once, and nobody has to walk anywhere. The reported sheet stays on the map until the round ends and cannot be reported again (S-150). Without a find, each living player can call one meeting per round with the red button in the centre of the Main Deck, available 45 seconds after the round starts. The player has to stand within 25 map units of the button, as close as to a station; the server checks this, and only a living player within that range sees “E Emergency”. There is no other cooldown (S-170, S-172).
-6. Meeting: 45 seconds of discussion by chat, then 30 seconds for the vote. You vote for one person or “Skip”. The person with the most votes goes, and nobody goes if there is a tie or a majority for “Skip”. After a report, voting is already open during the discussion; after an emergency meeting only in the voting phase (S-161). During the vote the window says “Chat is closed. Choose one living player to eject, or Skip.” Votes are public: everybody sees each voter's character next to their target, and the own target is highlighted. Clicking the same player again takes the vote back, another player replaces it (S-160). “Skip” switches the own Skip on and off (“Skip” / “Undo Skip”) and takes back the own vote; the window shows “2 / 3 Skip votes to end voting early.” As soon as 75 % of the living have chosen Skip, rounded up, the meeting ends at once. Anyone who does not vote does not count as “Skip”; Skip with as many votes as the leading player is a tie. Otherwise the vote ends when its 30 seconds run out, also when everybody has voted (S-162). The result stays on screen for a moment (1.8 s), then the window closes and the round goes on; when the result ends the round, the end screen follows at once (S-153).
+4. The Free Rider can fail a High Performer who is in range (25 map units, S-194), with key Q or F or the button “Let fail”. After that, the Free Rider has to wait 15 seconds. The Free Rider starts with the ability loaded and cannot fail another Free Rider.
+5. Reporting happens right on the spot: For any living player, the Free Rider included, who stands within 8 map units of an “F” sheet (S-180), the button “Report” lights up (key R). Pressing it starts the meeting for everyone at once, and nobody has to walk anywhere. The reported sheet stays on the map until the round ends and cannot be reported again (S-150). Without a find, each living player can call one meeting per round with the red button in the centre of the Main Deck, available 45 seconds after the round starts. The player has to stand within 25 map units of the button, as close as to a station; the server checks this, and only a living player within that range sees “E Emergency”. There is no other cooldown (S-170, S-172).
+6. Meeting: 45 seconds of discussion by chat, then 30 seconds for the vote. You vote for one person or “Skip”. The person with the most votes goes, and nobody goes if there is a tie or a majority for “Skip”. After a report, voting is already open during the discussion; after an emergency meeting only in the voting phase (S-161). During the vote the window says “Chat is closed. Choose one living player to eject, or Skip.” Votes are public: each vote button shows on its right, in a round field of fixed size, how many voted for that player (a pale “0” without votes), and its label names the voters, for example “Bo — votes: Ana, Cy” or “Bo — no votes”; the own target is highlighted. All vote buttons have the same size in a fixed grid (four columns, three in a medium window, two in a narrow one); a long name ends in “…”, and nothing moves when votes arrive, change or are taken back. The meeting window always fits the screen: the meeting picture shrinks, and the Skip row, the vote buttons, the message field and “Send” stay visible (Felix, 2026-11-22). Clicking the same player again takes the vote back, another player replaces it (S-160). “Skip” switches the own Skip on and off (“Skip” / “Undo Skip”) and takes back the own vote; the window shows “2 / 3 Skip votes to end voting early.” As soon as 75 % of the living have chosen Skip, rounded up, the meeting ends at once. Anyone who does not vote does not count as “Skip”; Skip with as many votes as the leading player is a tie. Otherwise the vote ends when its 30 seconds run out, also when everybody has voted (S-162). The result stays on screen for a moment (1.8 s), then the window closes and the round goes on; when the result ends the round, the end screen follows at once (S-153).
 7. Whoever is voted out drifts out to sea: The character is caught by a wave on the beach, gets smaller and disappears on the horizon. A text says whether it was a Free Rider: “Mara was a Free Rider.” or “Mara was not a Free Rider.”
 8. After the meeting everyone stands on the Main Deck again, and the Free Rider’s cooldown starts again.
 9. Ghosts keep doing their tasks, but they do not write in the chat and do not vote.
@@ -160,7 +161,7 @@ Every action also works with a mouse click on the button.
 | Discussion / vote | 45 s / 30 s |
 | Emergency meetings | 1 per player |
 
-Area 3 specification update: the Free Rider fail radius changed from 3 to 5 fields and its cooldown from 25 to 15 seconds. The initial fail ability remains loaded, and reporting an F-sheet still uses a 2-field radius.
+Lennart's update (2026-11-22, S-180, S-181, S-194): the Free Rider fail radius is 25 map units (20 until S-194) and the F-sheet report radius is 8. A living Free Rider can report any unreported F-sheet, including their own victim's. The cooldown remains 15 seconds. F-sheets and their victim portraits are drawn 30 % larger.
 
 **High Performers win:** The progress bar is full, or all Free Riders have been voted out.
 **Free Riders win:** There are as many Free Riders left as High Performers.
@@ -169,7 +170,7 @@ If someone leaves the round, that player counts as failed, and their open tasks 
 
 In all modes, players walk through each other, and nobody can block a door.
 
-**Hiding spots:** There are four marked places, shown on the map as dashed circles: in the aisle between the shelves in Pingo Doce, next to the bookshelf of the CTT Student Hall, in the corner of the Canteen and in the hedge on the Main Deck. Everybody can walk into the hedge. Only the Free Rider hides, and only in Classic: a living Free Rider who stands in a hiding spot is visible to the living High Performers only within 35 map units. A High Performer or a ghost in a hiding spot is visible like anywhere else, and in the lobby and in Duel nobody hides. The hidden Free Rider sees his own character half transparent and the word “Hidden” in the Classic panel, so that he notices that he is hidden; nobody else sees any of it (S-131 to S-135). Ghosts see the hidden Free Rider from anywhere (S-136), the other Free Rider sees him from anywhere (S-137), and a meeting does not reveal him (S-138).
+**Hiding spots:** There are four places, each shown on the map as an object that belongs there, standing in a soft shade as large as the spot (S-190): cardboard boxes in the aisle between the shelves in Pingo Doce, a beanbag with two books next to the bookshelf of the CTT Student Hall, a potted plant in the corner of the Canteen and a dark hollow in the hedge on the Main Deck. The objects are only drawn; everybody walks through them and sees them the same way. Everybody can walk into the hedge. Only the Free Rider hides, and only in Classic. He hides on purpose (S-191): a living Free Rider who stands within 25 map units of a hiding spot presses E (“E Hide”); he is put into the middle of the spot, stands still and is then not sent to any living High Performer, however near (S-192): whoever watches him hide sees him disappear at the object. Standing in a spot alone does not hide. A step, E again (“E Leave hiding”), a meeting, and leaving the lobby end hiding; after a meeting he presses E again to hide. While hidden he cannot fail, report or call a meeting: he steps out first, which is instant. A High Performer or a ghost cannot hide, and in the lobby and in Duel nobody hides. The hidden Free Rider sees his own character half transparent (0.5) with a small crossed-out eye above his name, and the word “Hidden” in the Classic panel, so that he notices that he is hidden (S-131 to S-135, S-192). Ghosts (S-136) and the other Free Rider (S-137, within his own view) still get him, and see him the same way: half transparent with the crossed-out eye. Ghosts themselves are drawn half transparent without the eye, so the eye alone tells a hidden player from a ghost. A living High Performer sees nothing of any of it.
 
 If time allows: Sabotage “WiFi down”. The Free Rider locks all stations until someone restarts the router in the CTT Student Hall.
 
@@ -267,6 +268,9 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Lobby is full, or its countdown or round is already running | “This lobby is full.” / “This round has already started.” |
 | Too few players for the mode | “Classic needs at least 4 players.” |
 | Calling an emergency meeting further than 25 map units from the red button (only when someone bypasses the page) | “Walk to the red button to call a meeting.” |
+| Hiding as a High Performer or a ghost, in a meeting, outside a Classic round (only when someone bypasses the page) | “You cannot hide right now.” |
+| Hiding further than 25 map units from every hiding spot (only when someone bypasses the page) | “Walk up to a hiding spot to hide.” |
+| Failing, reporting or calling a meeting while hidden | “Leave your hiding spot first.” |
 | Skipping when there is no meeting, as a ghost, after the time, or in the discussion of an emergency meeting (only when someone bypasses the page) | “You cannot skip this discussion right now.” |
 | Connection lost | “Connection lost. Reconnecting…” After the player signs in again, the page joins the lobby it was in by itself and puts the code into the join field. If that lobby is gone, full or in its countdown or round, the usual text appears at the code field (S-109). |
 | Database not reachable | “Accounts are unavailable right now. You can still play as a guest.” |

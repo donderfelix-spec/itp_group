@@ -42,10 +42,10 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Smooth walking over the internet: characters and the camera keep moving when position messages come late or bunched (gaps up to 250 ms) | M2 | Done |
 | The own character and the camera keep walking through longer hold-ups of the connection (up to about 700 ms) and stop sooner after a key is released | M2 | Done |
 | Walking diagnostic for the team: with `?debug` in the address a panel measures the connection and the drawing while walking and copies the numbers as text | M2 | Done |
-| Limited view: You only see what is nearby and not behind a wall | M3 | Planned |
-| Show failed players as ghosts | M3 | Planned |
-| Four hiding spots in Classic in which the Free Rider is visible only within 35 map units (S-131 to S-140) | M3 | Done |
-| Overview map with your own open tasks | M3 | Planned |
+| Limited view in Classic: nearby living players in direct sight, with walls casting shadows (S-185) | M3 | Done |
+| Half-transparent ghosts visible to other ghosts and fallen characters visible until reported (S-186) | M3 | Done |
+| Four hiding spots in Classic (S-131 to S-140), drawn as objects of the map: boxes, a beanbag, a potted plant and a hollow in the hedge (S-190); the Free Rider hides on purpose with E and is then sent to no High Performer; himself, the other Free Rider and ghosts see him with a crossed-out eye (S-191, S-192) | M3 | Done |
+| Campus overview with your location and your own open tasks (S-187) | M3 | Done |
 | Finished graphics for rooms and characters instead of placeholders | M4 | Planned |
 | Sounds and music | M4 | Later |
 | Touch controls for the phone | M4 | Later |
@@ -90,13 +90,14 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Shared progress bar of the group work | M3 | Done |
 | Free Rider fails a nearby player, followed by a cooldown; the sheet shows the victim's portrait (S-163) | M3 | Playable with known defects (M3-3.13, M3-3.15) |
 | Find and report a failed player | M3 | Playable with known defects (M3-3.15) |
+| Report from 8 map units, also by the Free Rider; let fail from 25 map units with Q or F (S-194); F-sheets 30 % larger (S-180, S-181) | M3 | Done (M3-4.25 to M3-4.28) |
 | Emergency meeting with the red button in the centre of the Main Deck (S-147), drawn as an alarm switch (S-149), limited per player, range checked by the server, hint only for the living (S-170) | M3 | Playable with known defects (M3-3.15: the wording “E Call meeting”) |
-| Meeting with text chat and time limit; the window closes after the result (S-153) | M3 | Playable with known defects (M3-3.13) |
+| Meeting with text chat and time limit; the window closes after the result (S-153) and always fits the screen (S-173) | M3 | Playable with known defects (M3-3.13) |
 | One random active Classic task per High Performer, next revealed after completion; only the current station pulses and opens, and the arrow leads to it; the Free Rider has none | M3 | In progress on Minispiele-und-Modi |
-| Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie; votes are public and can be changed, after a report already during the discussion, 75 % Skip ends the meeting (S-160 to S-162) | M3 | Done |
+| Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie; votes are public and can be changed, after a report already during the discussion, 75 % Skip ends the meeting (S-160 to S-162); each vote button shows its number of votes in a fixed field (S-173) | M3 | Done |
 | Result of the vote: character drifts out to sea, display whether it was a Free Rider | M3 | Playable with known defects (text only, no drifting yet, M3-3.5) |
 | Ghosts keep doing their tasks, but they do not talk and do not vote; ghosts see the dead as “Dead” in the Players list (S-164) | M3 | Done (M3-3.9, M3-3.20, 2026-11-22) |
-| Check the win conditions and show the end screen that reveals the roles | M3 | Done (M3-3.11, 2026-11-22) |
+| Check the win conditions and show the end screen that reveals the roles; only the host sees “New Round” (S-173) | M3 | Done (M3-3.11, 2026-11-22) |
 | A player who leaves a Classic round counts as failed; the round stops when too few players are left for its Free Riders (S-157, S-158); a leaver's Skip goes too, and 75 % Skip of those left ends the meeting (S-165) | M3 | Done (M3-3.8, M3-3.11, 2026-11-22) |
 | Free Riders can only fake tasks | M3 | Planned (M3-3.17) |
 | Sabotage “WiFi down”: tasks locked until someone restarts the router | M4 | Planned |
@@ -121,6 +122,7 @@ Stations 7, 10 and 12 use chart reconstruction from survey evidence, a chat dedu
 | Duel: progress of every player as 1/3 with a bar in the Players list of the panel (S-130) | M2 | Done |
 | Panel of the mode at the top of the side panel in every mode (Duel and Solo: next task and clock; Classic: own tasks and group progress), visible without scrolling with eight players (S-143) | M2 | Done |
 | Six more minigames at stations 7 to 12, in Duel, Solo and Classic (S-124) | M2 | Done |
+| Stations 7, 10 and 12 reworked: rebuild a misleading chart from survey counts, deduce a schedule from chat clues, catch falling pages in three lanes; each with its own brief, feedback and retry (S-189) | M2 | Done |
 | Solo mode for one player, without statistics (S-125) | M2 | Done |
 | Duel: every player starts at a different station, up to 8 players (S-126) | M2 | Done |
 | Stations as objects with a pulsing outline when they matter (S-128) | M2 | Done |

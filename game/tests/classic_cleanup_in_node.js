@@ -52,11 +52,14 @@ const timers = new Map();
 // ---- A canvas context that writes down every text it draws ------------
 
 function newContext() {
-  const state = { fillStyle: '#000000', globalAlpha: 1, texts: [] };
+  const state = { fillStyle: '#000000', strokeStyle: '#000000', globalAlpha: 1, texts: [], strokes: [] };
   const saved = []; // what save() kept of the transparency, for restore()
   const doesNothing = () => undefined;
   const methods = {
     fillText(text) { state.texts.push({ text: String(text), colour: state.fillStyle }); },
+    // Every stroke's colour: the coral stroke across the crossed-out eye of
+    // a hidden player (M3-1.6, S-192) is counted by lookAtDrawing.
+    stroke() { state.strokes.push(String(state.strokeStyle)); },
     measureText(text) { return { width: String(text).length * 7 }; },
     getTransform() { return {}; },
     save() { saved.push(state.globalAlpha); },
@@ -101,6 +104,7 @@ class FakeElement {
     this.parentNode = null;
     this.listeners = {};
     this.dataset = {};
+    this.attributes = {};
     this.classList = new FakeClassList();
     this.style = { setProperty() {} };
     this.clientWidth = 800;
@@ -156,7 +160,8 @@ class FakeElement {
   }
 
   querySelector() { return new FakeElement(); }
-  setAttribute() {}
+  setAttribute(name, value) { this.attributes[name] = String(value); }
+  getAttribute(name) { return name in this.attributes ? this.attributes[name] : null; }
   focus() { document.activeElement = this; }
   blur() { if (document.activeElement === this) document.activeElement = null; }
 }
@@ -193,7 +198,11 @@ const document = {
   hidden: false,
   activeElement: null,
   getElementById: element,
-  createElement: () => new FakeElement(),
+  createElement: (tagName) => {
+    const made = new FakeElement();
+    made.tagName = String(tagName || '').toUpperCase();
+    return made;
+  },
   addEventListener() {},
   removeEventListener() {},
 };
@@ -223,6 +232,7 @@ const minigames = {
 let emergencyButtonDrawn = null;
 // The characters drawn in the last frame: {character, x, alpha}.
 let charactersDrawn = [];
+let fallenCharactersDrawn = [];
 // The stations the last frame let pulse (the fifth argument of drawMap).
 let pulsingStations = null;
 
@@ -281,7 +291,12 @@ page.Game = {
     // the world then draws a circle in its place.
     drawCharacter(ctx, character, x) {
       if (character === 'broken') throw new Error('This character cannot be drawn.');
-      charactersDrawn.push({ character: character, x: x, alpha: ctx.globalAlpha });
+      if (ctx === element('map').getContext()) {
+        charactersDrawn.push({ character: character, x: x, alpha: ctx.globalAlpha });
+      }
+    },
+    drawFallenCharacter(ctx, character, x, y) {
+      fallenCharactersDrawn.push({ character: character, x: x, y: y });
     },
     chooseLabels: (labels) => ({ shown: labels, hidden: new Set() }),
   },
@@ -318,7 +333,9 @@ function runFrame() {
   if (!frame) return;
   const context = element('map').getContext();
   context.texts = [];
+  context.strokes = [];
   charactersDrawn = [];
+  fallenCharactersDrawn = [];
   try {
     frame(clock);
   } catch (problem) {
@@ -349,9 +366,10 @@ function look() {
   const selectedVote = element('classic-vote-players').children.find(
     (button) => button.classList.contains('classic-vote-player-selected')
   );
-  const voteIconLabels = everyElementBelow(element('classic-vote-players'))
-    .filter((found) => found.classList.contains('classic-voter-icon'))
-    .map((found) => found.title);
+  // Character icons of the voters inside a vote button: there are none
+  // since Felix's fixed-size buttons (2026-11-22).
+  const voterIcons = everyElementBelow(element('classic-vote-players'))
+    .filter((found) => found.tagName === 'CANVAS' || found.classList.contains('classic-voter-icon')).length;
   const lobbyNames = everyElementBelow(element('lobby-players'));
   const ownOnMap = mapTexts.filter((text) => text.text === ownName);
   return {
@@ -370,7 +388,24 @@ function look() {
     ownNameRedInRound: element('classic-own-name').classList.contains('free-rider-name'),
     meetingKnowsFreeRider: meetingKnowsFreeRider,
     selectedVoteTarget: selectedVote ? selectedVote.dataset.targetId : null,
-    voteIconLabels: voteIconLabels,
+    voterIcons: voterIcons,
+    // Per vote target: the number in its count field and its label, e.g.
+    // {count: "2", label: "Bo — votes: Ana, Cy", title: ...}.
+    votes: Object.fromEntries(element('classic-vote-players').children.map((button) => {
+      const count = button.children.find((child) => child.classList.contains('classic-vote-count'));
+      return [button.dataset.targetId, {
+        count: count ? count.textContent : null,
+        countIsZero: count ? count.classList.contains('classic-vote-count-zero') : null,
+        label: button.getAttribute('aria-label'),
+        title: button.title,
+      }];
+    })),
+    // The end screen's "New Round" and the hint below the buttons.
+    newRound: {
+      hidden: element('classic-new-round').hidden,
+      disabled: element('classic-new-round').disabled,
+    },
+    hostHint: element('classic-host-hint').textContent,
     // The names in the side panel's Players list, in their order.
     listNames: element('lobby-players').children
       .map((row) => row.children.find((child) => child.classList.contains('player-name')).textContent),
@@ -461,6 +496,9 @@ const STEPS = {
   lookAtDrawing() {
     drawings.push({
       charactersDrawn: charactersDrawn,
+      fallenCharactersDrawn: fallenCharactersDrawn,
+      // How many crossed-out eyes the last frame drew (their coral strokes).
+      hiddenSymbols: element('map').getContext().strokes.filter((colour) => colour === FREE_RIDER_RED).length,
       hiddenHintShown: everyElementBelow(element('classic-progress'))
         .some((found) => found.id === 'classic-hidden-hint' && !found.hidden),
     });

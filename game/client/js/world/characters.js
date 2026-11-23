@@ -191,7 +191,7 @@ Game.world = Game.world || {};
   // The shadow lies on the ground, also while the character walks.
   function drawShadow(ctx) {
     ctx.save();
-    ctx.globalAlpha = 0.14;
+    ctx.globalAlpha *= 0.14;
     ctx.beginPath();
     ctx.ellipse(0, 98, 24, 5, 0, 0, Math.PI * 2);
     paint(ctx, OUTLINE, null, 0);
@@ -252,7 +252,7 @@ Game.world = Game.world || {};
     circle(ctx, 6.5, 22, 2.4, OUTLINE, 0);
     stroke(ctx, "M-4 29 Q0 31.5 4 29", OUTLINE, 2);
     ctx.save();
-    ctx.globalAlpha = 0.5;
+    ctx.globalAlpha *= 0.5;
     circle(ctx, -11, 27, 2.6, "#F2A99B", 0);
     circle(ctx, 11, 27, 2.6, "#F2A99B", 0);
     ctx.restore();
@@ -269,7 +269,7 @@ Game.world = Game.world || {};
     paint(ctx, OUTLINE, null, 0);
     stroke(ctx, "M1.5 29 Q5 31.5 8.5 29", OUTLINE, 2);
     ctx.save();
-    ctx.globalAlpha = 0.5;
+    ctx.globalAlpha *= 0.5;
     circle(ctx, -11 + TURN, 27, 2.6, "#F2A99B", 0);
     ctx.beginPath();
     ctx.ellipse(13.5, 27, 1.7, 2.6, 0, 0, Math.PI * 2);
@@ -660,7 +660,7 @@ Game.world = Game.world || {};
 
   function drawGlasses(ctx) {
     ctx.save();
-    ctx.globalAlpha = 0.35;
+    ctx.globalAlpha *= 0.35;
     circle(ctx, -6.5, 22, 6, "#FFFFFF", 0);
     circle(ctx, 6.5, 22, 6, "#FFFFFF", 0);
     ctx.restore();
@@ -675,7 +675,7 @@ Game.world = Game.world || {};
   // seen narrower, and of its arm only the start is seen.
   function drawTurnedGlasses(ctx) {
     ctx.save();
-    ctx.globalAlpha = 0.35;
+    ctx.globalAlpha *= 0.35;
     circle(ctx, -6.5 + TURN, 22, 6, "#FFFFFF", 0);
     traceNarrowLens(ctx);
     paint(ctx, "#FFFFFF", null, 0);
@@ -1158,6 +1158,16 @@ Game.world = Game.world || {};
     ctx.restore();
   }
 
+  // The failed student's drawing stays on the floor beside their F-sheet.
+  function drawFallenCharacter(ctx, characterId, x, y, size) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-Math.PI / 2);
+    drawCharacter(ctx, characterId, 0, 0, size);
+    ctx.restore();
+  }
+
   Game.world.characters = characters;
   Game.world.drawCharacter = drawCharacter;
+  Game.world.drawFallenCharacter = drawFallenCharacter;
 })();

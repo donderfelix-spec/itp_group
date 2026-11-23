@@ -141,6 +141,15 @@ window.Game = window.Game || {};
     if (mode === 'classic' && roundIsRunning) Game.net.send({ type: 'emergency' });
   }
 
+  // E at a hiding object, and E again while hidden (M3-1.6, S-191).
+  function requestHide() {
+    if (mode === 'classic' && roundIsRunning) Game.net.send({ type: 'hide' });
+  }
+
+  function requestLeaveHiding() {
+    if (mode === 'classic' && roundIsRunning) Game.net.send({ type: 'leave_hiding' });
+  }
+
   function whenClassicFail(message) {
     if (mode === 'classic' && roundIsRunning) callWorld('addBloodSheet', message);
   }
@@ -290,6 +299,7 @@ window.Game = window.Game || {};
     // the character walk again (classicMeeting.hide).
     if (message.phase !== 'round') clearClassicLeftovers();
     mode = message.mode;
+    callWorld('setClassicVision', mode === 'classic' && message.phase === 'round');
     Game.duel.noteLobby(message);
     Game.classicRound.setLobby(message);
     Game.countdown.noteLobby(message);
@@ -430,6 +440,7 @@ window.Game = window.Game || {};
   callWorld('setFailHandler', requestFail);
   callWorld('setReportHandler', requestReport);
   callWorld('setEmergencyHandler', requestEmergency);
+  callWorld('setHidingHandlers', requestHide, requestLeaveHiding);
 
   Game.net.on('open', Game.screens.hideMessage);
   Game.net.on('close', whenConnectionLost);

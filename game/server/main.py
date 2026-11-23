@@ -30,7 +30,8 @@ from server.accounts.statistics_store import make_statistics_store
 from server.accounts.store import StoreUnavailable, make_account_store
 from server.classic import meeting as classic_meeting
 from server.classic.emergency_button import emergency_button_in_reach
-from server.classic.round import ClassicRound
+from server.classic import hiding as classic_hiding
+from server.classic.round import ClassicRound, HideRefused
 from server.modes import duel, minigames, tasks
 from server.net.attempts import AttemptLimits
 from server.net.lobbies import Lobbies
@@ -170,6 +171,10 @@ async def read_messages(websocket: WebSocket):
             await answer_report_message(websocket, message)
         elif message["type"] == "emergency":
             await answer_emergency_message(websocket)
+        elif message["type"] == "hide":
+            await answer_hide_message(websocket)
+        elif message["type"] == "leave_hiding":
+            await answer_leave_hiding_message(websocket)
         elif message["type"] == "chat":
             await answer_chat_message(websocket, message)
         elif message["type"] == "vote":
@@ -814,6 +819,12 @@ async def answer_move_message(websocket: WebSocket, message: dict):
     # error: a key may have been pressed just before the window opened.
     if tasks.stands_still(lobby.tasks, name):
         return
+    # A step ends hiding (M3-1.6, S-191): hidden means standing still.
+    classic = lobby.classic_round
+    if (message["dx"], message["dy"]) != (0, 0) and classic is not None and classic.leave_hiding(name):
+        await tell_hiding(name, False)
+        # Also when the step is blocked: everybody gets the positions again.
+        lobby.walkers.everybody_needs_news()
     # The next tick moves the player. The browser sees the result in `positions`.
     lobby.walkers.set_direction(name, message["dx"], message["dy"])
 
@@ -920,12 +931,21 @@ def tell_positions(lobby):
         # the living are not sent where the ghosts are (M3-3.20).
         if classic is not None and name not in classic.eliminated:
             positions = [entry for entry in positions if entry[0] not in classic.eliminated]
+            # Limited vision (S-185) holds in every phase, like the filter above.
+            positions = visibility.positions_in_sight(positions, name, app.state.campus)
         if classic is not None:
-            # On top of that, a Free Rider in a hiding spot is only sent to
-            # those close to him (M3-1.4). Outside Classic nobody hides.
+            # On top of that, a Free Rider who hides (he pressed E at a hiding
+            # object, M3-1.6) is sent to no living High Performer (S-192).
+            # Outside Classic nobody hides.
+            hidden_now = set(classic.hidden)
             hiders = visibility.players_who_hide_from(name, classic.roles, classic.eliminated, classic.phase)
-            positions = visibility.visible_positions(positions, name, app.state.campus, hiders)
-        message = protocol.positions(positions)
+            positions = visibility.visible_positions(positions, name, app.state.campus, hiders & hidden_now)
+            # Those who still get him are told he hides; a living High
+            # Performer never (S-192).
+            told = visibility.told_hidden(name, classic.roles, classic.eliminated, hidden_now)
+            message = protocol.positions(positions, told)
+        else:
+            message = protocol.positions(positions)
         task = asyncio.create_task(send_positions(name, connection, lobby, message))
         background_sends.add(task)
         task.add_done_callback(background_sends.discard)
@@ -1105,6 +1125,9 @@ async def answer_fail_message(websocket: WebSocket):
     if classic is None:
         await websocket.send_json(protocol.rejection("fail_rejected"))
         return
+    if classic_hiding.blocked_while_hidden("fail", name, classic.hidden):
+        await websocket.send_json(protocol.rejection("leave_hiding_first"))
+        return
 
     members = set(lobby.names())
     classic.positions = {
@@ -1175,6 +1198,9 @@ async def answer_report_message(websocket: WebSocket, message: dict):
     if classic is None:
         await websocket.send_json(protocol.rejection("report_rejected"))
         return
+    if classic_hiding.blocked_while_hidden("report", name, classic.hidden):
+        await websocket.send_json(protocol.rejection("leave_hiding_first"))
+        return
 
     position = lobby.walkers.position_of(name)
     claimed = message["position"]
@@ -1189,10 +1215,16 @@ async def answer_report_message(websocket: WebSocket, message: dict):
             for player_id in classic.roles
             if player_id in lobby.names()
         }
+        was_hidden = sorted(classic.hidden)
         meeting = classic.report(name, message["sheet_id"], position, now)
     except (KeyError, ValueError):
         await websocket.send_json(protocol.rejection("report_rejected"))
         return
+    # The meeting ended hiding (S-191): those who hid are told, and the
+    # others who saw him as hidden get the positions again (S-192).
+    await asyncio.gather(*(tell_hiding(player, False) for player in was_hidden))
+    if was_hidden:
+        lobby.walkers.everybody_needs_news()
 
     meeting["reason"] = "report"
     meeting["trigger_player_id"] = name
@@ -1216,6 +1248,9 @@ async def answer_emergency_message(websocket: WebSocket):
     if classic is None:
         await websocket.send_json(protocol.rejection("emergency_rejected"))
         return
+    if classic_hiding.blocked_while_hidden("emergency", name, classic.hidden):
+        await websocket.send_json(protocol.rejection("leave_hiding_first"))
+        return
 
     now = seconds_now()
     seconds_left = classic.emergency_seconds_left(now)
@@ -1232,16 +1267,77 @@ async def answer_emergency_message(websocket: WebSocket):
     if not emergency_button_in_reach(position, campus["button"], campus["use_range"]):
         await websocket.send_json(protocol.rejection("emergency_out_of_reach"))
         return
+    was_hidden = sorted(classic.hidden)
     try:
         meeting = classic.emergency(name, now)
     except ValueError:
         await websocket.send_json(protocol.rejection("emergency_rejected"))
         return
+    # The meeting ended hiding (S-191): those who hid are told, and the
+    # others who saw him as hidden get the positions again (S-192).
+    await asyncio.gather(*(tell_hiding(player, False) for player in was_hidden))
+    if was_hidden:
+        lobby.walkers.everybody_needs_news()
     meeting["reason"] = "emergency"
     meeting["trigger_player_id"] = name
     lobby.meeting = meeting
     lobby.meeting_clock = None
     await tell_meeting_state(lobby)
+
+
+async def answer_hide_message(websocket: WebSocket):
+    """A Free Rider pressed E at a hiding object (M3-1.6, S-191).
+
+    The rules are in `server/classic/hiding.py`. He is put on the spot's
+    centre and stands still; only he is told, never anybody else (rule 1).
+    """
+    name = app.state.sessions.name_of(websocket)
+    if name is None:
+        await websocket.send_json(protocol.rejection("not_signed_in"))
+        return
+    lobby = app.state.lobbies.lobby_of(name)
+    if lobby is None:
+        await websocket.send_json(protocol.rejection("not_in_lobby"))
+        return
+    classic = lobby.classic_round
+    if classic is None:
+        await websocket.send_json(protocol.rejection("hide_rejected"))
+        return
+    if classic.is_hidden(name):
+        # E twice in a row (a late repeat): he already hides, nothing changes.
+        await tell_hiding(name, True)
+        return
+    try:
+        spot = classic.hide(name, lobby.walkers.position_of(name), app.state.campus)
+    except HideRefused as refused:
+        await websocket.send_json(protocol.rejection(refused.code))
+        return
+    lobby.walkers.set_direction(name, 0, 0)
+    lobby.walkers.place(name, (float(spot["x"]), float(spot["y"])))
+    await tell_hiding(name, True)
+    tell_positions(lobby)
+
+
+async def answer_leave_hiding_message(websocket: WebSocket):
+    """E again: the Free Rider steps out. Not hidden: nothing happens, no error."""
+    name = app.state.sessions.name_of(websocket)
+    if name is None:
+        await websocket.send_json(protocol.rejection("not_signed_in"))
+        return
+    lobby = app.state.lobbies.lobby_of(name)
+    if lobby is None:
+        await websocket.send_json(protocol.rejection("not_in_lobby"))
+        return
+    classic = lobby.classic_round
+    if classic is not None and classic.leave_hiding(name):
+        await tell_hiding(name, False)
+        lobby.walkers.everybody_needs_news()
+        tell_positions(lobby)
+
+
+async def tell_hiding(name: str, hidden: bool):
+    """Tell only this Free Rider whether he hides now. Nobody else ever hears it."""
+    await send_to(name, {"type": "classic_hiding", "hidden": hidden})
 
 
 def sync_classic_after_meeting(lobby):

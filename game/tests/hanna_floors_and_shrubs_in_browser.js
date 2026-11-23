@@ -11,8 +11,11 @@
 //             the lightest colour of its floor pattern, and the darkest and
 //             the lightest colour behind the letters of its name (as
 //             [red, green, blue])
-//   spot      the hedge's hiding spot: the colour of its dashed outline, of
-//             the disc inside it and of the hedge outside it
+//   spot      the hedge's hiding spot: the colour of the pixels on its
+//             circle (where the dashed outline was until M3-1.5), of the
+//             disc inside it, of the hedge outside it and of the middle of
+//             the hollow drawn there since M3-1.5, and of the same pixels
+//             on the hedge without hiding spots
 //   floorPatterns  the names of the floor patterns the art files draw
 //   corridorName  the decor entry "Academic Hall", the box of its drawn
 //             letters in map units, the colour of the letters, and the
@@ -151,6 +154,19 @@ function measure(checked) {
       disc.push(pixel(withSpot, ...at(spot.r - 2)));
       around.push(pixel(withSpot, ...at(spot.r + 2)));
     }
+    // Since M3-1.5 the spot is a hollow in the hedge, darkest in its middle:
+    // the pixels within 2.5 units of its centre, on a grid of half units.
+    // `hedge` is the same pixels on the map without hiding spots.
+    const withoutSpots = render({ ...noStations, hiding_spots: [] });
+    const hollow = []; const hedge = [];
+    for (let dy = -2.5; dy <= 2.5; dy += 0.5) {
+      for (let dx = -2.5; dx <= 2.5; dx += 0.5) {
+        if (Math.hypot(dx, dy) <= 2.5) {
+          hollow.push(pixel(withSpot, spot.x + dx, spot.y + dy));
+          hedge.push(pixel(withoutSpots, spot.x + dx, spot.y + dy));
+        }
+      }
+    }
     const floorPatterns = Object.keys(Game.world.art.floors).sort();
 
     // The corridor's name "Academic Hall" (Felix, 2026-11-22): the map with
@@ -181,7 +197,7 @@ function measure(checked) {
         behind: extremes(withoutName, drawnBox),
       };
     }
-    return { solids, rooms, spot: { x: spot.x, y: spot.y, dashes, disc, around }, floorPatterns, corridorName };
+    return { solids, rooms, spot: { x: spot.x, y: spot.y, dashes, disc, around, hollow, hedge }, floorPatterns, corridorName };
   })();
 }
 

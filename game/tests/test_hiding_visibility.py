@@ -1,16 +1,19 @@
 """Hiding is enforced before positions leave the server (M3-1.4).
 
 The plain rules of `server/world/visibility.py`, the checks of the map
-(`walkable`, `hide_reveal_range`, the hiding spots) and walking into the
-walkable hedge on the real map. Only a living Free Rider hides, and only in
-a Classic round (S-131, S-132); the server tests are in test_server_hiding.py.
+(`walkable`, the retired `hide_reveal_range`, the hiding spots) and walking
+into the walkable hedge on the real map. Only a living Free Rider hides, and
+only in a Classic round (S-131, S-132). Since S-192 a hidden player is left
+out for those he hides from at any distance (no reveal range of 35 any
+more), and only himself, the Free Riders and the ghosts are told he hides
+(`told_hidden`). The server tests are in test_server_hiding.py.
 """
 
 import pytest
 
 from server.world.campus import CampusError, check_campus, load_campus
 from server.world.movement import is_free, overlaps, step
-from server.world.visibility import hiding_spot, players_who_hide_from, visible_positions
+from server.world.visibility import hiding_spot, players_who_hide_from, told_hidden, visible_positions
 
 # Two High Performers and a Free Rider, and the ghost of a High Performer.
 ROLES = {"hp": "HP", "fr": "FR", "near": "HP", "ghost": "HP"}
@@ -41,8 +44,9 @@ def test_all_four_hiding_spots_are_reachable_positions(campus):
         assert is_free(spot["x"], spot["y"], campus["solids"], campus["width"], campus["height"])
 
 
-def test_the_map_has_a_reveal_range_of_35(campus):
-    assert campus["hide_reveal_range"] == 35
+def test_the_map_has_no_reveal_range_any_more(campus):
+    # S-192 retired the reveal range of 35 (S-133).
+    assert "hide_reveal_range" not in campus
 
 
 def test_only_the_hedge_is_walkable(campus):
@@ -50,15 +54,16 @@ def test_only_the_hedge_is_walkable(campus):
     assert walkable == ["deck-hedge"]
 
 
-@pytest.mark.parametrize("value", [0, -1, float("inf"), float("nan"), True, "35"])
+@pytest.mark.parametrize("value", [35, 0, -1, float("inf"), float("nan"), True, "35"])
 def test_invalid_reveal_range_is_rejected(campus, value):
+    # Since S-192 every reveal range is refused, also the old 35.
     campus["hide_reveal_range"] = value
     with pytest.raises(CampusError):
         check_campus(campus)
 
 
 def test_a_map_without_a_reveal_range_is_accepted(campus):
-    del campus["hide_reveal_range"]
+    campus.pop("hide_reveal_range", None)
     assert check_campus(campus) is campus
 
 
@@ -190,16 +195,17 @@ def test_hidden_player_always_sees_their_own_position(campus, spot):
     assert visible_positions(positions, "hidden", campus, {"hidden"}) == positions
 
 
-@pytest.mark.parametrize("distance,visible", [(34, True), (34.99, True), (35, True), (35.01, False), (36, False)])
-def test_reveal_range_includes_its_boundary(campus, spot, distance, visible):
+@pytest.mark.parametrize("distance", [0, 1, 34, 35, 35.01, 36, 500])
+def test_a_hidden_player_is_left_out_at_every_distance(campus, spot, distance):
+    # Before S-192 he was sent within 35 units; now never.
     positions = [("viewer", spot["x"] + distance, spot["y"]), ("hidden", spot["x"], spot["y"])]
-    assert (len(visible_positions(positions, "viewer", campus, {"hidden"})) == 2) is visible
+    assert names(visible_positions(positions, "viewer", campus, {"hidden"})) == ["viewer"]
 
 
-def test_the_distance_is_measured_centre_to_centre_also_on_a_diagonal(campus, spot):
-    # 21 and 28 make 35 (3-4-5 triangle).
+def test_a_hidden_player_is_left_out_also_on_a_diagonal_at_35(campus, spot):
+    # 21 and 28 make 35 (3-4-5 triangle): the old reveal range.
     positions = [("viewer", spot["x"] + 21, spot["y"] + 28), ("hidden", spot["x"], spot["y"])]
-    assert names(visible_positions(positions, "viewer", campus, {"hidden"})) == ["viewer", "hidden"]
+    assert names(visible_positions(positions, "viewer", campus, {"hidden"})) == ["viewer"]
 
 
 def test_hiding_circle_includes_its_edge(campus, spot):
@@ -220,8 +226,16 @@ def test_a_player_in_a_spot_who_may_not_hide_is_seen_from_anywhere(campus, spot)
 
 
 def test_leaving_hiding_reveals_player_to_distant_viewer(campus, spot):
+    # He left the hidden state, so he is no longer among the hiders.
     positions = [("viewer", 300, 300), ("hidden", spot["x"] + spot["r"] + 1, spot["y"])]
-    assert visible_positions(positions, "viewer", campus, {"hidden"}) == positions
+    assert visible_positions(positions, "viewer", campus, set()) == positions
+
+
+def test_the_hidden_state_counts_not_the_place(campus):
+    # A hider is left out wherever he stands (S-191: the server keeps him
+    # on the spot's centre, but the rule does not depend on it).
+    positions = [("viewer", 300, 300), ("hidden", 20, 20)]
+    assert names(visible_positions(positions, "viewer", campus, {"hidden"})) == ["viewer"]
 
 
 def test_without_hiders_the_positions_are_sent_as_they_are(campus, spot):
@@ -240,8 +254,43 @@ def test_visibility_is_recipient_specific_and_does_not_mutate_positions(campus, 
     positions = [("far", 300, 300), ("near", spot["x"] + 20, spot["y"]), ("hidden", spot["x"], spot["y"])]
     before = list(positions)
     assert len(visible_positions(positions, "far", campus, {"hidden"})) == 2
-    assert len(visible_positions(positions, "near", campus, {"hidden"})) == 3
+    assert len(visible_positions(positions, "near", campus, {"hidden"})) == 2
+    assert len(visible_positions(positions, "hidden", campus, {"hidden"})) == 3
+    assert len(visible_positions(positions, "near", campus, set())) == 3
     assert positions == before
+
+
+# Who is told that a player hides (S-192)
+
+
+def test_the_hidden_free_rider_is_told_about_himself():
+    assert told_hidden("fr", ROLES, GHOSTS, {"fr"}) == {"fr"}
+
+
+def test_a_ghost_is_told():
+    assert told_hidden("ghost", ROLES, GHOSTS, {"fr"}) == {"fr"}
+
+
+def test_the_other_free_rider_is_told_also_as_a_ghost():
+    roles = {"a": "FR", "b": "FR", "c": "HP", "d": "HP", "e": "HP", "f": "HP"}
+    assert told_hidden("b", roles, set(), {"a"}) == {"a"}
+    assert told_hidden("b", roles, {"b"}, {"a"}) == {"a"}
+
+
+@pytest.mark.parametrize("viewer", ["hp", "near", "stranger"])
+def test_a_living_high_performer_is_never_told(viewer):
+    assert told_hidden(viewer, ROLES, GHOSTS, {"fr"}) == set()
+
+
+def test_nobody_hidden_tells_nobody():
+    assert told_hidden("fr", ROLES, GHOSTS, set()) == set()
+
+
+def test_told_hidden_does_not_change_its_arguments():
+    hidden = {"fr"}
+    told = told_hidden("ghost", ROLES, GHOSTS, hidden)
+    told.add("x")
+    assert hidden == {"fr"}
 
 
 def test_the_order_of_the_positions_stays_the_same(campus, spot):

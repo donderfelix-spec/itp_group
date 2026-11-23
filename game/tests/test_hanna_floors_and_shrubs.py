@@ -8,12 +8,12 @@ of S-141 and S-144 without changing what blocks:
   and a digest of everything else are pinned here;
 - the six deck bushes keep their square trim: at least 90 % of each 28 x 28
   solid is drawn, and nothing outside it; the hedge is drawn inside its
-  solid and its hiding spot's dashed circle stays visible on it;
+  solid and its hiding spot (a hollow since M3-1.5) stands out on it;
 - every room name stays readable on the new floors (WCAG contrast of at
   least 4.5 : 1 against the floor colour, the darkest and lightest colour
   of its pattern and what lies behind the letters); the dark edge of a
-  station's outline and of a hiding spot is drawn in the same colour as
-  the names, so it keeps the same contrast;
+  station's outline is drawn in the same colour as the names, so it keeps
+  the same contrast;
 - Mon Café's floor is the new `cafe-tiles` pattern;
 - the study area (Hanna's commit a916099, the `pool` kind of deck-pool):
   her two tables with chairs stand on a terrace as large as the solid, at
@@ -46,8 +46,8 @@ CAMPUS_FILE = GAME / "client" / "js" / "world" / "campus.json"
 BROWSER_SCRIPT = Path(__file__).with_name("hanna_floors_and_shrubs_in_browser.js")
 
 # The colour of the room names (OUTLINE in draw.js). The dark edge of the
-# station outlines and the dashed outline of the hiding spots are drawn in
-# the same colour.
+# station outlines is drawn in the same colour (and the dashed outline a
+# hiding spot falls back to without its drawing, M3-1.5).
 NAME_COLOUR = "#2E2A3B"
 
 # WCAG: normal text needs 4.5 : 1, a graphic part (an outline) 3 : 1.
@@ -98,7 +98,10 @@ def counts(campus):
 # changed on purpose later (a moved solid, a new station, ...), measure these
 # again with counts() and digest() and update them here, naming the change.
 MAIN_COUNTS = {"rooms": 5, "solids": 107, "decor": 76, "stations": 12, "hiding_spots": 4, "doors": 5}
-MAIN_DIGEST = "9b1d9509b47d2463624f22f5ee959a8564cb25e11cbf8b1f7312e1735a105ab4"
+# Measured again for M3-1.1 (S-185): the map gained "classic_vision_range": 120,
+# and for M3-1.6 (S-192): it lost "hide_reveal_range". Main's old digest
+# (with the range of 35, without the vision range) was 9b1d9509...e1735a105ab4.
+MAIN_DIGEST = "3ef354183b87ab04899f04c1e5dabf887d8552d15d01362aab0ae3f5207b1670"
 
 # Hanna's floors (3622182): room id -> (floor colour, pattern).
 HANNAS_FLOORS = {
@@ -506,13 +509,22 @@ def middle(colours):
     return [statistics.median(colour[channel] for colour in colours) for channel in range(3)]
 
 
+# Since M3-1.5 (S-190) the hedge's hiding spot is a hollow in the hedge
+# instead of a dashed circle. Its dark middle stands out from what lies
+# around the spot as a graphic part does, and is clearly darker than the
+# hedge drawn at the same place without it: a subtle hint, not a mark.
+LEAST_HOLLOW_DARKENING = 1.5
+
+
 @needs_chromium
-def test_the_dashed_circle_of_the_hiding_spot_stands_out_on_the_hedge(drawn):
+def test_the_hollow_of_the_hiding_spot_stands_out_on_the_hedge(drawn):
     spot = drawn["spot"]
     assert (spot["x"], spot["y"]) == (595, 249)
-    dash = middle(spot["dashes"])
-    assert contrast(dash, middle(spot["disc"])) >= LEAST_GRAPHIC_CONTRAST
-    assert contrast(dash, middle(spot["around"])) >= LEAST_GRAPHIC_CONTRAST
+    hollow = middle(spot["hollow"])
+    assert contrast(hollow, middle(spot["around"])) >= LEAST_GRAPHIC_CONTRAST
+    hedge = middle(spot["hedge"])
+    assert luminance(hollow) < luminance(hedge)
+    assert contrast(hollow, hedge) >= LEAST_HOLLOW_DARKENING
 
 
 @needs_chromium

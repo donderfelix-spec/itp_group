@@ -13,6 +13,7 @@ from rules import (
     sheet_id_for,
     tasks_after_leaving,
 )
+from server.classic import hiding as hiding_rules
 from server.classic import meeting as meeting_rules
 
 EMERGENCY_DELAY_SECONDS = 45.0
@@ -37,6 +38,9 @@ class ClassicRound:
         self.meeting_count = 0
         self._has_news = True
         self.started_at = float(started_at)
+        # The Free Riders who pressed E at a hiding object (M3-1.6, S-191):
+        # name -> the spot they hide in. Only the server knows it.
+        self.hidden = {}
 
     def state(self):
         return {
@@ -91,10 +95,42 @@ class ClassicRound:
         self._has_news = True
         return sheet_id_for(self.sheets_issued)
 
+    def hide(self, player_id, position, campus):
+        """A Free Rider presses E at a hiding object. Returns the spot he hides in.
+
+        Raises `HideRefused` with a rejection code when he may not. Pressing E
+        again while hidden is answered by `leave_hiding`, not here; hiding
+        twice keeps him in his first spot.
+        """
+        if player_id in self.hidden:
+            return self.hidden[player_id]
+        refusal = hiding_rules.hide_refusal(
+            self.roles, self.eliminated, self.phase, player_id, position, campus
+        )
+        if refusal is not None:
+            raise HideRefused(refusal)
+        spot = hiding_rules.spot_in_reach(campus, position)
+        self.hidden[player_id] = spot
+        return spot
+
+    def leave_hiding(self, player_id):
+        """He steps out (E again, or a step). Returns whether he was hidden."""
+        return self.hidden.pop(player_id, None) is not None
+
+    def end_all_hiding(self):
+        """A meeting starts: everybody steps out. Returns who was hidden."""
+        ended = sorted(self.hidden)
+        self.hidden = {}
+        return ended
+
+    def is_hidden(self, player_id):
+        return player_id in self.hidden
+
     def report(self, player_id, sheet_id, position, now):
         """Report a sheet and open a timed discussion for the living players."""
         updated = report_sheet(self.rule_state(), player_id, sheet_id, position)
         self._sync_rule_state(updated)
+        self.end_all_hiding()
         living = [player for player in self.roles if player not in self.eliminated]
         ghosts = [player for player in self.roles if player in self.eliminated]
         self.meeting = meeting_rules.start_discussion(living, ghosts, now, updated)
@@ -109,6 +145,7 @@ class ClassicRound:
             raise ValueError("The emergency button is not unlocked yet.")
         updated = call_emergency(self.rule_state(), player_id)
         self._sync_rule_state(updated)
+        self.end_all_hiding()
         living = [player for player in self.roles if player not in self.eliminated]
         ghosts = [player for player in self.roles if player in self.eliminated]
         self.meeting = meeting_rules.start_discussion(living, ghosts, now, updated)
@@ -174,6 +211,7 @@ class ClassicRound:
         if player_id not in self.roles:
             return
         self.eliminated.add(player_id)
+        self.hidden.pop(player_id, None)
         self.tasks = tasks_after_leaving(self.tasks, self.completed_tasks, player_id)
         self._has_news = True
 
@@ -218,3 +256,11 @@ class ClassicRound:
         self.meeting_triggers = set(state.get("meeting_triggers", self.meeting_triggers))
         self.phase = state.get("phase", self.phase)
         self.timers_paused = state.get("timers_paused", self.timers_paused)
+
+
+class HideRefused(Exception):
+    """A Free Rider may not hide now. `code` is a key of `protocol.REJECTIONS`."""
+
+    def __init__(self, code):
+        super().__init__(code)
+        self.code = code
