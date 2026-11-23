@@ -19,6 +19,18 @@ from server.classic import meeting as meeting_rules
 EMERGENCY_DELAY_SECONDS = 45.0
 
 
+def active_task(roles, tasks, completed_tasks, player_id):
+    """A High Performer's active task: the first unfinished one of his list (S-197).
+
+    Returns a list with that station, or [] for a Free Rider, a stranger or
+    a High Performer who has finished all four. Ghosts keep their task (S-04).
+    """
+    if roles.get(player_id) != "HP":
+        return []
+    completed = completed_tasks.get(player_id, set())
+    return [int(station) for station in tasks.get(player_id, ()) if station not in completed][:1]
+
+
 class ClassicRound:
     def __init__(self, player_ids, station_ids, rng, started_at=0.0):
         self.roles = assign_roles(player_ids, rng)
@@ -65,15 +77,17 @@ class ClassicRound:
         }
 
     def stations_needed(self, player_id, finished, in_use):
-        return [int(station) for station in self.tasks.get(player_id, ())]
+        """The one station this player may open now (S-197), as a list.
+
+        The four tasks were drawn in a random order at the start, so this
+        read is stable and a rolled-back completion gives the same task back.
+        """
+        return active_task(self.roles, self.tasks, self.completed_tasks, player_id)
 
     def station_done(self, player_id, station):
         station_id = str(station)
-        if (
-            self.roles.get(player_id) != "HP"
-            or station_id not in self.tasks.get(player_id, ())
-            or station_id in self.completed_tasks[player_id]
-        ):
+        # Compared as text, so 3 and "3" are the same station, as before S-197.
+        if station_id not in [str(active) for active in self.stations_needed(player_id, set(), ())]:
             return
         self.completed_tasks[player_id].add(station_id)
         self._has_news = True

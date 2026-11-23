@@ -1,14 +1,14 @@
 // Five guests play Classic in Chromium against the real server (M3-4.22):
-// the arrow of a High Performer points at its nearest own open station.
+// the arrow of a High Performer points at its one active station (S-197).
 // Run by test_play_classic_arrow_end_to_end.py:
 //
 //   node play_classic_arrow_end_to_end_in_browser.js <base url> [screenshot]
 //
 // When a player must stand somewhere, it prints {"put": [[name, station or
 // [x, y]], ...]} and waits for "ok" on stdin. Its last line is the result:
-//   worker    a High Performer: its list, the spot it stands on, and the
-//             arrow seen there at the start, after finishing its nearest
-//             station, and after finishing all of them
+//   worker    a High Performer: its active task, the spot it stands on, the
+//             order it finished its four tasks in, and the arrow seen there
+//             at the start, after finishing the first, and after all of them
 //   ghost     another High Performer failed by the Free Rider: its arrow
 //   freeRider whether the Free Rider's page ever drew an arrow
 //   problems  console errors and warnings, page errors
@@ -194,25 +194,33 @@ async function finish(g, station) {
     }));
     if (screenshot) await worker.page.screenshot({ path: screenshot });
 
-    // 2. It finishes the nearest one and goes back to the spot.
-    const open = worker.tasks.slice();
+    // 2. It finishes its one active task (S-197) and goes back to the spot.
+    // The server's `station_done` names the next one.
     const campus = await worker.page.evaluate(() => window.__campus);
-    const distance = (id, from) => {
-      const s = campus.stations.find((entry) => entry.id === id);
-      return Math.hypot(s.x - from.x, s.y - from.y);
+    const active = () => {
+      const done = worker.received.filter((m) => m.type === 'station_done');
+      return done.length ? done[done.length - 1].task_stations : worker.tasks;
     };
-    let first = open[0];
-    for (const id of open) if (distance(id, start.server) < distance(first, start.server)) first = id;
+    const first = worker.tasks[0];
     await finish(worker, first);
-    open.splice(open.indexOf(first), 1);
+    const second = active()[0];
     await put([[worker.name, spot]]);
     const afterOne = await arrowOf(worker, spot);
 
-    // 3. It finishes all the others: no arrow any more.
-    for (const id of open.slice()) await finish(worker, id);
+    // 3. It finishes the others one after the other: no arrow any more.
+    const order = [first];
+    while (active().length === 1 && order.length < 8) {
+      order.push(active()[0]);
+      await finish(worker, active()[0]);
+    }
     await put([[worker.name, spot]]);
     const afterAll = await arrowOf(worker, spot);
-    out.worker = { tasks: worker.tasks, spot, start, card, first, afterOne, afterAll, campus: { stations: campus.stations } };
+    const doneCard = await worker.page.evaluate(() => ({
+      taskHidden: document.getElementById('task-card-task').hidden,
+      note: document.getElementById('task-card-note').hidden ? null : document.getElementById('task-card-note').textContent,
+    }));
+    out.worker = { tasks: worker.tasks, spot, start, card, first, second, order, left: active(), afterOne, afterAll, doneCard,
+      campus: { stations: campus.stations } };
 
     // 4. The Free Rider fails another High Performer, which then walks on as a ghost.
     const at = victim.tasks[0];

@@ -12,11 +12,12 @@ with the real server: eight guests in one lobby, the host starts a Duel;
 the host and one other guest are measured at 1280x800, 1024x700 and
 320x640. Then one guest plays Solo alone, and five guests play Classic,
 measured the same way. In Classic the panel reads "Classic", the own name,
-the own task card (S-154), "Group progress" with label and bar, then
-"Players". Each Classic page's card is compared with the own list it was
-sent; one High Performer's page is then handed the `station_done` messages
-the server sends for its four stations: each stays in its place with its
-bullet, only faded, and at the end "All your tasks are done." comes below.
+"Group progress" with label and bar, then "Players"; it has no task card
+(S-197). Each Classic page's card at the top left is compared with the one
+task it was sent; one High Performer's page is then handed the
+`station_done` messages the server sends for its four stations: the card
+names each next task, and at the end "All your tasks are done." in green.
+The Free Rider's card says "Fake tasks: stand at a station to look busy."
 """
 
 import contextlib
@@ -212,15 +213,16 @@ def test_duel_solo_and_classic_headings_look_like_the_players_heading(played, si
 @needs_chromium
 @pytest.mark.parametrize("size", ALL_SIZES)
 @pytest.mark.parametrize("who", WHO)
-def test_the_classic_panel_reads_classic_name_tasks_progress_then_players(played, size, who):
+def test_the_classic_panel_reads_classic_name_progress_then_players(played, size, who):
     panel = played["classic"][size][who]
     assert panel["classicHeadingText"] == "Classic"
-    order = panel["classicOrder"]  # heading, own name, card, "Group progress", label, bar
+    assert not panel["classicTaskShown"]  # S-197: no task card in the panel
+    order = panel["classicOrder"]  # heading, own name, "Group progress", label, bar
     assert None not in order and order == sorted(order) and len(set(order)) == len(order)
     assert panel["classicTrack"]["bottom"] <= panel["playersHeading"]["top"]
 
 
-# ---- Classic: the own task card (S-154) ----
+# ---- Classic: the own task in the card at the top left (S-197, before S-154) ----
 
 FAKE_TASKS = "Fake tasks: stand at a station to look busy."
 ALL_DONE = "All your tasks are done."
@@ -230,6 +232,11 @@ def cards_of(played, role):
     return [card for card in played["classicCards"] if card["role"] == role]
 
 
+def is_title_of(title, name):
+    """`name` is Duel's "Title (Room)" of a station, `title` what the card shows."""
+    return bool(title) and name.startswith(title + " (")
+
+
 @needs_chromium
 def test_five_classic_players_have_one_free_rider_and_four_high_performers(played):
     assert len(played["classicCards"]) == 5
@@ -237,58 +244,44 @@ def test_five_classic_players_have_one_free_rider_and_four_high_performers(playe
 
 
 @needs_chromium
-def test_a_high_performer_card_lists_exactly_its_own_stations_by_name_and_room_with_bullets(played):
+def test_a_high_performer_is_sent_one_station_and_the_top_left_card_names_it(played):
     for card in cards_of(played, "HP"):
-        assert len(card["taskStations"]) == 4
+        assert len(card["taskStations"]) == 1
         assert all(name.endswith(")") and " (" in name for name in card["names"])
-        assert card["cardText"].split("\n") == card["names"]
-        assert not card["cardGreen"]
+        assert not card["cardShown"] and card["cardText"] == ""
+        assert is_title_of(card["topTitle"], card["names"][0]), card
+        assert card["topNote"] is None
 
 
 @needs_chromium
-def test_each_task_is_a_bullet_in_the_order_of_the_start_list(played):
-    hp = next(card for card in cards_of(played, "HP") if not card["isHost"])
-    first = played["classicDone"][0]
-    assert [item["name"] for item in first["items"]] == hp["names"]
-    assert all(item["bullet"] for item in first["items"])
-    tops = [item["top"] for item in first["items"]]
-    assert tops == sorted(tops)
-
-
-@needs_chromium
-def test_a_finished_station_stays_in_place_only_faded(played):
+def test_the_top_left_card_follows_each_next_task_and_the_panel_stays_without_a_card(played):
     done = played["classicDone"]
     hp = next(card for card in cards_of(played, "HP") if not card["isHost"])
-    assert [step["station"] for step in done] == hp["taskStations"]
-    for count, step in enumerate(done, start=1):
-        assert [item["name"] for item in step["items"]] == hp["names"]  # nothing moves, nothing goes
-        for index, item in enumerate(step["items"]):
-            finished = index < count
-            assert item["done"] == finished and item["saysDone"] == finished
-            assert item["line"] == "none"  # faded only, never crossed out
-            assert item["bullet"]
-            if finished:
-                assert item["opacity"] <= 0.5  # clearly fainter than an open line
-            else:
-                assert item["opacity"] == 1
-
-
-@needs_chromium
-def test_with_every_task_done_the_list_stays_and_the_done_line_comes_below_in_green(played):
-    done = played["classicDone"]
+    assert [step["station"] for step in done][0] == hp["taskStations"][0]
+    assert len(done) == 4
     for step in done[:-1]:
-        assert step["note"] is None and not step["cardGreen"]
-    last = done[-1]
-    assert last["left"] == [] and all(item["done"] for item in last["items"])
-    assert last["note"] == ALL_DONE and last["cardGreen"]
-    assert last["noteTop"] > max(item["top"] for item in last["items"])
+        assert len(step["left"]) == 1
+        assert is_title_of(step["topTitle"], step["nextNames"][0]), step
+        assert step["topNote"] is None
+        assert not step["cardShown"]
+
+
+@needs_chromium
+def test_with_every_task_done_the_top_left_card_says_so_in_green(played):
+    last = played["classicDone"][-1]
+    assert last["left"] == []
+    assert last["topTitle"] is None
+    assert last["topNote"] == ALL_DONE and last["topNoteGreen"]
+    assert not last["cardShown"]
 
 
 @needs_chromium
 def test_the_free_rider_card_fakes_and_shows_nothing_of_the_others(played):
     (free_rider,) = cards_of(played, "FR")
     assert free_rider["taskStations"] == [] and free_rider["names"] == []
-    assert free_rider["cardText"] == FAKE_TASKS and not free_rider["cardGreen"]
+    assert not free_rider["cardShown"] and free_rider["cardText"] == ""
+    assert free_rider["topTitle"] is None
+    assert free_rider["topNote"] == FAKE_TASKS and not free_rider["topNoteGreen"]
     for card in cards_of(played, "HP"):
         assert not any(name in free_rider["pageText"] for name in card["names"])
 

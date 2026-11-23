@@ -39,16 +39,14 @@ window.Game = window.Game || {};
   // The stations this player has finished in the running round. The server
   // keeps the real list; this one only decides which stations glow.
   let finishedStations = new Set();
-  // The own unfinished Classic stations, sent to this player alone
-  // (`task_stations`). A Free Rider's list is empty: no station pulses for
+  // The own active Classic station, sent to this player alone
+  // (`task_stations`, one station or none, S-197). A Free Rider's list is empty: no station pulses for
   // them and "E Use" lights up nowhere; they fake tasks by standing at one.
   let classicTasks = [];
   // The own Classic role from `classic_role`, "HP" or "FR"; null outside a
-  // Classic round. Only for the own task card (showClassicTasks).
+  // Classic round. A High Performer's active task goes to the card at the
+  // top left (showUsableStations, S-197).
   let classicRole = null;
-  // The own list as `classic_role` gave it at the start of the round. The
-  // card keeps every task in this order and fades the finished ones.
-  let classicStartTasks = [];
   // True from the moment this browser asked to log out until the server
   // answers. It tells a wanted `signed_out` from one that came unasked.
   let logOutWasAsked = false;
@@ -107,7 +105,6 @@ window.Game = window.Game || {};
     finishedStations = new Set();
     classicTasks = [];
     classicRole = null;
-    classicStartTasks = [];
     showClassicTasks();
     if (!worldIsRunning) return;
     worldIsRunning = false;
@@ -172,7 +169,7 @@ window.Game = window.Game || {};
 
   // Which stations glow and can be used: outside a round none. In a Duel
   // only the player's next station, and none once all are done (S-94). In
-  // Classic the own unfinished list (M3-3.17). In any other round the ones
+  // Classic only the own active assignment. In any other round the ones
   // in use that this player has not finished yet.
   function usableStations() {
     if (!roundIsRunning) return [];
@@ -189,11 +186,21 @@ window.Game = window.Game || {};
   function showUsableStations() {
     const stations = usableStations();
     callWorld('setUsableStations', stations);
-    // Only Duel and Solo have one next task for the card and the arrow. In
-    // Classic the card shows no task, and the arrow points at the nearest
-    // of the own open tasks; a Free Rider has none, so no arrow.
-    callTaskNavigation('setTarget', hasOneTaskAtATime() && stations.length === 1 ? stations[0] : null);
-    callTaskNavigation('setTargets', mode === 'classic' && classicRole === 'HP' ? stations : []);
+    // All three modes share the same next-task card at the top left.
+    const showsNextTask = hasOneTaskAtATime() || (mode === 'classic' && classicRole === 'HP');
+    callTaskNavigation('setTargets', []);
+    callTaskNavigation('setTarget', showsNextTask && stations.length === 1 ? stations[0] : null);
+    callTaskNavigation('setNote', ...classicNote(stations));
+  }
+
+  // The line the card shows in Classic instead of a task (S-197), only to
+  // the player concerned: the Free Rider's hint, or a High Performer's
+  // "all done" once the server sent no task any more.
+  function classicNote(stations) {
+    if (mode !== 'classic' || !roundIsRunning) return [null, false];
+    if (classicRole === 'FR') return ['Fake tasks: stand at a station to look busy.', false];
+    if (classicRole === 'HP' && stations.length === 0) return ['All your tasks are done.', true];
+    return [null, false];
   }
 
   // Duel and Solo give each player one next station at a time.
@@ -219,7 +226,6 @@ window.Game = window.Game || {};
       Game.minigames.close(); // no round, no task
       classicTasks = [];
       classicRole = null;
-      classicStartTasks = [];
       showClassicTasks();
     }
     roundIsRunning = isRound;
@@ -343,20 +349,16 @@ window.Game = window.Game || {};
     const isOwnRole = mode === 'classic' && roundIsRunning && ['HP', 'FR'].includes(message && message.role);
     if (isOwnRole) {
       classicRole = message.role;
-      classicStartTasks = classicTasks.slice(); // as rememberClassicTasks accepted it
     }
     showUsableStations();
     showClassicTasks();
   }
 
-  // The card with the own Classic tasks in the panel: the start list, the
-  // open ones being the stations that glow. A ghost keeps its tasks (DESIGN,
-  // rule 9).
+  // The map card owns the current task; keep the old panel card hidden.
   function showClassicTasks() {
     // Like callWorld: a page put together without this part keeps working.
     if (typeof Game.lobby.showClassicTasks !== 'function') return;
-    const open = classicTasks.filter((station) => !finishedStations.has(station));
-    Game.lobby.showClassicTasks(classicRole, classicStartTasks, open);
+    Game.lobby.showClassicTasks(null, [], []);
   }
 
   function whenStationOpened(message) {

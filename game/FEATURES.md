@@ -45,7 +45,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Limited view in Classic: nearby living players in direct sight, with walls casting shadows (S-185) | M3 | Done |
 | Half-transparent ghosts visible to other ghosts and fallen characters visible until reported (S-186) | M3 | Done |
 | Seven hiding spots in Classic (S-131 to S-140), drawn as objects of the map: boxes, a beanbag, a potted plant, a hollow in the hedge (S-190), coffee sacks, folding chairs and sun loungers (S-196); the Free Rider hides on purpose with E and is then sent to no High Performer; himself, the other Free Rider and ghosts see him with a crossed-out eye (S-191, S-192) | M3 | Done |
-| Campus overview with your location and your own open tasks (S-187) | M3 | Done |
+| Campus overview with your location and the station you need now, in Classic the one active task (S-187, S-197) | M3 | Done |
 | Finished graphics for rooms and characters instead of placeholders | M4 | Planned |
 | Sounds and music | M4 | Later |
 | Touch controls for the phone | M4 | Later |
@@ -94,7 +94,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Classic action buttons with the key first: the Free Rider always has “F Let fail” (grey charge fill, yellow when a victim is in range; only F lets fail) and his own second button for “E Emergency”, “E Hide”, “E Leave hiding”; “R Report” for everybody (S-195) | M3 | Done (M3-3.26) |
 | Emergency meeting with the red button in the centre of the Main Deck (S-147), drawn as an alarm switch (S-149), limited per player, range checked by the server, hint only for the living (S-170) | M3 | Playable with known defects (M3-3.15: the wording “E Call meeting”) |
 | Meeting with text chat and time limit; the window closes after the result (S-153) and always fits the screen (S-173) | M3 | Playable with known defects (M3-3.13) |
-| Own task list per player, only its stations pulse; the Free Rider has none (S-154) | M3 | Done |
+| One random active Classic task per High Performer, next revealed after completion; only the current station pulses and opens, and the arrow leads to it; the Free Rider has none (S-197, replaces the own task list of S-154) | M3 | Done (M3-4.29) |
 | Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie; votes are public and can be changed, after a report already during the discussion, 75 % Skip ends the meeting (S-160 to S-162); each vote button shows its number of votes in a fixed field (S-173) | M3 | Done |
 | Result of the vote: character drifts out to sea, display whether it was a Free Rider | M3 | Playable with known defects (text only, no drifting yet, M3-3.5) |
 | Ghosts keep doing their tasks, but they do not talk and do not vote; ghosts see the dead as “Dead” in the Players list (S-164) | M3 | Done (M3-3.9, M3-3.20, 2026-11-22) |
@@ -119,14 +119,14 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Pingo Doce: scan products until exactly the target amount comes out | M2 | Done |
 | Duel: three stations per player, own random route with a walking distance of equal length | M2 | Done |
 | Duel: progress of every player as 1/3 with a bar in the Players list of the panel (S-130) | M2 | Done |
-| Panel of the mode at the top of the side panel in every mode (Duel and Solo: next task and clock; Classic: own tasks and group progress), visible without scrolling with eight players (S-143) | M2 | Done |
+| Panel of the mode at the top of the side panel in every mode (Duel and Solo: next task and clock; Classic: group progress; the own task is in the card at the top left, S-197), visible without scrolling with eight players (S-143) | M2 | Done |
 | Six more minigames at stations 7 to 12, in Duel, Solo and Classic (S-124) | M2 | Done |
 | Stations 7, 10 and 12 reworked: rebuild a misleading chart from survey counts, deduce a schedule from chat clues, catch falling pages in three lanes; each with its own brief, feedback and retry (S-189) | M2 | Done |
 | Solo mode for one player, without statistics (S-125) | M2 | Done |
 | Duel: every player starts at a different station, up to 8 players (S-126) | M2 | Done |
 | Stations as objects with a pulsing outline when they matter (S-128); station 6 shows its surfboard too, and stations 4, 8, 9 and 12 stand where Felix drew them (S-196) | M2 | Done |
 | Card at the top left with room and next task, direction arrow (S-129) | M2 | Done |
-| Classic: the direction arrow points at the nearest own open task (S-145) | M3 | Done |
+| Classic: current task and arrow use the same top-left card as Duel, which also says “All your tasks are done.” or, to the Free Rider, “Fake tasks: stand at a station to look busy.”; no task card above group progress (S-197, replaces S-145) | M3 | Done (M3-4.29) |
 | Lobby: modes outside their player range (Classic below 4) locked, all in one grey, the chosen one marked by frame and shadow; smaller “?” with even gaps (S-146) | M2 | Done |
 | “Done” for 0.5 s without a close button (S-127) | M2 | Done |
 | Duel: leaderboard with times at the end | M2 | Done |

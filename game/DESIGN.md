@@ -95,7 +95,7 @@ All characters are the same size and the same speed, they differ only in how the
 
 - Top left: name of the room you are standing in.
 - Top centre: progress bar of the group work.
-- Side panel during a round, the same order in every mode (S-143): first the panel of the mode (Duel and Solo: the heading “Duel” or “Solo”, the next task and the clock; Classic: the heading “Classic”, the own name, a card with the own tasks, then “Group progress” with the bar), then “Players”, then the rest. Outside a round the panel starts with “Players”. The Classic task card lists the own stations as bullet points in the order of the round’s start, as “Shelve the books (CTT Student Hall)”; a finished one stays in its place and is faded (not crossed out); when all are done, “All your tasks are done.” stands below the list and the card turns green; a Free Rider sees “Fake tasks: stand at a station to look busy.” A ghost keeps its card, because ghosts keep doing their tasks.
+- Side panel during a round, the same order in every mode (S-143): first the panel of the mode (Duel and Solo: the heading “Duel” or “Solo”, the next task and the clock; Classic: the heading “Classic”, the own name, then “Group progress” with the bar), then “Players”, then the rest. Outside a round the panel starts with “Players”. In Classic the panel has no task card: the own active task stands in the card at the top left of the map, as in Duel and Solo. In its place that card says “All your tasks are done.” (green) once all four are done, and to the Free Rider “Fake tasks: stand at a station to look busy.” (S-197). A ghost keeps its active task, because ghosts keep doing their tasks.
 - Below the progress bar, only for the own Free Rider while he hides in Classic: “Hidden” (S-135).
 - Right: your own task list with the room, finished tasks crossed out.
 - Bottom right: large buttons, each with its key first (S-195). A High Performer always has “E Use” (“E Emergency” at the red button). A Free Rider always has “F Let fail” and, above it only while E would do something, a second button “E Emergency”, “E Hide” or “E Leave hiding”. “R Report” appears above the main button for both roles while a report is possible. Each button has a fixed place, so nothing moves when another appears. A button is grey as long as it would do nothing.
@@ -112,7 +112,7 @@ If you walk away, both disappear again; a station that matters to you keeps its 
 
 | Key | Target | Border | Button at the bottom right | Special note |
 |---|---|---|---|---|
-| E | Task station that is on your own list | Yellow | “E Use” | Stations that you do not need or have already finished do not glow |
+| E | Task station that you need now (in Classic only your one active task, S-197) | Yellow | “E Use” | Stations that you do not need or have already finished do not glow |
 | E | Emergency button | Yellow | “E Emergency” | Only as long as you have not yet used up your meeting. For the Free Rider it is his second button, also during the fail cooldown (S-195) |
 | E | Hiding spot within 25 map units (S-191) | – | “E Hide”, while hidden “E Leave hiding” (the Free Rider's second button, S-195) | Only the living Free Rider in a Classic round sees it. When a station or the emergency button is in reach as well, E uses the nearest of them |
 | R | “F” sheet | Coral | “R Report” | Visible to everyone who is in range |
@@ -132,7 +132,7 @@ Pressing a key that would do nothing at that moment has no effect and also shows
 | Enter | Send chat in the meeting |
 | Esc | Close the minigame or the map |
 
-Every action also works with a mouse click on the button. The campus overview shows the whole floor plan, your position and only your assigned open tasks. In Duel or Solo it marks your next task.
+Every action also works with a mouse click on the button. The campus overview shows the whole floor plan, your position and only the station you need now: in Classic your one active task (S-197), in Duel or Solo your next task.
 
 **Walking diagnostic.** Opened with `?debug` at the end of the address, the page shows a small panel in the top left corner with numbers about the connection and the drawing while walking (S-120), and the buttons “Copy”, “Reset” and “Hide”. It is a tool for the team, not part of the game: without `?debug` it does not exist.
 
@@ -143,8 +143,8 @@ Every action also works with a mouse click on the button. The campus overview sh
 4 to 8 players. With fewer than 4, the round cannot be started.
 
 1. Everyone starts on the Main Deck. Each player sees their role for three seconds. Two Free Riders also see who the other one is.
-2. Each High Performer gets four of the eleven tasks (stations 1 to 5 and 7 to 12, S-124), chosen at random. Every finished task fills the shared progress bar.
-3. Every player sees only their own task list; all its stations pulse. The Free Rider has no task list and cannot open a station: they fake tasks by standing at one, and no station pulses for them (S-154).
+2. Each High Performer gets four of the eleven tasks (stations 1 to 5 and 7 to 12, S-124), chosen in a random order by the server. Exactly one is active at a time. Finishing it reveals the next randomly ordered task until all four are done. Every finished task fills the shared progress bar, which still counts four tasks per High Performer (S-197).
+3. Every player sees only their own current task; only that station pulses and can be opened, any other station is refused with “You do not need that station.” (S-197). The Free Rider has no task list and cannot open a station: they fake tasks by standing at one, and no station pulses for them (S-154).
 4. The Free Rider can fail a High Performer who is in range (25 map units, S-194), with key F or the button “F Let fail” (S-195). After that, the Free Rider has to wait 15 seconds. The Free Rider starts with the ability loaded and cannot fail another Free Rider.
 5. Reporting happens right on the spot: For any living player, the Free Rider included, who stands within 8 map units of an “F” sheet (S-180), the button “R Report” appears (key R, S-195). Pressing it starts the meeting for everyone at once, and nobody has to walk anywhere. The reported sheet stays on the map until the round ends and cannot be reported again (S-150). Without a find, each living player can call one meeting per round with the red button in the centre of the Main Deck, available 45 seconds after the round starts. The player has to stand within 25 map units of the button, as close as to a station; the server checks this, and only a living player within that range sees “E Emergency”. There is no other cooldown (S-170, S-172).
 6. Meeting: 45 seconds of discussion by chat, then 30 seconds for the vote. You vote for one person or “Skip”. The person with the most votes goes, and nobody goes if there is a tie or a majority for “Skip”. After a report, voting is already open during the discussion; after an emergency meeting only in the voting phase (S-161). During the vote the window says “Chat is closed. Choose one living player to eject, or Skip.” Votes are public: each vote button shows on its right, in a round field of fixed size, how many voted for that player (a pale “0” without votes), and its label names the voters, for example “Bo — votes: Ana, Cy” or “Bo — no votes”; the own target is highlighted. All vote buttons have the same size in a fixed grid (four columns, three in a medium window, two in a narrow one); a long name ends in “…”, and nothing moves when votes arrive, change or are taken back. The meeting window always fits the screen: the meeting picture shrinks, and the Skip row, the vote buttons, the message field and “Send” stay visible (Felix, 2026-11-22). Clicking the same player again takes the vote back, another player replaces it (S-160). “Skip” switches the own Skip on and off (“Skip” / “Undo Skip”) and takes back the own vote; the window shows “2 / 3 Skip votes to end voting early.” As soon as 75 % of the living have chosen Skip, rounded up, the meeting ends at once. Anyone who does not vote does not count as “Skip”; Skip with as many votes as the leading player is a tie. Otherwise the vote ends when its 30 seconds run out, also when everybody has voted (S-162). The result stays on screen for a moment (1.8 s), then the window closes and the round goes on; when the result ends the round, the end screen follows at once (S-153).
@@ -191,7 +191,7 @@ The win and the time go into the statistics (S-40).
 
 - At the top of the panel on the right, above “Players” (S-143): “Next: Build the tray (Canteen)” with the title of the minigame and the room, below it the clock counting down from 3:00. The progress of all players stands in the Players list below, for example “Mara 1/3”. A player who has finished all three sees “Finished in 1:12.4. Waiting for the others.” instead of the next station.
 - Every station is drawn as its object; only the next station has the pulsing yellow outline and opens (S-128).
-- The card at the top left of the map shows the room you are in and the next task; a small yellow triangle with a dark outline next to your character points straight at the station (S-129). In Classic, where a High Performer has several tasks, it points at the nearest own open task, and the card shows only the room (S-145).
+- The card at the top left of the map shows the room you are in and the next task; a small yellow triangle with a dark outline next to your character points straight at the station (S-129). In Classic it points at the player's one active task, and the card names it like in Duel and Solo; the Free Rider has no task, so no arrow, and the card shows his hint “Fake tasks: stand at a station to look busy.”; after the fourth task it says “All your tasks are done.” (S-197).
 - When the round is over, the ranking appears over the map for everybody: heading “Duel ranking”, one row per player with place, name and time (“1:12.4”), or “2/3” for a player who did not finish, and the button “Back to lobby”. If the three minutes ran out, the line “Time is up.” stands above the rows. The lobby is open again at that moment, so the host can start the next round.
 - A player who leaves during the round is taken out of the list and the ranking. The round goes on for the others, also for a single player.
 
@@ -243,7 +243,7 @@ About minigame 5: The prices are multiples of 50 cents, and the target amount is
 
 | No. | Room | Title | Instruction |
 |---|---|---|---|
-| 7 | Lecture Hall | De-buzzword the slides | Rebuild the misleading chart from survey counts. Repair its labels, percentages and baseline. |
+| 7 | Lecture Hall | Fix the consultant’s chart | Rebuild the misleading chart from survey counts. Repair its labels, percentages and baseline. |
 | 8 | Mon Café | Emergency caffeine protocol | Follow the recipe. The group deadline runs on caffeine. |
 | 9 | Canteen | Save the lunch | Remove the discoloured pieces from the tray. |
 | 10 | CTT Student Hall | Decode the group chat | Use five chat clues to assign four teammates to four times and four deliverables. |
@@ -293,7 +293,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Opening, closing or finishing a task while no round is running | “No round is running.” |
 | Opening a station that does not exist or is not in use (only when someone bypasses the page) | “That station does not exist.” |
 | Opening a station from too far away | “You are too far away.” |
-| Opening a station that is not on your list or that you have already finished | “You do not need that station.” |
+| Opening a station that is not on your list, that you have already finished or, in Classic, that is not your active task yet (S-197) | “You do not need that station.” |
 | Opening a station while a task is open | “Close your current task first.” |
 | Closing or finishing while no task is open | “You have no task open.” |
 | Reporting a task as done faster than it can be played | “That was too fast. Try again.” |

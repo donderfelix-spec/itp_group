@@ -202,7 +202,7 @@ Game.world = Game.world || {};
   }
   place(6, -3, -13, 14, 25, surfboardInStand, { shadow: { x: -2, y: 12, w: 12 } });
 
-  // 7 De-buzzword the slides: a flip chart on an easel, one word crossed
+  // 7 Fix the consultant's chart: a flip chart on an easel, one word crossed
   // out. It stands against the front wall, left of the lectern.
   function flipChart(ctx) {
     line(ctx, 6.5, 10, 6.5, 15, util.darker(SHELF_WOOD, 0.3), EDGE); // the back leg

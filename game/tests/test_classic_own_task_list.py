@@ -19,13 +19,14 @@ def roles(classic):
     return fr, hps
 
 
-def test_a_high_performer_is_told_the_whole_own_list_in_its_order(connect):
+def test_a_high_performer_is_told_only_the_first_task_of_its_list(connect):
+    """S-197: one active task at a time, the first of the server's random order."""
     _connections, _code, _public, messages = start_classic(connect)
     classic = classic_for("Mara")
     _fr, hps = roles(classic)
     for name in hps:
         card = next(message for message in messages[name] if message["type"] == "classic_role")
-        assert card["task_stations"] == [int(station) for station in classic.tasks[name]]
+        assert card["task_stations"] == [int(classic.tasks[name][0])]
 
 
 def test_the_free_rider_is_told_an_empty_list_and_nobody_else_hears_of_it(connect):
@@ -38,7 +39,7 @@ def test_the_free_rider_is_told_an_empty_list_and_nobody_else_hears_of_it(connec
     for name in hps:
         lists = [message for message in messages[name] if "task_stations" in message]
         assert len(lists) == 1
-        assert lists[0]["task_stations"] == [int(station) for station in classic.tasks[name]]
+        assert lists[0]["task_stations"] == [int(classic.tasks[name][0])]  # S-197
     assert all("task_stations" not in message for message in public)
 
 

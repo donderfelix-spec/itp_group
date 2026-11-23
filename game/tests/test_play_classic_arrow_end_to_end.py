@@ -4,11 +4,12 @@ Five guests play Classic in Chromium against the real server, run in this
 process (the fixtures and `put` of test_play_classic_task_card_end_to_end.py).
 The browser script watches the arrow by wrapping Game.taskNavigation.draw.
 
-- A High Performer a few tiles from its stations: the arrow points at the
-  nearest own open station; the card at the top left names only the room.
+- A High Performer a few tiles from its station: the arrow points at its one
+  active task (S-197); the card at the top left names the room and the task.
 - After it really finished that station (E, "Finish task", the server's
-  `station_done`), the arrow points at the nearest remaining one.
-- After it finished all of them: no arrow.
+  `station_done`), the arrow points at the next task the server names.
+- After it finished all four, one after the other: no arrow, and the card
+  says "All your tasks are done." (S-197).
 - The Free Rider's page never draws an arrow.
 - A High Performer failed by the Free Rider (a ghost) still gets the arrow.
 
@@ -65,12 +66,6 @@ def play(base):
         timer.cancel()
 
 
-def nearest(stations, open_ids, position):
-    """The open station nearest to `position`; the first one on a tie."""
-    by_id = {station["id"]: station for station in stations}
-    return min(open_ids, key=lambda id_: math.hypot(by_id[id_]["x"] - position["x"], by_id[id_]["y"] - position["y"]))
-
-
 def assert_points_at(stations, frame, station_id):
     station = next(entry for entry in stations if entry["id"] == station_id)
     drawn = frame["drawn"]
@@ -85,21 +80,21 @@ def played(server_in_this_process):  # noqa: F811 (the imported fixture)
 
 
 @needs_chromium
-def test_the_classic_arrow_points_at_the_nearest_own_task(played):
+def test_the_classic_arrow_points_at_the_one_active_task(played):
     worker = played["worker"]
     stations = worker["campus"]["stations"]
     tasks = worker["tasks"]
-    assert len(tasks) >= 2, worker
-
+    # S-197: one active task; the arrow and the card follow it.
+    assert len(tasks) == 1, worker
     start = worker["start"]
-    assert worker["first"] == nearest(stations, tasks, start["server"])
+    assert worker["first"] == tasks[0]
     assert_points_at(stations, start, worker["first"])
-    assert worker["card"]["taskHidden"] and worker["card"]["here"], worker["card"]
-
-    rest = [station for station in tasks if station != worker["first"]]
-    after_one = worker["afterOne"]
-    assert_points_at(stations, after_one, nearest(stations, rest, after_one["server"]))
-
+    assert not worker["card"]["taskHidden"] and worker["card"]["here"], worker["card"]
+    assert worker["second"] != worker["first"]
+    assert_points_at(stations, worker["afterOne"], worker["second"])
+    assert len(worker["order"]) == len(set(worker["order"])) == 4 and worker["left"] == [], worker
+    # S-197: all four done, the card says so in place of a task.
+    assert worker["doneCard"] == {"taskHidden": True, "note": "All your tasks are done."}, worker["doneCard"]
     assert worker["afterAll"]["angle"] is None, worker["afterAll"]
 
     assert played["freeRider"]["ever"] is False
