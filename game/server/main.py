@@ -866,18 +866,19 @@ def log_tick_fault(what_failed: str, lobby_code, problem: Exception):
 def advance_classic_walkers(lobby, seconds: float) -> bool:
     """Move the players of a Classic round, with the meeting rules of DESIGN.md 5.8.
 
-    Nobody walks while a meeting runs. Once its result is applied, everybody
-    is put back on the Main Deck (the spawn) before anybody walks again, and
-    the Free Riders hear that their cooldown started again. Returns whether
-    positions are to be sent, like `walkers.advance`.
+    Nobody walks while a meeting runs: the step lasts no time, so nobody
+    moves, but a place that changed (a Free Rider who stopped hiding) is
+    still sent. Once its result is applied, everybody is put back on the
+    Main Deck (the spawn) before anybody walks again, and the Free Riders
+    hear that their cooldown started again. Returns whether positions are to
+    be sent, like `walkers.advance`.
     """
     classic = lobby.classic_round
     if classic.take_back_to_the_deck():
         lobby.walkers.back_to_spawn()
         run_in_background(tell_classic_fail_status(lobby))
-    if meeting_is_running(lobby):
-        return False
-    return lobby.walkers.advance(seconds, app.state.campus, ghosts=classic.eliminated)
+    walked = 0.0 if meeting_is_running(lobby) else seconds
+    return lobby.walkers.advance(walked, app.state.campus, ghosts=classic.eliminated)
 
 
 def meeting_is_running(lobby) -> bool:
