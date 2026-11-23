@@ -46,6 +46,7 @@ from test_play_hiding import (  # noqa: F401 (quiet_tick and server are fixtures
     free_place_at,
     lobby_of,
     playwright_works,
+    position,
     press_fail,
     put,
     quiet_tick,
@@ -158,6 +159,17 @@ def vote_selector(name):
     return f'#classic-vote-players button[data-target-id="{name}"]'
 
 
+def own_place_on_page(browser, label):
+    """Where the page was last told its own player stands."""
+    name = json.dumps(browser.names[label])
+    return browser.js(label, f"""(() => {{
+        const last = window.__received.filter((r) => r.m.type === 'positions'
+            && r.m.players.some((p) => p.name === {name})).pop();
+        const me = last.m.players.find((p) => p.name === {name});
+        return [me.x, me.y];
+    }})()""")
+
+
 def call_at_button(browser, label, labels):
     stand(browser, label, (CENTRE[0], CENTRE[1] + 10))
     browser.wait(label, HAS_E_EMERGENCY, timeout=5000)
@@ -252,6 +264,7 @@ def played(server):  # noqa: F811 (the imported fixture)
         # 2. Second emergency meeting: Skip by 75 % in the discussion.
         results_before = counts(browser, stayers, "result")
         call_at_button(browser, second, stayers)
+        kept_before = {label: position(names[label]) for label in stayers}
         act(browser, voter, vote_selector(names[fr]), stayers, lobby)
         seen["m2_voted"] = window(browser, fr)["votes"]
         for label in (fr, caller):
@@ -264,6 +277,8 @@ def played(server):  # noqa: F811 (the imported fixture)
         closed(browser, stayers)
         seen["m2_results_sent"] = {label: n - results_before[label]
                                    for label, n in counts(browser, stayers, "result").items()}
+        seen["m2_positions"] = {"before": kept_before, "after": {label: position(names[label]) for label in stayers},
+                                "told": {label: own_place_on_page(browser, label) for label in stayers}}
 
         # 3. The Free Rider fails the voter; the second reports: a report meeting.
         clock.skip(FAIL_COOLDOWN_SECONDS + 1)  # the cooldown starts again after a meeting
@@ -286,6 +301,7 @@ def played(server):  # noqa: F811 (the imported fixture)
         for label in stayers:
             browser.wait(label, "!document.getElementById('classic-meeting').hidden")
         time.sleep(0.3)
+        kept_before = {label: position(names[label]) for label in stayers}
         seen["m3_first"] = states_of(browser, second)[-1]
         seen["m3_window"] = {label: window(browser, label) for label in stayers}
         shot(browser, second, "3a_report_discussion")
@@ -295,6 +311,8 @@ def played(server):  # noqa: F811 (the imported fixture)
         wait_for_more(browser, stayers, "result", results_before)
         seen["m3_result"] = states_of(browser, second, "result")[-1]
         closed(browser, stayers)
+        seen["m3_positions"] = {"before": kept_before, "after": {label: position(names[label]) for label in stayers},
+                                "told": {label: own_place_on_page(browser, label) for label in stayers}}
 
         # 4. The caller's call is used; the Free Rider, who has not called, still sees "E Emergency".
         stand(browser, fr, (CENTRE[0] - 20, CENTRE[1] + 10))
@@ -388,6 +406,15 @@ def test_the_report_meeting_offers_the_same_controls(played):
         assert shown["votesShown"] and shown["skipShown"], label
         assert len(shown["votes"]) == 3
     assert played["m3_result"]["ejected_id"] is None
+
+
+@pytest.mark.parametrize("meeting", ["m2_positions", "m3_positions"], ids=["emergency", "report"])
+def test_everybody_goes_on_from_where_they_stood_and_the_page_shows_no_jump(played, meeting):
+    # S-213: nobody is moved by the meeting, and each page was last told its own old place.
+    kept = played[meeting]
+    assert kept["after"] == kept["before"]
+    for label, place in kept["before"].items():
+        assert kept["told"][label] == pytest.approx(list(place)), label
 
 
 def test_a_used_emergency_call_offers_nothing_and_is_refused(played):

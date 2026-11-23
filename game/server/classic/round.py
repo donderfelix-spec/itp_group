@@ -60,9 +60,8 @@ class ClassicRound:
         # The Free Riders who pressed E at a hiding object (M3-1.6, S-191):
         # name -> the spot they hide in. Only the server knows it.
         self.hidden = {}
-        # Set when a meeting's result is applied: the server puts everybody
-        # back on the Main Deck before anybody walks again (DESIGN.md 5.8).
-        # Set at the same moment: the Free Riders are to be told their new cooldown.
+        # Set when a meeting's result is applied: the Free Riders are to be
+        # told their new cooldown. Everybody stays where they stood (S-213).
         self._cooldown_news = False
 
     def state(self):
