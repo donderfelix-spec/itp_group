@@ -45,7 +45,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Limited view in Classic: nearby living players in direct sight, with walls casting shadows (S-185) | M3 | Done |
 | Half-transparent ghosts visible to other ghosts and fallen characters visible until reported (S-186) | M3 | Done |
 | Four hiding spots in Classic (S-131 to S-140), drawn as objects of the map: boxes, a beanbag, a potted plant and a hollow in the hedge (S-190); the Free Rider hides on purpose with E and is then sent to no High Performer; himself, the other Free Rider and ghosts see him with a crossed-out eye (S-191, S-192) | M3 | Done |
-| Campus overview with your location and your own open tasks (S-187) | M3 | Done |
+| Campus overview with your location and the station you need now, in Classic the one active task (S-187, S-197) | M3 | Done |
 | Finished graphics for rooms and characters instead of placeholders | M4 | Planned |
 | Sounds and music | M4 | Later |
 | Touch controls for the phone | M4 | Later |
@@ -107,8 +107,6 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 
 ## Area 4: Minigames and extra modes
 
-Stations 7, 10 and 12 use chart reconstruction from survey evidence, a chat deduction puzzle and timed paper rescue across three lanes. Each has its own brief, feedback and retry controls.
-
 | Feature | Milestone | Status |
 |---|---|---|
 | Frame for minigames: open at a station, close, report “done” | M2 | Done |
@@ -120,7 +118,7 @@ Stations 7, 10 and 12 use chart reconstruction from survey evidence, a chat dedu
 | Pingo Doce: scan products until exactly the target amount comes out | M2 | Done |
 | Duel: three stations per player, own random route with a walking distance of equal length | M2 | Done |
 | Duel: progress of every player as 1/3 with a bar in the Players list of the panel (S-130) | M2 | Done |
-| Panel of the mode at the top of the side panel in every mode (Duel and Solo: next task and clock; Classic: own tasks and group progress), visible without scrolling with eight players (S-143) | M2 | Done |
+| Panel of the mode at the top of the side panel in every mode (Duel and Solo: next task and clock; Classic: group progress; the own task is in the card at the top left, S-197), visible without scrolling with eight players (S-143) | M2 | Done |
 | Six more minigames at stations 7 to 12, in Duel, Solo and Classic (S-124) | M2 | Done |
 | Stations 7, 10 and 12 reworked: rebuild a misleading chart from survey counts, deduce a schedule from chat clues, catch falling pages in three lanes; each with its own brief, feedback and retry (S-189) | M2 | Done |
 | Solo mode for one player, without statistics (S-125) | M2 | Done |

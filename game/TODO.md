@@ -136,7 +136,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M2-4.19** Stations as objects with a pulsing outline, one card at the top left (room and next task), a direction arrow as a plain yellow triangle (S-128, S-129, Lennart's branch; drawing in area 1 with Felix's consent)
 - [ ] **M2-4.20** Before PR 69 (Hanna) is merged: drop its room label `drawLocation`, keep the card of S-129 as the only room display, and use one `roomAt` (Hanna, Lennart)
 - [ ] **M2-4.21** The unused route search in `client/js/minigames/task_navigation.js` (`create`, `route`) is used only by `tests/test_task_navigation.js`: decide whether to keep both or drop both (Lennart)
-- [ ] **M2-4.22** Small points of the reworked minigames of M2-4.14 (Lennart): the title “De-buzzword the slides” no longer fits a chart task; the chat clue “The Sources comes after the ...” is ungrammatical; the chat puzzle always has the same structure (the first-named speaker is always 9:00), vary it; stations 8, 9 and 11 still share one header line; the old slides/order/seagull branches in `room_tasks.js` are dead code. Found in the review of M2-4.14 (2026-11-22)
+- [ ] **M2-4.22** Small points of the reworked minigames of M2-4.14 (Lennart): the title “De-buzzword the slides” no longer fits a chart task (done: “Fix the consultant’s chart”, S-197); the chat clue “The Sources comes after the ...” is ungrammatical; the chat puzzle always has the same structure (the first-named speaker is always 9:00), vary it; stations 8, 9 and 11 still share one header line; the old slides/order/seagull branches in `room_tasks.js` are dead code. Found in the review of M2-4.14 (2026-11-22)
 
 **Known and open after the Duel**
 
