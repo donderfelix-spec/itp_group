@@ -61,7 +61,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Show or hide the password with an eye icon | M1 | Done |
 | A player who is signed out because the account logged in somewhere else is told why | M1 | Done |
 | Limit on log-in attempts and lobby-code guessing | M1 | Done |
-| Statistics per account: rounds and wins per mode, best Duel time | M2 | Done |
+| Statistics per account: rounds and wins per mode (Duel, and Classic since S-198), best Duel time | M2 | Done |
 | Leaderboard of all accounts | M2 | Done |
 | Add friends by username, accept or decline a request | M4 | Planned |
 | See friends with the status “online” and “in a round” | M4 | Planned |
