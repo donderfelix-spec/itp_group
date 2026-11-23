@@ -59,6 +59,8 @@
   var FOG = "rgba(34, 36, 54, 0.6)";
   var CLEAR = "rgba(34, 36, 54, 0)";
   var FOG_COLOUR = "rgb(34, 36, 54)";
+  var FOG_ALPHA = 0.6; // the alpha of FOG
+  var OPAQUE = "rgba(34, 36, 54, 1)";
   // The view fades into the fog over its outer part: clear up to this share
   // of the range, then darker until it reaches the full fog at the range.
   var FADE_FROM = 0.6;
@@ -91,14 +93,15 @@
     ctx.restore();
   }
 
-  // Soft wall shadows (S-214). The fog is drawn from several points of
-  // sight instead of one: the centre and a ring of SAMPLE_RING points
-  // SAMPLE_RADIUS map units around it. Where a wall cuts the view, part of
-  // the points see a spot and part do not, so the shadow fades in over a
-  // band instead of starting with a hard grey edge. The band is centred on
-  // the true edge (the server's rule, S-185). A player always keeps 5 units
-  // from every wall (his 10 x 10 square), so a point 4 units away can never
-  // lie in or behind a wall.
+  // Soft wall shadows (S-214). Besides the player's centre, a ring of
+  // SAMPLE_RING points SAMPLE_RADIUS map units around it is asked what it
+  // sees. Where a wall cuts the view, the share of these points that see a
+  // spot falls off towards the sight line, so the floor darkens softly
+  // before it. Everything beyond the line, that is everything the server
+  // keeps from the player (S-185), still gets the full fog, so no floor
+  // looks visible where no player would be drawn. A player always keeps 5
+  // units from every wall (his 10 x 10 square), so a point 4 units away
+  // can never lie in or behind a wall.
   var SAMPLE_RADIUS = 4;
   var SAMPLE_RING = 8;
   // The fog is drawn small, one pixel per map unit, then scaled up smoothly.
@@ -138,10 +141,10 @@
     return canvas;
   }
 
-  // Like darken, with soft wall shadows: the darken of every sight point is
-  // averaged exactly, so colour, the full fog and the soft range edge stay
-  // as they are. Returns false (and draws nothing) where no extra canvas
-  // can be made; the caller then uses darken itself.
+  // Like darken, with soft wall shadows. Works in "shade" (0 clear, 1 the
+  // full fog) on small canvases, then draws it in the fog colour at the
+  // fog's alpha. Returns false (and draws nothing) where no extra canvas can
+  // be made; the caller then uses darken itself.
   function darkenSoftly(ctx, view, campus, origin) {
     // One spare unit on every side, so the smooth scaling has no seam at
     // the edge of the screen.
@@ -153,39 +156,85 @@
     smoothCanvas = layerCanvas && sizedCanvas(smoothCanvas, area.w * SMOOTH_SCALE, area.h * SMOOTH_SCALE);
     if (!smoothCanvas) return false;
     var fog = fogCanvas.getContext("2d");
-    var layer = layerCanvas.getContext("2d");
+    var seen = layerCanvas.getContext("2d");
     var range = rangeOf(campus);
     var points = sightPoints(origin);
-    fog.setTransform(1, 0, 0, 1, 0, 0);
-    fog.globalCompositeOperation = "source-over";
+    var sights = points.map(function (point) { return boundary(campus, point); });
+    var whole = { x: 0, y: 0, w: area.w, h: area.h };
+
+    // 1. The share of sight points that see each spot: 'lighter' adds up,
+    //    so with an alpha of 1/n per view the sum is the share. One step of
+    //    255 more per view, so that 8-bit rounding never leaves a spot that
+    //    all points see a touch short of fully seen (the sum stops at 1).
+    begin(seen, area, "copy", 1);
+    seen.clearRect(area.x, area.y, area.w, area.h);
+    begin(seen, area, "lighter", 1 / points.length + 1 / 255);
+    sights.forEach(function (sight) { fillPath(seen, sight, OPAQUE); });
+
+    // 2. Shade = twice the share not seeing, at most 1. At the sight line
+    //    about half the points see (the centre and half the ring), so the
+    //    shade reaches 1 there and the soft band lies before the line.
+    begin(fog, whole, "copy", 1);
     fog.clearRect(0, 0, area.w, area.h);
-    // 'lighter' adds up, so with an alpha of 1/n each the sum is the average.
+    fillPath(fog, null, OPAQUE, whole);
+    fog.globalCompositeOperation = "destination-out";
+    fog.drawImage(layerCanvas, 0, 0);
+    copyInto(seen, fogCanvas, area);
     fog.globalCompositeOperation = "lighter";
-    fog.globalAlpha = 1 / points.length;
-    points.forEach(function (point) {
-      layer.setTransform(1, 0, 0, 1, 0, 0);
-      layer.clearRect(0, 0, area.w, area.h);
-      layer.setTransform(1, 0, 0, 1, -area.x, -area.y);
-      // The fade stays centred on the player, so the range edge is unchanged.
-      darken(layer, area, boundary(campus, point), origin, range);
-      fog.drawImage(layerCanvas, 0, 0);
-    });
-    // Rounding in the sum can shift the colour a little: paint it back to
-    // the fog's own colour, keeping the averaged darkness.
-    fog.globalAlpha = 1;
-    fog.globalCompositeOperation = "source-in";
-    fog.fillStyle = FOG_COLOUR;
-    fog.fillRect(0, 0, area.w, area.h);
+    fog.drawImage(layerCanvas, 0, 0);
+
+    // 3. All that the centre does not see (behind walls, beyond the
+    //    range): the full shade, as in darken.
+    begin(fog, area, "source-over", 1);
+    fillPath(fog, sights[0], OPAQUE, area, "evenodd");
+
+    // 4. The soft range edge of S-188, centred on the player, laid over it.
+    var fade = fog.createRadialGradient(origin.x, origin.y, range * FADE_FROM, origin.x, origin.y, range);
+    fade.addColorStop(0, CLEAR);
+    fade.addColorStop(1, OPAQUE);
+    fillPath(fog, null, fade, area);
+
+    // 5. In the fog's colour, scaled up smoothly, at the fog's alpha.
+    begin(fog, whole, "source-in", 1);
+    fillPath(fog, null, FOG_COLOUR, whole);
     fog.globalCompositeOperation = "source-over";
     var smooth = smoothCanvas.getContext("2d");
-    smooth.clearRect(0, 0, smoothCanvas.width, smoothCanvas.height);
+    smooth.globalCompositeOperation = "copy";
     smooth.imageSmoothingEnabled = true;
     smooth.drawImage(fogCanvas, 0, 0, smoothCanvas.width, smoothCanvas.height);
+    smooth.globalCompositeOperation = "source-over";
     ctx.save();
     ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = FOG_ALPHA;
     ctx.drawImage(smoothCanvas, area.x, area.y, area.w, area.h);
     ctx.restore();
     return true;
+  }
+
+  // Sets a small canvas to draw in map units over `area`, with `operation` and `alpha`.
+  function begin(c, area, operation, alpha) {
+    c.setTransform(1, 0, 0, 1, -area.x, -area.y);
+    c.globalCompositeOperation = operation;
+    c.globalAlpha = alpha;
+  }
+
+  // Fills `points` (a view), or the whole `rect` without it with
+  // "evenodd", or only `rect` when points is null.
+  function fillPath(c, points, style, rect, rule) {
+    c.beginPath();
+    if (rect) c.rect(rect.x, rect.y, rect.w, rect.h);
+    if (points) trace(c, points);
+    c.fillStyle = style;
+    c.fill(rule || "nonzero");
+  }
+
+  // Copies the canvas `from` onto the context `c`, replacing what it held.
+  function copyInto(c, from, area) {
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.globalCompositeOperation = "copy";
+    c.globalAlpha = 1;
+    c.drawImage(from, 0, 0);
+    begin(c, area, "source-over", 1);
   }
 
   function clip(ctx, points) {

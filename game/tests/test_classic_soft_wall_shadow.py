@@ -5,11 +5,12 @@ wall `corridor-wall-2` cast a hard, flat grey wedge, unlike the soft edge of
 the view elsewhere (S-188), and a player at the edge of that wedge was cut
 in two by the same hard line.
 
-Only the drawing changes: `vision.darkenSoftly` draws the unchanged
-`vision.darken` from nine points of sight (the player's centre and eight
-points 4 units around it) and averages them, so a wall's shadow fades in
-over a band centred on the server's sight line. Players are drawn after the
-clip, whole. The server's rule (`place_in_sight`, S-185) is untouched.
+Only the drawing changes: `vision.darkenSoftly`, beside the unchanged
+`vision.darken`, asks nine points of sight (the player's centre and eight
+points 4 units around it) what they see, so a wall's shadow fades in over a
+band before the server's sight line; everything the server hides keeps the
+full fog. Players are drawn after the clip, whole. The server's rule
+(`place_in_sight`, S-185) is untouched.
 """
 
 import json
@@ -98,22 +99,26 @@ def test_without_a_document_nothing_is_drawn_and_the_hard_fog_is_the_fallback():
 
 
 @needs_node
-def test_the_soft_fog_averages_one_hard_fog_per_point_of_sight():
+def test_the_soft_fog_counts_the_points_of_sight_that_see_and_keeps_the_range_fade():
     soft = _run_node()["soft"]
     log = soft["log"]
     assert soft["answer"] is True
-    # The unchanged darken on the layer canvas, once per point of sight, its
-    # fade always centred on the player himself with the same range.
+    # Each point's view is added with an alpha of 1/9 (and one 8-bit step,
+    # against rounding): the share that sees.
+    shares = [args for canvas, call, args, state in log
+              if canvas == "layer" and call == "fill" and state == ["lighter", pytest.approx(1 / 9 + 1 / 255)]]
+    assert len(shares) == 9
+    # Outside the centre's own view the full shade (like darken), then the
+    # range fade of S-188, centred on the player, with the same range.
+    outside = [args for canvas, call, args, state in log
+               if canvas == "fog" and call == "fill" and args[0] == "evenodd"]
+    assert outside == [["evenodd", "rgba(34, 36, 54, 1)"]]
     gradients = [args for canvas, call, args, _ in log if call == "createRadialGradient"]
-    assert gradients == [[*VIEWER, 120 * 0.6, *VIEWER, 120]] * 9
-    assert all(canvas == "layer" for canvas, call, _, _ in log if call in ("fill", "createRadialGradient"))
-    # Each layer is added to the fog canvas with an alpha of 1/9: the exact average.
-    added = [(args, state) for canvas, call, args, state in log if canvas == "fog" and call == "drawImage"]
-    assert len(added) == 9
-    assert all(args[0] == "layer" and state == ["lighter", pytest.approx(1 / 9)] for args, state in added)
-    # Then painted back to the fog's colour, keeping the averaged alpha.
-    recolour = [(args, state) for canvas, call, args, state in log if canvas == "fog" and call == "fillRect"]
-    assert recolour == [([0, 0, recolour[0][0][2], recolour[0][0][3], "rgb(34, 36, 54)"], ["source-in", 1])]
+    assert gradients == [[*VIEWER, 120 * 0.6, *VIEWER, 120]]
+    # In the fog's colour, drawn at the fog's alpha (S-193).
+    recolour = [state for canvas, call, args, state in log
+                if canvas == "fog" and call == "fill" and args[1] == "rgb(34, 36, 54)"]
+    assert recolour == [["source-in", 1]]
 
 
 @needs_node
@@ -126,8 +131,9 @@ def test_the_soft_fog_covers_the_whole_view_and_leaves_the_canvas_as_it_was():
     assert image == "smooth" and smoothing is False
     assert x <= view["x"] and y <= view["y"]
     assert x + w >= view["x"] + view["w"] and y + h >= view["y"] + view["h"]
-    main_calls = [call for canvas, call, _, _ in soft["log"] if canvas == "main"]
-    assert main_calls == ["save", "drawImage", "restore"]
+    main_calls = [(call, state) for canvas, call, _, state in soft["log"] if canvas == "main"]
+    assert [call for call, _ in main_calls] == ["save", "drawImage", "restore"]
+    assert main_calls[1][1] == ["source-over", 0.6]
     assert soft["mainDepth"] == 0 and soft["mainSmoothing"] is True
 
 
@@ -169,15 +175,32 @@ POINTS = {
 }
 
 
-@pytest.fixture(scope="module")
-def fog():
-    request = json.dumps({"origin": list(VIEWER), "points": POINTS})
+def _draw_in_chromium(origin, points):
+    request = json.dumps({"origin": list(origin), "points": points})
     finished = subprocess.run(
         [NODE, str(TESTS / "soft_wall_shadow_in_browser.js"), request],
         env=node_environment(), capture_output=True, text=True, timeout=120,
     )
     assert finished.returncode == 0, finished.stderr
     return json.loads(finished.stdout)
+
+
+@pytest.fixture(scope="module")
+def fog():
+    return _draw_in_chromium(VIEWER, POINTS)
+
+
+# Right beside the end of the same wall, the ring of sight points looks far
+# round the corner (the reviewer's case): those places must stay dark.
+BESIDE_THE_CORNER = (481.0, 238.0)
+ROUND_THE_CORNER = {f"p{i}": place for i, place in enumerate(
+    [[458, 188], [452, 176], [452, 182], [458, 194], [464, 206], [470, 218], [446, 200]]
+)}
+
+
+@pytest.fixture(scope="module")
+def corner():
+    return _draw_in_chromium(BESIDE_THE_CORNER, ROUND_THE_CORNER)
 
 
 def test_the_chosen_points_lie_where_the_server_says():
@@ -205,21 +228,42 @@ def test_away_from_the_edge_the_soft_fog_is_the_old_fog(fog):
 
 
 @needs_chromium
-def test_the_wall_shadow_fades_in_softly_around_the_servers_line(fog):
+def test_the_wall_shadow_fades_in_softly_before_the_servers_line(fog):
     names = [f"t{t}" for t in range(6, -7, -1)]  # from the lit side into the shadow
     hard = [fog["hard"]["pixels"][name][3] for name in names]
     soft = [fog["soft"]["pixels"][name][3] for name in names]
     # Before: a hard step from clear to the full fog (t0 lies on the line
     # itself, where the canvas smooths the polygon's edge by one pixel).
     assert all(alpha in (0, FULL_FOG_ALPHA) for name, alpha in zip(names, hard) if name != "t0")
-    # After: it darkens steadily, with several steps in between ...
+    # After: it darkens steadily, with several steps in between, all on the
+    # side the server lets the player see ...
     assert all(later >= earlier - 3 for earlier, later in zip(soft, soft[1:])), soft
-    assert soft[0] <= 10 and soft[-1] >= FULL_FOG_ALPHA - 10, soft
-    assert len([alpha for alpha in soft if 20 < alpha < FULL_FOG_ALPHA - 20]) >= 3, soft
-    # ... and the server's line lies in the middle of the band.
-    assert 0.25 * FULL_FOG_ALPHA < fog["soft"]["pixels"]["t0"][3] < 0.75 * FULL_FOG_ALPHA, soft
+    assert soft[0] <= 10, soft
+    lit_side = [fog["soft"]["pixels"][f"t{t}"] for t in range(1, 7)]
+    assert len([pixel for pixel in lit_side if 20 < pixel[3] < FULL_FOG_ALPHA - 20]) >= 2, soft
+    for pixel in lit_side:
+        if pixel[3] > 20:
+            assert all(abs(a - b) <= 3 for a, b in zip(pixel[:3], FOG_RGB)), pixel
+    # ... and everything the server hides keeps the full fog.
+    for t in range(-1, -7, -1):
+        assert fog["soft"]["pixels"][f"t{t}"][3] >= FULL_FOG_ALPHA - 3, soft
+
+
+def test_the_places_round_the_corner_are_hidden_by_the_server():
+    for name, place in ROUND_THE_CORNER.items():
+        assert not place_in_sight(BESIDE_THE_CORNER, place, app.state.campus), name
 
 
 @needs_chromium
-def test_the_soft_fog_is_never_darker_than_the_full_fog(fog):
+def test_beside_a_wall_end_nothing_round_the_corner_looks_visible(corner):
+    # Before this check the soft band was centred on the line and these
+    # places got about half the fog (p0: 78 of 153). p0 lies 0.3 units from
+    # the line, where the smooth scaling softens the edge by one unit.
+    for name, pixel in corner["soft"]["pixels"].items():
+        assert pixel[3] >= FULL_FOG_ALPHA - 6, (name, pixel)
+
+
+@needs_chromium
+def test_the_soft_fog_is_never_darker_than_the_full_fog(fog, corner):
     assert fog["soft"]["darkest"] <= FULL_FOG_ALPHA + 2
+    assert corner["soft"]["darkest"] <= FULL_FOG_ALPHA + 2

@@ -33,12 +33,12 @@ function recordingContext(name, log) {
     ctx[call] = (...args) => record(call, args);
   });
   ctx.lineTo = () => {};
-  ctx.fill = (rule) => record('fill', [rule === undefined ? null : rule, typeof ctx.fillStyle === 'string' ? ctx.fillStyle : 'gradient']);
+  ctx.fill = (rule) => record('fill', [rule === undefined ? null : rule, typeof ctx.fillStyle === 'string' ? ctx.fillStyle : ctx.fillStyle.radial]);
   ctx.fillRect = (...args) => record('fillRect', [...args, ctx.fillStyle]);
   ctx.drawImage = (image, ...args) => record('drawImage', [image.label, ...args, ctx.imageSmoothingEnabled]);
   ctx.createRadialGradient = (...args) => {
     record('createRadialGradient', args);
-    return { addColorStop() {} };
+    return { radial: args, stops: [], addColorStop(at, colour) { this.stops.push([at, colour]); } };
   };
   return ctx;
 }
@@ -58,8 +58,9 @@ function recordedDarkenSoftly(origin) {
   const main = recordingContext('main', log);
   const view = { x: origin.x - 130.5, y: origin.y - 92.25, w: 261, h: 184.5 };
   const answer = vision.darkenSoftly(main, view, campus, origin);
+  const centreView = vision.boundary(campus, origin).length;
   delete global.document;
-  return { answer, view, log, mainDepth: main.depth(), mainSmoothing: main.imageSmoothingEnabled };
+  return { answer, view, log, centreView, mainDepth: main.depth(), mainSmoothing: main.imageSmoothingEnabled };
 }
 
 let input = '';
