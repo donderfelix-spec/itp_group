@@ -2662,8 +2662,9 @@ body:has(#screen-lobby:not([hidden])) .message {
 .icon-yellow { fill: var(--sun); }
 .icon-blue { fill: var(--water); }
 
-/* The leaderboard has four columns and needs more room than a form. */
+/* The leaderboard has five columns and needs more room than a form. */
 .stats-card { width: min(100%, 520px); }
+#screen-leaderboard .stats-card { width: min(100%, 640px); }
 
 .stats-table {
   width: 100%;
@@ -2689,8 +2690,8 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 /* The narrow columns of the leaderboard. The name gets all the rest. */
 .stats-column-place { width: 70px; }
-.stats-column-wins { width: 64px; }
-.stats-column-time { width: 100px; }
+.stats-column-wins { width: 84px; }
+.stats-column-time { width: 120px; }
 
 .stats-name {
   overflow: hidden;
@@ -2707,9 +2708,6 @@ body:has(#screen-lobby:not([hidden])) .message {
   font-variant-numeric: tabular-nums;
 }
 
-/* The short heading of the time column, for a narrow window only. */
-.stats-narrow-only { display: none; }
-
 /* A narrow window: the name is what tells players apart, so everything
    else gives up room for it. */
 @media (max-width: 560px) {
@@ -2718,8 +2716,18 @@ body:has(#screen-lobby:not([hidden])) .message {
   .stats-table td { padding: 6px 4px; }
   .stats-table th { font-size: 13px; }
   .stats-column-place { width: 40px; }
-  .stats-column-wins { width: 38px; }
-  .stats-column-time { width: 64px; }
-  .stats-wide-only { display: none; }
-  .stats-narrow-only { display: inline; }
+  .stats-column-wins { width: 54px; }
+  .stats-column-time { width: 68px; }
+}
+
+@media (max-width: 380px) {
+  #screen-leaderboard { padding-inline: 12px; }
+  #screen-leaderboard .stats-card { padding-inline: 12px; }
+  #leaderboard-table th,
+  #leaderboard-table td { padding-inline: 2px; }
+  #leaderboard-table th { font-size: 12px; }
+  #leaderboard-table td { font-size: 14px; }
+  #leaderboard-table .stats-column-place { width: 35px; }
+  #leaderboard-table .stats-column-wins { width: 49px; }
+  #leaderboard-table .stats-column-time { width: 64px; }
 }

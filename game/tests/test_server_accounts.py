@@ -456,6 +456,8 @@ def test_a_slow_old_connection_does_not_delay_the_new_log_in():
     assert new.sent == [{"type": "signed_in", "name": "Mara", "guest": False}]
 
 
-def test_hashing_runs_on_two_workers_only():
-    # One Argon2 hash needs 64 MiB; more workers could use up the host's memory.
-    assert main.account_workers._max_workers == 2
+def test_account_calls_run_on_four_workers():
+    # S-211: four, so a slow database keeps fewer players waiting. The memory
+    # of Argon2 is kept in bounds by the hasher itself: see
+    # test_at_most_two_passwords_are_hashed_at_the_same_moment.
+    assert main.account_workers._max_workers == 4
