@@ -332,6 +332,7 @@ The meeting window and the end screen also show these fixed lines, which are not
 | Under the meeting's chat when the result is shown | “The vote is over.” |
 | The result of a vote with a tie or a majority for Skip | “No one was ejected.” |
 | The end screen, for a reason of the end the page does not know | “The round has ended.” |
+| Over the map, for the player the Free Rider just failed (big, red; 4 seconds or until a meeting opens or the round ends, S-228) | “You failed.” |
 
 ## 10. What is deliberately not included
 

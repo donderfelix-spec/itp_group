@@ -423,6 +423,8 @@ function look() {
     // The names in the side panel's Players list, in their order.
     listNames: element('lobby-players').children
       .map((row) => row.children.find((child) => child.classList.contains('player-name')).textContent),
+    // "You failed." over the map for the victim of a fail (S-228).
+    youFailed: { shown: !element('classic-you-failed').hidden, text: element('classic-you-failed').textContent },
     // Every row of the side panel's Players list with its markers (S-227).
     markersInList: element('lobby-players').children.map((row) => ({
       name: row.children.find((child) => child.classList.contains('player-name')).textContent,

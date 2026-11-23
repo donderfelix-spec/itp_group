@@ -15,6 +15,10 @@ Game.classicRound = Game.classicRound || {};
   var roundIsActive = false;
   var isHost = false;
   var roleTimer = null;
+  // "You failed." over the map for the victim of a fail (S-228).
+  var youFailed = null;
+  var youFailedTimer = null;
+  var YOU_FAILED_MILLISECONDS = 4000;
 
   function setup() {
     roleScreen = document.getElementById("classic-role-card");
@@ -33,6 +37,8 @@ Game.classicRound = Game.classicRound || {};
     progressTrack = progressPanel.querySelector('[role="progressbar"]');
     progressFill = document.getElementById("classic-progress-fill");
     ownNameLabel = document.getElementById("classic-own-name");
+    youFailed = document.getElementById("classic-you-failed");
+    if (youFailed) youFailed.hidden = true;
     hiddenHint = makeHiddenHint();
     progressPanel.appendChild(hiddenHint);
     // "Back to the lobby" only closes the end screen: the player stays in the
@@ -44,6 +50,10 @@ Game.classicRound = Game.classicRound || {};
     Game.net.on("classic_result", showResult);
     Game.net.on("classic_roster", rememberOwnGhost);
     Game.net.on("classic_hiding", rememberOwnHiding);
+    // Every member learns who failed from `classic_fail` (S-159); the victim
+    // reads his own name in it, so no new message is needed (S-228).
+    Game.net.on("classic_fail", showYouFailedIfOwn);
+    Game.net.on("meeting_state", function () { showYouFailed(false); });
   }
 
   function setLobby(message) {
@@ -148,7 +158,23 @@ Game.classicRound = Game.classicRound || {};
     ownNameLabel.classList.toggle("free-rider-name", ownIsFreeRider);
   }
 
+  function showYouFailedIfOwn(message) {
+    if (roundIsActive && message && ownName !== null && message.target_id === ownName) showYouFailed(true);
+  }
+
+  // Shown for a few seconds, or until a meeting opens or the round ends.
+  function showYouFailed(shown) {
+    if (!youFailed) return;
+    if (youFailedTimer !== null) window.clearTimeout(youFailedTimer);
+    youFailedTimer = null;
+    youFailed.hidden = !shown;
+    if (shown) {
+      youFailedTimer = window.setTimeout(function () { showYouFailed(false); }, YOU_FAILED_MILLISECONDS);
+    }
+  }
+
   function resetRoleMarker() {
+    showYouFailed(false);
     roundIsActive = false;
     allowHiding(false);
     setOwnFreeRider(false);
