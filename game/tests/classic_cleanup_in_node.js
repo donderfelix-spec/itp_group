@@ -230,8 +230,9 @@ const minigames = {
   showDone() {},
 };
 
-// The map drawing of draw.js: only the red button is written down.
+// The state passed to the emergency button drawing.
 let emergencyButtonDrawn = null;
+let emergencyButtonLocked = false;
 // The characters drawn in the last frame: {character, x, alpha}.
 let charactersDrawn = [];
 let fallenCharactersDrawn = [];
@@ -286,6 +287,7 @@ page.Game = {
     characters: [],
     drawMap(ctx, map, view, emergencyVisible, pulsing) {
       emergencyButtonDrawn = emergencyVisible === true;
+      emergencyButtonLocked = emergencyVisible === 'locked';
       pulsingStations = Array.isArray(pulsing) ? pulsing.slice() : pulsing;
     },
     drawStationGlow() {},
@@ -383,6 +385,7 @@ function look() {
     sheetIds: page.Game.world.bloodSheetIds(),
     sheetsDrawn: mapTexts.filter((text) => text.text === 'F').length,
     emergencyButtonDrawn: emergencyButtonDrawn,
+    emergencyButtonLocked: emergencyButtonLocked,
     useButtonText: useButton ? useButton.textContent : null,
     useButtonHasFailLook: useButton ? useButton.classList.contains('fail-button') : null,
     useButtonDisabled: useButton ? useButton.disabled === true : null,
