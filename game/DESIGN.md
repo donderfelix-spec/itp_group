@@ -1,6 +1,6 @@
 # Design “Group Project”
 
-This is how the game should look and play. This document is a draft from 2026-11-18. Whatever the team confirms moves into [DECISIONS.md](DECISIONS.md) as a decision. Texts in the game are in English (S-43), so the names of characters, rooms and buttons are written in English here.
+This is how the game should look and play. It was first drafted on 2026-11-18 and has been kept up to date with the game since (last on 2026-11-23). Whatever the team confirms moves into [DECISIONS.md](DECISIONS.md) as a decision. Texts in the game are in English (S-43), so the names of characters, rooms and buttons are written in English here.
 
 Everything without a note is required by Monday. “If time allows” means: only if all required parts work on Saturday (S-33).
 
@@ -80,12 +80,12 @@ All characters are the same size and the same speed, they differ only in how the
 | 1 | Start | Logo, “Log in”, “Sign up”, “Play as guest” |
 | 2 | Sign up / Log in | Username, password, error message directly at the field. When signing up, the rules stand below the fields from the start: “3–16 letters or numbers” and “8–64 characters”. A button with an eye in each password field shows or hides what was typed (“Show password” / “Hide password” for screen readers); the password is hidden again whenever the form is left |
 | 3 | Home | At the top of the card “Signed in as” and the player's name. “Create lobby” (yellow), “Join with code”, own profile, “Leaderboard”. Profile and leaderboard are two round icons at the top right of the screen (a person and a trophy), not buttons in the card. If time allows: friends list with status |
-| 4 | Lobby | Code in large letters for reading aloud, player list with characters, character selection. The panel next to the map has the headings “Lobby code”, “Players”, “Mode” and “Character”. Until the map has been downloaded, “Loading the campus…” stands in the middle of the map. Characters taken by other players are greyed out. Until “Start game” exists, everyone in the lobby already walks on the map, with the lobby shown next to it. The host chooses the mode: “Duel”, “Solo” or “Classic”. A mode that is not built yet is greyed out with “Coming with the next milestone”; everyone sees the chosen mode. At the bottom right is the yellow button “Start game”, which only the host sees. It is grey as long as too few players are there, and below it there is then a text such as “Classic needs 2 more players”. All others see “Waiting for the host” in that place. When the host presses “Start game”, the round does not begin at once: everybody sees “Round starts in” and a large number over the map that counts 5, 4, 3, 2, 1, and then the round starts. During this countdown everybody can still walk, but the characters, the mode and the start button are switched off, and nobody can join. A ranking that is still open stays readable; the countdown is then one slim line at the top edge of the map (“Round starts in 3”), above the ranking, and never covers it. If so many players leave during the countdown that too few are left for the mode, the countdown ends without a round and the lobby is open again. While a round is running, the panel shows “Round running” instead of the character selection and the start button. In “Mode”, Duel and Solo stand side by side and Classic below them over the whole width. For the host, a mode that does not fit the number of players is greyed out with a “?” that shows why: Solo with two or more players, Duel when alone, Classic with fewer than four (S-146). Every locked mode has the same grey; when the chosen mode does not fit, it keeps only its dark frame and shadow as the mark of the choice (S-146). When a second player joins a lobby set to Solo, it switches to Duel (S-125). |
-| 5 | Role reveal | Three seconds: “You are a High Performer” or “You are the Free Rider” in coral |
+| 4 | Lobby | Code in large letters for reading aloud, player list with characters, character selection. The panel next to the map has the headings “Lobby code”, “Players”, “Mode” and “Character”. Until the map has been downloaded, “Loading the campus…” stands in the middle of the map. Characters taken by other players are greyed out. Everyone in the lobby already walks on the map, with the lobby shown next to it. The host chooses the mode: “Duel”, “Solo” or “Classic”. Everyone sees the chosen mode. At the bottom right is the yellow button “Start game”, which only the host sees. It is grey as long as too few players are there, and below it there is then a text such as “Classic needs 2 more players”. All others see “Waiting for the host” in that place. When the host presses “Start game”, the round does not begin at once: everybody sees “Round starts in” and a large number over the map that counts 5, 4, 3, 2, 1, and then the round starts. During this countdown everybody can still walk, but the characters, the mode and the start button are switched off, and nobody can join. A ranking that is still open stays readable; the countdown is then one slim line at the top edge of the map (“Round starts in 3”), above the ranking, and never covers it. If so many players leave during the countdown that too few are left for the mode, the countdown ends without a round and the lobby is open again. While a round is running, the panel shows “Round running” instead of the character selection and the start button. In “Mode”, Duel and Solo stand side by side and Classic below them over the whole width. For the host, a mode that does not fit the number of players is greyed out with a “?” that shows why: Solo with two or more players, Duel when alone, Classic with fewer than four (S-146). Every locked mode has the same grey; when the chosen mode does not fit, it keeps only its dark frame and shadow as the mark of the choice (S-146). When a second player joins a lobby set to Solo, it switches to Duel (S-125). |
+| 5 | Role reveal | Three seconds: under “Your role” the role, “High Performer” or “Free Rider” in coral, and one line on what to do (“Complete your 4 tasks.” / “Make High Performers fail without getting caught.”). A Free Rider also reads “Other Free Riders:” and the other one’s name, or “None” |
 | 6 | Game | Map with displays, see below |
 | 7 | Minigame | Window on top of the map, closes with Esc |
 | 8 | Meeting | Cards of all players, chat, vote, clock |
-| 9 | Vote result | Who received how many votes, the character drifts out to sea, and whether it was a Free Rider |
+| 9 | Vote result | Who received how many votes, the character drifts out to sea (not built yet, M3-3.5: today the result is text only), and whether it was a Free Rider |
 | 10 | End | Who won, who was a Free Rider, the statistics, “Back to the lobby”. Only the host also sees “New Round”, with “Start another round with the same lobby.” below the buttons; everybody else sees no “New Round” at all, only “Back to the lobby” and below it “The host can start the next round.” When the host changes while the screen is open, the button follows (Felix, 2026-11-22). |
 | 11 | Duel ranking | Placement with times |
 | 12 | Profile | Rounds and wins per mode, best Duel time. Opened with “Profile” on the Home screen, only for an account: “Signed in as” and the name at the top, then one row per mode with “Rounds” and “Wins”, below it “Best Duel time” written like in the Duel ranking (“1:12.4”), or “–” as long as there is none, and “Back”. A guest gets the message “Guests have no statistics. Sign up to keep yours.” instead |
@@ -93,17 +93,16 @@ All characters are the same size and the same speed, they differ only in how the
 
 **Displays in the game**
 
-- Top left: name of the room you are standing in.
-- Top centre: progress bar of the group work.
+- Top left: a card with the name of the room you are standing in and your next task (S-129, S-197).
+- In the side panel: the progress bar of the group work (“Group progress”, Classic).
 - Side panel during a round, the same order in every mode (S-143): first the panel of the mode (Duel and Solo: the heading “Duel” or “Solo”, the next task and the clock; Classic: the heading “Classic”, the own name, then “Group progress” with the bar), then “Players”, then the rest. Outside a round the panel starts with “Players”. In Classic the panel has no task card: the own active task stands in the card at the top left of the map, as in Duel and Solo. In its place that card says “All your tasks are done.” (green) once all four are done, and to the Free Rider “Fake tasks: stand at a station to look busy.” (S-197). A ghost keeps its active task, because ghosts keep doing their tasks.
 - Below the progress bar, only for the own Free Rider while he hides in Classic: “Hidden” (S-135).
-- Right: your own task list with the room, finished tasks crossed out.
 - Bottom right: large buttons, each with its key first (S-195). A High Performer always has “E Use” (“E Emergency” at the red button). A Free Rider always has “F Let fail” and, above it only while E would do something, a second button “E Emergency”, “E Hide” or “E Leave hiding”. “R Report” appears above the main button for both roles while a report is possible. Each button has a fixed place, so nothing moves when another appears. A button is grey as long as it would do nothing.
 - Messages appear briefly at the top centre, errors in coral. On the lobby screen they stand over the map, not over the panel; in a narrow window, where the panel is below the map and the page scrolls, they appear at the bottom centre instead, so they never cover the lobby code (S-113).
 
 **How you notice that a key does something**
 
-The same rule applies to E, R and F. As soon as you stand close enough to a target (about one and a half character widths), two things happen at the same time:
+The same rule applies to E, R and F. As soon as you stand close enough to a target (25 map units for a station, the red button, a hiding spot or a victim, 8 for an F-sheet; a character is about 10 wide), two things happen at the same time:
 
 1. The target gets a glowing border that pulses slowly (a station: its yellow outline at full strength, S-128).
 2. The matching button at the bottom right changes from grey to colour. The button shows the key and the word that goes with it, for example “E Use”.
@@ -125,12 +124,13 @@ Pressing a key that would do nothing at that moment has no effect and also shows
 | Key | Action |
 |---|---|
 | WASD or arrow keys | Walk |
-| E | Use a station, press the emergency button |
+| E | Use a station, press the emergency button; as the Free Rider in Classic also hide and leave hiding |
 | R | Report a failed player |
 | F | Fail someone (Free Rider only) |
 | M | Open or close the campus overview |
 | Enter | Send chat in the meeting |
 | Esc | Close the minigame or the map |
+| 1, 2, 3 | Catch a page in lane 1, 2 or 3 in “Seagull quality control” (station 12) |
 
 Every action also works with a mouse click on the button. The campus overview shows the whole floor plan, your position and only the station you need now: in Classic your one active task (S-197), in Duel or Solo your next task.
 
@@ -148,7 +148,7 @@ Every action also works with a mouse click on the button. The campus overview sh
 4. The Free Rider can fail a High Performer who is in range (25 map units, S-194), with key F or the button “F Let fail” (S-195). After that, the Free Rider has to wait 15 seconds. The Free Rider starts with the ability loaded and cannot fail another Free Rider.
 5. Reporting happens right on the spot: For any living player, the Free Rider included, who stands within 8 map units of an “F” sheet (S-180), the button “R Report” appears (key R, S-195). Pressing it starts the meeting for everyone at once, and nobody has to walk anywhere. The reported sheet stays on the map until the round ends and cannot be reported again (S-150). Without a find, each living player can call one meeting per round with the red button in the centre of the Main Deck, available 45 seconds after the round starts. The player has to stand within 25 map units of the button, as close as to a station; the server checks this, and only a living player within that range sees “E Emergency”. There is no other cooldown (S-170, S-172).
 6. Meeting: 45 seconds of discussion by chat, then 30 seconds for the vote. You vote for one person or “Skip”. The person with the most votes goes, and nobody goes if there is a tie or a majority for “Skip”. After a report, voting is already open during the discussion; after an emergency meeting only in the voting phase (S-161). During the vote the window says “Chat is closed. Choose one living player to eject, or Skip.” Votes are public: each vote button shows on its right, in a round field of fixed size, how many voted for that player (a pale “0” without votes), and its label names the voters, for example “Bo — votes: Ana, Cy” or “Bo — no votes”; the own target is highlighted. All vote buttons have the same size in a fixed grid (four columns, three in a medium window, two in a narrow one); a long name ends in “…”, and nothing moves when votes arrive, change or are taken back. The meeting window always fits the screen: the meeting picture shrinks, and the Skip row, the vote buttons, the message field and “Send” stay visible (Felix, 2026-11-22). Clicking the same player again takes the vote back, another player replaces it (S-160). “Skip” switches the own Skip on and off (“Skip” / “Undo Skip”) and takes back the own vote; the window shows “2 / 3 Skip votes to end voting early.” As soon as 75 % of the living have chosen Skip, rounded up, the meeting ends at once. Anyone who does not vote does not count as “Skip”; Skip with as many votes as the leading player is a tie. Otherwise the vote ends when its 30 seconds run out, also when everybody has voted (S-162). The result stays on screen for a moment (1.8 s), then the window closes and the round goes on; when the result ends the round, the end screen follows at once (S-153).
-7. Whoever is voted out drifts out to sea: The character is caught by a wave on the beach, gets smaller and disappears on the horizon. A text says whether it was a Free Rider: “Mara was a Free Rider.” or “Mara was not a Free Rider.”
+7. Whoever is voted out drifts out to sea: The character is caught by a wave on the beach, gets smaller and disappears on the horizon (not built yet, M3-3.5). A text says whether it was a Free Rider: “Mara was a Free Rider.” or “Mara was not a Free Rider.”
 8. After the meeting everyone stands on the Main Deck again, and the Free Rider’s cooldown starts again.
 9. Ghosts keep doing their tasks, but they do not write in the chat and do not vote.
 
@@ -210,7 +210,7 @@ The win and the time go into the statistics (S-40).
 
 ## 8. Minigames
 
-Every room has its fixed minigame, it does not change. But the content is shuffled anew every round. All minigames take 10 to 25 seconds, are played with the mouse only and have the same header: title, one sentence of instructions, close button.
+Every room has its fixed minigame, it does not change. But the content is shuffled anew every round. All minigames take 10 to 25 seconds, are played with the mouse (station 12 also with the keys 1, 2 and 3) and have the same header: title, one sentence of instructions, close button.
 
 After a mistake, only the wrong piece is reset, never the whole minigame.
 
@@ -306,6 +306,17 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | A message with a field the server does not expect, or without a field it needs (only when someone bypasses the page) | “That message has a field the server does not expect.” / “That message is incomplete.” |
 | Choosing a character that does not exist (only when someone bypasses the page) | “That character does not exist.” |
 | A walking direction that is not -1, 0 or 1 (only when someone bypasses the page) | “That move could not be read.” |
+| A Free Rider opens, closes or finishes a station (only when someone bypasses the page) | “Free Riders cannot complete tasks.” |
+| Failing while it is not possible: no Classic round, no High Performer in range, as a High Performer or a ghost | “You cannot fail a player right now.” |
+| Failing during the 15-second cooldown | “You can fail again in 12 seconds.” (the seconds left, “1 second” for one) |
+| Chatting outside the discussion of a meeting, as a ghost, or too fast after the last message | “You cannot send that chat message right now.” |
+| A chat message that is empty, longer than 200 characters or has characters that are not allowed | “Chat messages must contain 1–200 characters.” |
+| Voting while voting is closed, as a ghost, or for a player who is not a living player of the round | “You cannot cast that vote right now.” |
+| Reporting an F-sheet from too far away, as a ghost, or one that was already reported | “You cannot report that F-sheet right now. Stand at the sheet and try again.” |
+| Calling an emergency meeting as a ghost, a second time or outside a Classic round | “You cannot call an emergency meeting right now.” |
+| Calling an emergency meeting in the first 45 seconds of a round | “The emergency button unlocks in 20 seconds.” (the seconds left, “1 second” for one) |
+| A report with an F-sheet id that is not text of the right form (only when someone bypasses the page) | “That F-sheet could not be identified.” |
+| A report with a position that is not two finite numbers (only when someone bypasses the page) | “That position could not be read.” |
 
 ## 10. What is deliberately not included
 

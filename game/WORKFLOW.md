@@ -61,7 +61,7 @@ flowchart TD
 
 9. **Diamond “Findings?”** Every finding goes back to the Coder with file and line. Without findings it goes on to the Tester.
 
-10. **Tester.** Starts the server, opens several browsers and plays as different players. It checks what the rule tests do not see: whether everyone really sees the same thing, whether something hangs, whether it is playable. The run is turned into a repeatable test, which from then on runs with every change.
+10. **Tester.** Starts the server, opens several browsers and plays as different players. It checks what the rule tests do not see: whether everyone really sees the same thing, whether something hangs, whether it is playable. The run is turned into a repeatable test, which from then on runs with every change. (The browser plays need Node with Playwright and Chromium; the CI on GitHub has no Playwright and skips them, so they run on our own machines.)
 
 11. **Diamond “Acceptance criteria met?”** If not, the report with the steps to reproduce goes to the Coder.
 
