@@ -13,6 +13,7 @@ Passwords are never stored or logged, only their hash.
 """
 
 import re
+import threading
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
@@ -22,24 +23,33 @@ from server.accounts.store import StoreUnavailable
 # Guests are called "Guest" plus digits (S-77). No account may look like one.
 GUEST_NAME_PATTERN = re.compile(r"guest[0-9]+", re.IGNORECASE)
 
+# One Argon2 hash needs 64 MiB of memory, and the host has 512 MB. Whatever the
+# number of worker threads, at most this many hash at the same moment; the
+# others wait their turn (S-83, S-211).
+HASHES_AT_ONCE = 2
+
 
 class Argon2Hasher:
     """Turns passwords into Argon2 hashes and checks a password against a hash."""
 
     def __init__(self):
         self._hasher = PasswordHasher()
+        self._hashing = threading.BoundedSemaphore(HASHES_AT_ONCE)
         # Checked against when the name does not exist, see `log_in`.
-        self.dummy_hash = self._hasher.hash("no account has this password")
+        self.dummy_hash = self.hash("no account has this password")
 
     def hash(self, password: str) -> str:
-        return self._hasher.hash(password)
+        with self._hashing:
+            return self._hasher.hash(password)
 
     def matches(self, password_hash: str, password: str) -> bool:
-        try:
-            return self._hasher.verify(password_hash, password)
-        except (VerificationError, InvalidHashError):
-            # Wrong password, or a stored hash that cannot be read.
-            return False
+        # Checking a password computes a hash too, with the same memory.
+        with self._hashing:
+            try:
+                return self._hasher.verify(password_hash, password)
+            except (VerificationError, InvalidHashError):
+                # Wrong password, or a stored hash that cannot be read.
+                return False
 
 
 def is_guest_name(name: str) -> bool:

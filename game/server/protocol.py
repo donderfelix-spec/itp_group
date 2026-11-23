@@ -469,6 +469,8 @@ def leaderboard(rows) -> dict:
             "place": row["place"],
             "name": row["name"],
             "wins": row["wins"],
+            "classic_wins": row["classic_wins"],
+            "duel_wins": row["duel_wins"],
             "best_duel_seconds": row["best_seconds"],
         }
         for row in rows

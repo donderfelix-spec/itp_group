@@ -118,14 +118,14 @@ The message types are tested for accepted, rejected and edge cases (rule 2). The
 - many lobbies or players at once: there is no load test.
 
 **What happens if the service the game depends on is unavailable?**
-Our only outside service is the database. We tried it with the server pointed at a closed port and at a port that never answers:
+Our only outside service is the database. We tried it with the server pointed at a closed port and at a port that never answers, and against a real local Postgres that we froze in the middle of a call or cut off from the network (S-211):
 - The server starts anyway: the stores connect only when they are first needed.
-- Sign-up and log-in answer “Accounts are unavailable right now. You can still play as a guest.” (`accounts_unavailable`). It comes at once when the database refuses, and after 5 seconds when it does not answer (`CONNECT_TIMEOUT_SECONDS`; a query may run at most 5 seconds, `SET_STATEMENT_TIMEOUT`). A down database is not counted as a wrong password (`handle_log_in`).
+- Sign-up and log-in answer “Accounts are unavailable right now. You can still play as a guest.” (`accounts_unavailable`). It comes at once when the database refuses, and after 5 seconds when it does not answer (`CONNECT_TIMEOUT_SECONDS`; a query may run at most 5 seconds, `SET_STATEMENT_TIMEOUT`). If the network dies in the middle of a call, our end notices within about 5 seconds (`SOCKET_OPTIONS`, libpq's keepalive and `tcp_user_timeout`); if the database is reachable but stuck, the call is cut off 10 seconds after it connected (`CallDeadline` in `server/accounts/store.py`). A down database is not counted as a wrong password (`handle_log_in`).
 - Profile and leaderboard answer “Statistics are unavailable right now.”
-- Guests sign in, create lobbies and play every mode at the same moment. The database runs on two worker threads (`account_workers`), never on the loop that runs the game.
+- Guests sign in, create lobbies and play every mode at the same moment. The database runs on four worker threads (`account_workers`), never on the loop that runs the game; at most two of them hash a password at once (`HASHES_AT_ONCE`), because one Argon2 hash needs 64 MiB.
 - The result of a finished round is written only after the players were told (`write_result_later`). If that write fails, the round has ended normally and only its statistics are lost (`tests/test_server_statistics.py`, `test_a_store_that_fails_does_not_keep_the_round_from_ending`).
 - The log gets one fixed line per failure, never the address or the password (`problem_log_line`).
-*Limits:* with a database that hangs, every account action takes one of the two workers for 5 seconds, so many log-ins at once wait in turn. A failed write is not retried.
+*Limits:* with a database that hangs, every account action holds one of the four workers for up to about 15 seconds (5 to connect, then 10 for the call), so more than four log-ins at once still wait in turn. A known risk we accept on purpose: if the database fails exactly while a finished round is being saved, that round's statistics are lost and are not written again. A retry is not safe, because the first write may have arrived after all and the round would then count twice. *Could change:* give every round an id with a unique constraint, so that the database refuses a second copy and a write can be repeated safely (open to-do M3-2.9).
 
 **Why was it built this way?**
 - Python with FastAPI on the server, because the course works with Python (S-29, replacing Node.js in S-15).

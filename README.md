@@ -58,6 +58,11 @@ Start the game, then open http://localhost:8000:
 
 Without the environment variable `DATABASE_URL` the server keeps accounts and statistics in memory, so everything works locally and is gone after a restart. The deployed game reads `DATABASE_URL` from Render's settings and stores accounts and statistics in Postgres (Supabase).
 
+Two more environment variables decide which pages may open the game's WebSocket (S-207). Neither is a secret, and neither is needed locally: http://localhost:8000 and http://127.0.0.1:8000 work without them. Changing one in Render's settings restarts the service.
+
+- `ALLOWED_ORIGINS`: further sites whose pages may connect, comma separated, for example `https://itp-group.onrender.com` (a bare host such as `itp-group.onrender.com` allows http and https). The server already accepts a page from the host the request was sent to and always the deployed address https://itp-group.onrender.com; use this only if a page of the real game is refused.
+- `ORIGIN_CHECK`: `off` switches the check off (so do `false`, `0` and `no`). Without it, or with any other value, the check is on.
+
 Run the tests:
 
 ```bash
@@ -91,6 +96,7 @@ The status of every feature is in [game/FEATURES.md](game/FEATURES.md), the rule
 - A player whose connection drops cannot return to a running round; after signing in again they rejoin the lobby when the round is over (S-109).
 - Lobbies and running rounds live only in the server's memory: a restart or a new deploy ends them.
 - The log-in and lobby-code limits count per connection, so a new connection starts again at zero.
+- A known risk we accept on purpose: if the database fails exactly while a finished round is being saved, that round's statistics are lost and are not written again. A retry is not safe, because the first write may have arrived after all and the round would then count twice. The clean fix, a round id with a unique constraint so that the database refuses a second copy, is the open to-do M3-2.9 (S-211).
 - In Classic everybody learns at once who was failed (the victim's portrait is on the F-sheet, S-163); only the place of the sheet is sent just to those who see it (S-202).
 - The character voted out is not shown drifting out to sea yet; the result is shown as text (M3-3.5).
 - The browser play tests do not run in CI (see above).
