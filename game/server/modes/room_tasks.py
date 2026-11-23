@@ -12,19 +12,6 @@ ROOMS = {
 }
 
 
-def cleanup_content(rng, theme, good, bad):
-    items = [
-        {"id": f"good-{index}", "label": label, "remove": False}
-        for index, label in enumerate(rng.sample(good, 3))
-    ]
-    items += [
-        {"id": f"bad-{index}", "label": label, "remove": True}
-        for index, label in enumerate(rng.sample(bad, 3))
-    ]
-    rng.shuffle(items)
-    return {"kind": "campus_task", "puzzle": "cleanup", "theme": theme, "items": items}
-
-
 def slides(rng):
     labels = rng.sample(["Did the reading", "Brought snacks", "Opened the document", "Said 'quick call'"], 3)
     counts = rng.sample(range(2, 9), 3)

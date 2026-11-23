@@ -37,7 +37,6 @@ from server.modes import self_checkout
 from server.modes import shelve_books
 from server.modes import sort_slides
 from server.modes import room_tasks
-from server.modes.placeholder import placeholder
 
 # Station id -> its minigame. The titles are the ones of DESIGN.md, section 8.
 MINIGAMES = {
