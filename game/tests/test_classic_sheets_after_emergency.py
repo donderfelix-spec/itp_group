@@ -119,22 +119,26 @@ def test_a_report_meeting_does_not_close_the_other_sheets_on_the_page():
 def test_after_an_emergency_meeting_an_old_sheet_is_refused_and_a_new_one_reported(connect, clock):
     from task_helpers import put
     from test_classic_meeting_once import (  # noqa: I001
-        FAIL_PLACE,
         classic_round,
         everybody_skips,
         everything_sent,
+        fail,
         read_until,
         start_emergency,
         ticks,
     )
 
     connections, lobby, fr, [caller, reporter, first_victim, second_victim] = classic_round(connect)
-    put(fr, FAIL_PLACE)
-    put(first_victim, (FAIL_PLACE[0] + 1, FAIL_PLACE[1]))
-    connections[fr].send_json({"type": "fail"})
-    old = read_until(connections[fr], "classic_fail")[-1]
-    for connection in connections.values():
-        everything_sent(connection)
+    def sheet_of(victim):
+        """Fail `victim` beside the Free Rider; every page has read the news up to the positions."""
+        before = set(lobby.classic_round.f_sheets)
+        fail(connections, fr, victim)
+        assert victim in lobby.classic_round.eliminated
+        [sheet_id] = set(lobby.classic_round.f_sheets) - before
+        x, y = lobby.classic_round.f_sheets[sheet_id]
+        return {"sheet_id": sheet_id, "position": {"x": x, "y": y}}
+
+    old = sheet_of(first_victim)
     start_emergency(connections, caller, clock)
     everybody_skips(connections, lobby, clock)
     ticks(connections, count=1)
@@ -150,13 +154,11 @@ def test_after_an_emergency_meeting_an_old_sheet_is_refused_and_a_new_one_report
     assert lobby.classic_round.phase == "round"
 
     clock.wait(16)  # the Free Rider's cooldown after the meeting
-    put(reporter, (100.0, 330.0))  # away, so that the fail cannot hit him
-    put(fr, FAIL_PLACE)
-    put(second_victim, (FAIL_PLACE[0] + 1, FAIL_PLACE[1]))
-    connections[fr].send_json({"type": "fail"})
-    new = read_until(connections[fr], "classic_fail")[-1]
+    ticks(connections, count=1)
+    for connection in connections.values():
+        everything_sent(connection)
+    new = sheet_of(second_victim)  # `fail` puts everybody else far away first
     assert new["sheet_id"] != old["sheet_id"]
-    assert new["target_id"] == second_victim
     put(reporter, (new["position"]["x"], new["position"]["y"]))
     connections[reporter].send_json({"type": "report", "sheet_id": new["sheet_id"], "position": new["position"]})
     state = read_until(connections[reporter], "meeting_state")[-1]

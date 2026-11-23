@@ -7,8 +7,8 @@ two pages at 1280 x 800 and two at 1024 x 700.
 - The Free Rider 26 map units from a High Performer: the server says "not in
   range" and F fails nobody.
 - At 25 map units (S-194, was 20): the button says only "F Let fail" (S-195) and F fails the victim.
-- A High Performer 40.5 map units from the F-sheet sees no Report button.
-- The Free Rider 40 map units from the sheet sees Report (S-229, was 8.5 and 8); R starts the meeting
+- A High Performer 25.5 map units from the F-sheet sees no Report button.
+- The Free Rider 25 map units from the sheet sees Report (S-229, was 8.5 and 8); R starts the meeting
   for everybody, as a report by the Free Rider.
 - No page scrolls sideways or downwards with the larger sheet on the map.
 
@@ -83,7 +83,7 @@ def test_ranges_and_f_key_in_the_real_game(played):
     assert played["fail25"]["buttonsBefore"]["useDisabled"] is False
     assert played["fail25"]["failed"] is True
 
-    # Report: hidden at 40.5, shown at 40, also for the Free Rider (S-229).
+    # Report: hidden at 25.5, shown at 25, also for the Free Rider (S-229).
     assert played["report85"]["reportShown"] is False
     assert played["report8"]["buttonsBefore"]["reportShown"] is True
     assert played["report8"]["meetingReason"] == "report"

@@ -129,7 +129,7 @@ Game.world = Game.world || {};
   var FAIL_RANGE_TILES = 25;
   var FAIL_COOLDOWN_SECONDS = 15;
   var REPORT_KEY_CODE = "KeyR";
-  var REPORT_RANGE = 40; // same as rules.REPORT_RANGE on the server (S-180, S-229)
+  var REPORT_RANGE = 25; // same as rules.REPORT_RANGE on the server (S-180, S-229)
   var EMERGENCY_DELAY_SECONDS = 45;
 
   // ---- State -----------------------------------------------------------
