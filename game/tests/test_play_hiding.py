@@ -425,7 +425,7 @@ def walk_into(browser, label, name, spot, hide=False):
 
 def press_hide(browser, label, name):
     """Press E as a Free Rider does, once his button reads "E Hide" (M3-1.6)."""
-    browser.wait(label, "(() => { const b = document.querySelector('.use-button'); return Boolean(b) && b.textContent === 'E Hide' && !b.disabled; })()")
+    browser.wait(label, "(() => { const b = document.querySelector('.free-rider-e-button'); return Boolean(b) && !b.hidden && b.textContent === 'E Hide' && !b.disabled; })()")
     browser.call("press", label=label, key="KeyE")
     wait_until(lambda: lobby_of(name).classic_round.is_hidden(name), f"{name} hides")
 
@@ -625,7 +625,7 @@ def press_fail(browser, label):
             f"needs news {[w.needs_news for w in lobby_of(name).walkers._walkers.values()]}, "
             f"busy {len(main.taking_positions)}, background {len(main.background_sends)}"
         )
-    browser.call("press", label=label, key="KeyQ")
+    browser.call("press", label=label, key="KeyF")  # F lets fail (S-195; Q did before)
 
 
 def failed(browser, label, victim):
@@ -646,7 +646,7 @@ def failed(browser, label, victim):
 def press_at_button(browser, label, name):
     put(name, (BUTTON["x"] + 8, BUTTON["y"]))
     standing_still(name)
-    browser.wait(label, "document.querySelector('.use-button') && document.querySelector('.use-button').textContent.includes('Emergency')")
+    browser.wait(label, "Array.from(document.querySelectorAll('.use-button, .free-rider-e-button')).some((b) => !b.hidden && b.textContent === 'E Emergency')")
     browser.call("press", label=label, key="KeyE")
 
 

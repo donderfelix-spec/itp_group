@@ -11,7 +11,7 @@ three High Performers:
    his own positions flag him as hidden. Neither the High Performer 30
    units away nor the one 40 units away is sent him (S-192). No High
    Performer's page is ever told anything about hiding.
-2. He presses Q beside a High Performer: refused with "Leave your hiding
+2. He presses F beside a High Performer: refused with "Leave your hiding
    spot first."; nobody failed, he still hides.
 3. One step ends hiding: the one 40 units away gets him again.
 4. He fails that High Performer (not hidden) and hides again: the new
@@ -66,7 +66,8 @@ SPAWN = (CAMPUS["spawn"]["x"], CAMPUS["spawn"]["y"])
 
 
 def button_text(browser, label):
-    return browser.js(label, "(() => { const b = document.querySelector('.use-button'); return b ? b.textContent : null; })()")
+    # The Free Rider's own E button (S-195) while shown, else the main button.
+    return browser.js(label, "(() => { const e = document.querySelector('.free-rider-e-button'); const b = e && !e.hidden ? e : document.querySelector('.use-button'); return b ? b.textContent : null; })()")
 
 
 def listed_since(browser, label, name, since):
@@ -121,7 +122,7 @@ def played(server):
         put(names[victim], SPAWN)
         put(names[fr], BESIDE)
         standing_still(names[fr])
-        browser.wait(fr, "document.querySelector('.use-button') && document.querySelector('.use-button').textContent === 'E Hide'")
+        browser.wait(fr, "(() => { const e = document.querySelector('.free-rider-e-button'); return Boolean(e) && !e.hidden && e.textContent === 'E Hide'; })()")
         seen["fr_button_beside"] = button_text(browser, fr)
         seen["hp_buttons_beside"] = {label: button_text(browser, label) for label in (w30, w40, victim)}
         before = browser.now(w40)
@@ -145,12 +146,12 @@ def played(server):
         browser.shot(w40, "hide_1_watcher_at_40")
         browser.shot(w30, "hide_1_watcher_at_30")
 
-        # 2. Q while hidden, beside a High Performer: refused.
+        # 2. F while hidden, beside a High Performer: refused (Q did this before S-195).
         put(names[victim], (CENTRE[0] + 6, CENTRE[1] + 4))
         standing_still(names[victim])
         time.sleep(0.3)
         q_mark = browser.now(fr)
-        browser.call("press", label=fr, key="KeyQ")
+        browser.call("press", label=fr, key="KeyF")
         browser.wait(fr, f"window.__received.some((r) => r.t > {q_mark} && r.m.type === 'error')", timeout=5000)
         seen["q_answer"] = browser.messages(fr, "error", q_mark)[-1]
         seen["after_q"] = {"eliminated": sorted(classic.eliminated), "hidden": classic.is_hidden(names[fr])}

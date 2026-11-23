@@ -106,7 +106,8 @@ class FakeElement {
     this.dataset = {};
     this.attributes = {};
     this.classList = new FakeClassList();
-    this.style = { setProperty() {} };
+    // The custom properties set (the fail button's `--fail-fill`).
+    this.style = { properties: {}, setProperty(name, value) { this.properties[name] = String(value); } };
     this.clientWidth = 800;
     this.clientHeight = 600;
     this.width = 0;
@@ -162,6 +163,7 @@ class FakeElement {
   querySelector() { return new FakeElement(); }
   setAttribute(name, value) { this.attributes[name] = String(value); }
   getAttribute(name) { return name in this.attributes ? this.attributes[name] : null; }
+  removeAttribute(name) { delete this.attributes[name]; }
   focus() { document.activeElement = this; }
   blur() { if (document.activeElement === this) document.activeElement = null; }
 }
@@ -363,6 +365,8 @@ function mapButton(className) {
 function look() {
   const useButton = mapButton('use-button');
   const reportButton = mapButton('report-button');
+  // The Free Rider's own E button (S-195): its text while shown, else null.
+  const eButton = mapButton('free-rider-e-button');
   const selectedVote = element('classic-vote-players').children.find(
     (button) => button.classList.contains('classic-vote-player-selected')
   );
@@ -381,7 +385,14 @@ function look() {
     emergencyButtonDrawn: emergencyButtonDrawn,
     useButtonText: useButton ? useButton.textContent : null,
     useButtonHasFailLook: useButton ? useButton.classList.contains('fail-button') : null,
+    useButtonDisabled: useButton ? useButton.disabled === true : null,
+    useButtonLabel: useButton ? useButton.getAttribute('aria-label') : null,
+    useButtonFill: useButton ? useButton.style.properties['--fail-fill'] || null : null,
+    useButtonCharging: useButton ? useButton.classList.contains('fail-charging') : null,
     reportButtonShown: Boolean(reportButton) && !reportButton.hidden,
+    reportButtonText: reportButton ? reportButton.textContent : null,
+    freeRiderEButtonText: eButton && !eButton.hidden ? eButton.textContent : null,
+    freeRiderEButtonDisabled: eButton && !eButton.hidden ? eButton.disabled === true : null,
     ownNameDrawn: ownOnMap.length > 0,
     ownNameRedOnMap: ownOnMap.some((text) => text.colour === FREE_RIDER_RED),
     ownNameRedInLobby: lobbyNames.some((found) => found.classList.contains('free-rider-name')),
@@ -471,6 +482,13 @@ const STEPS = {
   clickUseButton() {
     const button = mapButton('use-button');
     if (!button) throw new Error('The use button is not on the page.');
+    button.focus();
+    (button.listeners.click || []).forEach((listener) => listener({ preventDefault() {} }));
+  },
+  // Clicks the Free Rider's own E button (S-195), as a player would.
+  clickFreeRiderEButton() {
+    const button = mapButton('free-rider-e-button');
+    if (!button || button.hidden) throw new Error('The E button of the Free Rider is not shown.');
     button.focus();
     (button.listeners.click || []).forEach((listener) => listener({ preventDefault() {} }));
   },

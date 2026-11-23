@@ -5,7 +5,7 @@ second one. The page learns that the own call was accepted from the
 `meeting_state` of that meeting: its `reason` is "emergency" and its
 `trigger_player_id` is the own name. From then on, for the rest of the round,
 the page shows no "E Emergency" at the red button and E sends no
-`emergency` there; a Free Rider sees the normal "Let fail" button instead.
+`emergency` there; a Free Rider sees the normal "F Let fail" button instead.
 The next round gives the call back.
 
 The page's own JavaScript runs in Node with the harness of
@@ -127,11 +127,14 @@ def test_a_free_rider_who_called_sees_the_normal_fail_button_near_the_red_button
     result = run_page(steps)
     before, after = result["looks"]
     assert math.dist((FREE_RIDER_NEAR["x"], FREE_RIDER_NEAR["y"]), (BUTTON["x"], BUTTON["y"])) <= 25
-    assert before["useButtonText"] == "E Emergency"
-    assert before["useButtonHasFailLook"] is False
+    # S-195: "F Let fail" is always the main button; "E Emergency" is the
+    # Free Rider's second button and goes once his call is used.
+    assert before["useButtonText"] == "F Let fail"
+    assert before["freeRiderEButtonText"] == "E Emergency"
     assert after["useButtonHasFailLook"] is True
-    assert after["useButtonText"].startswith("Let fail")
+    assert after["useButtonText"] == "F Let fail"
     assert after["useButtonDisabled"] is False
+    assert after["freeRiderEButtonText"] is None
     assert emergency_calls(result) == []
     assert [message for message in result["sent"] if message["type"] == "fail"] == [{"type": "fail"}]
 
@@ -171,8 +174,10 @@ def test_the_free_rider_s_e_alone_sends_neither_emergency_nor_fail_after_the_cal
 def test_a_free_rider_keeps_e_emergency_after_another_players_meeting():
     steps = round_at_the_button("FR", FREE_RIDER_NEAR) + whole_meeting("Bo") + [["look"]]
     after = run_page(steps)["looks"][0]
-    assert after["useButtonText"] == "E Emergency"
-    assert after["useButtonHasFailLook"] is False
+    # S-195: his own E button, beside the unchanged "F Let fail".
+    assert after["freeRiderEButtonText"] == "E Emergency"
+    assert after["useButtonText"] == "F Let fail"
+    assert after["useButtonHasFailLook"] is True
 
 
 # Edge cases: the next round gives the call back
