@@ -50,6 +50,10 @@
   .challenge-select-label { font-size: 11px; }
   .challenge-schedule-row { grid-template-columns: 48px 1fr; gap: 5px; }
   .challenge-lanes .challenge-button { padding: 8px 3px; font-size: 13px; }
+  /* The chart's "−10"/"+10" cannot get narrower than their text: with a
+     wide system font (DejaVu Sans) three columns reached 3 px out of a
+     320 px window. Smaller text, as in the lanes (S-231). */
+  .challenge-stepper .challenge-button { font-size: 13px; }
 }
 /* ---- Fitting the window (M2-4.25) ----
 

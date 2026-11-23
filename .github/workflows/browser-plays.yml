@@ -14,7 +14,9 @@ permissions:
 
 jobs:
   plays:
-    runs-on: ubuntu-latest
+    # Ubuntu 24.04 like our own machines, so the fonts below are the same
+    # packages (S-231).
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
       run:
@@ -36,6 +38,22 @@ jobs:
         run: |
           npm install -g playwright@1.63.0
           playwright install --with-deps chromium
+      # The game ships no font: the page and the canvas ask for "system-ui,
+      # sans-serif". Pinned pixels (the room-name boxes in test_map_polish,
+      # the minigame layouts) were measured with Inter, the font our machines
+      # use for those names; the runner's own default is DejaVu Sans, which is
+      # wider (S-231). So the runner gets Inter and our setting, and the step
+      # stops here if system-ui is not Inter. DejaVu Sans stays installed:
+      # test_play_minigames_wide_font checks the minigames with it on purpose.
+      - name: Install the fonts of our machines
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q fonts-inter fonts-dejavu-core
+          sudo cp tests/fonts/56-prefer-inter.conf /etc/fonts/conf.d/
+          sudo fc-cache -f
+          fc-match system-ui
+          test "$(fc-match -f '%{family[0]}' system-ui)" = Inter
+          test "$(fc-match -f '%{family[0]}' sans-serif)" = Inter
       # Without a working Chromium every play would be skipped and the run
       # would be green for nothing: stop here instead.
       - name: Check that Chromium starts
