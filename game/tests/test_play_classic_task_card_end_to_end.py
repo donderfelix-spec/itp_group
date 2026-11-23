@@ -7,7 +7,8 @@ test can put players where the tick would after a long walk (as
 task_helpers.put does). Then
 
 - every High Performer's card at the top left names its one active task and
-  the side panel shows no task card (S-197); the Free Rider's names none;
+  the side panel shows no task card (S-197); the Free Rider's names none
+  and says "Fake tasks: stand at a station to look busy." instead;
 - one High Performer stands at its active station, presses E, waits and
   clicks "Finish task" in the page; after the server's `station_done` the
   card names the next task, and the group bar moves;
@@ -131,9 +132,10 @@ def test_classic_task_card_follows_the_real_server(played):
         assert page["cardLines"] == [], page
         if page["role"] == "HP":
             assert len(page["tasks"]) == 1, page
-            assert page["top"] == STATION[page["tasks"][0]]["name"], page
+            assert page["top"] == STATION[page["tasks"][0]]["name"] and page["note"] is None, page
         else:
             assert page["tasks"] == [] and page["top"] is None, page
+            assert page["note"] == "Fake tasks: stand at a station to look busy.", page
 
     # A High Performer finished its active station through the page.
     done = played["done"]

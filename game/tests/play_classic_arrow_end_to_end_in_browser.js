@@ -215,7 +215,11 @@ async function finish(g, station) {
     }
     await put([[worker.name, spot]]);
     const afterAll = await arrowOf(worker, spot);
-    out.worker = { tasks: worker.tasks, spot, start, card, first, second, order, left: active(), afterOne, afterAll,
+    const doneCard = await worker.page.evaluate(() => ({
+      taskHidden: document.getElementById('task-card-task').hidden,
+      note: document.getElementById('task-card-note').hidden ? null : document.getElementById('task-card-note').textContent,
+    }));
+    out.worker = { tasks: worker.tasks, spot, start, card, first, second, order, left: active(), afterOne, afterAll, doneCard,
       campus: { stations: campus.stations } };
 
     // 4. The Free Rider fails another High Performer, which then walks on as a ghost.

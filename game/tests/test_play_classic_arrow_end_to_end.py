@@ -8,7 +8,8 @@ The browser script watches the arrow by wrapping Game.taskNavigation.draw.
   active task (S-197); the card at the top left names the room and the task.
 - After it really finished that station (E, "Finish task", the server's
   `station_done`), the arrow points at the next task the server names.
-- After it finished all four, one after the other: no arrow.
+- After it finished all four, one after the other: no arrow, and the card
+  says "All your tasks are done." (S-197).
 - The Free Rider's page never draws an arrow.
 - A High Performer failed by the Free Rider (a ghost) still gets the arrow.
 
@@ -92,6 +93,8 @@ def test_the_classic_arrow_points_at_the_one_active_task(played):
     assert worker["second"] != worker["first"]
     assert_points_at(stations, worker["afterOne"], worker["second"])
     assert len(worker["order"]) == len(set(worker["order"])) == 4 and worker["left"] == [], worker
+    # S-197: all four done, the card says so in place of a task.
+    assert worker["doneCard"] == {"taskHidden": True, "note": "All your tasks are done."}, worker["doneCard"]
     assert worker["afterAll"]["angle"] is None, worker["afterAll"]
 
     assert played["freeRider"]["ever"] is False

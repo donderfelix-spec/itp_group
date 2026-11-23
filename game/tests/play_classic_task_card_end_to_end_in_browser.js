@@ -78,6 +78,8 @@ async function card(g) {
       // S-197: the card at the top left of the map names the own active task.
       top: document.getElementById('task-card-task').hidden ? null
         : document.getElementById('task-card-title').textContent,
+      note: document.getElementById('task-card-note').hidden ? null
+        : document.getElementById('task-card-note').textContent,
       label: document.getElementById('classic-progress-label').textContent,
       fill: fill.getBoundingClientRect().width,
     };
@@ -118,7 +120,7 @@ const pause = (ms) => new Promise((r) => setTimeout(r, ms));
       await pause(300); // a frame draws the card at the top left
       const seen = await card(g);
       out.pages.push({ label: g.label, name: g.name, role: g.role, tasks: g.tasks, names: g.names,
-        cardLines: seen.lines, top: seen.top });
+        cardLines: seen.lines, top: seen.top, note: seen.note });
     }
     const highPerformers = pages.filter((g) => g.role === 'HP');
     const freeRider = pages.find((g) => g.role === 'FR');
