@@ -1174,7 +1174,7 @@ TASK_HANDLERS = {
 
 
 async def answer_fail_message(websocket: WebSocket):
-    """Apply Q to the nearest living HP in range; Classic rules validate the action."""
+    """Apply F (let fail) to the nearest living HP in range; Classic rules validate the action."""
     name = app.state.sessions.name_of(websocket)
     if name is None:
         await websocket.send_json(protocol.rejection("not_signed_in"))
