@@ -35,6 +35,7 @@ from server.classic.round import ClassicRound, HideRefused, active_task
 from server.modes import duel, minigames, tasks
 from server.net.attempts import AttemptLimits
 from server.net.lobbies import Lobbies
+from server.net import origin as origins
 from server.net.repeated_faults import RepeatedFaults
 from server.net.sessions import GUEST_NUMBERS, Sessions
 from server.protocol import PROTOCOL_VERSION, ProtocolError, error, parse_client_message, welcome
@@ -83,6 +84,10 @@ app.state.leaderboard_call = None
 app.state.hasher = service.Argon2Hasher()
 app.state.sessions = Sessions()
 app.state.attempt_limits = AttemptLimits()
+# Which pages may open a WebSocket (S-207). Both are read once at the start;
+# changing them in Render's settings restarts the server. Neither is a secret.
+app.state.origin_check = origins.check_is_on(os.environ.get("ORIGIN_CHECK"))
+app.state.allowed_origins = origins.PUBLIC_ORIGINS + origins.parse_allowed_origins(os.environ.get("ALLOWED_ORIGINS"))
 app.state.lobbies = Lobbies()
 # Which faults of the tick were logged lately, so that a repeating fault does not flood the log.
 app.state.repeated_faults = RepeatedFaults()
@@ -123,6 +128,9 @@ def health():
 
 @app.websocket("/ws")
 async def game_socket(websocket: WebSocket):
+    if not origin_is_allowed(websocket):
+        await refuse_handshake(websocket)
+        return
     await websocket.accept()
     try:
         await read_messages(websocket)
@@ -139,6 +147,27 @@ async def game_socket(websocket: WebSocket):
         app.state.attempt_limits.forget(websocket)
         if name is not None:
             await take_out_of_lobby(name)
+
+
+def origin_is_allowed(websocket: WebSocket) -> bool:
+    """May the page that opens this connection connect? (S-207, `server/net/origin.py`)"""
+    if not app.state.origin_check:
+        return True
+    headers = websocket.headers
+    return origins.is_origin_allowed(
+        headers.get("origin"),
+        headers.get("host"),
+        headers.getlist("x-forwarded-host"),
+        app.state.allowed_origins,
+    )
+
+
+async def refuse_handshake(websocket: WebSocket):
+    """Close before accepting: the browser gets HTTP 403 and the page never connects."""
+    logger.warning("Refused a WebSocket from %s", origins.origin_host_for_log(websocket.headers.get("origin", "")))
+    # The other side may already be gone; there is nothing left to do then.
+    with contextlib.suppress(RuntimeError, OSError, WebSocketDisconnect):
+        await websocket.close(code=1008)
 
 
 async def read_messages(websocket: WebSocket):

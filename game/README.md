@@ -63,7 +63,7 @@ Every file belongs to exactly one area.
 |---|---|---|
 | `server/main.py` | Web server, WebSocket connection, security headers, the handlers that connect messages to the rules | 2 |
 | `server/protocol.py` | Validation of every message from the browser, and the fixed texts of every rejection | 2 |
-| `server/net/` | Lobbies, sessions, walking of the players, limits on attempts | 2 |
+| `server/net/` | Lobbies, sessions, walking of the players, limits on attempts, which pages may open a WebSocket (`origin.py`) | 2 |
 | `server/accounts/` | Accounts (Argon2 hashes), statistics and the leaderboard, in memory or in Postgres | 2 |
 | `server/world/` | The checked map, movement and collision, stations, walking distances, what a player can see | 1 |
 | `rules.py` | The rules of a Classic round as plain functions: roles, tasks, failing, reporting, winner | 3 |
