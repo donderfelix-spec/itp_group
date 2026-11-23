@@ -423,6 +423,201 @@ def test_postgres_closes_the_connection_when_a_query_fails(database, postgres):
     assert database.events[-1] == ("close",)
 
 
+# A database that dies or hangs in the middle of a call (S-211).
+
+EXPECTED_SOCKET_OPTIONS = {
+    "keepalives": 1,
+    "keepalives_idle": 2,
+    "keepalives_interval": 1,
+    "keepalives_count": 3,
+    "tcp_user_timeout": 5000,
+}
+
+
+def test_postgres_connects_with_socket_options_that_notice_a_dead_network(database, postgres):
+    postgres.find("Mara")
+    args, kwargs = database.connect_arguments
+    assert args == ("postgresql://example.invalid/db",)
+    assert kwargs == {"connect_timeout": 5, "prepare_threshold": None, **EXPECTED_SOCKET_OPTIONS}
+
+
+class ProbeSocket:
+    """A socket that refuses the socket options named in `refused`."""
+
+    def __init__(self, refused=()):
+        self.refused = set(refused)
+        self.tried = []
+        self.closed = False
+
+    def __call__(self, family, kind):
+        return self
+
+    def setsockopt(self, level, option, value):
+        self.tried.append((option, value))
+        if option in self.refused:
+            raise OSError(92, "Protocol not available")
+
+    def close(self):
+        self.closed = True
+
+
+def test_every_socket_option_this_system_accepts_is_used():
+    from server.accounts.store import WANTED_SOCKET_OPTIONS, usable_socket_options
+
+    probe = ProbeSocket()
+    assert usable_socket_options(WANTED_SOCKET_OPTIONS, probe) == EXPECTED_SOCKET_OPTIONS
+    assert probe.closed
+
+
+def test_on_this_linux_server_all_socket_options_are_used():
+    import sys
+
+    from server.accounts.store import SOCKET_OPTIONS
+
+    import socket
+
+    if not sys.platform.startswith("linux"):
+        pytest.skip("Render runs Linux; elsewhere libpq skips what the system lacks")
+    probe = socket.socket()
+    try:
+        probe.setsockopt(socket.IPPROTO_TCP, socket.TCP_USER_TIMEOUT, 5000)
+    except OSError:
+        pytest.skip("this Linux refuses TCP_USER_TIMEOUT (for example gVisor); the probe leaves it out")
+    finally:
+        probe.close()
+    assert SOCKET_OPTIONS == EXPECTED_SOCKET_OPTIONS
+
+
+def test_a_socket_option_the_system_refuses_is_left_out(caplog):
+    import socket
+
+    from server.accounts.store import WANTED_SOCKET_OPTIONS, usable_socket_options
+
+    if not hasattr(socket, "TCP_USER_TIMEOUT"):
+        pytest.skip("this system has no TCP_USER_TIMEOUT")
+    probe = ProbeSocket(refused={socket.TCP_USER_TIMEOUT})
+    usable = usable_socket_options(WANTED_SOCKET_OPTIONS, probe)
+    assert "tcp_user_timeout" not in usable
+    assert usable["keepalives_idle"] == 2
+    assert "The socket option tcp_user_timeout is not available here and is left out" in caplog.text
+    assert probe.closed
+
+
+def test_when_no_probe_socket_can_be_made_the_options_stay_to_libpq():
+    from server.accounts.store import WANTED_SOCKET_OPTIONS, usable_socket_options
+
+    def no_socket(family, kind):
+        raise OSError("no sockets")
+
+    assert usable_socket_options(WANTED_SOCKET_OPTIONS, no_socket) == WANTED_SOCKET_OPTIONS
+
+
+def test_the_wanted_options_are_never_changed_by_the_probe():
+    import socket
+
+    from server.accounts.store import WANTED_SOCKET_OPTIONS, usable_socket_options
+
+    before = dict(WANTED_SOCKET_OPTIONS)
+    usable_socket_options(WANTED_SOCKET_OPTIONS, ProbeSocket(refused={getattr(socket, "TCP_KEEPCNT", -1)}))
+    assert WANTED_SOCKET_OPTIONS == before
+
+
+class RecordedDeadline:
+    """Stands in for `CallDeadline` and writes down when it starts and stops."""
+
+    events = []
+
+    def __init__(self, connection, seconds=None):
+        RecordedDeadline.events.append("start")
+
+    def stop(self):
+        RecordedDeadline.events.append("stop")
+
+
+@pytest.fixture
+def deadlines(monkeypatch):
+    from server.accounts import store
+
+    RecordedDeadline.events = []
+    monkeypatch.setattr(store, "CallDeadline", RecordedDeadline)
+    return RecordedDeadline.events
+
+
+def test_postgres_stops_the_deadline_of_every_call(database, postgres, deadlines):
+    postgres.find("Mara")
+    postgres.add("Mara", "hash-1")
+    assert deadlines == ["start", "stop", "start", "stop"]
+
+
+def test_postgres_stops_the_deadline_after_the_connection_is_closed(database, postgres, monkeypatch):
+    from server.accounts import store
+
+    order = []
+
+    class OrderedDeadline(RecordedDeadline):
+        def stop(self):
+            order.append("stop deadline")
+
+    original_close = FakeConnection.close
+    monkeypatch.setattr(store, "CallDeadline", OrderedDeadline)
+    monkeypatch.setattr(FakeConnection, "close", lambda self: (order.append("close"), original_close(self)))
+    postgres.add("Mara", "hash-1")
+    assert order == ["close", "stop deadline"]
+
+
+@pytest.mark.parametrize("failing_step", ["create", "commit"])
+def test_postgres_stops_the_deadline_when_a_call_fails(database, postgres, deadlines, failing_step):
+    database.fail_on = failing_step
+    with pytest.raises(StoreUnavailable):
+        postgres.add("Mara", "hash-1")
+    assert deadlines == ["start", "stop"]
+
+
+def test_no_deadline_is_started_when_connecting_fails(monkeypatch, deadlines):
+    monkeypatch.setattr(psycopg, "connect", refuse_to_connect)
+    with pytest.raises(StoreUnavailable):
+        PostgresAccountStore("postgresql://example.invalid/db").find("Mara")
+    assert deadlines == []
+
+
+def test_at_most_two_passwords_are_hashed_at_the_same_moment():
+    # One Argon2 hash needs 64 MiB; four workers must not hash four at once.
+    import threading
+    import time
+
+    real = service.Argon2Hasher()
+    running = []
+    most = []
+    lock = threading.Lock()
+
+    class SlowHasher:
+        def _work(self):
+            with lock:
+                running.append(1)
+                most.append(len(running))
+            time.sleep(0.1)
+            with lock:
+                running.pop()
+            return "$argon2-fake"
+
+        def hash(self, password):
+            return self._work()
+
+        def verify(self, password_hash, password):
+            self._work()
+            return True
+
+    real._hasher = SlowHasher()
+    threads = [threading.Thread(target=real.hash, args=("pw",)) for _ in range(3)]
+    threads += [threading.Thread(target=real.matches, args=("h", "pw")) for _ in range(3)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert service.HASHES_AT_ONCE == 2
+    assert max(most) == 2
+
+
 # Diagnosing database problems from the log without leaking secrets (M1-2.5).
 # The fake values below are easy to recognise, so a test can check that none
 # of them reaches the log.

@@ -158,33 +158,33 @@ def test_the_best_duel_time_comes_from_the_duel_only():
 
 def test_the_total_adds_the_wins_of_all_modes():
     records = {"duel": record(3, 1, 72.4), "classic": record(2, 2, None)}
-    assert statistics.total_of("Mara", records) == ("Mara", 3, 72.4)
+    assert statistics.total_of("Mara", records) == ("Mara", 3, 72.4, 2, 1)
 
 
 def test_the_leaderboard_is_ordered_by_wins_then_time_then_name():
     totals = [
-        ("Zoe", 1, None),
-        ("Rui", 1, 80.0),
-        ("Mara", 3, 90.0),
-        ("ines", 1, 70.0),
-        ("Tiago", 1, 70.0),
-        ("Ana", 1, None),
-        ("Bea", 0, 40.0),
+        ("Zoe", 1, None, 1, 0),
+        ("Rui", 1, 80.0, 0, 1),
+        ("Mara", 3, 90.0, 2, 1),
+        ("ines", 1, 70.0, 0, 1),
+        ("Tiago", 1, 70.0, 0, 1),
+        ("Ana", 1, None, 1, 0),
+        ("Bea", 0, 40.0, 0, 0),
     ]
-    assert [name for name, wins, best in statistics.best_first(totals)] == [
+    assert [name for name, *_ in statistics.best_first(totals)] == [
         "Mara", "ines", "Tiago", "Rui", "Ana", "Zoe", "Bea",
     ]
 
 
 def test_names_are_ordered_ignoring_case():
-    totals = [("bea", 1, 70.0), ("Ana", 1, 70.0), ("Cid", 1, 70.0)]
-    assert [name for name, wins, best in statistics.best_first(totals)] == ["Ana", "bea", "Cid"]
+    totals = [("bea", 1, 70.0, 0, 1), ("Ana", 1, 70.0, 0, 1), ("Cid", 1, 70.0, 0, 1)]
+    assert [name for name, *_ in statistics.best_first(totals)] == ["Ana", "bea", "Cid"]
 
 
 def test_the_rows_of_the_leaderboard_are_numbered_from_1():
-    assert statistics.leaderboard_rows([("Mara", 3, 72.4), ("Tiago", 1, None)]) == [
-        {"place": 1, "name": "Mara", "wins": 3, "best_seconds": 72.4},
-        {"place": 2, "name": "Tiago", "wins": 1, "best_seconds": None},
+    assert statistics.leaderboard_rows([("Mara", 3, 72.4, 2, 1), ("Tiago", 1, None, 1, 0)]) == [
+        {"place": 1, "name": "Mara", "wins": 3, "best_seconds": 72.4, "classic_wins": 2, "duel_wins": 1},
+        {"place": 2, "name": "Tiago", "wins": 1, "best_seconds": None, "classic_wins": 1, "duel_wins": 0},
     ]
 
 
@@ -227,7 +227,7 @@ def test_a_second_mode_is_one_more_record(store):
     store.record_round("duel", [change("Mara", 1, 72.4)])
     store.record_round("classic", [change("Mara", 1, None)])
     assert store.records_of("Mara") == {"duel": record(1, 1, 72.4), "classic": record(1, 1, None)}
-    assert store.top(20) == [("Mara", 2, 72.4)]
+    assert store.top(20) == [("Mara", 2, 72.4, 1, 1)]
 
 
 def test_what_the_store_returns_cannot_change_what_it_keeps(store):
@@ -243,8 +243,8 @@ def test_recording_no_changes_changes_nothing(store):
 
 def test_top_is_ordered_and_cut_at_the_limit(store):
     store.record_round("duel", [change("Mara", 1, 72.4), change("Tiago", 0, 80.0), change("Ines", 0, None)])
-    assert store.top(20) == [("Mara", 1, 72.4), ("Tiago", 0, 80.0), ("Ines", 0, None)]
-    assert store.top(2) == [("Mara", 1, 72.4), ("Tiago", 0, 80.0)]
+    assert store.top(20) == [("Mara", 1, 72.4, 0, 1), ("Tiago", 0, 80.0, 0, 0), ("Ines", 0, None, 0, 0)]
+    assert store.top(2) == [("Mara", 1, 72.4, 0, 1), ("Tiago", 0, 80.0, 0, 0)]
 
 
 def test_without_a_database_url_statistics_live_in_memory():
@@ -347,7 +347,16 @@ def test_postgres_connects_like_the_accounts_do(database, postgres):
     postgres.records_of("Mara")
     args, kwargs = database.connect_arguments
     assert args == ("postgresql://example.invalid/db",)
-    assert kwargs == {"connect_timeout": 5, "prepare_threshold": None}
+    assert kwargs == {
+        "connect_timeout": 5,
+        "prepare_threshold": None,
+        # S-211: the same socket options as the accounts.
+        "keepalives": 1,
+        "keepalives_idle": 2,
+        "keepalives_interval": 1,
+        "keepalives_count": 3,
+        "tcp_user_timeout": 5000,
+    }
 
 
 def test_postgres_creates_the_table_on_the_first_call_only(database, postgres):
@@ -394,6 +403,48 @@ def test_postgres_records_a_round_with_one_parameterised_statement_per_account(d
         assert "Mara" not in query and "duel" not in query
 
 
+def test_postgres_writes_the_accounts_of_a_round_in_the_order_of_their_keys(database, postgres):
+    # Two rounds with the same accounts then lock their rows in the same
+    # order, so they cannot wait for each other for good (S-211).
+    postgres.record_round("duel", [change("Tiago", 0, None), change("ana", 1, 70.0), change("Mara", 0, None)])
+    keys = [values[0] for query, values in database.queries("INSERT INTO account_statistics")]
+    assert keys == ["ana", "mara", "tiago"]
+
+
+class RecordedDeadline:
+    """Stands in for `CallDeadline` and writes down when it starts and stops."""
+
+    def __init__(self, connection, seconds=None):
+        RecordedDeadline.events.append("start")
+
+    def stop(self):
+        RecordedDeadline.events.append("stop")
+
+
+@pytest.fixture
+def deadlines(monkeypatch):
+    from server.accounts import statistics_store
+
+    RecordedDeadline.events = []
+    monkeypatch.setattr(statistics_store, "CallDeadline", RecordedDeadline)
+    return RecordedDeadline.events
+
+
+def test_postgres_stops_the_deadline_of_every_statistics_call(database, postgres, deadlines):
+    postgres.records_of("Mara")
+    postgres.record_round("duel", [change("Mara", 1, 72.4)])
+    postgres.top(20)
+    assert deadlines == ["start", "stop"] * 3
+
+
+@pytest.mark.parametrize("failing_step", ["CREATE", "INSERT", "commit"])
+def test_postgres_stops_the_deadline_when_a_statistics_call_fails(database, postgres, deadlines, failing_step):
+    database.fail_on = failing_step
+    with pytest.raises(StoreUnavailable):
+        postgres.record_round("duel", [change("Mara", 1, 72.4)])
+    assert deadlines == ["start", "stop"]
+
+
 def test_postgres_adds_to_an_existing_row_and_keeps_the_smaller_time(database, postgres):
     postgres.record_round("duel", [change("Mara", 1, 72.4)])
     query = database.queries("INSERT")[0][0]
@@ -433,10 +484,10 @@ def test_postgres_returns_no_records_for_an_account_that_never_played(database, 
 
 
 def test_postgres_asks_for_the_top_with_the_limit_as_a_parameter(database, postgres):
-    database.rows = [("Mara", 3, 72.4), ("Tiago", 1, None)]
-    assert postgres.top(20) == [("Mara", 3, 72.4), ("Tiago", 1, None)]
+    database.rows = [("Mara", 3, 72.4, 2, 1), ("Tiago", 1, None, 1, 0)]
+    assert postgres.top(20) == [("Mara", 3, 72.4, 2, 1), ("Tiago", 1, None, 1, 0)]
     query, values = database.queries("SELECT")[0]
-    assert values == ("duel", 20)
+    assert values == ("duel", "classic", "duel", 20)
     assert "ORDER BY total_wins DESC, best_duel ASC NULLS LAST, name_key" in query
     assert "LIMIT %s" in query
 
