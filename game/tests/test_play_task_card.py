@@ -1,12 +1,12 @@
 """The play test of S-125 to S-130 (Solo, stations as objects, the task card, one player list), as repeatable tests.
 
 A tester played a Duel with two guests (1280x800 and 320x640) to the
-ranking, a Duel with eight guests, Solo rounds until all eleven minigames
+ranking, a Duel with eight guests, Solo rounds until all twelve minigames
 were solved, and a Classic round with five guests. What can be checked
 without walking is repeated here in Chromium (skipped when Node,
 Playwright or Chromium is missing), with the real server:
 
-- in the lobby the card shows only the room, all eleven station objects are
+- in the lobby the card shows only the room, all twelve station objects are
   drawn and none pulses; Duel and Solo stand side by side, Classic below
   over the whole width;
 - at the start of a Duel the two guests start at different stations, only
@@ -34,9 +34,8 @@ from test_play_campus_detail import NODE, node_environment, playwright_works
 
 GAME = Path(__file__).resolve().parents[1]
 BROWSER_SCRIPT = Path(__file__).with_name("play_task_card_in_browser.js")
-STATIONS_IN_USE = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
-# Every station's object is drawn; station 6 too since M3-1.7 (S-196), though
-# it is not in use yet. Until then the drawn ones were STATIONS_IN_USE.
+STATIONS_IN_USE = list(range(1, 13))
+# Every playable station has a visible map object.
 STATIONS_DRAWN = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
 needs_chromium = pytest.mark.skipif(not playwright_works(), reason="Node with Playwright and Chromium is needed")

@@ -85,7 +85,7 @@ About the tests: most of them are plain pytest. About 45 test files also run the
 | Duel | 2 to 8 | Everyone gets their own random route across three task stations, of about the same walking length. The first to finish all three wins; after 3 minutes the round ends with a ranking. |
 | Solo | 1 | The Duel alone, for practice. It counts for no statistics. A new lobby starts in Solo; when a second player joins, it switches to Duel. |
 
-There are eleven minigames, one at each task station: Sort the slides, Brew the order, Build the tray, Shelve the books, Self-checkout, Fix the consultant's chart, Emergency caffeine protocol, Save the lunch, Decode the group chat, Expense the essentials and Seagull quality control.
+There are twelve minigames, one at each task station: Sort the slides, Brew the order, Build the tray, Shelve the books, Self-checkout, Catch the wave, Fix the consultant's chart, Emergency caffeine protocol, Save the lunch, Decode the group chat, Expense the essentials and Seagull quality control.
 
 Accounts (username and password, no email) keep rounds and wins per mode and the best Duel time; a leaderboard shows the best 20. Guests can play everything but have no statistics.
 

@@ -23,7 +23,6 @@ def test_main_js_lists_exactly_the_stations_with_a_minigame():
     assert stations_in_use_of_main_js() == sorted(minigames.MINIGAMES)
 
 
-def test_the_list_holds_the_eleven_stations_and_not_station_6():
+def test_the_list_holds_all_twelve_stations():
     stations = stations_in_use_of_main_js()
-    assert stations == [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
-    assert 6 not in stations
+    assert stations == list(range(1, 13))
