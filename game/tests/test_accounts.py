@@ -474,8 +474,17 @@ def test_on_this_linux_server_all_socket_options_are_used():
 
     from server.accounts.store import SOCKET_OPTIONS
 
+    import socket
+
     if not sys.platform.startswith("linux"):
         pytest.skip("Render runs Linux; elsewhere libpq skips what the system lacks")
+    probe = socket.socket()
+    try:
+        probe.setsockopt(socket.IPPROTO_TCP, socket.TCP_USER_TIMEOUT, 5000)
+    except OSError:
+        pytest.skip("this Linux refuses TCP_USER_TIMEOUT (for example gVisor); the probe leaves it out")
+    finally:
+        probe.close()
     assert SOCKET_OPTIONS == EXPECTED_SOCKET_OPTIONS
 
 

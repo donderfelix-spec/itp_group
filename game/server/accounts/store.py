@@ -221,7 +221,13 @@ class CallDeadline:
         # A waiting timer must never keep the server from stopping.
         self._timer.daemon = True
         if self._socket is not None:
-            self._timer.start()
+            try:
+                self._timer.start()
+            except RuntimeError:
+                # No thread could be started: the call runs without a
+                # deadline, and the connection is still closed as usual.
+                self._socket.close()
+                self._socket = None
 
     def _cut_off(self):
         # The lock keeps `stop` from closing the duplicate in the middle of this.

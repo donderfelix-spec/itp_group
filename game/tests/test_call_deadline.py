@@ -190,26 +190,48 @@ def stuck_server(monkeypatch):
     server.close()
 
 
-def test_a_stuck_database_frees_the_account_worker_within_the_deadline(stuck_server):
+CUT_OFF = "A database call took longer than 0.5 seconds and was cut off"
+
+
+def test_a_stuck_database_frees_the_account_worker_within_the_deadline(stuck_server, caplog):
     accounts = PostgresAccountStore(stuck_server)
     started = time.monotonic()
     with pytest.raises(StoreUnavailable):
         accounts.find("Mara")
     assert time.monotonic() - started < 3
+    # It was the deadline, not some other failure of the fake server.
+    assert CUT_OFF in caplog.text
 
 
-def test_a_stuck_database_frees_the_statistics_worker_within_the_deadline(stuck_server):
+def test_a_stuck_database_frees_the_statistics_worker_within_the_deadline(stuck_server, caplog):
     statistics = PostgresStatisticsStore(stuck_server)
     started = time.monotonic()
     with pytest.raises(StoreUnavailable):
         statistics.record_round("duel", [{"name": "Mara", "rounds": 1, "wins": 1, "best_seconds": 70.0}])
     assert time.monotonic() - started < 3
+    assert CUT_OFF in caplog.text
 
 
-def test_after_a_cut_off_the_next_call_tries_again(stuck_server):
+def test_after_a_cut_off_the_next_call_tries_again(stuck_server, caplog):
     # The table was never created, so the next call must not take it for done.
     accounts = PostgresAccountStore(stuck_server)
     for _ in range(2):
         with pytest.raises(StoreUnavailable):
             accounts.add("Mara", "hash")
     assert accounts._table_exists is False
+    assert caplog.text.count(CUT_OFF) == 2
+
+
+def test_when_no_timer_thread_can_start_the_call_runs_without_a_deadline(socket_pair, monkeypatch):
+    ours, theirs = socket_pair
+
+    def no_thread(self):
+        raise RuntimeError("can't start new thread")
+
+    monkeypatch.setattr(threading.Timer, "start", no_thread)
+    deadline = CallDeadline(FakeConnection(ours), seconds=0.01)
+    deadline.stop()
+    # Nothing was cut off, and libpq's socket is still open.
+    ours.sendall(b"x")
+    theirs.settimeout(5)
+    assert theirs.recv(1) == b"x"
