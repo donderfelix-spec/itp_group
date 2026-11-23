@@ -81,6 +81,7 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | After the round back to the lobby, new round without a new code | M2 | Done |
 | If someone leaves the game, the round continues, and the host changes if needed | M2 | Done |
 | A player who lost the connection in a lobby is put back into it after signing in again, without typing the code (S-109) | M3 | Done |
+| Phones and tablets first see the notice “Group Project needs a keyboard.” with “Play anyway”, because walking needs keys (S-219) | M4 | Done (M4-2.2) |
 | Players who were disconnected for a short time come back into their running round | M4 | Later |
 | Each client gets only the information that its player is allowed to know | M3 | Done (M3-2.1, 2026-11-22; known limit S-168) |
 | Game reachable at a public URL, deployed automatically from `main` | M0 | Done |

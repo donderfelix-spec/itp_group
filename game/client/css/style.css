@@ -2731,3 +2731,25 @@ body:has(#screen-lobby:not([hidden])) .message {
   #leaderboard-table .stats-column-wins { width: 49px; }
   #leaderboard-table .stats-column-time { width: 64px; }
 }
+
+/* ---- Notice for phones and tablets (js/keyboard_notice.js, S-219) ---- */
+
+.keyboard-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+  background: var(--sand);
+}
+
+.keyboard-notice-card {
+  margin: auto;
+  overflow-wrap: break-word;
+}
+
+.keyboard-notice-card h2 { font-size: clamp(22px, 6vw, 28px); line-height: 1.2; }
+.keyboard-notice-card .button { align-self: flex-start; }
