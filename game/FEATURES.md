@@ -88,12 +88,12 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Assign roles at random at the start, the role is shown to each player individually | M3 | Done |
 | Each High Performer gets their own list of tasks | M3 | Playable with known defects (the list is not shown yet, M3-3.17) |
 | Shared progress bar of the group work | M3 | Done |
-| Free Rider fails a nearby player, followed by a cooldown; the sheet shows the victim's portrait (S-163) | M3 | Playable with known defects (M3-3.13, M3-3.15) |
+| Free Rider fails a nearby player, followed by a cooldown that starts again after every meeting; the victim's open task closes; the sheet shows the victim's portrait (S-163, S-199) | M3 | Done |
 | Find and report a failed player | M3 | Playable with known defects (M3-3.15) |
 | Report from 8 map units, also by the Free Rider; let fail from 25 map units with Q or F (S-194); F-sheets 30 % larger (S-180, S-181) | M3 | Done (M3-4.25 to M3-4.28) |
 | Classic action buttons with the key first: the Free Rider always has “F Let fail” (grey charge fill, yellow when a victim is in range; only F lets fail) and his own second button for “E Emergency”, “E Hide”, “E Leave hiding”; “R Report” for everybody (S-195) | M3 | Done (M3-3.26) |
 | Emergency meeting with the red button in the centre of the Main Deck (S-147), drawn as an alarm switch (S-149), limited per player, range checked by the server, hint only for the living (S-170) | M3 | Playable with known defects (M3-3.15: the wording “E Call meeting”) |
-| Meeting with text chat and time limit; the window closes after the result (S-153) and always fits the screen (S-173) | M3 | Playable with known defects (M3-3.13) |
+| Meeting with text chat and time limit; the window closes after the result (S-153) and always fits the screen (S-173); nobody walks and no task stays open during it, and afterwards everybody stands on the Main Deck again (S-199) | M3 | Done |
 | One random active Classic task per High Performer, next revealed after completion; only the current station pulses and opens, and the arrow leads to it; the Free Rider has none (S-197, replaces the own task list of S-154) | M3 | Done (M3-4.29) |
 | Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie; votes are public and can be changed, after a report already during the discussion, 75 % Skip ends the meeting (S-160 to S-162); each vote button shows its number of votes in a fixed field (S-173) | M3 | Done |
 | Result of the vote: character drifts out to sea, display whether it was a Free Rider | M3 | Playable with known defects (text only, no drifting yet, M3-3.5) |
