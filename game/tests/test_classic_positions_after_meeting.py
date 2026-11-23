@@ -46,9 +46,14 @@ def names_in_last_positions(messages):
 
 def test_a_player_voted_out_stays_in_place_and_the_living_beside_them_are_not_sent_the_ghost(connect, clock):
     connections, lobby, fr, [caller, out, watcher, _other] = classic_round(connect)
-    start_emergency(connections, caller, clock)
     put(out, FAIL_PLACE)
     put(watcher, BESIDE)
+    lobby.walkers.everybody_needs_news()
+    ticks(connections, count=1)
+    assert out in names_in_last_positions(everything_sent(connections[watcher]))  # seen while living
+    for connection in connections.values():
+        everything_sent(connection)
+    start_emergency(connections, caller, clock)
 
     told = everybody_votes(connections, lobby, clock, lambda voter: out if voter != out else watcher)
 
@@ -103,7 +108,7 @@ def test_a_free_rider_who_hid_stands_visible_on_the_spot_and_walks_on_from_there
 
     # A living High Performer in sight, beyond the reveal range of 35 units, is sent him.
     put(watcher, (spot["x"] - 50, spot["y"]))
-    lobby.walkers._everybody_needs_news()
+    lobby.walkers.everybody_needs_news()
     ticks(connections, count=1)
     assert fr in names_in_last_positions(everything_sent(connections[watcher]))
 

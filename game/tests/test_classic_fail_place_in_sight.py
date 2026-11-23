@@ -305,7 +305,7 @@ def test_a_player_voted_out_is_sent_every_sheet_as_a_ghost(connect, clock):
     assert out in lobby.classic_round.eliminated
     sent_to_out = told[out] + everything_sent(connections[out])
     assert [m["sheet_id"] for m in of_type(sent_to_out, "classic_sheet")] == ["f-sheet-1"]
-    for name in living:  # on the Main Deck, out of sight of the sheet
+    for name in living:  # where they stood, out of sight of the sheet (S-213)
         assert of_type(told[name] + everything_sent(connections[name]), "classic_sheet") == [], name
 
 
