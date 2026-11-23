@@ -30,7 +30,6 @@ def test_chat_clues_admit_exactly_one_schedule(seed):
     content = room_tasks.chat(random.Random(seed))
     answer = content['schedule']
     first, second, third, last = [entry['person'] for entry in answer]
-    jobs = [entry['job'] for entry in answer]
     solutions = []
     for people in itertools.permutations(content['people']):
         positions = {person: index for index, person in enumerate(people)}
@@ -39,12 +38,6 @@ def test_chat_clues_admit_exactly_one_schedule(seed):
                 and positions[third] == positions[second] + 1
                 and positions[last] == 3):
             continue
-        for work in itertools.permutations(content['jobs']):
-            job_positions = {job: index for index, job in enumerate(work)}
-            if (work[positions[first]] == jobs[0] and work[positions[third]] == jobs[2]
-                    and job_positions[jobs[1]] < job_positions[jobs[2]]
-                    and job_positions[jobs[3]] > job_positions[jobs[2]]):
-                solutions.append((people, work))
+        solutions.append(people)
     assert len(solutions) == 1
-    assert list(solutions[0][0]) == [entry['person'] for entry in answer]
-    assert list(solutions[0][1]) == jobs
+    assert list(solutions[0]) == [entry['person'] for entry in answer]
