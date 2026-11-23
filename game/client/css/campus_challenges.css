@@ -35,17 +35,93 @@
 .challenge-gull { position: absolute; top: 9px; right: 7px; width: 70px; height: 35px; opacity: .75; pointer-events: none; }
 .challenge-flight-lane { position: relative; border-right: 1px dashed #2E2A3B66; overflow: hidden; }
 .challenge-flight-lane:last-child { border: 0; }
-.challenge-rescue-zone { position: absolute; top: 50%; bottom: 0; width: 100%; padding-top: 8px; background: #FFD23F55; border-top: 3px dashed #9E791D; text-align: center; font-size: 11px; font-weight: 800; color: #6B551D; }
+.challenge-rescue-zone { position: absolute; top: 50%; bottom: 0; width: 100%; padding-top: 8px; background: #FFD23F55; border-top: 3px dashed #9E791D; text-align: center; font-size: 12px; font-weight: 800; color: #6B551D; }
 .challenge-cargo { position: absolute; top: 0; left: calc(50% - 20px); width: 40px; height: 40px; display: grid; place-items: center; font-size: 30px; border: 2px solid #2E2A3B; border-radius: 8px; background: #FFFDF5; box-shadow: 3px 3px 0 #2E2A3B44; animation: challenge-drop linear forwards; }
 .challenge-cargo-coffee { background: #DDB28B; }
 .challenge-caught { opacity: 0; }
 .challenge-lanes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-@keyframes challenge-drop { from { top: -40px; transform: rotate(-12deg); } to { top: 230px; transform: rotate(16deg); } }
+/* To the bottom of the lane, however high it is (M2-4.25): the page's middle
+   reaches the top of the rescue zone (half the lane) at half its flight,
+   when it can be caught. */
+@keyframes challenge-drop { from { top: -40px; transform: rotate(-12deg); } to { top: 100%; transform: rotate(16deg); } }
 @media (max-width: 480px) {
   .challenge-chart { gap: 6px; padding: 8px; }
   .challenge-bar-track { height: 105px; }
   .challenge-select-label { font-size: 11px; }
   .challenge-schedule-row { grid-template-columns: 48px 1fr 1fr; gap: 5px; }
   .challenge-lanes .challenge-button { padding: 8px 3px; font-size: 13px; }
+}
+/* ---- Fitting the window (M2-4.25) ----
+
+   The chart and the chat had one long column and were up to 1150px high,
+   so the buttons lay below the fold of a laptop screen. Their window is
+   wider where the map allows it, and with room for two columns the chart
+   stands beside its notes and the chat beside the schedule. The header's
+   sentence is empty in the six campus tasks (each has its own brief), so
+   it takes no room. */
+.minigame-window:has(.challenge-game-chart, .challenge-game-chat_logic) { width: min(100%, 780px); }
+.minigame-window:has(.challenge-game-seagull_defence) { width: min(100%, 620px); }
+.minigame-window:has(.campus-challenge, .campus-game) .minigame-instructions:empty { display: none; }
+
+@container (width >= 680px) {
+  .challenge-game-chart { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); grid-template-rows: auto auto auto 1fr; align-items: start; }
+  .challenge-game-chart > .challenge-brief { grid-column: 1 / -1; }
+  .challenge-game-chart > .challenge-evidence { grid-column: 1; grid-row: 2; }
+  .challenge-game-chart > .challenge-chart { grid-column: 2; grid-row: 2 / 5; }
+  .challenge-game-chart > .challenge-select-label { grid-column: 1; grid-row: 3; }
+  .challenge-game-chart > .challenge-primary { grid-column: 1; grid-row: 4; }
+}
+/* Too narrow for the chart beside its notes: the notes stand beside the
+   axis and the button, and the chart below the three. */
+@container (520px <= width < 680px) {
+  .challenge-game-chart { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); grid-template-rows: auto auto 1fr auto; align-items: start; }
+  .challenge-game-chart > .challenge-brief { grid-column: 1 / -1; }
+  .challenge-game-chart > .challenge-evidence { grid-column: 1; grid-row: 2 / 4; }
+  .challenge-game-chart > .challenge-select-label { grid-column: 2; grid-row: 2; }
+  .challenge-game-chart > .challenge-primary { grid-column: 2; grid-row: 3; }
+  .challenge-game-chart > .challenge-chart { grid-column: 1 / -1; grid-row: 4; }
+}
+@container (width >= 560px) {
+  .challenge-game-chat_logic { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: auto auto 1fr; align-items: start; }
+  .challenge-game-chat_logic > .challenge-brief { grid-column: 1 / -1; }
+  .challenge-game-chat_logic > .challenge-thread { grid-column: 1; grid-row: 2 / 4; }
+  .challenge-game-chat_logic > .challenge-schedule { grid-column: 2; grid-row: 2; }
+  .challenge-game-chat_logic > .challenge-primary { grid-column: 2; grid-row: 3; }
+}
+/* With the schedule in a narrow column, the name stands above its two
+   choices, so that "Choose time" and "Choose work" are not cut off. */
+@container (560px <= width < 720px) {
+  .challenge-game-chat_logic .challenge-schedule-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px 8px; }
+  .challenge-game-chat_logic .challenge-schedule-row > strong { grid-column: 1 / -1; line-height: 1.2; }
+  .challenge-game-chat_logic .challenge-select-label { gap: 2px; }
+}
+
+/* Below 800px of map height (a small laptop), as for the other campus
+   tasks in style.css: less room between the parts, and the bars of the
+   chart and the sky of the rescue get lower with the map (cqh is a
+   hundredth of the map's height). */
+@container map-area (height < 800px) {
+  .campus-challenge { gap: 10px; }
+  .challenge-brief { font-size: 14px; line-height: 1.4; }
+  .challenge-feedback { margin-top: 2px; font-size: 15px; }
+  .challenge-button { min-height: 36px; padding: 6px 12px; }
+  .challenge-select { padding: 5px; }
+  .challenge-evidence { padding: 8px 12px; }
+  .challenge-evidence h3 { margin-bottom: 4px; font-size: 14px; }
+  .challenge-evidence p { margin: 2px 0; font-size: 14px; }
+  .challenge-chart { gap: 10px; padding: 10px; }
+  .challenge-column { gap: 6px; }
+  .challenge-bar-track { height: clamp(64px, 100cqh - 470px, 130px); }
+  .challenge-thread { gap: 4px; padding: 6px; }
+  .challenge-message { padding: 4px 10px; margin-right: 16px; line-height: 1.3; }
+  .challenge-message:nth-child(even) { margin-left: 16px; }
+  .challenge-message p { margin-top: 1px; font-size: 14px; }
+  .challenge-schedule { gap: 6px; }
+  .challenge-score { padding: 5px; }
+  .challenge-flight { height: clamp(130px, 100cqh - 370px, 230px); }
+  /* Beside its notes the chart has the whole height. */
+  @container (width >= 680px) {
+    .challenge-bar-track { height: clamp(90px, 100cqh - 420px, 130px); }
+  }
 }
 @media (prefers-reduced-motion: reduce) { .challenge-bar { transition: none; } }

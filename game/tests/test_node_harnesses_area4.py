@@ -3,7 +3,7 @@
 Each file runs the page's real JavaScript in Node with a small stand-in for
 the browser and throws on the first check that fails:
 
-- test_client_room_tasks.js: the six room tasks of stations 7 to 12, and
+- test_client_room_tasks.js: the three room tasks of stations 8, 9 and 11, and
   Duel and Solo in main.js
 - test_client_player_progress.js: the player list of the side panel with
   the progress of a Duel or Solo round

@@ -1,4 +1,5 @@
-// Three distinct campus challenges. Old campus_task packets keep their renderer.
+// Three distinct campus challenges (stations 7, 10, 12). The old campus_task
+// puzzles they replaced are removed from room_tasks.js (S-208).
 window.Game = window.Game || {};
 
 (function () {

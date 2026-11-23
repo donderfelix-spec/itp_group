@@ -934,8 +934,7 @@ def advance_classic_walkers(lobby, seconds: float) -> bool:
 
     Nobody walks while a meeting runs: the step lasts no time, so nobody
     moves, but a place that changed (a Free Rider who stopped hiding) is
-    still sent. The way back to the deck after the meeting is in
-    `settle_meeting`. Returns whether positions are to be sent, like
+    still sent. Returns whether positions are to be sent, like
     `walkers.advance`.
     """
     classic = lobby.classic_round
@@ -1489,28 +1488,6 @@ async def tell_hiding(name: str, hidden: bool):
 
 
 def settle_meeting(lobby):
-    """Apply a finished meeting once, and put everybody on the Main Deck at that moment (DESIGN.md 5.8).
-
-    Both happen with no await in between, so no message from a browser can
-    come between the end of the meeting and the move: nobody can hide, open
-    a task or report at the place of the meeting once it is over. The
-    living Free Riders' cooldown, which started again, is sent by the next
-    tick (`advance_classic_walkers`), after the meeting's result.
-    """
-    sync_classic_after_meeting(lobby)
-    classic = lobby.classic_round
-    if classic is not None and classic.take_back_to_the_deck():
-        put_everybody_on_the_deck(lobby)
-
-
-def put_everybody_on_the_deck(lobby):
-    """Every member of the lobby stands on the spawn of the Main Deck; everybody gets the positions."""
-    spawn = app.state.campus["spawn"]
-    for name in lobby.names():
-        lobby.walkers.place(name, (float(spawn["x"]), float(spawn["y"])))
-
-
-def sync_classic_after_meeting(lobby):
     """Apply a finished meeting's result to Classic, exactly once (M3-3.9).
 
     The finished meeting stays in `lobby.meeting` until the next meeting

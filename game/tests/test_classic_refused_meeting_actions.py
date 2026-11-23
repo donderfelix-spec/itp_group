@@ -42,7 +42,7 @@ def lobby_in_a_meeting(monkeypatch, now=101.0, reason="report"):
         lobbies.join(name, "ABCD")
     lobby.classic_round = a_classic_round(names)
     lobby.meeting = start_discussion(LIVING, [GHOST], 100.0)
-    lobby.meeting["reason"] = reason  # after a report, voting is open at once (S-161)
+    lobby.meeting["reason"] = reason  # both Classic meeting triggers allow immediate voting
     monkeypatch.setattr(main.app.state, "lobbies", lobbies)
     return lobby, sockets
 
@@ -181,13 +181,17 @@ def test_a_vote_for_a_ghost_is_heard_only_by_the_voter(monkeypatch):
     assert lobby.meeting["votes"] == {}
 
 
-def test_a_vote_and_a_skip_in_the_discussion_of_an_emergency_are_heard_only_by_the_sender(monkeypatch):
-    # After an emergency, voting opens only with the vote (S-161).
-    lobby, sockets = lobby_in_a_meeting(monkeypatch, reason="emergency")
+def test_a_vote_and_a_skip_in_an_emergency_discussion_are_broadcast(monkeypatch):
+    _lobby, sockets = lobby_in_a_meeting(monkeypatch, reason="emergency")
     send(sockets, "Mara", vote("Tiago"))
     send(sockets, "Mara", SKIP)
-    assert codes(sockets["Mara"]) == ["vote_rejected", "skip_discussion_rejected"]
-    assert heard_by_others(sockets, "Mara") == {}
+    for socket in sockets.values():
+        assert codes(socket) == ["meeting_state", "meeting_state"]
+        first, second = socket.messages
+        assert first["phase"] == second["phase"] == "discussion"
+        assert first["vote_targets"] == {"Mara": "Tiago"}
+        assert second["vote_targets"] == {}
+        assert second["skip_voted"] == ["Mara"]
 
 
 def test_a_vote_refused_because_the_time_ran_out_sends_the_result_once(monkeypatch):
