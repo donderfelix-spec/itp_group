@@ -274,7 +274,7 @@ def test_a_player_who_left_is_sent_no_sheet(six):
     assert of_type(everything_sent(six[SECOND_FR]), "classic_sheet") == []
 
 
-# After a meeting (S-199: everybody on the Main Deck) and after a vote
+# After a meeting and after a vote
 
 
 def five_with_a_sheet_at(connect, sheet):
@@ -309,7 +309,7 @@ def test_a_player_voted_out_is_sent_every_sheet_as_a_ghost(connect, clock):
         assert of_type(told[name] + everything_sent(connections[name]), "classic_sheet") == [], name
 
 
-def test_a_sheet_in_sight_of_the_main_deck_is_sent_when_the_meeting_puts_everybody_there(connect, clock):
+def test_a_meeting_does_not_move_players_into_sight_of_a_sheet(connect, clock):
     sheet = (520.0, 380.0)
     spawn = (CAMPUS["spawn"]["x"], CAMPUS["spawn"]["y"])
     assert visibility.place_in_sight(spawn, sheet, CAMPUS)
@@ -322,13 +322,14 @@ def test_a_sheet_in_sight_of_the_main_deck_is_sent_when_the_meeting_puts_everybo
     for connection in connections.values():
         everything_sent(connection)
     meeting_once.start_emergency(connections, living[0], clock)
+    before = {name: lobby.walkers.position_of(name) for name in living}
     told = meeting_once.everybody_skips(connections, lobby, clock)
     meeting_once.ticks(connections, count=2)
 
     for name in living:
-        assert app.state.lobbies.lobby_of(name).walkers.position_of(name) == spawn, name
+        assert lobby.walkers.position_of(name) == before[name], name
         seen = of_type(told[name] + everything_sent(connections[name]), "classic_sheet")
-        assert [(m["sheet_id"], m["reported"]) for m in seen] == [("f-sheet-1", False)], name
+        assert not seen, name
     # The Free Rider was told with the fail, the victim as a ghost: never twice.
     for name in (fr, victim):
         assert of_type(told[name] + everything_sent(connections[name]), "classic_sheet") == [], name
