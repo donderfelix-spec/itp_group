@@ -174,6 +174,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M3-2.7** The server did not check the `Origin` of a WebSocket, so a page on another site could open a connection in a visitor's browser and play in their name (cross-site WebSocket hijacking). Now `/ws` refuses a page of another site at the handshake (HTTP 403) and logs only its host; the same host (also behind Render's proxy or with `X-Forwarded-Host`), the deployed address and a missing Origin are accepted; `ALLOWED_ORIGINS` and the switch `ORIGIN_CHECK=off` fix a mismatch on Render without new code (S-207). Felix asked for it on 2026-11-23. Done: `tests/test_origin.py`, `tests/test_server_origin.py`, `tests/test_play_origin_check.py`
 - [x] **M3-2.8** A database that hangs must not hold the account workers (Felix, 2026-11-23, S-211): four workers with at most two hashes at once, libpq socket options that notice a dead network path within about 5 seconds, a deadline of 10 seconds per call that cuts off a database that is alive but stuck, and the accounts of a round written in the order of their keys. Tried against a real local Postgres (frozen backend, dropped packets, refused, frozen at connect). Done on `game/final-database-robustness`: `tests/test_call_deadline.py`, new tests in `tests/test_accounts.py` and `tests/test_statistics.py`; two existing tests changed (listed in the pull request).
 - [ ] **M3-2.9** _Possible later work, a small rebuild._ A statistics write that fails is lost (S-103, S-211): that round's numbers never reach the profile. A plain retry is not safe: if the first write arrived and only the answer was lost, the round would count twice. Idea: give every round an id on the server, write it in the same transaction as the numbers into a table of written rounds (`INSERT ... ON CONFLICT DO NOTHING`), and add the numbers only if that row was new; then a write can be repeated a few times, for example after 5, 30 and 120 seconds (Felix)
+- [x] **M3-2.10** The leaderboard shows Classic wins, Duel wins and the best Duel time in columns of their own; the order stays total wins, best Duel time, name (Hanna, 2026-11-23, S-217). Done: tests in `tests/test_statistics.py`, `tests/test_protocol_statistics.py`, `tests/test_server_statistics.py`, `tests/test_play_statistics.py`; existing tests adapted to the two new fields (listed in the pull request).
 
 **Area 3 (Laurin)**
 
@@ -267,7 +268,3 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 - [x] **M0-2.4** Project skeleton: server, start page, message validation, 51 tests, CI with tests, dependency check and syntax check (2026-11-18)
 - [x] **M0-1.1** Floor plan of the map as a sketch (`design/map.svg`)
 - [x] Planning: feature overview, decision log, to-do list, workflow of the agents (2026-11-18)
-
-## Leaderboard columns
-
-- [x] Record Classic results for accounts and show Classic wins, Duel wins and best Duel time in separate columns.

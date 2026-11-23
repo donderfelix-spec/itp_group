@@ -64,9 +64,9 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | Show or hide the password with an eye icon | M1 | Done |
 | A player who is signed out because the account logged in somewhere else is told why | M1 | Done |
 | Limit on log-in attempts and lobby-code guessing | M1 | Done |
-| Only pages of the game's own site may open its WebSocket (Origin check, with `ALLOWED_ORIGINS` and the switch `ORIGIN_CHECK=off`, S-207) | M3 | Done (M3-2.6, 2026-11-23) |
+| Only pages of the game's own site may open its WebSocket (Origin check, with `ALLOWED_ORIGINS` and the switch `ORIGIN_CHECK=off`, S-207) | M3 | Done (M3-2.7, 2026-11-23) |
 | Statistics per account: rounds and wins per mode (Duel, and Classic since S-198), best Duel time | M2 | Done |
-| Leaderboard of all accounts with separate Classic wins, Duel wins and best Duel time | M2 | Done |
+| Leaderboard of all accounts with separate Classic wins, Duel wins and best Duel time (S-217) | M2 | Done |
 | Add friends by username, accept or decline a request | M4 | Planned |
 | See friends with the status “online” and “in a round” | M4 | Planned |
 | Invite friends to your own lobby | M4 | Planned |
