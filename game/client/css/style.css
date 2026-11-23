@@ -2432,8 +2432,8 @@ body:has(#screen-lobby:not([hidden])) .message {
 .campus-buzzword.campus-removed .campus-piece-label { text-decoration: line-through 3px var(--coral); }
 .campus-lunch-scene { display: flex; flex-direction: column; gap: 9px; }
 .campus-tray-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.campus-tray-header strong { font-size: 11px; letter-spacing: .14em; color: #56685E; }
-.campus-lunch-count { padding: 4px 9px; border: 1.5px solid #87978A; border-radius: 7px; background: #EBF0E4; font-size: 11px; line-height: 1.2; font-weight: 750; font-variant-numeric: tabular-nums; }
+.campus-tray-header strong { font-size: 12px; letter-spacing: .14em; color: #56685E; }
+.campus-lunch-count { padding: 4px 9px; border: 1.5px solid #87978A; border-radius: 7px; background: #EBF0E4; font-size: 12px; line-height: 1.2; font-weight: 750; font-variant-numeric: tabular-nums; }
 .campus-meal-tray { display: grid; grid-template-columns: 1.04fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px; width: 100%; max-width: 360px; height: 220px; margin-inline: auto; padding: 12px; border: 3px solid #52665E; border-radius: 27px; background: linear-gradient(125deg, #D9E4DC 0%, #AEBEB4 35%, #D7E0D8 68%, #A2B4AA 100%); box-shadow: inset 0 0 0 4px #E3EBE3, inset 0 0 0 6px #9CAC9F, 0 4px 0 #8E9D91, 0 7px 0 #D1D4C5; }
 .campus-tray-compartment { position: relative; min-width: 0; min-height: 0; border: 2px solid #8C9F90; border-radius: 19px; background: linear-gradient(135deg, #AEBFB0, #D2DDD0 65%, #CED8CB); box-shadow: inset 2px 3px 5px #8F9F8F, 1px 2px 0 #E8EFE5; }
 .campus-tray-compartment-rice { grid-row: 1 / 3; }
@@ -2462,7 +2462,7 @@ body:has(#screen-lobby:not([hidden])) .message {
 .campus-coffee-fill { position: absolute; bottom: 0; left: 0; right: 0; height: 0; background: linear-gradient(#E4BA85 0 12%, #966543 13% 100%); transition: height .2s; }
 .campus-coffee-label { position: absolute; top: 29px; left: 7px; right: 7px; padding: 3px; border: 1px solid var(--ink); background: var(--sun); font-size: 9px; font-weight: 900; text-align: center; transform: rotate(-5deg); }
 .campus-coffee-controls { width: 100%; gap: 7px; }
-.campus-coffee-controls .campus-piece { min-height: 39px; padding: 5px; font-size: 11px; border-radius: 8px; background: #FFF9E7; box-shadow: 1px 2px 0 var(--ink); }
+.campus-coffee-controls .campus-piece { min-height: 39px; padding: 5px; font-size: 13px; border-radius: 8px; background: #FFF9E7; box-shadow: 1px 2px 0 var(--ink); }
 .campus-chat-phone { display: flex; flex-direction: column; gap: 11px; padding: 12px; border: 5px solid var(--ink); border-top-width: 12px; border-bottom-width: 12px; border-radius: 25px; background: radial-gradient(#A6BEA3 1px, transparent 1px), #D9E0CC; background-size: 14px 14px; box-shadow: 5px 5px 0 #B3A68E; }
 .campus-chat-phone .campus-scene-label { margin: -12px -12px 0; padding: 9px 13px; background: #456B60; color: #FFF8E5; }
 .campus-chat-time { align-self: center; padding: 2px 9px; border-radius: 5px; background: #F4F4E4; font-size: 10px; font-weight: 650; }
@@ -2481,12 +2481,12 @@ body:has(#screen-lobby:not([hidden])) .message {
 .campus-budget-display > div + div { text-align: right; }
 .campus-budget-display strong { display: block; font-size: 23px; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
 .campus-receipt-footer { padding-bottom: 4px; font: 8px ui-monospace, monospace; text-align: center; letter-spacing: .11em; }
-.campus-small { font-size: 11px; text-align: center; }
+.campus-small { font-size: 12px; text-align: center; }
 .campus-belt { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 10px; border: 2px solid var(--ink); border-radius: 7px; background: repeating-linear-gradient(0deg, #49544B 0 19px, #566258 20px 23px); }
-.campus-belt .campus-piece { gap: 3px; padding: 4px 5px 7px; min-height: 144px; background: #FAF3DC; font-size: 11px; border-radius: 7px; box-shadow: 2px 3px 0 #202B24; }
+.campus-belt .campus-piece { gap: 3px; padding: 4px 5px 7px; min-height: 144px; background: #FAF3DC; font-size: 12px; border-radius: 7px; box-shadow: 2px 3px 0 #202B24; }
 .campus-product-art { display: block; width: min(100%, 105px); height: 65px; }
 .campus-price { font-size: 15px; }
-.campus-belt .campus-piece-state { font-size: 8px; }
+.campus-belt .campus-piece-state { font-size: 10px; }
 .campus-scanned { background: #DCEBCD !important; border-style: dashed; box-shadow: none; }
 .campus-seagull-arena { position: relative; height: 270px; overflow: hidden; border: 3px solid var(--ink); border-radius: 16px; background: linear-gradient(#ACDAE8 0 45%, #6CAFC2 45% 65%, #F0D6A3 65% 100%); }
 .campus-seagull-arena::before { content: '⌁  ⌁   ⌁   ⌁   ⌁   ⌁'; position: absolute; top: 125px; left: 0; right: 0; color: #E8F4EC; font-size: 28px; letter-spacing: 8px; font-weight: 800; transform: rotate(-3deg); }
@@ -2519,6 +2519,62 @@ body:has(#screen-lobby:not([hidden])) .message {
   .campus-lunch-count { font-size: 10px; padding: 4px 6px; }
   .campus-coffee-layout { grid-template-columns: 1fr; }
   .campus-recipe-card { transform: none; }
+}
+/* ---- The six campus emergencies in a low window (M2-4.25) ----
+
+   On a small laptop the map is 600 to 770px high, and the window of a
+   campus task was up to 1150px high: the player scrolled inside it to reach
+   the buttons. Below 800px of map height the window keeps less room around
+   it and inside (14px, as in a narrow window), and drawings that only
+   decorate get lower, so that every control and the instruction are in
+   view. The map area is the size container (see .map-area), so this holds
+   whether the panel is next to the map or below it. Stations 7, 10 and 12
+   follow in campus_challenges.css. */
+@container map-area (height < 800px) {
+  .minigame:has(.campus-game, .campus-challenge) { padding: 14px; }
+  .minigame-window:has(.campus-game, .campus-challenge) { gap: 8px; padding: 14px; }
+  .minigame-window:has(.campus-game) .minigame-header { padding-bottom: 8px; }
+  .minigame-window:has(.campus-game) .minigame-title { font-size: 22px; }
+  .campus-game { gap: 8px; }
+  .campus-instruction { font-size: 16px; }
+  .campus-story { padding: 6px 10px; }
+  .campus-feedback { padding: 6px 12px; }
+  .campus-scene-label { padding: 6px 10px; }
+
+  /* Station 8: a lower cup and lower buttons. */
+  .campus-coffee-machine { gap: 8px; padding-bottom: 12px; }
+  .campus-coffee-cup { width: 104px; height: 60px; }
+  .campus-coffee-label { top: 18px; }
+  .campus-coffee-controls .campus-piece { min-height: 34px; }
+  .campus-order-name { padding-top: 6px; }
+  .campus-recipe { padding: 6px 10px 10px 32px; }
+  .campus-recipe li { padding: 1px 4px; }
+
+  /* Station 11: the receipt stands left of the belt (below), and the
+     products are lower. */
+  .campus-checkout { gap: 8px; padding: 10px; }
+  .campus-belt { gap: 6px; padding: 6px; }
+  .campus-belt .campus-piece { min-height: 0; }
+  .campus-product-art { height: 36px; }
+  .campus-budget-display { padding: 6px 12px; }
+
+  @container (width >= 500px) {
+    .campus-checkout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr);
+      grid-template-rows: auto 1fr;
+      gap: 8px 12px;
+    }
+    .campus-receipt { grid-column: 1; grid-row: 1; margin: 0; }
+    .campus-checkout .campus-small { grid-column: 1; grid-row: 2; align-self: start; }
+    .campus-belt { grid-column: 2; grid-row: 1 / 3; }
+    .campus-budget-display { flex-direction: column; gap: 4px; }
+    .campus-budget-display > div + div { text-align: left; }
+    /* A product is narrower here, and "✓ Scanned · click to return" takes
+       two lines: the badge always has room for them, so that the belt does
+       not grow and the window does not move when a product is scanned. */
+    .campus-belt .campus-piece-state { display: flex; align-items: center; min-height: calc(2.4em + 6px); }
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .campus-wrong { animation: none; }
