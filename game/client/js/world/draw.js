@@ -878,8 +878,9 @@ Game.world = Game.world || {};
   // Hiding spots (M3-1.5): each shows an object that belongs to its place,
   // registered by an art file in the group "hiding" as "room-id:spot" ("spot"
   // on the deck). A spot whose place has more than one spot names its own
-  // drawing with `object` (M3-1.7: the sun loungers on the deck). They never change, so they are drawn into the tiles, after
-  // the furniture (the hollow lies on the hedge). Everybody sees the same
+  // drawing with `object` (M3-1.7: the sun loungers on the deck). They never
+  // change, so they are drawn into the tiles, after the furniture (the
+  // hollow lies on the hedge). Everybody sees the same
   // objects; who hides is decided by the server alone. A drawing stays
   // within DRAWING_OVERHANG of its spot's circle. Without a drawing (or if
   // it fails) the spot keeps its old dashed circle: it is never invisible.

@@ -567,6 +567,8 @@ def test_station_12_stands_against_the_decks_right_wall():
 
 
 def test_station_12_beside_the_bush_would_glow_within_a_second_of_the_spawn():
+    # Why M2-1.20 did not lean station 12 on bush 4; it still holds for the
+    # station's place by the right wall since M3-1.7 (last line).
     # Rejected: at (568, 350), beside bush 4, the station lies 98 from the
     # spawn, less than one second's walk plus the use range
     # (test_play_stations.py); lower down, at (576, 368), the way from the
