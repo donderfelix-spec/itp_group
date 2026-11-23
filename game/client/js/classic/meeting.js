@@ -389,7 +389,8 @@ Game.classicMeeting = Game.classicMeeting || {};
     }
     playerRowStarts(players, x, maxWidth).forEach(function (place) {
       if (place.row >= maxRows) return;
-      context.fillStyle = ownIsFreeRider && place.playerId === ownName ? "#C43E3E" : "#2E2A3B";
+      var playerId = place.playerId;
+      context.fillStyle = ownIsFreeRider && playerId === ownName ? "#C43E3E" : "#2E2A3B";
       context.fillText(place.label, place.x, y + 24 + place.row * PLAYER_ROW);
     });
   }
