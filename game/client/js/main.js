@@ -151,7 +151,14 @@ window.Game = window.Game || {};
     if (mode === 'classic' && roundIsRunning) Game.net.send({ type: 'leave_hiding' });
   }
 
+  // `classic_fail` names the victim to everybody; it carries the place of
+  // the F-sheet only to those who see it (S-202). The others are sent a
+  // `classic_sheet` once the place comes into their sight.
   function whenClassicFail(message) {
+    if (mode === 'classic' && roundIsRunning) callWorld('addBloodSheet', message);
+  }
+
+  function whenClassicSheet(message) {
     if (mode === 'classic' && roundIsRunning) callWorld('addBloodSheet', message);
   }
 
@@ -471,6 +478,7 @@ window.Game = window.Game || {};
   Game.net.on('duel_progress', whenDuelProgress);
   Game.net.on('duel_result', whenDuelResult);
   Game.net.on('classic_fail', whenClassicFail);
+  Game.net.on('classic_sheet', whenClassicSheet);
   Game.net.on('classic_fail_status', whenClassicFailStatus);
   Game.net.on('classic_emergency_status', whenClassicEmergencyStatus);
   Game.net.on('classic_progress', whenClassicProgress);
