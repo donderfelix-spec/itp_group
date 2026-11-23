@@ -207,13 +207,18 @@ def _check_position(value):
     checked = {}
     for axis in ("x", "y"):
         coordinate = value[axis]
-        if (
-            isinstance(coordinate, bool)
-            or not isinstance(coordinate, (int, float))
-            or not math.isfinite(coordinate)
-        ):
+        if isinstance(coordinate, bool) or not isinstance(coordinate, (int, float)):
             raise ProtocolError("bad_position", "That position could not be read.")
-        checked[axis] = float(coordinate)
+        # JSON allows whole numbers of any length. One too long for a float
+        # (400 digits, say) makes float() raise OverflowError, which would
+        # close the connection; it is refused like any other bad position.
+        try:
+            as_float = float(coordinate)
+        except OverflowError:
+            raise ProtocolError("bad_position", "That position could not be read.") from None
+        if not math.isfinite(as_float):
+            raise ProtocolError("bad_position", "That position could not be read.")
+        checked[axis] = as_float
     return checked
 
 

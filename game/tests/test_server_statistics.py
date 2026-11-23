@@ -152,7 +152,7 @@ def leaderboard_for(connection):
 
 
 def profile(name, rounds, wins, best):
-    # Classic is built but writes no statistics yet, so its row is always 0/0.
+    # These tests play only Duels, so the Classic row stays 0/0 (Classic writes its own since S-198).
     return protocol.profile(name, [("duel", rounds, wins), ("classic", 0, 0)], best)
 
 
