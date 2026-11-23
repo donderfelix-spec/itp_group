@@ -12,7 +12,7 @@ lie outside it. With the real map file, that circle
 - keeps clear of the drawn "Main Deck" name: 13 px text centred at
   `deck_label`, taken as a conservative box of +-40 x +-7 around that point;
 - keeps clear of the spawn by more than its own radius, so the players who
-  stand at the spawn after a meeting do not stand on the button.
+  stand at the spawn when a round starts do not stand on the button.
 
 The button stands centred under the "Main Deck" name (S-147); its old place
 right of the hedge, (642, 249), was free paving too but not central, so the

@@ -5,8 +5,8 @@ Skip and the votes for them are gone. With one living player fewer, the
 Skips that are left can now be 75 % of the living: then the meeting ends at
 once, as after the Skip that reaches 75 %, and its result is applied once
 (S-156) and sent once. This is checked in the leave path of server/main.py
-(`end_if_enough_skips`, which knows the time). A leave during an emergency
-meeting's discussion ends nothing: there is no voting then. If the leave
+(`end_if_enough_skips`, which knows the time). Since S-212 this holds in
+the discussion of an emergency meeting too, as after a report. If the leave
 stops the round (S-157), there is no meeting result at all.
 """
 
@@ -113,6 +113,26 @@ def test_a_leave_that_brings_the_skips_to_75_percent_ends_the_meeting_once(conne
     # The one who neither pressed Skip nor left is still living and saw the result once.
     assert last not in lobby.classic_round.eliminated
     assert len(results_in(told[last] + later[last])) == 1
+
+
+def test_a_leave_in_the_discussion_of_an_emergency_ends_the_meeting_by_the_skips_too(connect, clock):
+    # S-212: Skip is open at once after an emergency call, so a leave can
+    # bring it to 75 % before the vote phase, exactly as after a report.
+    connections, lobby, [fr], [caller, first, leaver, last] = classic_round(connect)
+    start_emergency(connections, caller, clock)
+    skip(connections, fr, caller, first)  # 3 of 5: not yet
+    assert lobby.meeting["phase"] == "discussion"
+
+    told = leave(connections, leaver)
+    later = everything_now(connections)
+
+    assert lobby.meeting["phase"] == "result" and lobby.meeting["applied"] is True
+    assert lobby.classic_round.eliminated == {leaver}
+    for name in connections:
+        results = results_in(told[name] + later[name])
+        assert len(results) == 1
+        assert results[0]["ejected_id"] is None
+    assert last not in lobby.classic_round.eliminated
 
 
 def test_a_leave_ends_the_meeting_before_anything_is_sent(connect, clock, monkeypatch):
