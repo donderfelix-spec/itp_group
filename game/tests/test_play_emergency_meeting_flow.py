@@ -375,8 +375,8 @@ def played(server):  # noqa: F811 (the imported fixture)
         call_at_button(browser, fr, stayers)
         clock.skip(5)  # 40 s of discussion are left
         time.sleep(1.2)
-        for voter, target in ((caller, fr), (second, fr), (fr, caller)):
-            act(browser, voter, vote_selector(names[target]), stayers, lobby)
+        for last_voter, target in ((caller, fr), (second, fr), (fr, caller)):
+            act(browser, last_voter, vote_selector(names[target]), stayers, lobby)
         seen["m5_server"] = {"deadline_left": lobby.meeting["deadline"] - main.seconds_now(),
                              "ends_by": lobby.meeting.get("ends_by")}
         seen["m5_shortened"] = {label: states_of(browser, label)[-1] for label in stayers}

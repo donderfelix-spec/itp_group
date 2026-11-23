@@ -71,7 +71,8 @@ def test_one_living_player_without_a_vote_changes_nothing():
 
 
 @pytest.mark.parametrize(("left", "expected"), [(10.0, 175.0), (9.0, 175.0), (10.5, 175.0 - 0.5)])
-def test_with_ten_seconds_or_less_left_nothing_changes(left, expected):
+def test_the_end_is_the_earlier_of_the_old_end_and_ten_seconds_from_now(left, expected):
+    # 10 s or less left: nothing changes; 10.5 s left: half a second less.
     meeting = a_meeting(votes=ALL_BUT_EVE | {"Eve": "Bo"})
     updated = rules.shorten_when_everybody_voted(meeting, 175.0 - left)
     assert updated["deadline"] == expected
@@ -134,7 +135,7 @@ def test_a_leave_that_leaves_only_voters_shortens_the_meeting():
 def test_skip_at_75_percent_still_ends_the_meeting_at_once():
     meeting = a_meeting(votes={"Ana": "Bo"}, skips={"Bo", "Cy"})
     shortened = rules.shorten_when_everybody_voted(rules.cast_vote(meeting, "Dan", "Bo"), 150.0)
-    assert shortened is not None and "ends_by" not in shortened  # Eve has not decided
+    assert "ends_by" not in shortened  # Eve has not decided
     ended = rules.agree_to_skip_discussion(meeting, "Dan", 150.0)
     ended = rules.agree_to_skip_discussion(ended, "Eve", 151.0)
     assert ended["phase"] == "result" and ended["deadline"] == 151.0
@@ -169,6 +170,8 @@ def test_the_last_vote_sends_everybody_the_ten_seconds_and_the_tick_the_result_o
     for socket in sockets.values():
         results = [m for m in socket.messages if m["type"] == "meeting_state" and m["phase"] == "result"]
         assert len(results) == 1
+    # Nobody was voted out (a tie, Skip as strong); the Free Rider's cooldown starts at the real end.
+    assert lobby.classic_round.last_fail_at["Mara"] == 111.0
 
 
 def test_a_refused_vote_shortens_nothing_and_is_heard_only_by_the_sender(monkeypatch):
@@ -240,4 +243,5 @@ def test_the_ghost_and_the_living_get_the_same_shortened_snapshot(monkeypatch):
         send(sockets, voter, vote(target))
     last = {name: socket.messages[-1] for name, socket in sockets.items()}
     assert all(message == last[GHOST] for message in last.values())
+    assert last[GHOST]["seconds_left"] == 10
     assert "ends_by" not in last[GHOST]

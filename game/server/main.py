@@ -643,9 +643,9 @@ def settle_the_meeting_after_a_leave(lobby):
     Called with no await before it, so no other handler can come in between
     (S-165): the vote's time may have run out since the last tick, and with
     one living player fewer the Skips left may now be 75 %, or everybody
-    left may now have voted, so the meeting ends 10 seconds later (S-215). A result is
-    applied once (S-156). The meeting clock is recorded, so the tick does not
-    send the same snapshot; `tell_classic_after_a_leave` sends it.
+    left may now have voted, so the meeting ends 10 seconds later (S-215).
+    A result is applied once (S-156). The meeting clock is recorded, so the
+    tick does not send the same snapshot; `tell_classic_after_a_leave` sends it.
 
     Returns `(now, finished)`: the time of that snapshot and whether this
     leave finished the meeting. None if no running meeting is to be sent
