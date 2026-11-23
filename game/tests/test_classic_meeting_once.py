@@ -389,7 +389,7 @@ def test_apply_meeting_result_keeps_a_ghost_the_meeting_did_not_know():
 
 
 class LobbyInAMeeting:
-    """Just the parts of a lobby that `sync_classic_after_meeting` reads."""
+    """Just the parts of a lobby that `settle_meeting` reads."""
 
     def __init__(self, game, meeting):
         self.classic_round = game
@@ -400,10 +400,10 @@ def test_sync_applies_a_finished_meeting_once_and_marks_it():
     game, _fr, [_first, second, later_ghost, *_] = a_round_in_a_meeting()
     lobby = LobbyInAMeeting(game, finished(game, {name: second for name in FIVE}))
 
-    main.sync_classic_after_meeting(lobby)
+    main.settle_meeting(lobby)
     game.eliminated.add(later_ghost)  # a failure after the meeting
-    main.sync_classic_after_meeting(lobby)  # the next tick
-    main.sync_classic_after_meeting(lobby)
+    main.settle_meeting(lobby)  # the next tick
+    main.settle_meeting(lobby)
 
     assert lobby.meeting["applied"] is True
     assert game.eliminated == {second, later_ghost}
@@ -413,7 +413,7 @@ def test_sync_leaves_a_running_meeting_alone():
     game, _fr, _hps = a_round_in_a_meeting()
     lobby = LobbyInAMeeting(game, game.meeting)
 
-    main.sync_classic_after_meeting(lobby)
+    main.settle_meeting(lobby)
 
     assert "applied" not in lobby.meeting
     assert game.phase == "meeting"
@@ -421,9 +421,9 @@ def test_sync_leaves_a_running_meeting_alone():
 
 def test_sync_without_a_meeting_or_a_round_does_nothing():
     game, _fr, _hps = a_round_in_a_meeting()
-    main.sync_classic_after_meeting(LobbyInAMeeting(game, None))
+    main.settle_meeting(LobbyInAMeeting(game, None))
     assert game.phase == "meeting"
 
     meeting = finished(game, {})
-    main.sync_classic_after_meeting(LobbyInAMeeting(None, meeting))
+    main.settle_meeting(LobbyInAMeeting(None, meeting))
     assert "applied" not in meeting
