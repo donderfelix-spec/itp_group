@@ -240,7 +240,7 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 
 - [ ] **M4-3.1** Sabotage “Wi-Fi outage”
 - [ ] **M4-3.2** Sabotage “Fire alarm”
-- [ ] **M4-4.0** Minigame “Catch the wave” at the beach exit, then add station 6 to the eleven stations of Duel, Solo and Classic (S-67, S-124; the surfboard object stands there since S-196)
+- [x] **M4-4.0** “Catch the wave” at the beach exit. Station 6 is active in Duel, Solo and Classic (S-67, S-124, S-221). Built by Hanna (commit 1fccb20), taken over on Felix's request 2026-11-23: Space and Enter now catch wherever the focus is in the window; tests for the minimum time against the fastest honest game, the place of station 6, the window in laptop and phone windows (`tests/test_play_minigames_low_windows.py`) and a Duel and a Classic round in Chromium (`tests/test_play_catch_the_wave.py`).
 - [ ] **M4-4.1** Three more minigames (microwave, QR code, spreadsheet formula)
 - [ ] **M4-4.2** Deadline mode
 - [ ] **M4-1.1** Finished graphics for rooms and characters

@@ -1,5 +1,6 @@
 """Private task destinations join Classic's existing packets, never its public progress."""
 from server import main, protocol
+from server.modes import minigames
 from task_helpers import client, clock, connect  # noqa: F401
 from test_classic_server_features import ask, classic_for, put_at_station, start_classic
 from extra_task_helpers import news
@@ -40,7 +41,8 @@ def test_completion_reveals_own_remaining_tasks_and_never_broadcasts_them(connec
     for index, station in enumerate(original):
         put_at_station(name, station)
         assert ask(players[name], {'type': 'open_station', 'station': station})['type'] == 'station_opened'
-        clock.wait(1.1)
+        # The station's own minimum time: 3 s for station 6 since S-221, 1 s elsewhere.
+        clock.wait(minigames.MINIGAMES[station].min_seconds + 0.1)
         assert ask(players[name], {'type': 'finish_station'}) == {
             'type': 'station_done', 'station': station, 'task_stations': original[index + 1:index + 2],
         }
@@ -63,7 +65,7 @@ def test_a_failed_private_update_rolls_back_classic_and_frame_progress(connect, 
     station = original[0]
     put_at_station(name, station)
     assert ask(players[name], {'type': 'open_station', 'station': station})['type'] == 'station_opened'
-    clock.wait(1.1)
+    clock.wait(minigames.MINIGAMES[station].min_seconds + 0.1)  # 3 s at station 6 (S-221)
     def broken(*args):
         raise RuntimeError('cannot build the private task reply')
     with monkeypatch.context() as changes:

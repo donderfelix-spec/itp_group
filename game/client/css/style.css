@@ -1903,6 +1903,96 @@ body:has(#screen-lobby:not([hidden])) .message {
   .checkout-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+/* ---- Minigame 6, "Catch the wave" ---- */
+
+.surf-game {
+  display: grid;
+  width: 100%;
+  gap: 12px;
+}
+
+.surf-scene {
+  position: relative;
+  isolation: isolate;
+  height: clamp(104px, 38cqw, 182px);
+  overflow: hidden;
+  border: var(--outline);
+  border-radius: 12px;
+  background:
+    repeating-linear-gradient(175deg, transparent 0 25px, #d2f3e64d 25px 27px, transparent 27px 42px),
+    linear-gradient(#91ddd3, #48a8a9 48%, #24647b);
+}
+
+.surf-scene,
+.surf-catch { touch-action: manipulation; }
+.surf-scene { cursor: pointer; }
+
+.surf-target {
+  position: absolute;
+  inset: 12% auto 12% var(--board-position);
+  width: var(--catch-width);
+  transform: translateX(-50%);
+  border: 2px dashed #def5dd;
+  border-radius: 12px;
+  background: #d3eee633;
+}
+
+.surf-in-range .surf-target {
+  border-style: solid;
+  border-color: #fff3a7;
+  background: #fff3a766;
+}
+
+.surf-wave {
+  position: absolute;
+  top: 37%;
+  width: 20%;
+  height: 50%;
+  transform: translateX(-50%) rotate(-7deg);
+  border-radius: 62% 40% 42% 16% / 86% 60% 20% 12%;
+  border-top: 6px solid #f1fff0;
+  background: linear-gradient(160deg, #f8fff2 0 12%, #93e8dc 26%, #207a91 79%);
+  box-shadow: -9px 5px 0 -3px #bbf2e79c;
+}
+
+.surf-wave::after {
+  content: "";
+  position: absolute;
+  right: 7%;
+  top: 2%;
+  width: 32%;
+  height: 34%;
+  border-radius: 50%;
+  border: 4px solid #e8fff3;
+  border-left-color: transparent;
+  border-bottom-color: transparent;
+  transform: rotate(17deg);
+}
+
+.surf-board {
+  position: absolute;
+  left: var(--board-position);
+  top: 48%;
+  width: clamp(52px, 23%, 112px);
+  height: clamp(16px, 6cqw, 28px);
+  transform: translate(-50%, -50%) rotate(-12deg);
+  border: var(--outline);
+  border-radius: 50% 52% 47% 50%;
+  background: linear-gradient(#ff8271 27%, #ffefd2 27% 44%, #f9cc68 44% 58%, #ffefd2 58% 73%, #ff8271 73%);
+  box-shadow: 0 3px 0 #205d72a8;
+}
+
+.surf-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.surf-catch { min-height: 44px; }
+.surf-score { margin: 0; font-weight: 700; }
+.surf-feedback { margin: 0; min-height: 1.4em; }
+
 /* ---- Duel: the panel during the round and the ranking, built by js/minigames/duel.js ---- */
 
 /* The panel of the running round's mode (Duel, Solo or Classic), at the top

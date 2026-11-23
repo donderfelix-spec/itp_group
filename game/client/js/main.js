@@ -23,11 +23,11 @@ window.Game = window.Game || {};
     too_many_attempts: 'attempts',
   };
 
-  // The stations with a minigame (station 6 is not in use yet). Must equal
+  // The stations with a minigame. Must equal
   // the stations of MINIGAMES in server/modes/minigames.py (checked by
   // tests/test_client_stations_in_use.py). Classic checks the own task list
   // from the server against it (rememberClassicTasks).
-  const STATIONS_IN_USE = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12];
+  const STATIONS_IN_USE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   // Errors after which no task is open on the server, so no window may stay.
   // `task_failed` is in the list because a fault while closing or finishing
   // is answered with this error only: no `station_closed` follows it.

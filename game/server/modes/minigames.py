@@ -27,12 +27,12 @@ Nothing else changes: the frame (`tasks.py`, `server/main.py`, `frame.js`)
 works with whatever stands in this table. Never put the solution of a task
 into the content if the player must not see it.
 
-A station that is not in this table is not in use: station 6, "Catch the
-wave", comes only if time allows.
+A station that is not in this table is not in use.
 """
 
 from server.modes import brew_order
 from server.modes import build_tray
+from server.modes import catch_the_wave
 from server.modes import self_checkout
 from server.modes import shelve_books
 from server.modes import sort_slides
@@ -45,9 +45,8 @@ MINIGAMES = {
     3: build_tray.MINIGAME,
     4: shelve_books.MINIGAME,
     5: self_checkout.MINIGAME,
+    6: catch_the_wave.MINIGAME,
 }
 
-# Extra stations leave the original five minigames and the reserved wave
-# station (6) intact. Duel, Solo and Classic draw from the whole active
-# registry (S-124).
+# Duel, Solo and Classic draw from the whole active registry (S-124).
 MINIGAMES.update(room_tasks.MINIGAMES)

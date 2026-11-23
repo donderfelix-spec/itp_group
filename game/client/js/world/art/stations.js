@@ -1,6 +1,6 @@
 // The objects that stand at the task stations (Felix, 2026-11-21): one
 // thing per station, so a player sees what the task is about before opening
-// it. Station 6 ("Catch the wave") is not in use yet but has its object
+// it. Station 6 ("Catch the wave") has its surfboard
 // since M3-1.7, so the beach exit shows what it will be about.
 //
 // draw.js looks them up in Game.world.art.stations by station id. Each
