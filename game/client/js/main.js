@@ -39,12 +39,13 @@ window.Game = window.Game || {};
   // The stations this player has finished in the running round. The server
   // keeps the real list; this one only decides which stations glow.
   let finishedStations = new Set();
-  // The own unfinished Classic stations, sent to this player alone
-  // (`task_stations`). A Free Rider's list is empty: no station pulses for
+  // The own active Classic station, sent to this player alone
+  // (`task_stations`, one station or none, S-197). A Free Rider's list is empty: no station pulses for
   // them and "E Use" lights up nowhere; they fake tasks by standing at one.
   let classicTasks = [];
   // The own Classic role from `classic_role`, "HP" or "FR"; null outside a
-  // Classic round. Only for the own task card (showClassicTasks).
+  // Classic round. A High Performer's active task goes to the card at the
+  // top left (showUsableStations, S-197).
   let classicRole = null;
   // True from the moment this browser asked to log out until the server
   // answers. It tells a wanted `signed_out` from one that came unasked.

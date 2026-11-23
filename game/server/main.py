@@ -31,7 +31,7 @@ from server.accounts.store import StoreUnavailable, make_account_store
 from server.classic import meeting as classic_meeting
 from server.classic.emergency_button import emergency_button_in_reach
 from server.classic import hiding as classic_hiding
-from server.classic.round import ClassicRound, HideRefused
+from server.classic.round import ClassicRound, HideRefused, active_task
 from server.modes import duel, minigames, tasks
 from server.net.attempts import AttemptLimits
 from server.net.lobbies import Lobbies
@@ -1093,15 +1093,13 @@ def take_back_the_count(lobby, name: str, station: int):
 
 
 def classic_task_stations(classic, name: str) -> list:
-    """Only this High Performer's ordered, unfinished task stations.
+    """Only this High Performer's one active task station (S-197), as a list.
 
     Free Riders cannot complete tasks in the upstream Classic rules, so
     their private task list is empty. Other players' assignments never
     enter this value, including when the viewer is a ghost.
     """
-    if classic.roles.get(name) != "HP":
-        return []
-    return classic.stations_needed(name, set(), ())
+    return active_task(classic.roles, classic.tasks, classic.completed_tasks, name)
 
 
 TASK_HANDLERS = {

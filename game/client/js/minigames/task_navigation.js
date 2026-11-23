@@ -5,9 +5,9 @@
 // at the station, even through a wall. The route search of `create` is not
 // used by the page; tests check the map with it (tests/test_task_navigation.js).
 //
-// In Classic a player has a list of open tasks instead of one next task:
-// the arrow then points at the nearest of them (`setTargets`), and the card
-// shows only the room.
+// In Classic a High Performer has one active task at a time (S-197), shown
+// like the next task of a Duel. `setTargets` (the nearest of several open
+// tasks, S-145) is no longer used by the page; main.js empties it.
 //
 // main.js sets the target (`setTarget`, `setTargets`, `reset`), world.js calls `draw`
 // once per frame. The card is the element #task-card of index.html, so it
@@ -293,7 +293,7 @@ window.Game = window.Game || {};
   //
   // Its head says which room the own character stands in, in every mode and
   // also in the lobby. Below it, while this player has one next task (Duel,
-  // Solo; main.js decides), "NEXT TASK" and the task. It is the only room
+  // Solo, Classic; main.js decides), "NEXT TASK" and the task. It is the only room
   // display of the page.
 
   let target = null; // the station id of the own next task, or null
