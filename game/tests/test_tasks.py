@@ -36,7 +36,7 @@ def draw_number(rng) -> dict:
     return {"kind": "number", "number": rng.randrange(1000)}
 
 
-# Stations 1 to 5 are in use, like in the real game; 6 is on the map only.
+# In this fixture stations 1 to 5 are in use and 6 is inactive.
 MINIGAMES = {
     station: Minigame(title=f"Game {station}", min_seconds=MIN_SECONDS, make_content=draw_number)
     for station in range(1, 6)
@@ -491,9 +491,8 @@ def test_every_rejection_code_of_the_rules_has_a_text():
 # The table of minigames
 
 
-def test_original_and_extra_stations_are_in_use_and_station_6_is_not():
-    assert sorted(minigames.MINIGAMES) == [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
-    assert 6 not in minigames.MINIGAMES
+def test_all_twelve_stations_are_in_use():
+    assert sorted(minigames.MINIGAMES) == list(range(1, 13))
 
 
 def test_the_titles_are_the_ones_of_the_stations_on_the_map():
@@ -502,7 +501,7 @@ def test_the_titles_are_the_ones_of_the_stations_on_the_map():
         assert minigame.title == names_on_the_map[station]
 
 
-@pytest.mark.parametrize("station", [1, 2, 3, 4, 5])
+@pytest.mark.parametrize("station", range(1, 13))
 def test_every_minigame_draws_json_safe_content_with_a_kind(station):
     minigame = minigames.MINIGAMES[station]
     content = minigame.make_content(random.Random(station))
@@ -540,6 +539,7 @@ def test_the_real_table_has_original_and_extra_tasks_with_the_titles_of_the_desi
     """True whatever minigames are in the table: stations, titles, a minimum time, content."""
     titles = {1: "Sort the slides", 2: "Brew the order", 3: "Build the tray", 4: "Shelve the books", 5: "Self-checkout"}
     extra_titles = {
+        6: "Catch the wave",
         7: "Fix the consultant’s chart", 8: "Emergency caffeine protocol", 9: "Save the lunch",
         10: "Decode the group chat", 11: "Expense the essentials", 12: "Seagull quality control",
     }

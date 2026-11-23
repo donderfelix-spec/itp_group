@@ -143,7 +143,7 @@ Every action also works with a mouse click on the button. The campus overview sh
 4 to 8 players. With fewer than 4, the round cannot be started.
 
 1. Everyone starts on the Main Deck. Each player sees their role for three seconds. Two Free Riders also see who the other one is.
-2. Each High Performer gets four of the eleven tasks (stations 1 to 5 and 7 to 12, S-124), chosen in a random order by the server. Exactly one is active at a time. Finishing it reveals the next randomly ordered task until all four are done. Every finished task fills the shared progress bar, which still counts four tasks per High Performer (S-197).
+2. Each High Performer gets four of the twelve tasks (stations 1 to 12), chosen in a random order by the server. Exactly one is active at a time. Finishing it reveals the next randomly ordered task until all four are done. Every finished task fills the shared progress bar, which still counts four tasks per High Performer (S-197).
 3. Every player sees only their own current task; only that station pulses and can be opened, any other station is refused with “You do not need that station.” (S-197). The Free Rider has no task list and cannot open a station: they fake tasks by standing at one, and no station pulses for them (S-154).
 4. The Free Rider can fail a High Performer who is in range (25 map units, S-194), with key F or the button “F Let fail” (S-195). After that, the Free Rider has to wait 15 seconds. The Free Rider starts with the ability loaded and cannot fail another Free Rider.
 5. Reporting happens right on the spot: For any living player, the Free Rider included, who stands within 8 map units of an “F” sheet (S-180), the button “R Report” appears (key R, S-195). Pressing it starts the meeting for everyone at once, and nobody has to walk anywhere. The reported sheet stays on the map until the round ends and cannot be reported again (S-150). Without a find, each living player can call one meeting per round with the red button in the centre of the Main Deck, available 45 seconds after the round starts. The player has to stand within 25 map units of the button, as close as to a station; the server checks this, and only a living player within that range sees “E Emergency”. There is no other cooldown (S-170, S-172).
@@ -178,7 +178,7 @@ If time allows: Sabotage “WiFi down”. The Free Rider locks all stations unti
 
 2 to 8 players. **Solo** plays the same rules for one player who is alone in the lobby, and counts for no statistics (S-125). In Solo the panel and the ranking say “Solo” instead of “Duel”.
 
-1. For each player, the server draws their own three of the eleven stations in their own order, and every player starts at a different station (S-126). Nobody knows in advance where they have to go, and nobody knows the routes of the others.
+1. For each player, the server draws their own three of the twelve stations in their own order, and every player starts at a different station (S-126). Nobody knows in advance where they have to go, and nobody knows the routes of the others.
 2. Everyone starts on the Main Deck. Each player sees only their next station. The one after that appears only when the previous one is done.
 3. To keep it fair, the server only draws routes whose walking distance is about the same length.
 4. In the Players list of the panel, only the progress is shown for each player: 0/3, 1/3, 2/3, 3/3, with a green bar (S-130). You only see where the others are at the moment if you meet them.
@@ -223,9 +223,9 @@ A minigame opens with E or the button “E Use” at its station, only while a r
 | 3 | Canteen | Build the tray | There are six dishes at the counter. The order slip names four of them. Click these four onto the tray, the order does not matter | the four from the order slip are on the tray | the wrong dish goes back to the counter |
 | 4 | CTT Student Hall | Shelve the books | Click six numbered books onto the shelf in ascending order | all six are on the shelf | the wrong book falls back onto the stack |
 | 5 | Pingo Doce | Self-checkout | The checkout shows a target amount, for example €7.50. Six products with prices are on the belt. Scan as many as needed to get exactly that amount. A click on a scanned product puts it back | the total is exactly right | a product that takes the total above the amount is not accepted: “Unexpected item in the bagging area” |
-| 6 | Glass front to the beach on the Main Deck | Catch the wave (if time allows) | A surfboard lies on the water, a wave runs through the picture from left to right. Click exactly when the wave is under the board | three waves have been caught | a wrong click only costs this attempt, the hits stay |
+| 6 | Glass front to the beach on the Main Deck | Catch the wave | A surfboard lies on the water, a wave runs through the picture from left to right. Click, tap or press Space when the wave is under the board | three waves have been caught | a wrong click only costs this attempt, the hits stay |
 
-Minigame 6 is the only one with timing instead of sorting, selecting or calculating. It comes first of the “If time allows” minigames. As soon as it is built, station 6 joins the stations of Duel, Solo and Classic.
+Station 6 is active in Duel, Solo and Classic. Three successful catches complete the minigame.
 
 **Sentences and names in the minigames**
 

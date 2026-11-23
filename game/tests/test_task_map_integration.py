@@ -2,7 +2,7 @@
 
 Historical furniture/distance comparisons in test_campus_detail.py measure
 only the original five stations. These checks cover every active task on the
-current map, including the six additional room tasks.
+current map, including the beach task and the six additional room tasks.
 """
 
 import itertools
@@ -18,7 +18,7 @@ CAMPUS = load_campus()
 STATIONS = {station["id"]: station for station in CAMPUS["stations"]}
 
 
-@pytest.mark.parametrize("station_id", range(7, 13))
+@pytest.mark.parametrize("station_id", range(6, 13))
 def test_additional_task_centres_are_clear_of_the_current_furniture(station_id):
     station = STATIONS[station_id]
     assert is_free(station["x"], station["y"], CAMPUS["solids"], CAMPUS["width"], CAMPUS["height"])
@@ -26,6 +26,7 @@ def test_additional_task_centres_are_clear_of_the_current_furniture(station_id):
 
 def test_every_active_task_remains_reachable_on_the_current_map():
     active = sorted(minigames.MINIGAMES)
+    assert active == list(range(1, 13))
     distances = station_distances(CAMPUS, active)
     places = [SPAWN] + active
     assert set(distances) == set(itertools.permutations(places, 2))

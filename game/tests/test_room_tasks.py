@@ -13,8 +13,7 @@ ORIGINALS = {1: sort_slides, 2: brew_order, 3: build_tray, 4: shelve_books, 5: s
 
 
 def test_original_games_are_kept_and_six_extra_stations_are_added():
-    assert set(minigames.MINIGAMES) == set(range(1, 6)) | set(NEW_STATIONS)
-    assert 6 not in minigames.MINIGAMES  # reserved wave station
+    assert set(minigames.MINIGAMES) == set(range(1, 7)) | set(NEW_STATIONS)
     for station, module in ORIGINALS.items():
         assert minigames.MINIGAMES[station] is module.MINIGAME
     assert set(room_tasks.MINIGAMES) == set(NEW_STATIONS)
