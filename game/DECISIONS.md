@@ -215,6 +215,10 @@ These entries follow from the team's answers and from the project description in
 
 Living Classic players can see a radius of 150 map units through open space. The server applies range and opaque wall checks to each recipient’s position snapshot. Existing hiding checks still apply within sight. Ghosts retain their wider view (S-136). Before an F-sheet is reported, draw the fallen character beside it. The F-sheet remains after the report (S-150, S-163). The campus overview draws the plan, own position and personal pending tasks for orientation.
 
+### Leaderboard columns
+
+Show Classic wins, Duel wins and best Duel time as separate columns. The leaderboard keeps its existing ranking by total wins, then best Duel time and account name. Save results when a Classic round completes so its wins count for the winning team’s accounts.
+
 ## Open decisions
 
 | Question | Affects | Thinking so far |

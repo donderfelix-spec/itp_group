@@ -11,13 +11,14 @@ Three shapes are used in this file and by the stores:
     record   what is kept per account and mode:
              {"rounds": 3, "wins": 1, "best_seconds": 72.4}
     total    one account on the leaderboard, as a tuple:
-             ("Mara", wins in all modes, best Duel time)
+             ("Mara", wins in all modes, best Duel time, Classic wins, Duel wins)
 
 `best_seconds` is None as long as the account has never finished a Duel.
 """
 
 from server.accounts.store import name_key
 
+CLASSIC = "classic"
 DUEL = "duel"
 # How many accounts the leaderboard shows at most.
 LEADERBOARD_SIZE = 20
@@ -46,6 +47,15 @@ def _change_from_row(row) -> dict:
         "wins": 1 if won else 0,
         "best_seconds": row["seconds"] if finished else None,
     }
+
+
+def changes_from_classic(roles, winner, account_names) -> list:
+    """Record a round and a team win for each eligible Classic participant."""
+    return [
+        {"name": name, "rounds": 1, "wins": int(role == winner), "best_seconds": None}
+        for name, role in roles.items()
+        if name in account_names
+    ]
 
 
 def add_change(record, change) -> dict:
@@ -90,7 +100,9 @@ def best_duel_seconds(records):
 def total_of(name: str, records) -> tuple:
     """One account's line for the leaderboard. `records` is `{mode: record}`."""
     wins = sum(record["wins"] for record in records.values())
-    return (name, wins, best_duel_seconds(records))
+    classic_wins = records.get(CLASSIC, {}).get("wins", 0)
+    duel_wins = records.get(DUEL, {}).get("wins", 0)
+    return (name, wins, best_duel_seconds(records), classic_wins, duel_wins)
 
 
 def best_first(totals) -> list:
@@ -104,7 +116,7 @@ def best_first(totals) -> list:
 
 
 def _leaderboard_key(total) -> tuple:
-    name, wins, best_seconds = total
+    name, wins, best_seconds, _, _ = total
     has_no_time = best_seconds is None
     return (-wins, has_no_time, 0 if has_no_time else best_seconds, name_key(name))
 
@@ -112,6 +124,9 @@ def _leaderboard_key(total) -> tuple:
 def leaderboard_rows(totals) -> list:
     """Number the totals, which are already in order: place 1 is the first one."""
     return [
-        {"place": index + 1, "name": name, "wins": wins, "best_seconds": best_seconds}
-        for index, (name, wins, best_seconds) in enumerate(totals)
+        {
+            "place": index + 1, "name": name, "wins": wins, "best_seconds": best_seconds,
+            "classic_wins": classic_wins, "duel_wins": duel_wins,
+        }
+        for index, (name, wins, best_seconds, classic_wins, duel_wins) in enumerate(totals)
     ]

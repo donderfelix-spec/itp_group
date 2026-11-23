@@ -5,12 +5,12 @@ Both stores offer the same three methods, like the stores for accounts
 
     record_round(mode, changes)  add the changes of one round (see statistics.py)
     records_of(name)             -> {mode: record} of one account, {} if it never played
-    top(limit)                   -> the best `limit` accounts as (name, wins, best Duel
-                                    time), in the order of the leaderboard
+    top(limit)                   -> the best `limit` accounts as leaderboard totals
+                                    (see statistics.total_of)
 
 Statistics are keyed like accounts: by `name_key`, so "Mara" and "mara" are
-the same account. There is one row per account and mode, so a further mode
-needs no change here.
+the same account. There is one row per account and mode, so recording a
+further mode does not require a schema change.
 
 All three methods may raise `StoreUnavailable` when the database cannot be reached.
 """
@@ -62,7 +62,10 @@ SELECT_RECORDS = "SELECT mode, rounds, wins, best_seconds FROM account_statistic
 # The same order as `statistics.best_first`. COLLATE "C" compares the keys
 # letter by letter, as Python does.
 SELECT_TOP = """
-    SELECT MIN(name), SUM(wins) AS total_wins, MIN(best_seconds) FILTER (WHERE mode = %s) AS best_duel
+    SELECT MIN(name), SUM(wins) AS total_wins,
+           MIN(best_seconds) FILTER (WHERE mode = %s) AS best_duel,
+           COALESCE(SUM(wins) FILTER (WHERE mode = %s), 0) AS classic_wins,
+           COALESCE(SUM(wins) FILTER (WHERE mode = %s), 0) AS duel_wins
     FROM account_statistics
     GROUP BY name_key
     ORDER BY total_wins DESC, best_duel ASC NULLS LAST, name_key COLLATE "C" ASC
@@ -136,9 +139,11 @@ class PostgresStatisticsStore:
         }
 
     def top(self, limit: int) -> list:
-        rows = self._select(SELECT_TOP, (statistics.DUEL, limit))
-        # SUM gives a whole number of its own kind; `int` makes it a plain one.
-        return [(name, int(wins), best_seconds) for name, wins, best_seconds in rows]
+        rows = self._select(SELECT_TOP, (statistics.DUEL, statistics.CLASSIC, statistics.DUEL, limit))
+        return [
+            (name, int(wins), best_seconds, int(classic_wins), int(duel_wins))
+            for name, wins, best_seconds, classic_wins, duel_wins in rows
+        ]
 
     def _select(self, query: str, values: tuple) -> list:
         connection = self._connect()

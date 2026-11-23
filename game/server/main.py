@@ -444,6 +444,17 @@ def account_names(names) -> set:
     return accounts
 
 
+def classic_result_to_write(lobby, roles, winner):
+    """What a finished Classic round adds to the statistics. Never raises."""
+    try:
+        changes = statistics.changes_from_classic(roles, winner, account_names(lobby.names()))
+        return (statistics.CLASSIC, changes) if changes else None
+    except Exception as problem:
+        # A statistics error must not keep the players in a finished round.
+        logger.error("The result of a round could not be noted: %s", type(problem).__name__)
+        return None
+
+
 def write_result_later(result):
     """Start writing one round's result, `(mode, changes)` or None, as a task of its own."""
     if result is not None:
@@ -1653,7 +1664,7 @@ def end_round_if_over(lobby) -> tuple:
     Returns `(farewells, result)`. `farewells` is what each player still
     has to be told, as `{name: [messages]}`, or an empty dict if the round
     goes on (or none is running). `result` is what the round adds to the
-    statistics (see `duel_result_to_write`), or None. Both go to
+    statistics, or None. Both go to
     `tell_round_ended`, so a round's result travels with its own farewells.
 
     This function does not wait for anything: between the question "is it
@@ -1668,16 +1679,16 @@ def end_round_if_over(lobby) -> tuple:
         if winner is None:
             return {}, None
         result = classic.result(winner, end_reason(state))
+        result_to_write = classic_result_to_write(lobby, state["roles"], winner)
         open_stations = {name: lobby.tasks.open_station_of(name) for name in lobby.names()}
         lobby.end_round()
         # Everybody is sent the positions at the next tick, also when nobody
         # moves: a Free Rider who was hidden (M3-1.4) is visible again.
         lobby.walkers._everybody_needs_news()
-        # Classic does not write statistics yet: no result for the store.
         return {
             name: ([] if station is None else [protocol.station_closed(station)]) + [result]
             for name, station in open_stations.items()
-        }, None
+        }, result_to_write
 
     the_duel = lobby.duel
     if the_duel is None or not the_duel.is_over(seconds_now()):

@@ -60,9 +60,16 @@ UNKNOWN_FIELD = {
 
 
 def board(*rows):
-    """The leaderboard message with these `(name, wins, best time)` rows, best first."""
+    """The leaderboard after the Duel-only games played here, best first."""
     listed = [
-        {"place": index + 1, "name": name, "wins": wins, "best_duel_seconds": best}
+        {
+            "place": index + 1,
+            "name": name,
+            "wins": wins,
+            "classic_wins": 0,
+            "duel_wins": wins,
+            "best_duel_seconds": best,
+        }
         for index, (name, wins, best) in enumerate(rows)
     ]
     return {"type": "leaderboard", "players": listed}

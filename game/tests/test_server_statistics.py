@@ -1,4 +1,4 @@
-"""Statistics over the WebSocket: written at the end of a Duel, read as profile and leaderboard (M2-2.4, S-40).
+"""Statistics over the WebSocket: written after Duel and Classic, read as profile and leaderboard.
 
 The rounds are played like in test_server_duel.py, whose helpers are used
 here: the tick is off, the server's clock is set by the test and every
@@ -30,6 +30,7 @@ from task_helpers import (  # noqa: F401
     placeholder_at_every_station,
     player,
 )
+from test_classic_server_features import start_classic
 from test_server_duel import (  # noqa: F401
     call_tick,
     duel_of,
@@ -523,10 +524,33 @@ def test_the_leaderboard_lists_the_accounts_of_a_round_best_first(connect, clock
     assert leaderboard_for(players["Tiago"]) == {
         "type": "leaderboard",
         "players": [
-            {"place": 1, "name": "Mara", "wins": 1, "best_duel_seconds": 3.0},
-            {"place": 2, "name": "Tiago", "wins": 0, "best_duel_seconds": 6.0},
+            {"place": 1, "name": "Mara", "wins": 1, "classic_wins": 0, "duel_wins": 1, "best_duel_seconds": 3.0},
+            {"place": 2, "name": "Tiago", "wins": 0, "classic_wins": 0, "duel_wins": 0, "best_duel_seconds": 6.0},
         ],
     }
+
+
+def test_a_finished_classic_round_counts_once_and_preserves_duel_totals(connect, store):
+    players, _, _, _ = start_classic(connect)
+    lobby = lobby_named("Mara")
+    classic = lobby.classic_round
+    roles = classic.roles.copy()
+    store.record_round("duel", [{"name": "Mara", "rounds": 1, "wins": 1, "best_seconds": 72.4}])
+    classic.eliminated = {name for name, role in roles.items() if role == "FR"}
+    for _ in range(2):
+        players["Mara"].portal.call(main.tell_round_news, lobby)
+    wait_for_rounds(store, 2)
+    assert len(store.rounds) == 2
+    assert store.rounds[-1][0] == "classic"
+    rows = {row["name"]: row for row in leaderboard_for(player(connect, "Reader"))["players"]}
+    assert set(rows) == set(roles)
+    for name, role in roles.items():
+        classic_wins = int(role == "HP")
+        duel_wins = int(name == "Mara")
+        assert rows[name]["classic_wins"] == classic_wins
+        assert rows[name]["duel_wins"] == duel_wins
+        assert rows[name]["wins"] == classic_wins + duel_wins
+        assert rows[name]["best_duel_seconds"] == (72.4 if name == "Mara" else None)
 
 
 def test_a_guest_sees_the_leaderboard_too(connect, clock, fixed_routes, store):
@@ -547,7 +571,9 @@ def test_the_leaderboard_is_ordered_by_wins_then_time_then_name(connect, store):
     assert [(row["place"], row["name"]) for row in rows] == [
         (1, "Mara"), (2, "ines"), (3, "Tiago"), (4, "Rui"), (5, "Ana"), (6, "Zoe"), (7, "Bea"),
     ]
-    assert rows[0] == {"place": 1, "name": "Mara", "wins": 2, "best_duel_seconds": 90.0}
+    assert rows[0] == {
+        "place": 1, "name": "Mara", "wins": 2, "classic_wins": 0, "duel_wins": 2, "best_duel_seconds": 90.0,
+    }
 
 
 def test_the_leaderboard_shows_at_most_20_accounts(connect, store):
@@ -563,7 +589,7 @@ def test_the_leaderboard_shows_at_most_20_accounts(connect, store):
 def test_a_store_that_returns_too_many_rows_is_still_cut_at_20(connect):
     class GenerousStore(MemoryStatisticsStore):
         def top(self, limit):
-            return [(f"Player{number:02d}", 0, None) for number in range(50)]
+            return [(f"Player{number:02d}", 0, None, 0, 0) for number in range(50)]
 
     app.state.statistics_store = GenerousStore()
     assert len(ask(player(connect, "Reader"), {"type": "get_leaderboard"})["players"]) == 20
@@ -576,7 +602,10 @@ def test_the_answers_carry_nothing_else_about_an_account(connect, clock, fixed_r
     assert set(own) == {"type", "name", "modes", "best_duel_seconds"}
     assert all(set(row) == {"mode", "title", "rounds", "wins"} for row in own["modes"])
     assert set(board) == {"type", "players"}
-    assert all(set(row) == {"place", "name", "wins", "best_duel_seconds"} for row in board["players"])
+    assert all(
+        set(row) == {"place", "name", "wins", "classic_wins", "duel_wins", "best_duel_seconds"}
+        for row in board["players"]
+    )
     for answer in (own, board):
         text = str(answer)
         assert "hash" not in text and "argon2" not in text and "name_key" not in text and "password" not in text
