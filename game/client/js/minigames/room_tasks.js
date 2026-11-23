@@ -1,16 +1,15 @@
-// Six campus emergencies. The content is drawn by the server; these small
-// puzzles only handle presentation and mouse/keyboard interaction (S-19).
+// The three campus tasks of stations 8, 9 and 11 (recipe, lunch tray,
+// budget). The content is drawn by the server; these small puzzles only
+// handle presentation and mouse/keyboard interaction (S-19). Stations 7, 10
+// and 12 are in campus_challenges.js (S-189, S-208).
 window.Game = window.Game || {};
 
 (function () {
   const BROKEN = 'This task could not be loaded.';
   const INSTRUCTIONS = {
-    cleanup: 'Cross out the nonsense buzzwords. Keep the useful content.',
     food: 'Remove the discoloured pieces from the tray.',
     recipe: 'Follow the recipe. The group deadline runs on caffeine.',
-    order: "Put the words in order to decode your teammate's excuse.",
     budget: 'Scan emergency supplies until the total matches the budget.',
-    seagull: 'Catch the seagull to recover every stolen project page.',
   };
 
   function element(tag, className, text) {
@@ -134,22 +133,17 @@ window.Game = window.Game || {};
   function isUsable(content) {
     if (!content || typeof content !== 'object') return false;
     if (content.puzzle === 'cleanup') {
-      return ['slides', 'food'].includes(content.theme) && Array.isArray(content.items)
+      return content.theme === 'food' && Array.isArray(content.items)
         && content.items.length >= 2 && content.items.length <= 16
         && content.items.every((item) => item && ['number', 'string'].includes(typeof item.id)
           && typeof item.label === 'string' && item.label.length > 0 && typeof item.remove === 'boolean')
         && distinct(content.items.map((item) => item.id))
         && content.items.some((item) => item.remove) && content.items.some((item) => !item.remove)
-        && (content.theme !== 'food' || foodItemsAreUsable(content.items));
+        && foodItemsAreUsable(content.items);
     }
     if (content.puzzle === 'recipe') {
       return typeof content.drink === 'string' && texts(content.controls, 2) && distinct(content.controls)
         && texts(content.recipe, 2) && content.recipe.every((step) => content.controls.includes(step));
-    }
-    if (content.puzzle === 'order') {
-      return texts(content.words, 3) && texts(content.order, 3) && distinct(content.words)
-        && content.words.length === content.order.length && distinct(content.order)
-        && content.order.every((word) => content.words.includes(word)) && typeof content.hint === 'string';
     }
     if (content.puzzle === 'budget') {
       return cents(content.target) && Array.isArray(content.products) && content.products.length >= 3
@@ -157,7 +151,7 @@ window.Game = window.Game || {};
           && typeof product.name === 'string' && product.name.length > 0 && cents(product.price))
         && distinct(content.products.map((product) => product.name));
     }
-    return content.puzzle === 'seagull' && Number.isInteger(content.pages) && content.pages >= 4 && content.pages <= 6;
+    return false;
   }
 
   function start(body, content, done) {
@@ -169,7 +163,7 @@ window.Game = window.Game || {};
     const timers = new Set();
     let finished = false;
     const game = element('div', 'campus-game campus-game-' + content.puzzle);
-    const instruction = content.theme === 'food' ? INSTRUCTIONS.food : INSTRUCTIONS[content.puzzle];
+    const instruction = content.puzzle === 'cleanup' ? INSTRUCTIONS.food : INSTRUCTIONS[content.puzzle];
     const feedback = element('p', 'campus-feedback', 'Your teammates are counting on you. Probably.');
     feedback.setAttribute('role', 'status');
     game.append(element('p', 'campus-instruction', instruction));
@@ -202,11 +196,9 @@ window.Game = window.Game || {};
     }
 
     const helpers = { game, wrong, progress, complete };
-    if (content.puzzle === 'cleanup') cleanup(content, helpers);
+    if (content.puzzle === 'cleanup') lunchTray(content, helpers);
     if (content.puzzle === 'recipe') recipe(content, helpers);
-    if (content.puzzle === 'order') order(content, helpers);
     if (content.puzzle === 'budget') budget(content, helpers);
-    if (content.puzzle === 'seagull') seagull(content, helpers);
 
     return function stop() {
       finished = true;
@@ -214,39 +206,6 @@ window.Game = window.Game || {};
       timers.clear();
       game.querySelectorAll('button').forEach((control) => { control.disabled = true; });
     };
-  }
-
-  function cleanup(content, ui) {
-    if (content.theme === 'food') {
-      lunchTray(content, ui);
-      return;
-    }
-    ui.game.append(element('p', 'campus-story', 'The Consultant has added 400% more synergy. Make the slide say something.'));
-    const pile = element('div', 'campus-pile campus-slide');
-    const scene = element('section', 'campus-presentation-scene');
-    scene.append(sceneLabel('GROUP PROJECT_final_FINAL.pptx', 'Slide 07 · the consultant has been here'), pile);
-    ui.game.append(scene);
-    const total = content.items.filter((item) => item.remove).length;
-    let removed = 0;
-    content.items.forEach((item) => {
-      const piece = button('', (clicked) => {
-        if (!item.remove) {
-          ui.wrong(clicked, 'That actually means something. Keep it!');
-          return;
-        }
-        removed += 1;
-        clicked.disabled = true;
-        clicked.classList.add('campus-removed');
-        clicked.querySelector('.campus-piece-state').textContent = '✓ Crossed out';
-        ui.progress(removed + '/' + total + ' buzzwords removed.');
-        if (removed === total) ui.complete();
-      }, 'campus-buzzword');
-      const drawing = element('span', 'campus-slide-mark', 'Aa');
-      drawing.setAttribute('aria-hidden', 'true');
-      piece.append(drawing, element('span', 'campus-piece-label', item.label),
-        element('span', 'campus-piece-state', item.remove ? 'Buzzword' : 'Useful content'));
-      pile.append(piece);
-    });
   }
 
   function lunchTray(content, ui) {
@@ -335,30 +294,6 @@ window.Game = window.Game || {};
     })));
   }
 
-  function order(content, ui) {
-    ui.game.append(element('p', 'campus-story', 'One unread message. Zero accountability.'));
-    const hint = element('blockquote', 'campus-chat-hint', content.hint);
-    const sentence = element('div', 'campus-sentence');
-    sentence.setAttribute('aria-label', 'Decoded message');
-    const pile = element('div', 'campus-pile');
-    const phone = element('section', 'campus-chat-phone');
-    phone.append(sceneLabel('Group project (8)', '7 typing… · 0 working'), element('p', 'campus-chat-time', 'Today, 23:58'), hint,
-      element('p', 'campus-chat-caption', 'Rebuild the suspiciously familiar excuse:'), sentence, pile);
-    ui.game.append(phone);
-    let next = 0;
-    content.words.forEach((word) => pile.append(button(word, (clicked) => {
-      if (word !== content.order[next]) {
-        ui.wrong(clicked, 'That word goes later. The excuse must sound convincing.');
-        return;
-      }
-      sentence.append(element('span', 'campus-word-done', word));
-      clicked.disabled = true;
-      next += 1;
-      ui.progress(next + '/' + content.order.length + ' words decoded.');
-      if (next === content.order.length) ui.complete();
-    }, 'campus-word')));
-  }
-
   function budget(content, ui) {
     ui.game.append(element('p', 'campus-story', 'The Founder calls these “essential project expenses”. The budget is less optimistic.'));
     const display = element('div', 'campus-budget-display');
@@ -402,51 +337,6 @@ window.Game = window.Game || {};
         element('strong', 'campus-price', money(product.price)), element('span', 'campus-piece-state', 'Scan item'));
       belt.append(piece);
     });
-  }
-
-  function seagull(content, ui) {
-    ui.game.append(element('p', 'campus-story', 'A seagull has peer-reviewed your draft. It is eating the evidence.'));
-    const arena = element('div', 'campus-seagull-arena');
-    const sun = element('span', 'campus-beach-sun', '');
-    sun.setAttribute('aria-hidden', 'true');
-    const shoreline = element('span', 'campus-beach-shore', '');
-    shoreline.setAttribute('aria-hidden', 'true');
-    const poster = element('span', 'campus-beach-poster', 'NOVA · MAIN DECK');
-    poster.setAttribute('aria-hidden', 'true');
-    arena.append(sun, shoreline, poster);
-    const pages = element('div', 'campus-rescued-pages');
-    pages.setAttribute('aria-label', 'Recovered project pages');
-    ui.game.append(arena, pages);
-    let rescued = 0;
-    // Fixed places remain large and in bounds at every window size. They
-    // change after a click, never while someone is trying to click the bird.
-    const places = [[12, 8], [60, 46], [14, 55], [58, 5], [35, 30], [5, 30]];
-    const bird = button('', () => {
-      rescued += 1;
-      const page = element('span', 'campus-page', String(rescued));
-      page.setAttribute('aria-label', 'Recovered page ' + rescued);
-      pages.append(page);
-      ui.progress(rescued + '/' + content.pages + ' pages recovered. Academic integrity restored.');
-      if (rescued === content.pages) ui.complete();
-      else placeBird();
-    }, 'campus-seagull');
-    const shape = picture('campus-bird-art');
-    shape.append(svgPart('path', { d: 'M15 57 Q30 41 48 45 L44 33 Q46 20 60 20 Q77 20 78 39 Q94 44 99 57 Q74 76 45 69 L23 76 L29 62Z', fill: '#FFFDF5', stroke: '#2E2A3B', 'stroke-width': 3 }),
-      svgPart('path', { d: 'M43 46 Q64 36 75 51 Q61 66 43 57Z', fill: '#C7D5D4', stroke: '#2E2A3B', 'stroke-width': 2 }),
-      svgPart('path', { d: 'M76 34 L99 40 L77 46Z', fill: '#FFD23F', stroke: '#2E2A3B', 'stroke-width': 2 }),
-      svgPart('circle', { cx: 66, cy: 31, r: 3.5, fill: '#2E2A3B' }), line(53, 69, 48, 80, '#D49340', 3), line(67, 70, 72, 80, '#D49340', 3),
-      svgPart('path', { d: 'M86 42 L110 45 L106 68 L85 65Z', fill: 'white', stroke: '#2E2A3B', 'stroke-width': 2 }),
-      line(91, 51, 104, 53, '#A4B8B2', 2), line(90, 57, 101, 59, '#A4B8B2', 2));
-    bird.append(shape, element('span', 'campus-seagull-caption', 'Rescue page 1'));
-    arena.append(bird);
-    function placeBird() {
-      const place = places[rescued % places.length];
-      bird.style.left = 'min(' + place[0] + '%, calc(100% - 110px))';
-      bird.style.top = place[1] + '%';
-      bird.querySelector('.campus-seagull-caption').textContent = 'Rescue page ' + (rescued + 1);
-      bird.setAttribute('aria-label', 'Rescue page ' + (rescued + 1) + ' from the seagull');
-    }
-    placeBird();
   }
 
   // No shared header line: stations 8, 9 and 11 each show their own
