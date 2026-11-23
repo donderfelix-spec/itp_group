@@ -239,7 +239,9 @@ def played(server):  # noqa: F811 (the imported fixture)
         shot(browser, fr, "2c_free_rider_click_let_fail_done")
 
         # 4. A report meeting hides nothing; then the other High Performer calls and the Free Rider goes.
-        sheet = browser.js(other, f"""window.__received.filter((r) => r.m.type === 'classic_fail'
+        # Since S-202 only the Free Rider (and who sees the place) is told where
+        # the sheet lies; the page of `other` gets it once he stands there.
+        sheet = browser.js(fr, f"""window.__received.filter((r) => r.m.type === 'classic_fail'
             && r.m.target_id === {json.dumps(names[spare])}).pop().m.position""")
         seen["sheet"] = sheet
         put(names[spare], around[spare])

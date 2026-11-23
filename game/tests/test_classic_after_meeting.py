@@ -209,7 +209,9 @@ def test_a_report_meeting_closes_an_open_task_too(connect, clock):
     put(fr, FAIL_PLACE)
     put(victim, (FAIL_PLACE[0] + 1, FAIL_PLACE[1]))
     connections[fr].send_json({"type": "fail"})
-    sheet = read_until(connections[reporter], "classic_fail")[-1]
+    # The reporter stands far away: since S-202 only the Free Rider who did
+    # it (and who sees the place) is told where the sheet lies.
+    sheet = read_until(connections[fr], "classic_fail")[-1]
     everything_sent(connections[worker])  # the news of the fail
     station = open_active_task(connections, lobby, worker)
     put(reporter, (sheet["position"]["x"], sheet["position"]["y"]))

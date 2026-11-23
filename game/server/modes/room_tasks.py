@@ -51,16 +51,35 @@ def lunch(rng):
     return {"kind": "campus_task", "puzzle": "cleanup", "theme": "food", "items": items}
 
 
+# Four ways to tell the order of the four slots, so the speaker at 9:00 is not
+# always the one with the same kind of message (M2-4.22). Each function gets
+# the four names in slot order and returns one sentence per slot; together the
+# four sentences admit exactly one order (tests/test_chat_clue_variety.py).
+SLOT_CLUES = (
+    lambda n: [f"I present before {n[2]}.", f"My slot is immediately after {n[0]}'s.",
+               f"I go immediately after {n[1]}.", "I'm last. Please leave some coffee."],
+    lambda n: ["I'm first. Somebody has to wake everyone up.", f"I present before {n[3]}.",
+               f"I go immediately before {n[3]}.", f"I present after {n[0]}."],
+    lambda n: [f"I present before {n[1]}.", f"I go immediately before {n[2]}.",
+               "I'm the third to present.", f"I present after {n[2]}."],
+    lambda n: [f"I go immediately before {n[1]}.", "I'm second. Not first, not last.",
+               f"I go immediately after {n[1]}.", f"I present after {n[2]}."],
+)
+
+
 def chat(rng):
     people = rng.sample(["Mara", "Tiago", "Ines", "Rui"], 4)
     jobs = rng.sample(["Slides", "Survey", "Budget", "Sources"], 4)
-    clues = [
-        {"from": people[0], "text": f"I present before {people[2]}. Also, I have the {jobs[0]}."},
-        {"from": people[1], "text": f"My slot is immediately after {people[0]}'s."},
-        {"from": people[2], "text": f"I go immediately after {people[1]}. My deliverable is the {jobs[2]}."},
-        {"from": people[3], "text": "I'm last. Please leave some coffee."},
-        {"from": "Pinned message", "text": f"The {jobs[1]} must be presented before the {jobs[2]}. The {jobs[3]} comes after the {jobs[2]}."},
-    ]
+    sentences = rng.choice(SLOT_CLUES)(people)
+    # Two people name their own deliverable; the pinned message orders the
+    # other two, which settles who has which.
+    named = sorted(rng.sample(range(4), 2))
+    for slot in named:
+        sentences[slot] += f" Also, I have the {jobs[slot]}."
+    earlier, later = [slot for slot in range(4) if slot not in named]
+    clues = [{"from": person, "text": text} for person, text in zip(people, sentences)]
+    clues.append({"from": "Pinned message",
+                  "text": f"The {jobs[earlier]} must be presented before the {jobs[later]}."})
     rng.shuffle(clues)
     displayed = list(people)
     rng.shuffle(displayed)

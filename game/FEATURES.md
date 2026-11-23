@@ -43,6 +43,7 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | The own character and the camera keep walking through longer hold-ups of the connection (up to about 700 ms) and stop sooner after a key is released | M2 | Done |
 | Walking diagnostic for the team: with `?debug` in the address a panel measures the connection and the drawing while walking and copies the numbers as text | M2 | Done |
 | Limited view in Classic: nearby living players in direct sight, with walls casting shadows (S-185) | M3 | Done |
+| The place of an F-sheet only to who sees it, the ghosts and the Free Rider who did it; the others get it when it comes into their sight (S-202) | M3 | Done (M3-3.25) |
 | Half-transparent ghosts visible to other ghosts and fallen characters visible until reported (S-186) | M3 | Done |
 | Seven hiding spots in Classic (S-131 to S-140), drawn as objects of the map: boxes, a beanbag, a potted plant, a hollow in the hedge (S-190), coffee sacks, folding chairs and sun loungers (S-196); the Free Rider hides on purpose with E and is then sent to no High Performer; himself, the other Free Rider and ghosts see him with a crossed-out eye (S-191, S-192) | M3 | Done |
 | Campus overview with your location and the station you need now, in Classic the one active task (S-187, S-197) | M3 | Done |
@@ -121,7 +122,7 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | Duel: progress of every player as 1/3 with a bar in the Players list of the panel (S-130) | M2 | Done |
 | Panel of the mode at the top of the side panel in every mode (Duel and Solo: next task and clock; Classic: group progress; the own task is in the card at the top left, S-197), visible without scrolling with eight players (S-143) | M2 | Done |
 | Six more minigames at stations 7 to 12, in Duel, Solo and Classic (S-124) | M2 | Done |
-| Stations 7, 10 and 12 reworked: rebuild a misleading chart from survey counts, deduce a schedule from chat clues, catch falling pages in three lanes; each with its own brief, feedback and retry (S-189) | M2 | Done |
+| Stations 7, 10 and 12 reworked: rebuild a misleading chart from survey counts, deduce a schedule from chat clues (told in one of four ways, M2-4.22), catch falling pages in three lanes; each with its own brief, feedback and retry (S-189) | M2 | Done |
 | Solo mode for one player, without statistics (S-125); a new lobby starts in Solo and the second player switches it to Duel (S-203) | M2 | Done |
 | Duel: every player starts at a different station, up to 8 players (S-126) | M2 | Done |
 | Stations as objects with a pulsing outline when they matter (S-128); station 6 shows its surfboard too, and stations 4, 8, 9 and 12 stand where Felix drew them (S-196) | M2 | Done |
