@@ -134,7 +134,7 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | Classic: current task and arrow use the same top-left card as Duel, which also says “All your tasks are done.” or, to the Free Rider, “Fake tasks: stand at a station to look busy.”; no task card above group progress (S-197, replaces S-145) | M3 | Done (M3-4.29) |
 | Lobby: modes outside their player range (Classic below 4) locked, all in one grey, the chosen one marked by frame and shadow; smaller “?” with even gaps (S-146) | M2 | Done |
 | “Done” for 0.5 s without a close button (S-127) | M2 | Done |
-| Beach exit: “Catch the wave” at station 6, in Duel, Solo and Classic: catch three waves with a click, a tap, the button or Space (S-221) | M4 | Done (M4-4.0) |
+| Beach exit: “Catch the wave” at station 6, in Duel, Solo and Classic: catch three waves with a click, a tap, the button, Space or Enter (S-221) | M4 | Done (M4-4.0) |
 | Duel: leaderboard with times at the end | M2 | Done |
 | Canteen: stop the microwave at the right moment | M4 | Planned |
 | Lecture Hall: record attendance by QR code | M4 | Planned |

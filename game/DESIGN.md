@@ -210,7 +210,7 @@ The win and the time go into the statistics (S-40).
 
 ## 8. Minigames
 
-Every room has its fixed minigame, it does not change. But the content is shuffled anew every round. All minigames take 10 to 25 seconds, are played with the mouse (station 6 also with Space or Enter, station 12 also with the keys 1, 2 and 3) and have the same header: title, one sentence of instructions, close button.
+Every room has its fixed minigame, it does not change. But the content is shuffled anew every round. All minigames take 5 to 25 seconds, are played with the mouse (station 6 also with Space or Enter, station 12 also with the keys 1, 2 and 3) and have the same header: title, one sentence of instructions, close button.
 
 After a mistake, only the wrong piece is reset, never the whole minigame.
 

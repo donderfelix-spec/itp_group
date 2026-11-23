@@ -13,6 +13,7 @@ import copy
 
 import pytest
 
+from server.modes import minigames
 from server.world.campus import load_campus
 from server.world.movement import PLAYER_HALF_SIZE, is_free, overlaps, step
 from server.world.paths import station_distances
@@ -314,7 +315,7 @@ def test_fewer_pieces_make_no_way_of_the_duel_longer_and_none_much_shorter():
     # M2-1.20 (map polish) moved station 8 off the café's divider, which made
     # 2 to 8 shorter again: against this "before" 10.8 % (196.0 -> 174.9).
     # Only that way may be up to 11 % shorter.
-    stations = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
+    stations = sorted(minigames.MINIGAMES)
     before = station_distances(as_before_this_to_do(CAMPUS), stations)
     after = station_distances(CAMPUS, stations)
     assert after.keys() == before.keys()

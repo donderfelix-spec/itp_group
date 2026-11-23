@@ -146,6 +146,7 @@ def test_the_other_stations_did_not_change():
         5: "Self-checkout",
     }
     assert {station: minigame.title for station, minigame in minigames.MINIGAMES.items() if station > 5} == {
+        6: "Catch the wave",
         7: "Fix the consultant’s chart",
         8: "Emergency caffeine protocol",
         9: "Save the lunch",
