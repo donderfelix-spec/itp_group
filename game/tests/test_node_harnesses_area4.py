@@ -5,6 +5,7 @@ the browser and throws on the first check that fails:
 
 - test_client_room_tasks.js: the three room tasks of stations 8, 9 and 11, and
   Duel and Solo in main.js
+- test_catch_the_wave_client.js: timing, retained catches and cleanup for station 6
 - test_client_player_progress.js: the player list of the side panel with
   the progress of a Duel or Solo round
 - test_task_navigation.js: the task arrow and card, and which stations
@@ -25,6 +26,7 @@ import pytest
 TESTS = Path(__file__).resolve().parent
 NODE = shutil.which("node")
 HARNESSES = [
+    "test_catch_the_wave_client.js",
     "test_client_room_tasks.js",
     "test_client_player_progress.js",
     "test_task_navigation.js",
