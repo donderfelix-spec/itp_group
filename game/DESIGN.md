@@ -112,7 +112,7 @@ If you walk away, both disappear again; a station that matters to you keeps its 
 | Key | Target | Border | Button at the bottom right | Special note |
 |---|---|---|---|---|
 | E | Task station that you need now (in Classic only your one active task, S-197) | Yellow | “E Use” | Stations that you do not need or have already finished do not glow |
-| E | Emergency button | Yellow | “E Emergency” | Only as long as you have not yet used up your meeting. For the Free Rider it is his second button, also during the fail cooldown (S-195) |
+| E | Emergency button | Yellow | “E Emergency” | Only as long as you have not yet used up your meeting and the button is unlocked: 45 seconds after the start and again 45 seconds after every meeting (S-216, S-218). For the Free Rider it is his second button, also during the fail cooldown (S-195) |
 | E | Hiding spot within 25 map units (S-191) | – | “E Hide”, while hidden “E Leave hiding” (the Free Rider's second button, S-195) | Only the living Free Rider in a Classic round sees it. When a station or the emergency button is in reach as well, E uses the nearest of them |
 | R | “F” sheet | Coral | “R Report” | Visible to everyone who is in range |
 | F | High Performer in range (25 map units, S-194) | Coral | “F Let fail” | Only the Free Rider sees the border around the High Performer and the button, which is always there (S-195). During the 15-second cooldown it is grey and a darker grey fills it from left to right, with no seconds; charged with nobody in range it is all grey and off; charged with a victim in range it is yellow like an active “E Use”. Q does nothing (S-195) |

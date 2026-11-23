@@ -268,6 +268,7 @@ def test_a_second_meeting_can_start_after_the_first(connect, clock):
     start_emergency(connections, first_caller, clock)
     everybody_skips(connections, lobby, clock)
     ticks(connections)
+    clock.wait(45)  # the button is locked for 45 s after a meeting (S-218)
 
     put(second_caller, (app.state.campus["button"]["x"], app.state.campus["button"]["y"]))
     connections[second_caller].send_json({"type": "emergency"})

@@ -316,6 +316,8 @@ def played(server):  # noqa: F811 (the imported fixture)
         shot(browser, second, "1e_button_locked_after_the_meeting")
         browser.wait(second, HAS_E_EMERGENCY, timeout=60000)
         seen["m1_unlocked_after"] = time.monotonic() - ended
+        seen["m1_progress_after"] = browser.js(second, """window.__received
+            .filter((r) => r.m.type === 'classic_progress').slice(-2).map((r) => r.m)""")
         seen["m1_unlocked_frame"] = browser.js(second, "window.__button.frame")
         shot(browser, second, "1f_button_unlocked_45_s_later")
 
@@ -519,7 +521,10 @@ def test_after_a_meeting_the_button_is_locked_for_45_s_then_offered_again(played
     assert locked["frame"]["visible"] is False and locked["frame"]["drawn"] is True
     assert locked["has_e"] is False
     assert locked["press"]["sent"] == 0 and set(locked["press"]["meetings"].values()) == {0}
-    assert 42 <= played["m1_unlocked_after"] <= 50
+    # The page was told 45 s from the meeting's end, and unlocked within that time of it.
+    progress = played["m1_progress_after"][-1]
+    assert progress["emergency_ready_at"] - progress["server_time"] == pytest.approx(45, abs=1)
+    assert played["m1_unlocked_after"] <= 50
     assert played["m1_unlocked_frame"]["visible"] is True
     assert played["m3_locked_has_e"] is False  # after a report meeting too
 

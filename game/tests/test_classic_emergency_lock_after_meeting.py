@@ -19,6 +19,7 @@ from server import main
 from server.main import app
 from task_helpers import client, clock, connect, put  # noqa: F401
 from test_classic_meeting_once import (
+    FAIL_PLACE,
     FIVE,
     classic_round,
     everybody_skips,
@@ -42,7 +43,8 @@ def test_before_any_meeting_the_button_unlocks_45_s_after_the_start():
 
 def test_after_a_meeting_it_unlocks_45_s_after_the_meetings_end():
     assert emergency_unlocks_at(100.0, 300.0) == 345.0
-    assert emergency_unlocks_at(100.0, 120.0) == 165.0  # a meeting in the first 45 s is impossible, still the later
+    # A report can start and end (75 % Skip) within the first 45 s: still the later of the two.
+    assert emergency_unlocks_at(100.0, 120.0) == 165.0
 
 
 def finished_meeting(game, ended_at):
@@ -104,7 +106,7 @@ def test_right_after_a_meeting_a_player_at_the_button_is_refused_and_only_he_hea
     assert refused["message"] == "The emergency button unlocks in 45 seconds."
     for name in FIVE:
         if name != other:
-            assert [m for m in everything_sent(connections[name]) if m["type"] in ("error", "meeting_state")] == []
+            assert everything_sent(connections[name]) == [], name
     assert lobby.meeting["applied"] is True and lobby.classic_round.phase == "round"
 
 
@@ -141,10 +143,20 @@ def test_after_a_meeting_every_page_is_sent_the_new_unlock_time(connect, clock):
 
 
 def test_a_report_meeting_locks_the_button_too(connect, clock):
-    connections, lobby, fr, [reporter, other, *_] = classic_round(connect)
+    connections, lobby, fr, [reporter, other, victim, *_] = classic_round(connect)
     clock.wait(46)  # the start lock is over
-    game = lobby.classic_round
-    game.apply_meeting_result(finished_meeting(game, main.seconds_now()))  # as a report meeting's end
+    put(fr, FAIL_PLACE)
+    put(victim, (FAIL_PLACE[0] + 1, FAIL_PLACE[1]))
+    connections[fr].send_json({"type": "fail"})
+    sheet = read_until(connections[fr], "classic_fail")[-1]
+    put(reporter, (sheet["position"]["x"], sheet["position"]["y"]))
+    connections[reporter].send_json({"type": "report", "sheet_id": sheet["sheet_id"], "position": sheet["position"]})
+    for connection in connections.values():
+        assert read_until(connection, "meeting_state")[-1]["reason"] == "report"
+    everybody_skips(connections, lobby, clock)
+    ticks(connections, count=1)
+    assert lobby.meeting["applied"] is True
+
     press(connections, other)
     assert read_until(connections[other], "error")[-1]["message"] == "The emergency button unlocks in 45 seconds."
 

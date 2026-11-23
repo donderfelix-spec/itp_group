@@ -123,6 +123,12 @@ def call_at_button(browser, label, place, number):
             "first_state": {other: first_meeting_state_since(browser, other, states[other])[0] for other in LABELS}}
 
 
+def wait_for_unlock(browser, label):
+    """After a meeting the button is locked for 45 s again (S-218); the pages
+    count them by their own clock, so the play waits them out."""
+    browser.wait(label, "window.__button.frame && window.__button.frame.visible === true", timeout=60000)
+
+
 def fail_far_from_the_button(browser, fr, victim, clock):
     """The Free Rider fails `victim` 60 units above the button; the pages hear of the unlock."""
     names = browser.names
@@ -190,6 +196,7 @@ def played(server):  # noqa: F811 (the imported fixture)
         shot(browser, caller, "1a_caller_meeting_opened")
         end_meeting(browser, clock, 1)
         seen["after_meeting_1"] = {"phase": classic.phase, "eliminated": sorted(classic.eliminated)}
+        wait_for_unlock(browser, caller)
 
         stand(browser, caller, CALLER_AT_BUTTON)
         seen["caller_after"] = use_button(browser, caller)
@@ -252,6 +259,7 @@ def played(server):  # noqa: F811 (the imported fixture)
         wait_for_meeting_phase(browser, LABELS, "discussion", 3)
         seen["report_state"] = first_meeting_state_since(browser, other, states[other])[0]
         end_meeting(browser, clock, 3)
+        wait_for_unlock(browser, other)
         stand(browser, other, OTHER_AT_BUTTON)
         browser.wait(other, "Array.from(document.querySelectorAll('.use-button, .free-rider-e-button')).some((b) => !b.hidden && b.textContent === 'E Emergency')", timeout=5000)
         seen["other_after_report"] = use_button(browser, other)
