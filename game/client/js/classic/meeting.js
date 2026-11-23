@@ -40,6 +40,10 @@ Game.classicMeeting = Game.classicMeeting || {};
     form = document.getElementById("classic-chat-form");
     input = document.getElementById("classic-chat-input");
     sendButton = document.getElementById("classic-chat-send");
+    // The meeting covers the panel with "Leave lobby"; this button does the
+    // same, so a player can leave during a meeting too (final audit, S-201).
+    var leave = document.getElementById("classic-meeting-leave");
+    if (leave) leave.addEventListener("click", function () { document.getElementById("lobby-leave").click(); });
     hint = document.getElementById("classic-chat-hint");
     voteOptions = document.getElementById("classic-vote-options");
     votePlayers = document.getElementById("classic-vote-players");

@@ -61,6 +61,10 @@ window.Game = window.Game || {};
   // (S-109). The page joins it once by itself after the next sign-in. It
   // lives in memory only, so reloading the page forgets it.
   let codeToRejoin = null;
+  // A report was sent and its answer (the meeting, or a refusal) has not come
+  // yet. A second R or click meanwhile is swallowed, so a double click does
+  // not bring the red refusal of the second report (M3-3.21).
+  let reportIsOnItsWay = false;
 
   // The map is built by another part of the team and may be missing or
   // unfinished. The page must work without it, so every call goes through here.
@@ -95,6 +99,7 @@ window.Game = window.Game || {};
   // Also the end of the round for this player: every way out of a lobby
   // (leaving, logging out, a lost connection) comes through here.
   function stopWorld() {
+    reportAnswered(); // no answer can come any more
     Game.minigames.close(); // before the world stops, so its keys are not left paused
     clearClassicLeftovers();
     Game.classicRound.hide();
@@ -133,9 +138,14 @@ window.Game = window.Game || {};
   }
 
   function requestReport(sheetId, position) {
-    if (mode === 'classic' && roundIsRunning) {
-      Game.net.send({ type: 'report', sheet_id: sheetId, position: position });
+    if (mode === 'classic' && roundIsRunning && !reportIsOnItsWay) {
+      reportIsOnItsWay = Game.net.send({ type: 'report', sheet_id: sheetId, position: position });
     }
+  }
+
+  // Any answer ends the wait for a report: the meeting, an error, the end of the round.
+  function reportAnswered() {
+    reportIsOnItsWay = false;
   }
 
   function requestEmergency() {
@@ -230,6 +240,7 @@ window.Game = window.Game || {};
       callWorld('startOfRound'); // everybody stands and faces right
     }
     if (!isRound) {
+      reportAnswered();
       Game.minigames.close({ keepDone: true }); // no round, no task; a "Done" still shows its 0.5 s
       classicTasks = [];
       classicRole = null;
@@ -416,6 +427,7 @@ window.Game = window.Game || {};
 
   function whenError(message) {
     Game.forms.stopWaiting(); // Every error is an answer, also one that belongs to no field.
+    reportAnswered();
     logOutWasAsked = false; // The log-out was refused: no `signed_out` follows it.
     if (ERRORS_THAT_CLOSE_THE_TASK.includes(message.code)) Game.minigames.close();
     // "Close your current task first." with no window to close: see above.
@@ -486,6 +498,7 @@ window.Game = window.Game || {};
   Game.net.on('leaderboard', Game.statistics.showLeaderboard);
   Game.net.on('notice', (message) => Game.screens.showMessage(message.message, false));
   Game.net.on('error', whenError);
+  Game.net.on('meeting_state', reportAnswered);
   Game.net.on('you_are_fr', () => Game.classicRound.setOwnFreeRider(true));
 
   Game.net.connect();

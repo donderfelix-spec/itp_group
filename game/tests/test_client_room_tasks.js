@@ -348,6 +348,13 @@ for (const mode of ['duel', 'solo']) {
   env.Game.lobby.show({ ...state, mode: 'duel' });
   assert.equal(env.ids.get('lobby-start').disabled, true, 'normal Duel still requires a second player');
   assert.match(env.ids.get('lobby-start-hint').textContent, /Duel needs 1 more player/);
+  // S-201: a host alone is shown the way to Solo; with two players there is no such line.
+  assert.equal(env.ids.get('lobby-start-hint').textContent, 'Duel needs 1 more player. Play alone? Choose Solo.');
+  env.Game.lobby.show({ ...state, mode: 'classic' });
+  assert.equal(env.ids.get('lobby-start-hint').textContent, 'Classic needs 3 more players. Play alone? Choose Solo.');
+  const two = [{ name: 'Guest1', character: 'consultant' }, { name: 'Guest2', character: 'surfer' }];
+  env.Game.lobby.show({ ...state, players: two, mode: 'classic' });
+  assert.equal(env.ids.get('lobby-start-hint').textContent, 'Classic needs 2 more players');
 }
 
 {

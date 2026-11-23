@@ -163,9 +163,11 @@ Game.classicRound = Game.classicRound || {};
       ? "Complete your 4 tasks."
       : "Make High Performers fail without getting caught.";
     var partners = Array.isArray(message.other_free_riders) ? message.other_free_riders : [];
-    rolePartners.textContent = message.role === "FR"
-      ? "Other Free Riders: " + (partners.length ? partners.join(", ") : "None")
+    // Only with two Free Riders: with one there is nobody to name (no "None").
+    rolePartners.textContent = message.role === "FR" && partners.length
+      ? "Other Free Riders: " + partners.join(", ")
       : "";
+    rolePartners.hidden = rolePartners.textContent === "";
     roleScreen.hidden = false;
     roleTimer = window.setTimeout(function () { roleScreen.hidden = true; roleTimer = null; }, 3000);
   }
