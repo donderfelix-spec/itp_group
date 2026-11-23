@@ -26,7 +26,7 @@
 .challenge-message strong { color: #24665D; font-size: 13px; }
 .challenge-message p { margin: 4px 0 0; line-height: 1.4; }
 .challenge-schedule { display: grid; gap: 10px; }
-.challenge-schedule-row { display: grid; grid-template-columns: 65px 1fr 1fr; align-items: end; gap: 8px; }
+.challenge-schedule-row { display: grid; grid-template-columns: 65px 1fr; align-items: end; gap: 8px; }
 .challenge-schedule-row > strong { align-self: center; }
 .challenge-feedback { min-height: 2.8em; margin: 12px 0 0; line-height: 1.4; font-weight: 700; }
 .challenge-success { color: #306B3A; }
@@ -48,7 +48,7 @@
   .challenge-chart { gap: 6px; padding: 8px; }
   .challenge-bar-track { height: 105px; }
   .challenge-select-label { font-size: 11px; }
-  .challenge-schedule-row { grid-template-columns: 48px 1fr 1fr; gap: 5px; }
+  .challenge-schedule-row { grid-template-columns: 48px 1fr; gap: 5px; }
   .challenge-lanes .challenge-button { padding: 8px 3px; font-size: 13px; }
 }
 /* ---- Fitting the window (M2-4.25) ----
@@ -88,11 +88,10 @@
   .challenge-game-chat_logic > .challenge-schedule { grid-column: 2; grid-row: 2; }
   .challenge-game-chat_logic > .challenge-primary { grid-column: 2; grid-row: 3; }
 }
-/* With the schedule in a narrow column, the name stands above its two
-   choices, so that "Choose time" and "Choose work" are not cut off. */
+/* With the schedule in a narrow column, the name and its one choice stand
+   closer, so that "Choose time" is not cut off. */
 @container (560px <= width < 720px) {
-  .challenge-game-chat_logic .challenge-schedule-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px 8px; }
-  .challenge-game-chat_logic .challenge-schedule-row > strong { grid-column: 1 / -1; line-height: 1.2; }
+  .challenge-game-chat_logic .challenge-schedule-row { grid-template-columns: 48px minmax(0, 1fr); gap: 2px 8px; }
   .challenge-game-chat_logic .challenge-select-label { gap: 2px; }
 }
 
