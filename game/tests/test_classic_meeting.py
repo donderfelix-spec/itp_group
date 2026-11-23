@@ -77,7 +77,7 @@ def test_three_of_four_living_players_end_the_vote_without_an_ejection():
     assert result["vote_result"].ejected_id is None
 
 
-def test_a_ghost_or_an_emergency_meeting_cannot_skip_the_discussion():
+def test_a_ghost_cannot_skip_but_an_emergency_allows_a_living_player_to_skip():
     report = new_meeting()
     report["reason"] = "report"
     with pytest.raises(ValueError, match="living"):
@@ -85,8 +85,7 @@ def test_a_ghost_or_an_emergency_meeting_cannot_skip_the_discussion():
 
     emergency = new_meeting()
     emergency["reason"] = "emergency"
-    with pytest.raises(ValueError, match="not open"):
-        agree_to_skip_discussion(emergency, "Mara", 101.0)
+    assert agree_to_skip_discussion(emergency, "Mara", 101.0)["skip_votes"] == {"Mara"}
 
 
 def test_chat_history_snapshot_is_identical_for_every_participant():
@@ -223,12 +222,11 @@ def test_a_report_allows_voting_during_its_discussion_timer():
     assert voted["votes"] == {"A": "B"}
 
 
-def test_an_emergency_meeting_does_not_allow_voting_during_discussion():
+def test_an_emergency_meeting_allows_voting_during_discussion():
     state = start_discussion(["A", "B"], [], 10.0)
     state["reason"] = "emergency"
 
-    with pytest.raises(ValueError, match="not open"):
-        cast_vote(state, "A", "B")
+    assert cast_vote(state, "A", "B")["votes"] == {"A": "B"}
 
 
 class FakeSocket:

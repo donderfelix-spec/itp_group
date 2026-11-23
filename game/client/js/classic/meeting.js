@@ -161,7 +161,7 @@ Game.classicMeeting = Game.classicMeeting || {};
 
   function votingIsOpen() {
     return Boolean(state && (
-      state.phase === "voting" || (state.phase === "discussion" && state.reason === "report")
+      state.phase === "voting" || (state.phase === "discussion" && ["report", "emergency"].includes(state.reason))
     ));
   }
 

@@ -10,6 +10,8 @@ As of 2026-11-23. On 2026-11-18 the team confirmed all entries except those with
 
 ## Game idea
 
+Branch decision, 2026-11-23 (Lennart): after an emergency call, the meeting follows the same flow as an F-sheet report. Voting and Skip are available immediately during discussion, votes can be changed or withdrawn, and 75% Skip ends the meeting without an ejection. The shared timers, chat, result display and return to play apply to both triggers. This replaces the emergency-discussion restriction in S-161.
+
 | No. | Date | Decision | Reason | By |
 |---|---|---|---|---|
 | S-01 | 2026-11-18 | Instead of the betting app, the team builds a multiplayer game in the social deduction genre that is set on the Nova SBE campus. | The team changed its mind. | Team |
