@@ -22,6 +22,15 @@ from server.classic import sheets as sheet_rules
 EMERGENCY_DELAY_SECONDS = 45.0
 
 
+def emergency_unlocks_at(started_at, last_meeting_ended_at=None):
+    """When the emergency button unlocks: 45 s after the round started or, later,
+    45 s after the last meeting ended (S-218). Plain rule, the times passed in."""
+    locked_since = float(started_at)
+    if last_meeting_ended_at is not None:
+        locked_since = max(locked_since, float(last_meeting_ended_at))
+    return locked_since + EMERGENCY_DELAY_SECONDS
+
+
 def active_task(roles, tasks, completed_tasks, player_id):
     """A High Performer's active task: the first unfinished one of his list (S-197).
 
@@ -57,6 +66,9 @@ class ClassicRound:
         self.meeting_count = 0
         self._has_news = True
         self.started_at = float(started_at)
+        # The end of the last meeting: the emergency button is locked again
+        # for 45 s from it (S-218). None before the first meeting.
+        self.last_meeting_ended_at = None
         # The Free Riders who pressed E at a hiding object (M3-1.6, S-191):
         # name -> the spot they hide in. Only the server knows it.
         self.hidden = {}
@@ -186,7 +198,7 @@ class ClassicRound:
 
     def emergency(self, player_id, now):
         """Use a living player's once-per-round emergency call."""
-        if now - self.started_at < EMERGENCY_DELAY_SECONDS:
+        if self.emergency_seconds_left(now) > 0:
             raise ValueError("The emergency button is not unlocked yet.")
         updated = call_emergency(self.rule_state(), player_id)
         self._sync_rule_state(updated)
@@ -200,7 +212,7 @@ class ClassicRound:
         return self.meeting
 
     def emergency_seconds_left(self, now):
-        return max(0.0, self.started_at + EMERGENCY_DELAY_SECONDS - now)
+        return max(0.0, emergency_unlocks_at(self.started_at, self.last_meeting_ended_at) - now)
 
     def send_chat(self, player_id, text, now):
         if self.meeting is None:
@@ -246,6 +258,8 @@ class ClassicRound:
         # meeting keeps as its "deadline", so no clock is needed here.
         ended_at = meeting.get("deadline")
         if isinstance(ended_at, (int, float)) and not isinstance(ended_at, bool) and math.isfinite(ended_at):
+            # The emergency button is locked for 45 s again from here (S-218).
+            self.last_meeting_ended_at = float(ended_at)
             for player_id, role in self.roles.items():
                 if role == "FR" and player_id not in self.eliminated:
                     self.last_fail_at[player_id] = float(ended_at)
