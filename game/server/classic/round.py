@@ -58,6 +58,8 @@ class ClassicRound:
         # Set when a meeting's result is applied: the server puts everybody
         # back on the Main Deck before anybody walks again (DESIGN.md 5.8).
         self._back_to_the_deck = False
+        # Set at the same moment: the Free Riders are to be told their new cooldown.
+        self._cooldown_news = False
 
     def state(self):
         return {
@@ -215,6 +217,7 @@ class ClassicRound:
                 if role == "FR" and player_id not in self.eliminated:
                     self.last_fail_at[player_id] = float(ended_at)
         self._back_to_the_deck = True
+        self._cooldown_news = True
         self.phase = "round"
         self.timers_paused = False
         self.meeting = meeting
@@ -224,6 +227,12 @@ class ClassicRound:
         """True once after each applied meeting: now everybody goes back to the Main Deck (DESIGN.md 5.8)."""
         due = self._back_to_the_deck
         self._back_to_the_deck = False
+        return due
+
+    def take_cooldown_news(self):
+        """True once after each applied meeting: the Free Riders' cooldown started again."""
+        due = self._cooldown_news
+        self._cooldown_news = False
         return due
 
     def remove_player(self, player_id):

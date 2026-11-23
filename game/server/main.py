@@ -655,7 +655,7 @@ def settle_the_meeting_after_a_leave(lobby):
     now = seconds_now()
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
     lobby.meeting = classic_meeting.end_if_enough_skips(lobby.meeting, now)
-    sync_classic_after_meeting(lobby)
+    settle_meeting(lobby)
     lobby.meeting_clock = meeting_clock_of(lobby.meeting, now)
     return now, lobby.meeting.get("applied", False)
 
@@ -883,14 +883,13 @@ def advance_classic_walkers(lobby, seconds: float) -> bool:
 
     Nobody walks while a meeting runs: the step lasts no time, so nobody
     moves, but a place that changed (a Free Rider who stopped hiding) is
-    still sent. Once its result is applied, everybody is put back on the
-    Main Deck (the spawn) before anybody walks again, and the Free Riders
-    hear that their cooldown started again. Returns whether positions are to
-    be sent, like `walkers.advance`.
+    still sent. The way back to the deck after the meeting is in
+    `settle_meeting`. Returns whether positions are to be sent, like
+    `walkers.advance`.
     """
     classic = lobby.classic_round
-    if classic.take_back_to_the_deck():
-        lobby.walkers.back_to_spawn()
+    if classic.take_cooldown_news():
+        # After a meeting (DESIGN.md 5.8), from the tick, so it comes after the result.
         run_in_background(tell_classic_fail_status(lobby))
     walked = 0.0 if meeting_is_running(lobby) else seconds
     return lobby.walkers.advance(walked, app.state.campus, ghosts=classic.eliminated)
@@ -907,8 +906,15 @@ async def close_every_open_task(lobby):
     Each player with an open task is sent `station_closed`, before the
     meeting, so the browser closes the window first.
     """
+    # First every task is closed, with no await in between, so no task can
+    # still be finished while the others are told; then everybody is told.
+    closed = []
     for name in lobby.names():
-        await close_open_task_of(lobby, name)
+        station = lobby.tasks.open_station_of(name) if lobby.tasks is not None else None
+        if station is not None:
+            lobby.tasks.close(name)
+            closed.append((name, station))
+    await asyncio.gather(*(send_to(name, protocol.station_closed(station)) for name, station in closed))
 
 
 async def close_open_task_of(lobby, name: str):
@@ -1400,6 +1406,28 @@ async def tell_hiding(name: str, hidden: bool):
     await send_to(name, {"type": "classic_hiding", "hidden": hidden})
 
 
+def settle_meeting(lobby):
+    """Apply a finished meeting once, and put everybody on the Main Deck at that moment (DESIGN.md 5.8).
+
+    Both happen with no await in between, so no message from a browser can
+    come between the end of the meeting and the move: nobody can hide, open
+    a task or report at the place of the meeting once it is over. The
+    living Free Riders' cooldown, which started again, is sent by the next
+    tick (`advance_classic_walkers`), after the meeting's result.
+    """
+    sync_classic_after_meeting(lobby)
+    classic = lobby.classic_round
+    if classic is not None and classic.take_back_to_the_deck():
+        put_everybody_on_the_deck(lobby)
+
+
+def put_everybody_on_the_deck(lobby):
+    """Every member of the lobby stands on the spawn of the Main Deck; everybody gets the positions."""
+    spawn = app.state.campus["spawn"]
+    for name in lobby.names():
+        lobby.walkers.place(name, (float(spawn["x"]), float(spawn["y"])))
+
+
 def sync_classic_after_meeting(lobby):
     """Apply a finished meeting's result to Classic, exactly once (M3-3.9).
 
@@ -1438,7 +1466,7 @@ def update_meeting_clock(lobby) -> bool:
     """
     now = seconds_now()
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
-    sync_classic_after_meeting(lobby)
+    settle_meeting(lobby)
     clock = meeting_clock_of(lobby.meeting, now)
     if clock == lobby.meeting_clock:
         return False
@@ -1473,7 +1501,7 @@ async def answer_chat_message(websocket: WebSocket, message: dict):
 
     now = seconds_now()
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
-    sync_classic_after_meeting(lobby)
+    settle_meeting(lobby)
     if not classic_meeting.can_send_chat(lobby.meeting, name, message["text"], now):
         # Only the sender hears about a refused chat (M3-2.1). If the time
         # moved the meeting on meanwhile, the tick sends that to everybody.
@@ -1511,7 +1539,7 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
     now = seconds_now()
     phase_before = lobby.meeting["phase"]
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
-    sync_classic_after_meeting(lobby)
+    settle_meeting(lobby)
     try:
         lobby.meeting = classic_meeting.cast_vote(
             lobby.meeting, name, message["target_id"]
@@ -1521,7 +1549,7 @@ async def answer_vote_message(websocket: WebSocket, message: dict):
         await websocket.send_json(protocol.rejection("vote_rejected"))
         if not phase_changed:
             return  # nothing changed, so the others need not hear anything
-    sync_classic_after_meeting(lobby)
+    settle_meeting(lobby)
     if lobby.meeting is not None:
         # This snapshot is the news of the moment: the tick must not send the
         # same one again in this second.
@@ -1555,7 +1583,7 @@ async def answer_skip_discussion_message(websocket: WebSocket):
     now = seconds_now()
     phase_before = lobby.meeting["phase"]
     lobby.meeting = classic_meeting.advance_meeting(lobby.meeting, now)
-    sync_classic_after_meeting(lobby)
+    settle_meeting(lobby)
     try:
         lobby.meeting = classic_meeting.agree_to_skip_discussion(lobby.meeting, name, now)
     except ValueError:
@@ -1563,7 +1591,7 @@ async def answer_skip_discussion_message(websocket: WebSocket):
         await websocket.send_json(protocol.rejection("skip_discussion_rejected"))
         if not phase_changed:
             return  # nothing changed, so the others need not hear anything
-    sync_classic_after_meeting(lobby)
+    settle_meeting(lobby)
     # The rejection above waited: another handler may have ended the round.
     if lobby.meeting is not None:
         # This snapshot is the news of the moment: the tick must not send the

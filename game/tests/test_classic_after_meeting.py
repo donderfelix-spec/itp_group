@@ -41,7 +41,7 @@ def open_active_task(connections, lobby, name):
     station = main.classic_task_stations(lobby.classic_round, name)[0]
     put(name, (STATIONS[station]["x"], STATIONS[station]["y"]))
     connections[name].send_json({"type": "open_station", "station": station})
-    assert connections[name].receive_json()["type"] == "station_opened"
+    read_until(connections[name], "station_opened")  # news of the round may come before it
     return station
 
 
@@ -178,3 +178,45 @@ def test_a_failed_player_has_their_open_task_closed(connect, clock):
     assert types.index("classic_fail") < types.index("station_closed")
     assert {"type": "station_closed", "station": station} in told
     assert lobby.tasks.open_station_of(victim) is None
+
+
+def test_the_move_to_the_deck_comes_with_the_result_before_any_tick(connect, clock):
+    # The meeting ends in a handler (the last Skip, S-162); no tick runs after it.
+    connections, lobby, fr, [caller, *_] = classic_round(connect)
+    start_emergency(connections, caller, clock)
+    everybody_skips(connections, lobby, clock)
+
+    for name in FIVE:
+        assert position_of(name) == SPAWN
+
+
+def test_right_after_the_meeting_a_free_rider_cannot_hide_at_the_place_of_the_meeting(connect, clock):
+    connections, lobby, fr, [caller, *_] = classic_round(connect)
+    spot = app.state.campus["hiding_spots"][0]
+    start_emergency(connections, caller, clock)
+    put(fr, (spot["x"], spot["y"]))  # he waits at a hiding spot during the meeting
+    everybody_skips(connections, lobby, clock)
+
+    connections[fr].send_json({"type": "hide"})
+
+    assert read_until(connections[fr], "error")[-1]["code"] == "hide_out_of_reach"
+    assert lobby.classic_round.hidden == {}
+    assert position_of(fr) == SPAWN
+
+
+def test_a_report_meeting_closes_an_open_task_too(connect, clock):
+    connections, lobby, fr, [reporter, worker, victim, *_] = classic_round(connect)
+    put(fr, FAIL_PLACE)
+    put(victim, (FAIL_PLACE[0] + 1, FAIL_PLACE[1]))
+    connections[fr].send_json({"type": "fail"})
+    sheet = read_until(connections[reporter], "classic_fail")[-1]
+    everything_sent(connections[worker])  # the news of the fail
+    station = open_active_task(connections, lobby, worker)
+    put(reporter, (sheet["position"]["x"], sheet["position"]["y"]))
+
+    connections[reporter].send_json({"type": "report", "sheet_id": sheet["sheet_id"], "position": sheet["position"]})
+
+    told = read_until(connections[worker], "meeting_state")
+    assert {"type": "station_closed", "station": station} in told
+    assert lobby.tasks.open_station_of(worker) is None
+    assert main.classic_task_stations(lobby.classic_round, worker) == [station]
