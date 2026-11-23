@@ -614,7 +614,7 @@ input {
 
 /* The card at the top left of the map (minigames/task_navigation.js): the
    room the own character stands in, and in a Duel or Solo round its next
-   task. It lies under the minigame window (z-index 1) and the ?debug panel
+   task. It lies under the minigame window (z-index 2) and the ?debug panel
    (z-index 1000) and never takes a click. It ends left of the own
    character, which stands in the middle of the map and is about 40 map
    units wide with its name; on a wide map a map unit is 1/260 of its width,
@@ -754,7 +754,9 @@ body:has(#screen-lobby:not([hidden])) .message {
 .minigame {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  /* 2, over the Duel ranking (1): the last task's "Done" stays on top for
+     its 0.5 s although the ranking appears at the same moment (S-200). */
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;

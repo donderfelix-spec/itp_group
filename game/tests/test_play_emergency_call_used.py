@@ -44,6 +44,7 @@ from pathlib import Path
 
 import pytest
 
+from rules import FAIL_COOLDOWN_SECONDS
 from server import protocol
 from test_play_emergency_button_range import (
     CENTRE,
@@ -208,6 +209,7 @@ def played(server):  # noqa: F811 (the imported fixture)
         # 3. The Free Rider calls; afterwards he has the fail button at the button.
         seen["fr_call"] = call_at_button(browser, fr, FR_AT_BUTTON, 2)
         end_meeting(browser, clock, 2)
+        clock.skip(FAIL_COOLDOWN_SECONDS)  # the cooldown starts again after a meeting (DESIGN.md 5.8)
         stand(browser, fr, FR_AT_BUTTON)
         browser.wait(fr, "document.querySelector('.use-button').classList.contains('fail-button')", timeout=5000)
         seen["fr_after_alone"] = use_button(browser, fr)

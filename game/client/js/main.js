@@ -223,7 +223,7 @@ window.Game = window.Game || {};
       callWorld('startOfRound'); // everybody stands and faces right
     }
     if (!isRound) {
-      Game.minigames.close(); // no round, no task
+      Game.minigames.close({ keepDone: true }); // no round, no task; a "Done" still shows its 0.5 s
       classicTasks = [];
       classicRole = null;
       showClassicTasks();
@@ -403,7 +403,7 @@ window.Game = window.Game || {};
   // The round is over. The server has closed an open task already; the
   // window goes too, so the ranking is not hidden behind it.
   function whenDuelResult(message) {
-    Game.minigames.close();
+    Game.minigames.close({ keepDone: true }); // the last task's "Done" still shows its 0.5 s (S-200)
     Game.duel.showResult(message);
   }
 

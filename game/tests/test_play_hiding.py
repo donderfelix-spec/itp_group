@@ -778,8 +778,8 @@ def classic(server):
         browser.shot(caller, "8_meeting_seen_by_caller")
         browser.shot(fr, "8_meeting_seen_by_hidden_free_rider")
         # The pages hold every character during the meeting, but the server
-        # still sends positions when somebody's place changes (it does not
-        # stop walking yet, M3-3.13): a player is put a little further.
+        # still sends positions when somebody's place changes (nobody walks
+        # during a meeting, DESIGN.md 5.8): a player is put a little further.
         discussion = {label: told_after(browser, label, "meeting_state") for label in LABELS}
         for step_ in range(3):
             put(names[caller], (BUTTON["x"] + 8, BUTTON["y"] + 2 * step_))
@@ -789,8 +789,15 @@ def classic(server):
         in_meeting = {label: browser.frames(label, discussion[label]) for label in LABELS}
         clock.skip(46)
         wait_for_meeting_phase(browser, LABELS, "voting", 1)
+        in_place = everybody_where_they_are(names.values())
         clock.skip(31)
         wait_for_meeting_phase(browser, LABELS, "result", 1)
+        # After a meeting everybody stands on the Main Deck again (DESIGN.md
+        # 5.8). This play goes on from the places of the meeting, so once
+        # the server has sent everybody to the deck, they are put back.
+        wait_until(lambda: all(position(name) == SPAWN for name in names.values()), "everybody on the deck")
+        for name, place in in_place.items():
+            put(name, place)
         time.sleep(0.5)
         during = {}
         for label in (far, near, caller):

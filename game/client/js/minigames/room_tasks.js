@@ -307,7 +307,7 @@ window.Game = window.Game || {};
   }
 
   function recipe(content, ui) {
-    ui.game.append(element('p', 'campus-story', 'The Latecomer ordered a “' + content.drink + '”. This is now your responsibility.'));
+    ui.game.append(element('p', 'campus-story', 'The Latecomer ordered “' + content.drink + '”. This is now your responsibility.'));
     const slip = element('ol', 'campus-recipe');
     content.recipe.forEach((step) => slip.append(element('li', '', step)));
     const cup = element('div', 'campus-coffee-cup');

@@ -186,9 +186,10 @@ def test_the_free_rider_is_refused_at_every_station_and_has_no_active_task(conne
 
 
 def test_a_task_open_when_a_meeting_starts_stays_the_active_one(connect, clock):
-    """As on main, the window may stay open in a meeting; S-197 changes nothing about that.
+    """The meeting closes the open window without counting (M3-3.23, S-199).
 
-    The active task does not move on by itself, and finishing it reveals the next.
+    The active task does not move on by itself: the same task is still the
+    active one, and the closed window cannot be finished any more.
     """
     players, _code, _public, _messages = start_classic(connect)
     game = classic_for("Mara")
@@ -201,8 +202,11 @@ def test_a_task_open_when_a_meeting_starts_stays_the_active_one(connect, clock):
     clock.wait(46)
     players[caller].send_json({"type": "emergency"})
     assert players[caller].receive_json()["type"] == "meeting_state"
-    assert any(message["type"] == "meeting_state" for message in news(players[worker]))
-    assert classic_task_stations(game, worker) == [first]
-    assert ask(players[worker], {"type": "finish_station"})["type"] == "classic_progress"
     told = news(players[worker])
-    assert {"type": "station_done", "station": first, "task_stations": [second]} in told
+    assert any(message["type"] == "meeting_state" for message in told)
+    assert {"type": "station_closed", "station": first} in told
+    assert classic_task_stations(game, worker) == [first]
+    players[worker].send_json({"type": "finish_station"})
+    assert [m["code"] for m in news(players[worker]) if m["type"] == "error"] == ["no_task_open"]
+    assert classic_task_stations(game, worker) == [first]
+    assert second not in classic_task_stations(game, worker)
