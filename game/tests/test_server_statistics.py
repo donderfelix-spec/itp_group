@@ -10,6 +10,7 @@ test that wants to read it waits for it first (`wait_for_rounds`).
 
 import asyncio
 import logging
+import re
 import threading
 import time
 
@@ -801,3 +802,22 @@ def test_the_statistics_script_never_writes_html(client):
     script = client.get("/js/lobby/statistics.js").text
     code = "\n".join(line for line in script.splitlines() if not line.strip().startswith("//"))
     assert "innerHTML" not in code and "insertAdjacentHTML" not in code
+
+
+def test_the_leaderboard_has_a_column_for_each_number_it_is_sent(client):
+    # S-217: five headings, in the order the script fills the cells.
+    page = client.get("/").text
+    table = page[page.index('id="leaderboard-table"'):page.index('id="leaderboard-rows"')]
+    headings = re.findall(r'<th scope="col"[^>]*>([^<]*)</th>', table)
+    assert headings == ["Place", "Player", "Classic Wins", "Duel Wins", "Duel Best Time"]
+    script = client.get("/js/lobby/statistics.js").text
+    cells = [
+        "String(player.place)",
+        "cell(player.name",
+        "String(player.classic_wins)",
+        "String(player.duel_wins)",
+        "timeText(player.best_duel_seconds)",
+    ]
+    row_code = script[script.index("function playerRow"):]
+    places = [row_code.index(cell) for cell in cells]
+    assert places == sorted(places)
