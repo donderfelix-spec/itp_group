@@ -339,7 +339,8 @@ def lobby_state(code: str, host: str, players, mode: str = DEFAULT_MODE, phase: 
     """`players` is a list of (name, character) pairs, in the order they joined.
 
     Every player has a character from the moment they join (S-75). Without
-    `mode` and `phase` this is the state of a new lobby (S-91).
+    `mode` and `phase` this is the state of a lobby in Duel before a round
+    (S-91); a new lobby with its one player is in Solo (S-203).
     """
     listed = [{"name": name, "character": character} for name, character in players]
     return {
@@ -380,6 +381,22 @@ def positions(players, hidden=()) -> dict:
             entry["hidden"] = True
         listed.append(entry)
     return {"type": "positions", "players": listed}
+
+
+def classic_sheet(sheet_id: str, position, character, reported: bool) -> dict:
+    """An F-sheet that came into this player's view (S-202): where it lies.
+
+    Sent once per sheet and player, only to those who may know the place
+    (`server/classic/sheets.py`). `reported` says whether it already started
+    its meeting, so the page shows no Report for it.
+    """
+    return {
+        "type": "classic_sheet",
+        "sheet_id": sheet_id,
+        "character": character,
+        "position": {"x": position[0], "y": position[1]},
+        "reported": bool(reported),
+    }
 
 
 def station_opened(station: int, title: str, content: dict) -> dict:

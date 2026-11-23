@@ -229,6 +229,7 @@ def test_the_start_is_refused_when_the_only_other_player_has_just_closed_the_con
 def test_a_host_who_was_alone_can_start_as_soon_as_somebody_joined(connect):
     mara = account(connect, "Mara")
     code = answer_to(mara, {"type": "create_lobby"})["code"]
+    answer_to(mara, {"type": "choose_mode", "mode": "duel"})  # a new lobby is in Solo (S-203); Duel needs two
     assert answer_to(mara, START) == TOO_FEW_FOR_DUEL
     tiago = account(connect, "Tiago")
     tiago.send_json({"type": "join_lobby", "code": code})
@@ -425,7 +426,8 @@ def test_a_lobby_with_the_code_of_an_abandoned_round_starts_fresh(connect, monke
     # The server happens to pick the same four letters again.
     monkeypatch.setattr(main, "pick_lobby_code", lambda: code)
     created = answer_to(ines, {"type": "create_lobby"})
-    assert created == protocol.lobby_state(code, "Ines", [("Ines", protocol.CHARACTERS[0])], "duel", "lobby")
+    # Ines alone: a new lobby is in Solo (S-203).
+    assert created == protocol.lobby_state(code, "Ines", [("Ines", protocol.CHARACTERS[0])], "solo", "lobby")
     assert wait_for_positions(ines, lambda positions: True) == {"Ines": AT_THE_SPAWN}
     # It is an ordinary lobby: it can be joined and its characters can be chosen.
     rui = account(connect, "Rui")
