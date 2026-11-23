@@ -148,9 +148,11 @@
   function darkenSoftly(ctx, view, campus, origin) {
     // One spare unit on every side, so the smooth scaling has no seam at
     // the edge of the screen.
+    // The size depends only on the size of the view, not on where it lies,
+    // so the canvases are not made anew in nearly every frame while walking.
     var area = { x: Math.floor(view.x) - 1, y: Math.floor(view.y) - 1 };
-    area.w = Math.ceil(view.x + view.w) + 1 - area.x;
-    area.h = Math.ceil(view.y + view.h) + 1 - area.y;
+    area.w = Math.ceil(view.w) + 3;
+    area.h = Math.ceil(view.h) + 3;
     fogCanvas = sizedCanvas(fogCanvas, area.w, area.h);
     layerCanvas = fogCanvas && sizedCanvas(layerCanvas, area.w, area.h);
     smoothCanvas = layerCanvas && sizedCanvas(smoothCanvas, area.w * SMOOTH_SCALE, area.h * SMOOTH_SCALE);

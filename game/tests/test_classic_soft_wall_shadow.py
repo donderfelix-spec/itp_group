@@ -137,6 +137,16 @@ def test_the_soft_fog_covers_the_whole_view_and_leaves_the_canvas_as_it_was():
     assert soft["mainDepth"] == 0 and soft["mainSmoothing"] is True
 
 
+@needs_node
+def test_walking_does_not_make_the_fog_canvases_anew():
+    soft = _run_node()["soft"]
+    # Three canvases, made once; moving the same view never resizes them.
+    assert soft["made"] == 3
+    assert soft["walking"] == [
+        {"label": "fog", "resized": 0}, {"label": "layer", "resized": 0}, {"label": "smooth", "resized": 0},
+    ]
+
+
 # Players are drawn whole
 
 

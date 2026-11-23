@@ -43,13 +43,20 @@ function recordingContext(name, log) {
   return ctx;
 }
 
+const made = [];
+
 function recordedDarkenSoftly(origin) {
   const log = [];
-  let made = 0;
   global.document = {
     createElement(tag) {
-      const label = ['fog', 'layer', 'smooth'][made++];
-      const canvas = { label, tag, width: 300, height: 150 };
+      const label = ['fog', 'layer', 'smooth'][made.length];
+      const canvas = { label, tag, resized: 0 };
+      // Counts how often a size is set, as a real canvas is cleared and made anew then.
+      let width = 300;
+      let height = 150;
+      Object.defineProperty(canvas, 'width', { get: () => width, set: (v) => { width = v; canvas.resized++; } });
+      Object.defineProperty(canvas, 'height', { get: () => height, set: (v) => { height = v; canvas.resized++; } });
+      made.push(canvas);
       const context = recordingContext(label, log);
       canvas.getContext = () => context;
       return canvas;
@@ -59,8 +66,15 @@ function recordedDarkenSoftly(origin) {
   const view = { x: origin.x - 130.5, y: origin.y - 92.25, w: 261, h: 184.5 };
   const answer = vision.darkenSoftly(main, view, campus, origin);
   const centreView = vision.boundary(campus, origin).length;
+  const firstFrame = log.slice(); // the walking frames below record into the same log
+  // Walking: the same view size at other places, also by fractions of a unit.
+  const resizedBefore = made.map((canvas) => canvas.resized);
+  [0.3, 0.6, 1.45, 7.9, -3.25].forEach((shift) => {
+    vision.darkenSoftly(recordingContext('main', []), { ...view, x: view.x + shift, y: view.y - shift }, campus, origin);
+  });
+  const walking = made.map((canvas, i) => ({ label: canvas.label, resized: canvas.resized - resizedBefore[i] }));
   delete global.document;
-  return { answer, view, log, centreView, mainDepth: main.depth(), mainSmoothing: main.imageSmoothingEnabled };
+  return { walking, made: made.length, answer, view, log: firstFrame, centreView, mainDepth: main.depth(), mainSmoothing: main.imageSmoothingEnabled };
 }
 
 let input = '';
