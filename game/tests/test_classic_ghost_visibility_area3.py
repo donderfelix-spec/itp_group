@@ -77,7 +77,7 @@ def test_living_clients_do_not_receive_ghost_roster_or_position(names, connect, 
     connections[ghost_id].send_json({"type": "finish_station"})
     assert receive_type(connections[ghost_id], "station_done") == {
         "type": "station_done", "station": station,
-        "task_stations": [int(task) for task in round_state.tasks[ghost_id] if int(task) != station],
+        "task_stations": [int(round_state.tasks[ghost_id][1])],  # S-197: the next task only
     }
     for connection in connections.values():
         assert connection.receive_json()["type"] == "classic_progress"

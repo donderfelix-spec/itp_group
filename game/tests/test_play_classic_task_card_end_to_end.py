@@ -1,4 +1,4 @@
-"""S-143 / S-154: the Classic task card follows the real server, end to end.
+"""S-143 / S-154 / S-197: the Classic task card follows the real server, end to end.
 
 The play test of the panel (test_play_duel_clock.py) hands the page made-up
 `station_done` messages. This test lets the server send them: five guests
@@ -6,11 +6,13 @@ play Classic in Chromium against the real server, run in this process so the
 test can put players where the tick would after a long walk (as
 task_helpers.put does). Then
 
-- one High Performer stands at its first own station, presses E, waits and
-  clicks "Finish task" in the page; after the server's `station_done` exactly
-  that line stays in its place, faded and marked done, and the group bar moves;
+- every High Performer's card at the top left names its one active task and
+  the side panel shows no task card (S-197); the Free Rider's names none;
+- one High Performer stands at its active station, presses E, waits and
+  clicks "Finish task" in the page; after the server's `station_done` the
+  card names the next task, and the group bar moves;
 - another High Performer stands next to the Free Rider, who presses Q; the
-  failed player (a ghost, DESIGN rule 9) still sees all its own tasks.
+  failed player (a ghost, DESIGN rule 9) still sees its active task.
 
 The browser and this test talk through the browser script's stdin and stdout:
 the script prints where players must stand, this test puts them there and
@@ -123,28 +125,32 @@ def test_classic_task_card_follows_the_real_server(played):
     pages = played["pages"]
     assert len(pages) == 5
     assert [page["role"] for page in pages].count("FR") == 1
+    # S-197: the side panel shows no task card; the card at the top left of
+    # the map names the own one active task, and nothing for the Free Rider.
     for page in pages:
+        assert page["cardLines"] == [], page
         if page["role"] == "HP":
-            assert page["cardLines"] == page["names"], page
+            assert len(page["tasks"]) == 1, page
+            assert page["top"] == STATION[page["tasks"][0]]["name"], page
         else:
-            assert page["cardLines"] == ["Fake tasks: stand at a station to look busy."]
+            assert page["tasks"] == [] and page["top"] is None, page
 
-    # A High Performer finished its first station through the page.
+    # A High Performer finished its active station through the page.
     done = played["done"]
-    assert done["stationDone"]["station"] == done["station"]
-    assert done["stationDone"]["task_stations"] == done["tasksBefore"][1:]
-    # The finished station stays in its place on the card, only faded (brief 4).
-    assert [item["name"] for item in done["itemsAfter"]] == done["namesBefore"]
-    assert [item["done"] for item in done["itemsAfter"]] == [True] + [False] * (len(done["namesBefore"]) - 1)
-    assert [item["faded"] for item in done["itemsAfter"]] == [item["done"] for item in done["itemsAfter"]]
-    assert not any(item["crossed"] for item in done["itemsAfter"])
+    assert done["stationDone"]["station"] == done["station"] == done["tasksBefore"][0]
+    following = done["stationDone"]["task_stations"]
+    assert len(following) == 1 and following[0] != done["station"]
+    # The card at the top left follows the next task; the panel stays empty.
+    assert done["topBefore"] == STATION[done["station"]]["name"]
+    assert done["topAfter"] == STATION[following[0]]["name"]
+    assert done["cardAfter"] == [] and done["itemsAfter"] == []
     assert done["progressBefore"] == "0% complete"
     assert done["progressAfter"] != done["progressBefore"]
     assert done["fillAfter"] > done["fillBefore"]
 
-    # A High Performer failed by the Free Rider keeps all its own tasks on its card.
+    # A High Performer failed by the Free Rider keeps its active task (a ghost, rule 9).
     ghost = played["ghost"]
     assert ghost["failed"]
-    assert ghost["cardAfter"] == ghost["namesBefore"]
+    assert ghost["topAfter"] == STATION[ghost["tasks"][0]]["name"]
 
     assert played["problems"] == []
