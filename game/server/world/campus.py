@@ -146,6 +146,9 @@ def check_campus(campus) -> dict:
             raise CampusError("A hiding radius must be above 0.")
         if not is_free(spot["x"], spot["y"], solids, width, height):
             raise CampusError("A hiding spot must have a walkable centre.")
+        # Which drawing shows the spot, for a place with more than one spot
+        # (two on the deck, M3-1.7): only drawn, optional.
+        _optional_art_name(spot, "object", f"hiding_spots[{index}]")
     for index, band in enumerate(_list(campus, "bands")):
         _check_rectangle(band, f"bands[{index}]", width, height)
 

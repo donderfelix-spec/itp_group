@@ -56,9 +56,11 @@ CAMPUS = app.state.campus
 HEDGE_SPOT = CAMPUS["hiding_spots"][0]
 CENTRE = (float(HEDGE_SPOT["x"]), float(HEDGE_SPOT["y"]))
 LABELS = ["P0", "P1", "P2", "P3"]
-# Where the Free Rider stands when he presses E: in the hedge, 18 units
-# right of the spot's centre (within the reach of 25).
-BESIDE = (CENTRE[0] + 18, CENTRE[1])
+# Where the Free Rider stands when he presses E: beside the hedge, 18 units
+# left of the spot's centre (within the reach of 25). Left since M3-1.7
+# (S-196): the hedge stands against the deck's right wall, and 18 units to
+# the right of the spot is inside the wall.
+BESIDE = (CENTRE[0] - 18, CENTRE[1])
 # On the open deck straight below the spot, 30 and 40 units from its centre.
 AT_30 = (CENTRE[0], CENTRE[1] + 30)
 AT_40 = (CENTRE[0], CENTRE[1] + 40)

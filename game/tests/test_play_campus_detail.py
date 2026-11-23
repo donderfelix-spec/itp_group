@@ -161,8 +161,8 @@ def centre_lies_in(spot, solid):
     )
 
 
-def test_one_of_the_four_hiding_spots_lies_in_the_walkable_hedge():
-    assert len(HIDING_SPOTS) == 4
+def test_one_of_the_seven_hiding_spots_lies_in_the_walkable_hedge():
+    assert len(HIDING_SPOTS) == 7  # four until M3-1.7 added three (S-196)
     assert HEDGE["walkable"] is True
     assert len([spot for spot in HIDING_SPOTS if centre_lies_in(spot, HEDGE)]) == 1
 

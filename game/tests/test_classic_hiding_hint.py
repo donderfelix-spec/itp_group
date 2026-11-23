@@ -129,7 +129,7 @@ def test_standing_in_a_spot_alone_no_longer_hides():
 
 
 @needs_node
-@pytest.mark.parametrize("index", [0, 1, 2, 3])
+@pytest.mark.parametrize("index", [0, 1, 2, 3, 4, 5, 6])  # seven spots since M3-1.7
 def test_every_spot_is_in_reach_up_to_the_use_range_included(index):
     spot = SPOTS[index]
     reach = CAMPUS["use_range"]

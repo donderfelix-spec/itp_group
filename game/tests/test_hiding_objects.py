@@ -1,14 +1,16 @@
 """The hiding spots are objects of the map (M3-1.5, S-190).
 
-Each of the four hiding spots shows an object that fits its place instead
-of the dashed circle: boxes in the aisle of Pingo Doce, a beanbag by the
-bookshelf of the CTT Student Hall, a potted plant in the corner of the
-Canteen and a hollow in the hedge on the Main Deck. Each stands in a soft
-shade as large as the spot. The objects are only drawn:
+Each hiding spot shows an object that fits its place instead of the dashed
+circle: boxes in the aisle of Pingo Doce, a beanbag by the bookshelf of the
+CTT Student Hall, a potted plant in the corner of the Canteen and a hollow
+in the hedge on the Main Deck. Each stands in a soft shade as large as the
+spot. Since M3-1.7 (S-196) three more spots have their objects (coffee
+sacks in Mon Café, folding chairs in the Lecture Hall, sun loungers on the
+Main Deck), and the hedge, the boxes and the plant stand in new places. The
+objects are only drawn:
 
-- the map file is not changed, so the spots keep their places and radii
-  and nothing new is solid (the walking rules and the server's hiding rule
-  stay as they are);
+- the spots lie at their places with their radii and nothing new is solid
+  (the walking rules and the server's hiding rule stay as they are);
 - every spot has its own object, drawn inside its circle (plus the
   drawing overhang) and on no other solid or station;
 - without its drawing a spot still shows the dashed circle.
@@ -36,12 +38,16 @@ GAME = Path(__file__).resolve().parents[1]
 BROWSER_SCRIPT = Path(__file__).with_name("hiding_objects_in_browser.js")
 CAMPUS = load_campus()
 
-# The four spots of S-62, as on main: (x, y, r) -> the room they lie in.
+# The spots, (x, y, r) -> the room they lie in. Of the four of S-62, M3-1.7
+# (S-196) moved all but the beanbag; the last three are new.
 SPOTS = {
-    (595, 249, 9): None,  # the hedge on the Main Deck
-    (549, 468, 9): "pingo-doce",
+    (644, 297, 9): None,  # the hedge on the Main Deck (was 595, 249)
+    (573, 499, 9): "pingo-doce",  # was 549, 468
     (136, 524, 9): "ctt",
-    (636, 128, 9): "canteen",
+    (646, 156, 9): "canteen",  # was 636, 128
+    (406, 133, 9): "mon-cafe",  # new: coffee sacks
+    (39, 154, 9): "lecture-hall",  # new: folding chairs
+    (183, 539, 9): None,  # new: sun loungers on the Main Deck
 }
 # How far a drawing may reach past its spot's circle (DRAWING_OVERHANG in draw.js).
 REACH = 4
@@ -55,7 +61,7 @@ needs_chromium = pytest.mark.skipif(not playwright_works(), reason="Node with Pl
 # ---- The map file: places kept, nothing new solid -------------------------
 
 
-def test_the_four_spots_keep_their_places_and_radii():
+def test_the_seven_spots_lie_at_their_places_with_their_radii():
     assert {(spot["x"], spot["y"], spot["r"]) for spot in CAMPUS["hiding_spots"]} == set(SPOTS)
 
 
@@ -68,7 +74,8 @@ def solid_under(spot, solids=CAMPUS["solids"]):
 
 def test_no_solid_but_the_walkable_hedge_lies_on_a_spot():
     found = {(spot["x"], spot["y"]): solid_under(spot) for spot in CAMPUS["hiding_spots"]}
-    assert found == {(595, 249): ["deck-hedge"], (549, 468): [], (136, 524): [], (636, 128): []}
+    assert found == {(644, 297): ["deck-hedge"], (573, 499): [], (136, 524): [], (646, 156): [],
+                     (406, 133): [], (39, 154): [], (183, 539): []}
     hedge = next(solid for solid in CAMPUS["solids"] if solid["id"] == "deck-hedge")
     assert hedge["walkable"] is True
 
@@ -130,6 +137,30 @@ def test_every_spot_has_its_own_object_from_its_rooms_art(drawn):
     assert {place: (spot["room"], spot["hasObject"]) for place, spot in drawn["spots"].items()} == {
         place: (room, True) for place, room in SPOTS.items()
     }
+
+
+# The drawing each spot takes from the art files: "room-id:spot" in a room,
+# "spot" for the hedge, and the deck's second spot names its own (M3-1.7).
+DRAWINGS = {
+    (644, 297, 9): "spot",
+    (573, 499, 9): "pingo-doce:spot",
+    (136, 524, 9): "ctt:spot",
+    (646, 156, 9): "canteen:spot",
+    (406, 133, 9): "mon-cafe:spot",
+    (39, 154, 9): "lecture-hall:spot",
+    (183, 539, 9): "sun-loungers",
+}
+
+
+@needs_chromium
+def test_every_spot_takes_its_own_drawing_and_the_deck_has_two_different_ones(drawn):
+    assert {place: spot["drawing"] for place, spot in drawn["spots"].items()} == DRAWINGS
+    assert len(set(DRAWINGS.values())) == len(DRAWINGS)
+
+
+def test_only_the_second_spot_on_the_deck_names_its_drawing():
+    named = {(spot["x"], spot["y"]): spot["object"] for spot in CAMPUS["hiding_spots"] if "object" in spot}
+    assert named == {(183, 539): "sun-loungers"}
 
 
 @needs_chromium

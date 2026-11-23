@@ -41,10 +41,11 @@ FAR_PLACES = [(100.0, 330.0), (300.0, 330.0), (300.0, 400.0), (200.0, 300.0), (4
 FAIL_PLACE = (500.0, 450.0)
 SHEET_PLACE = (FAIL_PLACE[0] + 1, FAIL_PLACE[1])  # where the victim stands
 HEDGE = (float(app.state.campus["hiding_spots"][0]["x"]), float(app.state.campus["hiding_spots"][0]["y"]))
-# 45 units right of the hedge, in clear sight of it (S-185) but beyond the
+# 45 units left of the hedge, in clear sight of it (S-185) but beyond the
 # reveal range of 35: who stands here sees the hider only by rule, never by
-# being close.
-HEDGE_WATCHER = (HEDGE[0] + 45.0, HEDGE[1])
+# being close. Left since M3-1.7 (S-196): the hedge stands against the deck's
+# right wall now, and 45 units to its right is behind the wall.
+HEDGE_WATCHER = (HEDGE[0] - 45.0, HEDGE[1])
 
 WAIT_SECONDS = 10.0  # the longest a step waits for the messages it expects
 SIGN_UP_SECONDS = 30.0  # hashing a password takes a while, more so with several test runs at once
