@@ -884,11 +884,24 @@ Game.world = Game.world || {};
     ctx.setLineDash([]);
   }
 
-  // The red button for the emergency meeting.
-  function drawButton(ctx, campus, visible) {
-    if (visible && campus.button) {
-      circle(ctx, campus.button.x, campus.button.y, campus.button.r, CORAL, 2.5);
-    }
+  // The emergency switch is grey until the round's unlock time.
+  function drawButton(ctx, campus, state) {
+    if (!campus.button || (state !== true && state !== "locked")) return;
+    var button = campus.button;
+    var x = button.x;
+    var y = button.y;
+    var r = button.r;
+    var ready = state === true;
+    var half = r * 0.86;
+    var plate = { x: x - half, y: y - half, w: 2 * half, h: 2 * half };
+
+    box(ctx, { x: plate.x, y: plate.y + r * 0.14, w: plate.w, h: plate.h },
+      r * 0.22, OUTLINE, 0);
+    box(ctx, plate, r * 0.22, ready ? YELLOW : "#B9B8BF", r * 0.12);
+    circle(ctx, x, y, r * 0.69, ready ? "#9E352E" : "#60616B", r * 0.12);
+    circle(ctx, x, y - r * 0.12, r * 0.54, ready ? CORAL : "#81828D", 0);
+    line(ctx, x, y - r * 0.41, x, y - r * 0.04, CREAM, r * 0.15);
+    circle(ctx, x, y + r * 0.15, r * 0.087, CREAM, 0);
   }
 
   // ---- Task stations (Felix, 2026-11-21) -------------------------------
@@ -1235,7 +1248,7 @@ Game.world = Game.world || {};
   // `pulsingStations` is the list of station ids whose outline pulses and
   // `now` the time of the frame (see drawStations).
   // The order matters: what is drawn later lies on top.
-  function drawMap(ctx, campus, view, emergencyVisible, pulsingStations, now) {
+  function drawMap(ctx, campus, view, emergencyButtonState, pulsingStations, now) {
     if (!ctx || !campus || !campus.colours) {
       return;
     }
@@ -1244,7 +1257,7 @@ Game.world = Game.world || {};
     ctx.lineJoin = "round";
     drawStaticPart(ctx, campus, view);
     drawHidingSpots(ctx, campus);
-    drawButton(ctx, campus, emergencyVisible === true);
+    drawButton(ctx, campus, emergencyButtonState);
     drawStations(ctx, campus, pulsingStations, now);
     ctx.restore();
   }
