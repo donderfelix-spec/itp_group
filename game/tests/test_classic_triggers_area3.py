@@ -165,6 +165,8 @@ def test_emergency_is_living_only_once_per_player_and_chat_vote_reach_all(names,
         assert connection.receive_json()["type"] == "positions"
 
     # The completed meeting returns to play; one other living player can still call once.
+    # After the meeting everybody stands on the Main Deck (DESIGN.md 5.8): back to the button.
+    stand_at_emergency_button(reporter_id, another_living)
     connections[reporter_id].send_json({"type": "emergency"})
     assert connections[reporter_id].receive_json()["code"] == "emergency_rejected"
     connections[another_living].send_json({"type": "emergency"})
