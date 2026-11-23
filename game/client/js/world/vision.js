@@ -58,8 +58,6 @@
   // 0.74). The soft edge fades into this same value, so there is no seam.
   var FOG = "rgba(34, 36, 54, 0.6)";
   var CLEAR = "rgba(34, 36, 54, 0)";
-  var FOG_COLOUR = "rgb(34, 36, 54)";
-  var FOG_ALPHA = 0.6; // the alpha of FOG
   var OPAQUE = "rgba(34, 36, 54, 1)";
   // The view fades into the fog over its outer part: clear up to this share
   // of the range, then darker until it reaches the full fog at the range.
@@ -109,8 +107,8 @@
   // in headless Chromium at device scale 2: 13 ms for that step alone), so
   // it is smoothed onto a canvas SMOOTH_SCALE times as large, whose pixels
   // are only about 1.5 screen pixels wide, and that one is copied without
-  // smoothing. The whole soft fog then takes about 7 ms per frame at device
-  // scale 2 (the hard fog 5.4 ms) and 5.3 ms at scale 1 (1.7 ms).
+  // smoothing. The whole soft fog then takes about 5.5 ms per frame at
+  // device scale 2 (the hard fog 5.3 ms) and 5 ms at scale 1 (1.7 ms).
   var SMOOTH_SCALE = 3;
   var fogCanvas = null;
   var layerCanvas = null;
@@ -196,9 +194,10 @@
     fade.addColorStop(1, OPAQUE);
     fillPath(fog, null, fade, area);
 
-    // 5. In the fog's colour, scaled up smoothly, at the fog's alpha.
+    // 5. In the fog itself (colour and alpha: source-in multiplies the
+    //    shade by the fog's 0.6), scaled up smoothly.
     begin(fog, whole, "source-in", 1);
-    fillPath(fog, null, FOG_COLOUR, whole);
+    fillPath(fog, null, FOG, whole);
     fog.globalCompositeOperation = "source-over";
     var smooth = smoothCanvas.getContext("2d");
     smooth.globalCompositeOperation = "copy";
@@ -207,7 +206,6 @@
     smooth.globalCompositeOperation = "source-over";
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.globalAlpha = FOG_ALPHA;
     ctx.drawImage(smoothCanvas, area.x, area.y, area.w, area.h);
     ctx.restore();
     return true;

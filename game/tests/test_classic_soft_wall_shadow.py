@@ -115,9 +115,9 @@ def test_the_soft_fog_counts_the_points_of_sight_that_see_and_keeps_the_range_fa
     assert outside == [["evenodd", "rgba(34, 36, 54, 1)"]]
     gradients = [args for canvas, call, args, _ in log if call == "createRadialGradient"]
     assert gradients == [[*VIEWER, 120 * 0.6, *VIEWER, 120]]
-    # In the fog's colour, drawn at the fog's alpha (S-193).
+    # Into the fog itself, colour and alpha (S-193): source-in multiplies the shade by 0.6.
     recolour = [state for canvas, call, args, state in log
-                if canvas == "fog" and call == "fill" and args[1] == "rgb(34, 36, 54)"]
+                if canvas == "fog" and call == "fill" and args[1] == "rgba(34, 36, 54, 0.6)"]
     assert recolour == [["source-in", 1]]
 
 
@@ -133,7 +133,7 @@ def test_the_soft_fog_covers_the_whole_view_and_leaves_the_canvas_as_it_was():
     assert x + w >= view["x"] + view["w"] and y + h >= view["y"] + view["h"]
     main_calls = [(call, state) for canvas, call, _, state in soft["log"] if canvas == "main"]
     assert [call for call, _ in main_calls] == ["save", "drawImage", "restore"]
-    assert main_calls[1][1] == ["source-over", 0.6]
+    assert main_calls[1][1] == ["source-over", 1]
     assert soft["mainDepth"] == 0 and soft["mainSmoothing"] is True
 
 
