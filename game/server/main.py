@@ -21,6 +21,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
+from starlette.datastructures import Headers
 from starlette.websockets import WebSocketState
 
 from server import protocol
@@ -122,6 +123,47 @@ async def add_security_headers(request, call_next):
     return response
 
 
+class OriginCheck:
+    """Refuses a WebSocket from a page of another site at the handshake (S-207).
+
+    It sits in front of every WebSocket endpoint, so `game_socket` never sees
+    a refused connection. Closing before accepting gives the browser HTTP 403.
+    """
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "websocket" and not origin_is_allowed(Headers(scope=scope)):
+            log_refusal(Headers(scope=scope).get("origin", ""))
+            await send({"type": "websocket.close", "code": 1008, "reason": ""})
+            return
+        await self.inner(scope, receive, send)
+
+
+def origin_is_allowed(headers: Headers) -> bool:
+    """May the page that opens this connection connect? (`server/net/origin.py`)"""
+    if not app.state.origin_check:
+        return True
+    return origins.is_origin_allowed(
+        headers.get("origin"),
+        headers.get("host"),
+        headers.getlist("x-forwarded-host"),
+        app.state.allowed_origins,
+    )
+
+
+def log_refusal(origin: str):
+    """One line with the origin's host only, at most once a minute with the count in between."""
+    log_it, swallowed = app.state.refused_origins.happened("refused origin", seconds_now())
+    if log_it:
+        more = f" ({swallowed} more refused since the last line)" if swallowed else ""
+        logger.warning("Refused a WebSocket from %s%s", origins.origin_host_for_log(origin), more)
+
+
+app.add_middleware(OriginCheck)
+
+
 @app.get("/health")
 def health():
     """Used by the host and by the tests to see that the server is up."""
@@ -130,9 +172,6 @@ def health():
 
 @app.websocket("/ws")
 async def game_socket(websocket: WebSocket):
-    if not origin_is_allowed(websocket):
-        await refuse_handshake(websocket)
-        return
     await websocket.accept()
     try:
         await read_messages(websocket)
@@ -149,31 +188,6 @@ async def game_socket(websocket: WebSocket):
         app.state.attempt_limits.forget(websocket)
         if name is not None:
             await take_out_of_lobby(name)
-
-
-def origin_is_allowed(websocket: WebSocket) -> bool:
-    """May the page that opens this connection connect? (S-207, `server/net/origin.py`)"""
-    if not app.state.origin_check:
-        return True
-    headers = websocket.headers
-    return origins.is_origin_allowed(
-        headers.get("origin"),
-        headers.get("host"),
-        headers.getlist("x-forwarded-host"),
-        app.state.allowed_origins,
-    )
-
-
-async def refuse_handshake(websocket: WebSocket):
-    """Close before accepting: the browser gets HTTP 403 and the page never connects."""
-    log_it, swallowed = app.state.refused_origins.happened("refused origin", seconds_now())
-    if log_it:
-        host = origins.origin_host_for_log(websocket.headers.get("origin", ""))
-        more = f" ({swallowed} more refused since the last line)" if swallowed else ""
-        logger.warning("Refused a WebSocket from %s%s", host, more)
-    # The other side may already be gone; there is nothing left to do then.
-    with contextlib.suppress(RuntimeError, OSError, WebSocketDisconnect):
-        await websocket.close(code=1008)
 
 
 async def read_messages(websocket: WebSocket):
