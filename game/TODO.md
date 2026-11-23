@@ -244,7 +244,7 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 - [ ] **M4-4.2** Deadline mode
 - [ ] **M4-1.1** Finished graphics for rooms and characters
 - [ ] **M4-2.1** Friends: request, accept, decline, status, invitation to the lobby, leaderboard among friends (S-41)
-- [ ] **M4-2.2** Phones and tablets (Felix, 2026-11-23): walking needs the keys W, A, S, D or the arrows (`client/js/world/world.js`), and the page has no touch controls for walking, so the game cannot be played on a touch-only device; only the action buttons, the minigames and the menus also work with a tap. Possible later work: show a clear notice on touch-only devices instead of the game, or add touch controls (M4-1.2).
+- [x] **M4-2.2** Phones and tablets (Felix, 2026-11-23): walking needs the keys W, A, S, D or the arrows (`client/js/world/world.js`), and the page has no touch controls for walking, so the game cannot be played on a touch-only device; only the action buttons, the minigames and the menus also work with a tap. Possible later work: show a clear notice on touch-only devices instead of the game, or add touch controls (M4-1.2). Done: touch-only devices (a coarse primary pointer without hover) first see the notice “Group Project needs a keyboard.” with “Play anyway” (S-219); touch controls stay open as M4-1.2.
 - [ ] **M4-1.2** Touch controls for mobile phones
 - [ ] Play a real round once with the whole team and write down what gets in the way
 
