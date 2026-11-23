@@ -103,7 +103,7 @@ Accounts and statistics are in Postgres at Supabase, in two tables: `accounts` (
 *Limit:* a restart or a new deploy ends every lobby and round. *Could change:* keep lobbies in a shared store such as Redis, or let a running round wait for a player who reconnects.
 
 **What do the tests cover, and what not?**
-On 2026-11-23 there are about 7,000 test cases in `tests/`. About 1,000 of them are in the 36 files that drive Chromium; without Playwright most of those are skipped and the rest pass. They work on four levels:
+On 2026-11-23 there are about 7,300 test cases in `tests/`. About 1,000 of them are in the 36 files that drive Chromium; without Playwright most of those are skipped and the rest pass. They work on four levels:
 - the plain rule functions, with the time and the random choices passed in (`tests/test_rules.py`, `tests/test_tasks.py`, `tests/test_movement.py`);
 - the real server over real WebSocket connections with FastAPI's test client, several players at once (`tests/test_server_tasks.py`, `tests/test_classic_rule1_messages.py`);
 - the real client files run in Node.js (`*_in_node.js`);
