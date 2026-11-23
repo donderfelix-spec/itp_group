@@ -349,6 +349,9 @@ def played(server):  # noqa: F811 (the imported fixture)
         shot(browser, caller, "2c_meeting_called_by_free_rider_seen_by_high_performer")
         end_meeting(browser, clock, 1)
         seen["after_first_meeting"] = {"eliminated": sorted(classic.eliminated), "phase": classic.phase}
+        # After a meeting the button is locked for 45 s again (S-218); the
+        # pages count them by their own clock, so the play waits them out.
+        browser.wait(caller, "window.__button.frame && window.__button.frame.visible === true", timeout=60000)
 
         # 3. Past the page from far away, and from 25.5 units.
         stand(browser, caller, SPAWN)

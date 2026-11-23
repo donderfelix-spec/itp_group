@@ -646,7 +646,9 @@ def failed(browser, label, victim):
 def press_at_button(browser, label, name):
     put(name, (BUTTON["x"] + 8, BUTTON["y"]))
     standing_still(name)
-    browser.wait(label, "Array.from(document.querySelectorAll('.use-button, .free-rider-e-button')).some((b) => !b.hidden && b.textContent === 'E Emergency')")
+    # Right after a meeting the button is locked for 45 s (S-218): the page
+    # offers "E Emergency" only once they are over, so this waits up to 60 s.
+    browser.wait(label, "Array.from(document.querySelectorAll('.use-button, .free-rider-e-button')).some((b) => !b.hidden && b.textContent === 'E Emergency')", timeout=60000)
     browser.call("press", label=label, key="KeyE")
 
 
