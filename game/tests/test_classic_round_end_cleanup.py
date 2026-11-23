@@ -67,6 +67,7 @@ NOTHING_OF_CLASSIC = {
     "sheetIds": [],
     "sheetsDrawn": 0,
     "emergencyButtonDrawn": False,
+    "emergencyButtonLocked": False,
     "useButtonText": "E Use",
     "useButtonHasFailLook": False,
     "reportButtonShown": False,
@@ -205,6 +206,34 @@ def test_walking_ghosts_are_half_transparent_on_a_ghosts_page_only():
 
 
 # Accepted: the round shows everything, its end takes all of it away
+
+
+@needs_node
+def test_emergency_button_is_visible_but_cannot_be_used_until_45_seconds():
+    steps = signed_in_lobby() + [
+        lobby_state("round"),
+        *walk_to_the_button(),
+        ["look"],
+        ["receive", EMERGENCY_STATUS],
+        ["wait", 44_999],
+        ["key", "KeyE"],
+        ["look"],
+        ["wait", 1],
+        ["look"],
+        ["key", "KeyE"],
+    ]
+    result = run_page(steps)
+    just_started, just_before, unlocked = result["looks"]
+    for locked in (just_started, just_before):
+        assert locked["emergencyButtonLocked"] is True
+        assert locked["emergencyButtonDrawn"] is False
+        assert locked["useButtonText"] == "E Use"
+    assert unlocked["emergencyButtonLocked"] is False
+    assert unlocked["emergencyButtonDrawn"] is True
+    assert unlocked["useButtonText"] == "E Emergency"
+    assert [message for message in result["sent"] if message["type"] == "emergency"] == [
+        {"type": "emergency"}
+    ]
 
 
 @needs_node
