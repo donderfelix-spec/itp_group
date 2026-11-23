@@ -94,7 +94,7 @@ The status of every feature is in [game/FEATURES.md](game/FEATURES.md), the rule
 - In Classic everybody learns at once who was failed (the victim's portrait is on the F-sheet, S-163); only the place of the sheet is sent just to those who see it (S-202).
 - The character voted out is not shown drifting out to sea yet; the result is shown as text (M3-3.5).
 - The browser play tests do not run in CI (see above).
-- The game needs a keyboard: walking works only with W, A, S, D or the arrow keys, so it cannot be played on phones or tablets (M4-2.2).
+- The game needs a keyboard: walking works only with W, A, S, D or the arrow keys, so it cannot be played on phones or tablets. A phone or tablet therefore first sees the notice “Group Project needs a keyboard.”, with “Play anyway” for a tablet with a keyboard (M4-2.2).
 - Not built, though planned "if time allows": the Deadline mode, sabotages, friends, sound and touch controls.
 
 The open to-dos are in [game/TODO.md](game/TODO.md).

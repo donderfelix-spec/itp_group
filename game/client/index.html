@@ -9,6 +9,16 @@
   <link rel="stylesheet" href="css/campus_challenges.css">
 </head>
 <body>
+  <!-- Shown instead of the game on a phone or tablet (js/keyboard_notice.js, S-219). -->
+  <div id="keyboard-notice" class="keyboard-notice" role="dialog" aria-modal="true"
+       aria-labelledby="keyboard-notice-title" aria-describedby="keyboard-notice-text" hidden>
+    <div class="card keyboard-notice-card">
+      <h2 id="keyboard-notice-title">Group Project needs a keyboard.</h2>
+      <p id="keyboard-notice-text">Walking uses W, A, S, D or the arrow keys, so the game cannot be played on a phone or tablet. Please open it on a computer.</p>
+      <button type="button" id="keyboard-notice-play" class="button">Play anyway</button>
+    </div>
+  </div>
+
   <!-- Short messages of the server, at the top centre of every screen. -->
   <p id="message" class="message" role="status" hidden></p>
 
@@ -343,6 +353,7 @@
     </div>
   </section>
 
+  <script src="js/keyboard_notice.js"></script>
   <script src="js/net.js"></script>
   <script src="js/world/characters.js"></script>
   <script src="js/world/draw.js"></script>
