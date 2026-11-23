@@ -15,7 +15,7 @@ permissions:
 jobs:
   plays:
     # Ubuntu 24.04 like our own machines, so the fonts below are the same
-    # packages (S-225).
+    # packages (S-231).
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -42,7 +42,7 @@ jobs:
       # sans-serif". Pinned pixels (the room-name boxes in test_map_polish,
       # the minigame layouts) were measured with Inter, the font our machines
       # use for those names; the runner's own default is DejaVu Sans, which is
-      # wider (S-225). So the runner gets Inter and our setting, and the step
+      # wider (S-231). So the runner gets Inter and our setting, and the step
       # stops here if system-ui is not Inter. DejaVu Sans stays installed:
       # test_play_minigames_wide_font checks the minigames with it on purpose.
       - name: Install the fonts of our machines

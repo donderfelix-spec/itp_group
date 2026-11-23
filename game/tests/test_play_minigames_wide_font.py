@@ -1,4 +1,4 @@
-"""The low-window checks of the minigames again, with a wider system font (S-225).
+"""The low-window checks of the minigames again, with a wider system font (S-231).
 
 The game ships no font: the page and the canvas use "system-ui, sans-serif",
 so every machine draws its own. Our machines draw Inter. Ubuntu without our
