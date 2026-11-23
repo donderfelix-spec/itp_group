@@ -556,10 +556,10 @@ def test_a_lobby_that_empties_during_the_countdown_disappears_and_nothing_ticks_
     assert lobby.phase == "lobby" and lobby.duel is None
     assert nothing_new_for(players)
 
-    # The same four letters give an ordinary new lobby.
+    # The same four letters give an ordinary new lobby, in Solo for its one player (S-203).
     monkeypatch.setattr(main, "pick_lobby_code", lambda: code)
-    assert ask(players["Tiago"], {"type": "create_lobby"}) == lobby_state(
-        code, "Tiago", ("Tiago", FIRST), phase="lobby"
+    assert ask(players["Tiago"], {"type": "create_lobby"}) == protocol.lobby_state(
+        code, "Tiago", [("Tiago", FIRST)], "solo", "lobby"
     )
 
 

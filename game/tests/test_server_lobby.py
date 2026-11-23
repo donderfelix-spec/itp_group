@@ -109,7 +109,7 @@ def test_create_lobby_answers_with_the_state(connect, monkeypatch):
         "code": "ABCD",
         "host": "Mara",
         "players": [{"name": "Mara", "character": FIRST}],
-        "mode": "duel",
+        "mode": "solo",  # one player: Solo (S-203)
         "phase": "lobby",
     }
 
@@ -231,7 +231,8 @@ def test_create_or_join_while_in_a_lobby_is_rejected(connect):
     assert join(mara, code) == expected
     # Nothing changed and nobody else was told anything.
     assert still_works(tiago)
-    assert choose(mara, "surfer") == state(code, "Mara", ("Mara", "surfer"))
+    # Mara is alone in her lobby, so it is in Solo (S-203).
+    assert choose(mara, "surfer") == protocol.lobby_state(code, "Mara", [("Mara", "surfer")], "solo")
 
 
 def test_leave_or_choose_outside_a_lobby_is_rejected(connect):
@@ -374,8 +375,8 @@ def test_closing_the_replaced_connection_does_not_take_the_new_one_out(connect):
 
     asyncio.run(main.game_socket(old_mara))
 
-    # Mara's lobby is still there, with her in it.
-    assert choose(new_mara, "surfer") == state(code, "Mara", ("Mara", "surfer"))
+    # Mara's lobby is still there, with her in it (alone, so in Solo, S-203).
+    assert choose(new_mara, "surfer") == protocol.lobby_state(code, "Mara", [("Mara", "surfer")], "solo")
 
 
 def test_a_member_who_disconnects_is_taken_out(connect):
