@@ -287,6 +287,7 @@ def test_the_lobby_state_of_a_duel_carries_nothing_new(connect):
 def test_too_few_players_start_no_duel(connect):
     mara = player(connect, "Mara")
     ask(mara, {"type": "create_lobby"})
+    ask(mara, {"type": "choose_mode", "mode": "duel"})  # a new lobby is in Solo (S-203); Duel needs two
     assert ask(mara, {"type": "start_game"})["code"] == "too_few_players"
     assert the_duel_of("Mara") is None
     assert lobby_named("Mara").tasks is None

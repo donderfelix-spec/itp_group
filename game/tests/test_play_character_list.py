@@ -81,7 +81,8 @@ def test_a_third_guest_who_joins_later_sees_the_choices_of_the_others(connect):
     second, second_name = a_guest(connect)
     third, third_name = a_guest(connect)
     code = create(first)["code"]
-    assert ask(first, choose_message(SURFER)) == state(code, first_name, (first_name, SURFER))
+    # Alone, so the lobby is in Solo (S-203); the second player switches it to Duel.
+    assert ask(first, choose_message(SURFER)) == protocol.lobby_state(code, first_name, [(first_name, SURFER)], "solo")
     join(second, code)
     first.receive_json()
     ask(second, choose_message(FOUNDER))
