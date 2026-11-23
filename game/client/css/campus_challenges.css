@@ -57,11 +57,11 @@
    so the buttons lay below the fold of a laptop screen. Their window is
    wider where the map allows it, and with room for two columns the chart
    stands beside its notes and the chat beside the schedule. The header's
-   sentence is empty here (each task has its own brief), so it takes no
-   room. */
+   sentence is empty in the six campus tasks (each has its own brief), so
+   it takes no room. */
 .minigame-window:has(.challenge-game-chart, .challenge-game-chat_logic) { width: min(100%, 780px); }
 .minigame-window:has(.challenge-game-seagull_defence) { width: min(100%, 620px); }
-.minigame-window:has(.campus-challenge) .minigame-instructions:empty { display: none; }
+.minigame-window:has(.campus-challenge, .campus-game) .minigame-instructions:empty { display: none; }
 
 @container (width >= 680px) {
   .challenge-game-chart { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); grid-template-rows: auto auto auto 1fr; align-items: start; }
