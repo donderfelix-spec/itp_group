@@ -86,7 +86,8 @@ class ClassicRound:
 
     def station_done(self, player_id, station):
         station_id = str(station)
-        if station not in self.stations_needed(player_id, set(), ()):
+        # Compared as text, so 3 and "3" are the same station, as before S-197.
+        if station_id not in [str(active) for active in self.stations_needed(player_id, set(), ())]:
             return
         self.completed_tasks[player_id].add(station_id)
         self._has_news = True

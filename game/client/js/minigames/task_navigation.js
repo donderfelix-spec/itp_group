@@ -365,7 +365,9 @@ window.Game = window.Game || {};
   // `done` makes it green. null takes it away.
   function setNote(text, done) {
     note = typeof text === 'string' && text ? { text: text, done: done === true } : null;
-    showCard(shownPlace, null); // at once, not only at the next frame
+    // At once, not only at the next frame; but a task the card shows stays
+    // until the next frame redraws it, so the card does not flicker.
+    if (target === null) showCard(shownPlace, null);
   }
 
   // The player left the lobby: no target and no card until the next frame of a world.

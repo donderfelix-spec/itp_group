@@ -71,6 +71,8 @@ def test_station_done_counts_only_the_active_task():
     game.station_done(name, first)  # twice counts once
     assert game.completed_tasks[name] == {str(first)}
     assert game.stations_needed(name, set(), ()) == [second]
+    game.station_done(name, str(second))  # the id as text counts as well
+    assert game.completed_tasks[name] == {str(first), str(second)}
 
 
 def test_the_group_progress_still_counts_four_tasks_per_high_performer():

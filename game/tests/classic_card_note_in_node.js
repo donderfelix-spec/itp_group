@@ -81,6 +81,9 @@ const ctx = new Proxy({}, { get: () => () => undefined }); // drawing does nothi
   nav.draw(ctx, CAMPUS, HERE, HERE, false);
   check(!task().hidden && ids.get('task-card-title').textContent === 'Build the tray', 'a task goes first');
   check(note().hidden && note().textContent === '', 'the line gives way to a task');
+  nav.setNote(null);
+  check(!task().hidden && ids.get('task-card-title').textContent === 'Build the tray',
+    'main.js sets the line on every change: the task shown does not blink away');
 
   nav.setTarget(null);
   nav.setNote(FAKE, false);
