@@ -113,7 +113,7 @@ def end_if_enough_skips(meeting: dict, now: float) -> dict:
 
 def voting_is_open(state: dict) -> bool:
     return state.get("phase") == "voting" or (
-        state.get("phase") == "discussion" and state.get("reason") == "report"
+        state.get("phase") == "discussion" and state.get("reason") in ("report", "emergency")
     )
 
 

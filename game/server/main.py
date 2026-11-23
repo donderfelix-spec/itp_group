@@ -1379,7 +1379,7 @@ async def answer_emergency_message(websocket: WebSocket):
     lobby.meeting = meeting
     lobby.meeting_clock = None
     await close_every_open_task(lobby)
-    await tell_meeting_state(lobby)
+    await tell_meeting_state(lobby, now)
 
 
 async def answer_hide_message(websocket: WebSocket):

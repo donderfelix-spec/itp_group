@@ -3,8 +3,7 @@
 Felix, 2026-11-22: "Build Lennart's version" (branch Spielfluss-und-Bug-Fixing).
 - Clicking the same player again takes the vote back; another player replaces it.
 - Who voted for whom, and who pressed Skip, is in every meeting snapshot.
-- After a report the players may vote during the discussion; after an
-  emergency meeting only once the voting phase has started.
+- Report and emergency meetings both allow voting and Skip during discussion.
 - Skip is its own message, `skip_discussion`. It toggles the own Skip and
   takes back the own vote. At 75 % of the living players the meeting ends at
   once with its result.
@@ -158,7 +157,7 @@ def test_a_new_meeting_has_no_votes_and_no_skips():
     [
         ("discussion", "report", True),
         ("voting", "report", True),
-        ("discussion", "emergency", False),
+        ("discussion", "emergency", True),
         ("voting", "emergency", True),
         ("discussion", None, False),
         ("result", "report", False),
@@ -177,12 +176,13 @@ def test_a_vote_during_a_report_discussion_stays_into_the_voting_phase():
     assert voting["votes"] == {"A": "F"}
 
 
-def test_no_vote_and_no_skip_during_an_emergency_discussion():
+def test_vote_and_skip_are_available_during_an_emergency_discussion():
     state = meeting(FIVE, phase="discussion", reason="emergency")
-    with pytest.raises(ValueError, match="not open"):
-        cast_vote(state, "A", "F")
-    with pytest.raises(ValueError, match="not open"):
-        agree_to_skip_discussion(state, "A", 5.0)
+    voted = cast_vote(state, "A", "F")
+    assert voted["votes"] == {"A": "F"}
+    skipped = agree_to_skip_discussion(voted, "A", 5.0)
+    assert skipped["votes"] == {}
+    assert skipped["skip_votes"] == {"A"}
 
 
 def test_no_vote_after_the_result():
@@ -433,11 +433,12 @@ def test_the_handler_rejects_skip_after_the_deadline(monkeypatch):
     assert lobby.meeting["skip_votes"] == set()
 
 
-def test_the_handler_rejects_skip_in_an_emergency_discussion(monkeypatch):
+def test_the_handler_accepts_skip_in_an_emergency_discussion(monkeypatch):
     lobby, sockets = lobby_with_a_report_meeting(monkeypatch)
     lobby.meeting["reason"] = "emergency"
     skip(sockets["Mara"])
-    assert rejections(sockets["Mara"]) == ["skip_discussion_rejected"]
+    assert rejections(sockets["Mara"]) == []
+    assert lobby.meeting["skip_votes"] == {"Mara"}
 
 
 def test_the_handler_sends_the_skips_to_everybody(monkeypatch):
@@ -504,7 +505,7 @@ def test_skip_by_three_of_four_living_ends_a_report_meeting(connect, clock):
     assert answer["code"] == "skip_discussion_rejected"
 
 
-def test_an_emergency_discussion_rejects_votes_over_the_websocket(connect, clock):
+def test_an_emergency_discussion_allows_votes_changes_and_early_skip_over_the_websocket(connect, clock):
     names = ("Mara", "Tiago", "Ines", "Rui")
     connections, round_state, lobby, fr_id, ghost_id, reporter_id, position = failed_sheet(
         names, connect, clock
@@ -518,6 +519,15 @@ def test_an_emergency_discussion_rejects_votes_over_the_websocket(connect, clock
     assert meeting_now["reason"] == "emergency"
 
     connections[caller].send_json({"type": "vote", "target_id": fr_id})
-    answer = connections[caller].receive_json()
-    assert answer["code"] == "vote_rejected"
-    assert lobby.meeting["votes"] == {}
+    voted = receive_broadcast(connections, "meeting_state")
+    assert voted["vote_targets"] == {caller: fr_id}
+    assert voted["reported_sheet_id"] is None
+    connections[caller].send_json({"type": "vote", "target_id": fr_id})
+    withdrawn = receive_broadcast(connections, "meeting_state")
+    assert withdrawn["vote_targets"] == {}
+    living = list(lobby.meeting["living"])
+    for player in living:
+        connections[player].send_json({"type": "skip_discussion"})
+        result = receive_broadcast(connections, "meeting_state")
+    assert result["phase"] == "result"
+    assert result["ejected_id"] is None
