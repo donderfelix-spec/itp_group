@@ -923,8 +923,11 @@ Game.world = Game.world || {};
   var BUTTON_PLATE_SCALE = 0.76; // the plate's size, compared with the button's radius
   var BUTTON_PLATE_LIFT = 0.06;  // how far the plate is lifted, in button radii
 
-  function drawButton(ctx, campus, visible) {
-    if (!visible || !campus.button) return;
+  // `state` is true when the button can be used, "locked" in a Classic round
+  // before its unlock time (the same switch in grey), anything else draws nothing.
+  function drawButton(ctx, campus, state) {
+    if (!campus.button || (state !== true && state !== "locked")) return;
+    var ready = state === true;
     var button = campus.button;
     var x = button.x;
     var r = button.r;
@@ -937,9 +940,9 @@ Game.world = Game.world || {};
     var size = r * BUTTON_PLATE_SCALE;
     var half = size * 0.86;
     var plate = { x: x - half, y: y - half, w: 2 * half, h: 2 * half };
-    box(ctx, plate, size * 0.22, YELLOW, size * 0.12);
-    circle(ctx, x, y, size * 0.69, "#9E352E", size * 0.12);
-    circle(ctx, x, y - size * 0.12, size * 0.54, CORAL, 0);
+    box(ctx, plate, size * 0.22, ready ? YELLOW : "#B9B8BF", size * 0.12);
+    circle(ctx, x, y, size * 0.69, ready ? "#9E352E" : "#60616B", size * 0.12);
+    circle(ctx, x, y - size * 0.12, size * 0.54, ready ? CORAL : "#81828D", 0);
     line(ctx, x, y - size * 0.41, x, y - size * 0.04, CREAM, size * 0.15);
     circle(ctx, x, y + size * 0.15, size * 0.087, CREAM, 0);
   }
@@ -1288,7 +1291,7 @@ Game.world = Game.world || {};
   // `pulsingStations` is the list of station ids whose outline pulses and
   // `now` the time of the frame (see drawStations).
   // The order matters: what is drawn later lies on top.
-  function drawMap(ctx, campus, view, emergencyVisible, pulsingStations, now) {
+  function drawMap(ctx, campus, view, emergencyButtonState, pulsingStations, now) {
     if (!ctx || !campus || !campus.colours) {
       return;
     }
@@ -1296,7 +1299,7 @@ Game.world = Game.world || {};
     ctx.save();
     ctx.lineJoin = "round";
     drawStaticPart(ctx, campus, view);
-    drawButton(ctx, campus, emergencyVisible === true);
+    drawButton(ctx, campus, emergencyButtonState);
     drawStations(ctx, campus, pulsingStations, now);
     ctx.restore();
   }

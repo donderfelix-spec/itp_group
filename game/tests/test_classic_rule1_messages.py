@@ -825,6 +825,8 @@ def play_six(connect, clock, monkeypatch) -> Recorder:
     meeting_action(rec, "Sofia", vote("Mara"), "vote in the emergency discussion")
     meeting_action(rec, "Sofia", SKIP, "replace vote with Skip in the emergency discussion")
     meeting_action(rec, "Sofia", SKIP, "withdraw Skip in the emergency discussion")
+    refused_meeting_action(rec, "Sofia", vote("Rui"), "vote for a ghost in the emergency discussion")
+    refused_meeting_action(rec, "Ines", SKIP, "ghost's Skip in the emergency discussion")
     meeting_action(rec, "Mara", chat("Not me."), "Free Rider chats")
     clock.wait(DISCUSSION_SECONDS)
     rec.tick()
