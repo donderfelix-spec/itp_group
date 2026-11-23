@@ -540,7 +540,7 @@ def test_the_real_table_has_original_and_extra_tasks_with_the_titles_of_the_desi
     """True whatever minigames are in the table: stations, titles, a minimum time, content."""
     titles = {1: "Sort the slides", 2: "Brew the order", 3: "Build the tray", 4: "Shelve the books", 5: "Self-checkout"}
     extra_titles = {
-        7: "De-buzzword the slides", 8: "Emergency caffeine protocol", 9: "Save the lunch",
+        7: "Fix the consultant’s chart", 8: "Emergency caffeine protocol", 9: "Save the lunch",
         10: "Decode the group chat", 11: "Expense the essentials", 12: "Seagull quality control",
     }
     assert {station: minigame.title for station, minigame in minigames.MINIGAMES.items()} == titles | extra_titles

@@ -5,9 +5,9 @@
 // at the station, even through a wall. The route search of `create` is not
 // used by the page; tests check the map with it (tests/test_task_navigation.js).
 //
-// In Classic a player has a list of open tasks instead of one next task:
-// the arrow then points at the nearest of them (`setTargets`), and the card
-// shows only the room.
+// In Classic a High Performer has one active task at a time (S-197), shown
+// like the next task of a Duel. `setTargets` (the nearest of several open
+// tasks, S-145) is no longer used by the page; main.js empties it.
 //
 // main.js sets the target (`setTarget`, `setTargets`, `reset`), world.js calls `draw`
 // once per frame. The card is the element #task-card of index.html, so it
@@ -293,11 +293,12 @@ window.Game = window.Game || {};
   //
   // Its head says which room the own character stands in, in every mode and
   // also in the lobby. Below it, while this player has one next task (Duel,
-  // Solo; main.js decides), "NEXT TASK" and the task. It is the only room
+  // Solo, Classic; main.js decides), "NEXT TASK" and the task. It is the only room
   // display of the page.
 
   let target = null; // the station id of the own next task, or null
   let targets = []; // Classic: the station ids of the own open tasks
+  let note = null; // Classic (S-197): { text, done } in place of a task, or null
   let shownCard = ''; // what the card shows now, so it is only changed on a change
   let shownPlace = null; // the room the card shows now, or null while it is hidden
 
@@ -327,7 +328,8 @@ window.Game = window.Game || {};
     const card = document.getElementById('task-card');
     if (!card) return;
     const lines = place === null ? null : cardLines(guidance);
-    const key = JSON.stringify([place, lines]);
+    const shownNote = place === null || lines !== null ? null : note; // a task goes first
+    const key = JSON.stringify([place, lines, shownNote]);
     if (key === shownCard) return;
     shownCard = key;
     shownPlace = place;
@@ -339,6 +341,12 @@ window.Game = window.Game || {};
     ['task-card-kicker', 'task-card-room', 'task-card-title'].forEach((id, index) => {
       setText(id, lines ? lines[index] : '');
     });
+    const noteElement = document.getElementById('task-card-note');
+    if (noteElement) {
+      noteElement.hidden = shownNote === null;
+      noteElement.textContent = shownNote ? shownNote.text : '';
+      noteElement.classList.toggle('task-card-note-done', Boolean(shownNote && shownNote.done));
+    }
   }
 
   // The station of the own next task, or null for none. From main.js.
@@ -353,10 +361,20 @@ window.Game = window.Game || {};
     targets = Array.isArray(stationIds) ? stationIds.filter((id) => Number.isInteger(id)) : [];
   }
 
+  // Classic (S-197): a line for the card when there is no task, from main.js;
+  // `done` makes it green. null takes it away.
+  function setNote(text, done) {
+    note = typeof text === 'string' && text ? { text: text, done: done === true } : null;
+    // At once, not only at the next frame; but a task the card shows stays
+    // until the next frame redraws it, so the card does not flicker.
+    if (target === null) showCard(shownPlace, null);
+  }
+
   // The player left the lobby: no target and no card until the next frame of a world.
   function reset() {
     target = null;
     targets = [];
+    note = null;
     showCard(null, null);
   }
 
@@ -391,6 +409,7 @@ window.Game = window.Game || {};
     placeName: placeName,
     setTarget: setTarget,
     setTargets: setTargets,
+    setNote: setNote,
     reset: reset,
     draw: draw,
   };

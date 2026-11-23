@@ -37,7 +37,8 @@ def test_every_player_gets_four_different_stations_out_of_the_eleven():
     for seed in range(200):
         round_ = ClassicRound(NAMES, ELEVEN, random.Random(seed))
         for name in NAMES:
-            needed = round_.stations_needed(name, set(), ELEVEN)
+            # S-197: the four are the drawn list; only its first one is needed at a time.
+            needed = [int(station) for station in round_.tasks[name]]
             assert len(needed) == len(set(needed)) == 4
             assert set(needed) <= set(ELEVEN)
             seen.update(needed)
@@ -48,7 +49,7 @@ def test_a_high_performer_can_finish_a_new_station_and_a_free_rider_never_counts
     for seed in range(50):
         round_ = ClassicRound(NAMES, ELEVEN, random.Random(seed))
         for name, role in round_.roles.items():
-            station = next(iter(round_.stations_needed(name, set(), ELEVEN)))
+            station = int(round_.tasks[name][0])  # S-197: the Free Rider has no active task
             round_.station_done(name, station)
             if role == "HP":
                 assert round_.completed_tasks[name] == {str(station)}

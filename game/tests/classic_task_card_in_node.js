@@ -147,19 +147,10 @@ function check(condition, message) {
   check(card('FR', [3], [3]).includes('Fake tasks') && !card('FR', [3], [3]).includes('"station"'), 'a Free Rider never lists stations');
 }
 
-// What the card element shows: its lines (with a done mark), its note, its colour.
-function readCard(card) {
-  const list = card.children.find((child) => child.tagName === 'ul');
-  const note = card.children.find((child) => child.tagName === 'p');
-  return {
-    lines: list ? list.children.map((row) => (row.classes().includes('round-task-done') ? 'DONE ' : '') + row.textContent) : [],
-    note: note ? note.textContent : null,
-    green: card.classList.contains('duel-next-finished'),
-  };
-}
-
 async function main() {
   // ---- main.js: a High Performer's round ----
+  // S-197: the own active task stands in the card at the top left of the
+  // map (task_navigation.js); the panel card stays hidden and empty.
   {
     const env = environment();
     await new Promise((resolve) => setImmediate(resolve)); // the map file is read
@@ -167,26 +158,12 @@ async function main() {
     env.emit('lobby_state', lobbyState(['Mara', 'Tiago', 'Ines', 'Rui']));
     const card = env.document.getElementById('classic-task');
     check(card.hidden === true || card.children.length === 0, 'no card before the role is known');
-    env.emit('classic_role', { role: 'HP', task_stations: [3, 1, 8] });
-    check(card.hidden === false, 'the card is shown');
-    let seen = readCard(card);
-    check(JSON.stringify(seen.lines) === JSON.stringify(['Build the tray (Canteen)', 'Sort the slides (Main Deck)', 'Station 8']),
-      'one bullet per task, names and rooms of the map file; a station without a name falls back to its number: ' + seen.lines);
-    check(seen.note === null && !seen.green, 'no done line and not green while tasks remain');
-    env.emit('station_done', { station: 3, task_stations: [1, 8] });
-    seen = readCard(card);
-    check(JSON.stringify(seen.lines) === JSON.stringify(['DONE Build the tray (Canteen) (done)', 'Sort the slides (Main Deck)', 'Station 8']),
-      'a finished station stays in its place, marked done (faded), with a hidden "(done)": ' + seen.lines);
-    env.emit('station_done', { station: 8 }); // no list (malformed): the finished one is marked all the same
-    seen = readCard(card);
-    check(JSON.stringify(seen.lines) === JSON.stringify(['DONE Build the tray (Canteen) (done)', 'Sort the slides (Main Deck)', 'DONE Station 8 (done)']),
-      'the station finished here is marked even without a new list; the order stays: ' + seen.lines);
+    env.emit('classic_role', { role: 'HP', task_stations: [3] });
+    check(card.hidden === true && card.children.length === 0, 'the panel card stays hidden for a High Performer (S-197)');
+    env.emit('station_done', { station: 3, task_stations: [1] });
+    check(card.hidden === true && card.children.length === 0, 'still hidden after a finished task');
     env.emit('station_done', { station: 1, task_stations: [] });
-    seen = readCard(card);
-    check(seen.lines.every((line) => line.startsWith('DONE ')) && seen.lines.length === 3, 'all three marked done, in place');
-    check(seen.note === 'All your tasks are done.' && seen.green, 'the done line under the list, the card green');
-    env.emit('classic_role', { role: 'XX', task_stations: [3] });
-    check(readCard(card).note === 'All your tasks are done.', 'an unknown role changes nothing');
+    check(card.hidden === true && card.children.length === 0, 'still hidden when all are done');
     env.emit('lobby_state', lobbyState(['Mara', 'Tiago', 'Ines', 'Rui'], 'lobby'));
     check(card.hidden === true && card.children.length === 0, 'back in the lobby the card is hidden and empty');
   }
@@ -198,9 +175,7 @@ async function main() {
     env.emit('lobby_state', lobbyState(['Mara', 'Tiago', 'Ines', 'Rui']));
     env.emit('classic_role', { role: 'FR', task_stations: [], other_free_riders: [] });
     const card = env.document.getElementById('classic-task');
-    const seen = readCard(card);
-    check(card.hidden === false && seen.lines.length === 0 && seen.note === 'Fake tasks: stand at a station to look busy.', 'the Free Rider card');
-    check(!seen.green, 'the Free Rider card is not green');
+    check(card.hidden === true && card.children.length === 0, 'the Free Rider has no panel card either (S-197)');
     env.emit('left_lobby');
     check(card.hidden === true && card.children.length === 0, 'leaving hides the card');
   }

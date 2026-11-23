@@ -5,7 +5,8 @@
 //
 // When a player must stand somewhere, it prints {"put": [[name, station or
 // [x, y]], ...]} and waits for "ok" on stdin. Its last line is the result:
-//   pages   per page: label, name, role, own task_stations, their names, card lines
+//   pages   per page: label, name, role, own task_stations, their names, card
+//           lines of the side panel, the task named in the card at the top left
 //   done    one High Performer's card and group bar before and after it
 //           finished its first station through the page (E, "Finish task")
 //   ghost   another High Performer's card before and after the Free Rider
@@ -74,6 +75,11 @@ async function card(g) {
         faded: Number(getComputedStyle(row).opacity) < 1,
         crossed: getComputedStyle(row).textDecorationLine === 'line-through',
       })),
+      // S-197: the card at the top left of the map names the own active task.
+      top: document.getElementById('task-card-task').hidden ? null
+        : document.getElementById('task-card-title').textContent,
+      note: document.getElementById('task-card-note').hidden ? null
+        : document.getElementById('task-card-note').textContent,
       label: document.getElementById('classic-progress-label').textContent,
       fill: fill.getBoundingClientRect().width,
     };
@@ -111,8 +117,10 @@ const pause = (ms) => new Promise((r) => setTimeout(r, ms));
       g.role = role.role;
       g.tasks = role.task_stations;
       g.names = await g.page.evaluate((ids) => ids.map((id) => Game.duel.stationName(id)), g.tasks);
+      await pause(300); // a frame draws the card at the top left
+      const seen = await card(g);
       out.pages.push({ label: g.label, name: g.name, role: g.role, tasks: g.tasks, names: g.names,
-        cardLines: (await card(g)).lines });
+        cardLines: seen.lines, top: seen.top, note: seen.note });
     }
     const highPerformers = pages.filter((g) => g.role === 'HP');
     const freeRider = pages.find((g) => g.role === 'FR');
@@ -136,9 +144,12 @@ const pause = (ms) => new Promise((r) => setTimeout(r, ms));
       before.label, { timeout: 5000 });
     await pause(1000); // the bar may glide
     const after = await card(worker);
+    await put([[worker.name, 'spawn']]);
+    await pause(300); // the card at the top left follows the next task
+    const next = await card(worker);
     out.done = { station, tasksBefore: worker.tasks, namesBefore: worker.names, stationDone,
       cardAfter: after.lines, itemsAfter: after.items, progressBefore: before.label, progressAfter: after.label,
-      fillBefore: before.fill, fillAfter: after.fill };
+      fillBefore: before.fill, fillAfter: after.fill, topBefore: before.top, topAfter: next.top };
 
     // 2. Another High Performer stands next to the Free Rider, who presses F.
     // The first one goes back to the spawn, so it is not the nearest.
@@ -152,8 +163,9 @@ const pause = (ms) => new Promise((r) => setTimeout(r, ms));
       failed = victim.received.find((m) => m.type === 'classic_fail');
     }
     await pause(1000);
+    const ghostCard = await card(victim);
     out.ghost = { failed: Boolean(failed && failed.target_id === victim.name), namesBefore: victim.names,
-      cardAfter: (await card(victim)).lines,
+      cardAfter: ghostCard.lines, topAfter: ghostCard.top, tasks: victim.tasks,
       failedWho: failed ? failed.target_id : null, victimName: victim.name,
       lastFrames: failed ? [] : freeRider.received.slice(-5) };
   } finally {

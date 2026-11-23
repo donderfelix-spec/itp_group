@@ -107,7 +107,7 @@ def seagull(rng):
 
 
 MINIGAMES = {
-    7: Minigame("De-buzzword the slides", 1, slides),
+    7: Minigame("Fix the consultant’s chart", 1, slides),
     8: Minigame("Emergency caffeine protocol", 1, coffee),
     9: Minigame("Save the lunch", 1, lunch),
     10: Minigame("Decode the group chat", 1, chat),

@@ -315,7 +315,8 @@ def check_classic_role(record):
         assert message["task_stations"] == []
     else:
         assert "other_free_riders" not in message
-        assert set(message["task_stations"]) == step.own_tasks(viewer), "a task list went to somebody else (S-154)"
+        assert len(message["task_stations"]) == 1, "one active task at a time (S-197)"
+        assert set(message["task_stations"]) <= step.own_tasks(viewer), "a task list went to somebody else (S-154)"
 
 
 def check_you_are_fr(record):
@@ -828,7 +829,7 @@ def test_a_ghost_in_the_positions_of_a_living_player_fails():
 
 
 def test_somebody_elses_role_fails_and_the_own_role_passes():
-    own = {"type": "classic_role", "role": "HP", "task_stations": [1, 2, 3, 4]}
+    own = {"type": "classic_role", "role": "HP", "task_stations": [1]}  # S-197: one active task
     check_record(Record(a_step(name="start"), "Ines", "HP", own))
     with pytest.raises(AssertionError, match="names a role"):
         check_record(Record(a_step(), "Ines", "HP", {"type": "classic_roster", "players": [], "role": "FR"}))

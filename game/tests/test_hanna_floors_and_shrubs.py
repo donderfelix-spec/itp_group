@@ -101,7 +101,10 @@ MAIN_COUNTS = {"rooms": 5, "solids": 107, "decor": 76, "stations": 12, "hiding_s
 # Measured again for M3-1.1 (S-185): the map gained "classic_vision_range": 120,
 # and for M3-1.6 (S-192): it lost "hide_reveal_range". Main's old digest
 # (with the range of 35, without the vision range) was 9b1d9509...e1735a105ab4.
-MAIN_DIGEST = "3ef354183b87ab04899f04c1e5dabf887d8552d15d01362aab0ae3f5207b1670"
+# Measured again for M3-4.29 (S-197): station 7 is named "Fix the consultant’s
+# chart" instead of "De-buzzword the slides"; with the old name the digest was
+# 3ef35418...ae3f5207b1670, nothing else changed.
+MAIN_DIGEST = "3801a7dcbb6790525a017ac81d9156c9213486636fee1ed97fe204665e3cc272"
 
 # Hanna's floors (3622182): room id -> (floor colour, pattern).
 HANNAS_FLOORS = {

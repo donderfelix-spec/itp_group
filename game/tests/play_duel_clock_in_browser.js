@@ -10,10 +10,10 @@
 //   solo      the panel of one guest alone in a Solo round, per window size
 //   classic   per window size: the panel of the host and of one other guest
 //             in a Classic round with five players
-//   classicCards  per Classic page: its role and own list (as received),
-//             Duel's names of those stations, the card's text and colour,
-//             and all text of the page
-//   classicDone   the card of one High Performer after each `station_done`
+//   classicCards  per Classic page: its role and own task (as received),
+//             Duel's name of that station, the panel card (hidden, S-197),
+//             the top-left card's task title and line, and all text of the page
+//   classicDone   the cards of one High Performer after each `station_done`
 //             (with screenshots classic_hp_one_done and classic_hp_all_done)
 //   classicWithHint  the other guest's Classic panel at 1280x800 with one
 //             more paragraph at the end of #classic-progress, put there by
@@ -190,11 +190,12 @@ function measurePanel() {
     roundHeading: rect(roundHeading),
     roundHeadingStyle: headingStyle(roundHeading),
     playersHeadingStyle: headingStyle(playersHeading),
-    classicParts: ['classic-own-name', 'classic-task', 'classic-progress-label'].map((id) => rect(byId(id)))
+    // S-197: the panel has no task card in Classic any more.
+    classicParts: ['classic-own-name', 'classic-progress-label'].map((id) => rect(byId(id)))
       .concat([rect(document.querySelector('#classic-progress h2')), rect(document.querySelector('.classic-progress-track'))]),
-    // From the top: heading, own name, task card, "Group progress", label, bar.
+    // From the top: heading, own name, "Group progress", label, bar.
     classicOrder: [
-      document.querySelector('#classic-progress h2'), byId('classic-own-name'), byId('classic-task'),
+      document.querySelector('#classic-progress h2'), byId('classic-own-name'),
       document.querySelector('#classic-progress h3'), byId('classic-progress-label'),
       document.querySelector('.classic-progress-track'),
     ].map((el) => (rect(el) ? rect(el).top : null)),
@@ -215,6 +216,11 @@ function measurePanel() {
     classicTaskNoteTop: document.querySelector('#classic-task .round-task-note')
       ? document.querySelector('#classic-task .round-task-note').getBoundingClientRect().top : null,
     classicOwnNameText: byId('classic-own-name').textContent,
+    classicTaskShown: shown(byId('classic-task')),
+    // The card at the top left of the map (S-197): its task title and its line.
+    topTitle: shown(byId('task-card-task')) ? byId('task-card-title').textContent : null,
+    topNote: shown(byId('task-card-note')) ? byId('task-card-note').textContent : null,
+    topNoteGreen: byId('task-card-note').classList.contains('task-card-note-done'),
     extraParagraph: rect(byId('test-extra-paragraph')),
     classicTrack: rect(document.querySelector('.classic-progress-track')),
   };
@@ -298,31 +304,37 @@ async function shoot(g, name) {
       const names = await g.page.evaluate((stations) => (stations || []).map((id) => (typeof window.Game.duel.stationName === 'function' ? window.Game.duel.stationName(id) : null)), own);
       const seen = await look(g);
       out.classicCards.push({ label: g.label, isHost: g === host, role, taskStations: own, names,
-        cardText: seen.classicTaskText, cardGreen: seen.classicTaskGreen, pageText: await g.page.innerText('body') });
+        cardText: seen.classicTaskText, cardGreen: seen.classicTaskGreen, cardShown: seen.classicTaskShown,
+        topTitle: seen.topTitle, topNote: seen.topNote, topNoteGreen: seen.topNoteGreen,
+        pageText: await g.page.innerText('body') });
     }
     const highPerformer = classicPages.find((g, i) => g !== host && out.classicCards[i].role === 'HP');
     const freeRider = classicPages.find((g, i) => out.classicCards[i].role === 'FR');
     if (highPerformer) await shoot(highPerformer, 'classic_hp');
     if (freeRider) await shoot(freeRider, 'classic_fr');
 
-    // A High Performer finishes its stations: the page is handed the
-    // `station_done` the server sends then (same shape, with the own list).
+    // A High Performer finishes its four stations: the page is handed the
+    // `station_done` the server sends then (same shape: the next task only,
+    // S-197). The three after the first are made up from the stations in use.
     out.classicDone = [];
     if (highPerformer) {
       const card = out.classicCards[classicPages.indexOf(highPerformer)];
-      const remaining = (card.taskStations || []).slice();
-      while (remaining.length) {
-        const station = remaining.shift();
-        const before = (await look(highPerformer)).classicTaskText;
-        highPerformer.inject({ type: 'station_done', station, task_stations: remaining.slice() });
+      const first = (card.taskStations || [])[0];
+      const order = [first, ...[1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12].filter((id) => id !== first).slice(0, 3)];
+      for (let index = 0; index < order.length; index++) {
+        const station = order[index];
+        const next = order.slice(index + 1, index + 2);
+        const before = await highPerformer.page.evaluate(() => document.getElementById('task-card').innerText);
+        highPerformer.inject({ type: 'station_done', station, task_stations: next });
         // Until the card has changed; a card that never does is reported as it is.
-        await highPerformer.page.waitForFunction((text) => document.getElementById('classic-task').innerText !== text,
+        await highPerformer.page.waitForFunction((text) => document.getElementById('task-card').innerText !== text,
           before, { timeout: 3000 }).catch(() => {});
         const seen = await look(highPerformer);
-        out.classicDone.push({ station, left: remaining.slice(), cardText: seen.classicTaskText, cardGreen: seen.classicTaskGreen,
-          items: seen.classicTaskItems, note: seen.classicTaskNote, noteTop: seen.classicTaskNoteTop });
+        const nextNames = await highPerformer.page.evaluate((ids) => ids.map((id) => window.Game.duel.stationName(id)), next);
+        out.classicDone.push({ station, left: next, nextNames, cardShown: seen.classicTaskShown, cardText: seen.classicTaskText,
+          topTitle: seen.topTitle, topNote: seen.topNote, topNoteGreen: seen.topNoteGreen });
         if (out.classicDone.length === 1) await shoot(highPerformer, 'classic_hp_one_done');
-        if (remaining.length === 0) await shoot(highPerformer, 'classic_hp_all_done');
+        if (next.length === 0) await shoot(highPerformer, 'classic_hp_all_done');
       }
     }
 

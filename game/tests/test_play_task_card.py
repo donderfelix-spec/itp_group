@@ -15,7 +15,7 @@ Playwright or Chromium is missing), with the real server:
   is gone, and at 320 px the card covers neither the own character nor
   the walking hint;
 - one guest alone starts Solo, and the panel says "Solo";
-- in Classic every station in use pulses and the card has no task part;
+- in Classic only the own active task pulses and the card names it (S-197);
 - no page logs a console error or warning.
 """
 
@@ -140,8 +140,15 @@ def test_one_guest_alone_starts_solo_and_the_panel_says_solo(played):
 
 
 @needs_chromium
-def test_in_classic_the_own_list_pulses_and_the_card_has_no_task(played):
+def test_in_classic_only_the_active_task_pulses_and_the_card_names_it(played):
+    """S-197: a High Performer has one active task, a Free Rider none."""
     for seen in played["classic"]:
         assert seen["pulse"] == sorted(seen["ownList"])
-        assert seen["card"] and not seen["taskPart"]
+        assert len(seen["ownList"]) in (0, 1)
+        assert seen["card"]
+        if seen["ownList"]:
+            assert seen["taskPart"] and seen["kicker"] in ("NEXT TASK", "E USE · YOUR TASK") and seen["title"]
+        else:
+            assert not seen["taskPart"]
         assert seen["drawn"] == STATIONS_IN_USE
+    assert sum(1 for seen in played["classic"] if seen["ownList"]) == 3

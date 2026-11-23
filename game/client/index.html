@@ -182,14 +182,17 @@
     <section id="screen-lobby" class="screen screen-lobby" hidden>
       <div class="map-area">
         <canvas id="map" class="map" aria-label="Campus map"></canvas>
-        <!-- Where the own character is and, in a Duel or Solo round, its next
-             task (minigames/task_navigation.js). The only room display. -->
+        <!-- Where the own character is and, in a round, its next task: in
+             Duel and Solo the next station, in Classic the one active task
+             (S-197) (minigames/task_navigation.js). The only room display. -->
         <div id="task-card" class="task-card" hidden>
           <p class="task-card-place"><span class="task-card-pin" aria-hidden="true"></span><span id="task-card-here"></span></p>
           <div id="task-card-task" class="task-card-task" aria-live="polite" hidden>
             <span id="task-card-kicker" class="task-card-kicker"></span>
             <span class="task-card-line"><span id="task-card-room" class="task-card-room"></span><span id="task-card-title" class="task-card-title"></span></span>
           </div>
+          <!-- Classic, only for the player concerned (S-197): all four done, or the Free Rider's hint. -->
+          <p id="task-card-note" class="task-card-note" aria-live="polite" hidden></p>
         </div>
         <!-- Two parts, so that on a narrow map the hint can be two lines
              (style.css). On a wide map it is one line. -->
