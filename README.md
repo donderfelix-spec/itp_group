@@ -6,6 +6,25 @@ Up to eight players join a lobby with a four-letter code. In the Classic mode th
 
 Team project for Introduction to Programming (course 2477), Nova SBE, 2026.
 
+## Screenshots
+
+Taken from the real game in Chromium, with five players in one lobby.
+
+![The lobby: five players with their characters on the Main Deck, the four-letter code, and Classic chosen as the mode](game/docs/screenshots/lobby.jpg)
+*The lobby: the code to share, the players and their characters, the mode and the character list.*
+
+![A Classic round in Pingo Doce: the own character at the Self-checkout station, two players in sight, the corridor and the beach darkened by the fog](game/docs/screenshots/classic.jpg)
+*Classic: limited view with fog outside it, the own active task in the card at the top left, and the station in range.*
+
+![A meeting after a report: discussion chat, the living and the dead, public votes with their counts, and Skip](game/docs/screenshots/meeting.jpg)
+*A meeting after a report: chat, public votes and Skip.*
+
+![The minigame Brew the order open in the Mon Café: an order slip and six ingredient buttons](game/docs/screenshots/minigame.jpg)
+*A minigame: “Brew the order” at the Mon Café station.*
+
+![The campus map: all rooms from above, the own position, and the own open task](game/docs/screenshots/overview.jpg)
+*The campus map (key M): where you are and which station you need now.*
+
 ## Play it
 
 **Deployed URL:** https://itp-group.onrender.com
@@ -51,7 +70,7 @@ Check the dependencies for known vulnerabilities:
 .venv/bin/pip-audit -r requirements.txt
 ```
 
-About the tests: most of them are plain pytest. About 30 test files also run the real client files in Node.js (version 20 or newer), and about 20 play tests (`tests/test_play_*.py` and a few others) drive real Chromium pages with the npm package Playwright. Without Node, or without Playwright and Chromium, pytest skips those files and says so; the rest still runs. The CI on GitHub has Node but no Playwright, so it skips the browser play tests; they are run on our own machines.
+About the tests: most of them are plain pytest. About 45 test files also run the real client files in Node.js (version 20 or newer), and 27 (most of `tests/test_play_*.py` and a few others) drive real Chromium pages with the npm package Playwright. Without Node, or without Playwright and Chromium, pytest skips those files and says so; the rest still runs. The CI on GitHub has Node but no Playwright, so it skips the browser play tests; they are run on our own machines.
 
 ## The modes
 
@@ -114,6 +133,7 @@ We built the game with coding agents (Claude Code), and we say so plainly: agent
 
 ## Documents
 
+- [game/WALKTHROUGH.md](game/WALKTHROUGH.md): a ten-minute tour of the code: one message from key to screen, the four areas, the five rules, how a to-do reached `main`
 - [game/DESIGN.md](game/DESIGN.md): look, map, characters, screens, rules of every mode, minigames, every message shown to the player
 - [game/DECISIONS.md](game/DECISIONS.md): every decision with its reason, including the ones we later replaced
 - [game/FEATURES.md](game/FEATURES.md): every feature and its status

@@ -2,7 +2,7 @@
 
 A multiplayer game in the browser that is set on the Nova SBE campus. The “High Performers” complete tasks for a group project, while a “Free Rider” among them secretly sabotages. The game belongs to the social deduction genre, but it is a game of its own with its own name, its own characters, its own map and its own graphics (see S-01 and S-02 in the [DECISIONS.md](DECISIONS.md)).
 
-What the game is, who built it, the public URL and the known limitations are in the [README.md](../README.md) of the main folder. This page is the map of the code.
+What the game is, who built it, the public URL and the known limitations are in the [README.md](../README.md) of the main folder. This page is the map of the code. For a guided tour of how the parts work together, read [WALKTHROUGH.md](WALKTHROUGH.md).
 
 ## Starting and testing
 
@@ -30,6 +30,7 @@ Some tests run the real client files in Node.js, and the play tests (`tests/test
 
 ## Documents
 
+- [WALKTHROUGH.md](WALKTHROUGH.md): a guided tour of the code, from one key press to the screen, and how to explain each area
 - [DESIGN.md](DESIGN.md): look, map, characters, screens, rules of the modes, minigames, every message shown to the player
 - [TODO.md](TODO.md): all to-dos, sorted by milestone and area
 - [FEATURES.md](FEATURES.md): overview of all features with their status
@@ -76,6 +77,7 @@ Every file belongs to exactly one area.
 | `client/js/classic/` | Role card, action buttons, meeting window, end screen | 3 |
 | `client/js/minigames/` | Frame and one file per kind of minigame, Duel panel, task card and arrow | 4 |
 | `design/` | Sketches of the map and the characters (SVG) | 1 |
+| `docs/screenshots/` | Screenshots of the game shown in the README of the main folder | 2 |
 | `tests/` | Tests with pytest, and the Node and browser scripts they drive | 2 (frame), every area for its own tests |
 | `requirements.txt`, `requirements-dev.txt`, `pyproject.toml` | Dependencies with pinned versions, test settings | 2 |
 
