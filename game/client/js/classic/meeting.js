@@ -387,12 +387,39 @@ Game.classicMeeting = Game.classicMeeting || {};
       context.fillText("None", x, y + 24);
       return;
     }
-    playerRowStarts(players, x, maxWidth).forEach(function (place) {
-      if (place.row >= maxRows) return;
+    var places = playerRowStarts(players, x, maxWidth);
+    var shown = places.filter(function (place) { return place.row < maxRows; });
+    var more = moreLabelFor(shown, places.length - shown.length, x, maxWidth);
+    shown = shown.slice(0, shown.length - more.dropped);
+    shown.forEach(function (place, index) {
       var playerId = place.playerId;
+      var last = index === shown.length - 1;
       context.fillStyle = ownIsFreeRider && playerId === ownName ? "#C43E3E" : "#2E2A3B";
-      context.fillText(place.label, place.x, y + 24 + place.row * PLAYER_ROW);
+      // The last name shown keeps its comma only when "+N more" follows it.
+      var label = last && !more.text ? playerId : place.label;
+      context.fillText(label, place.x, y + 24 + place.row * PLAYER_ROW);
+      if (last && more.text) {
+        context.fillStyle = "#2E2A3B";
+        context.fillText(more.text, place.x + context.measureText(label).width, y + 24 + place.row * PLAYER_ROW);
+      }
     });
+  }
+
+  // When names do not fit in the rows (the compact layout has one), the list
+  // ends in "+2 more" instead of cutting names off silently. Names are dropped
+  // from the end until "+N more" fits after the last one shown (at least one
+  // name stays). Returns the text ("" when everything fits) and how many of
+  // the shown names were dropped for it.
+  function moreLabelFor(shown, hidden, x, maxWidth) {
+    var dropped = 0;
+    if (!hidden) return { text: "", dropped: 0 };
+    while (shown.length - dropped > 1) {
+      var last = shown[shown.length - 1 - dropped];
+      var text = "+" + (hidden + dropped) + " more";
+      if (last.x + context.measureText(last.label + text).width <= x + maxWidth) break;
+      dropped += 1;
+    }
+    return { text: "+" + (hidden + dropped) + " more", dropped: dropped };
   }
 
   function drawChat(width, height, layout, top) {

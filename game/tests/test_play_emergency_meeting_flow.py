@@ -23,6 +23,12 @@ Roles: the Free Rider and four High Performers (caller, second, voter, leaver).
    its discussion and runs to its end.
 4. Back at the button the caller sees no "E Emergency", and a call past the
    page is refused with "You cannot call an emergency meeting right now.".
+5. S-215: the Free Rider calls; once the three living players have voted,
+   every page, the ghost's included, shows 10 seconds left, and 10 seconds
+   later the meeting ends from its discussion: the Free Rider is voted out.
+
+The compact meeting picture has one row for the "Living" names; it ends in
+"+N more" instead of cutting names off after a comma.
 
 Set EMERGENCY_FLOW_SCREENSHOTS to a folder to keep the screenshots (and
 seen.json). Skipped when Node, Playwright or Chromium is missing.
@@ -37,7 +43,7 @@ from pathlib import Path
 import pytest
 
 from rules import FAIL_COOLDOWN_SECONDS
-from server import protocol
+from server import main, protocol
 from test_play_emergency_button_range import CENTRE, PROBE, bypass, stand, use_button
 from test_play_hiding import (  # noqa: F401 (quiet_tick and server are fixtures)
     LABELS,
@@ -97,6 +103,41 @@ WINDOW = """(() => {
     widths: buttons.map((b) => Math.round(b.getBoundingClientRect().width)),
     noPageScroll: document.documentElement.scrollWidth <= innerWidth,
   };
+})()"""
+
+
+# Records what the meeting canvas draws, from its last clearRect on (as in
+# meeting_chat_in_browser.js), so the "Living" line can be read.
+RECORD_MEETING_CANVAS = """(() => {
+  const proto = CanvasRenderingContext2D.prototype;
+  const fillText = proto.fillText;
+  const clearRect = proto.clearRect;
+  const mine = (context) => context.canvas && context.canvas.id === 'classic-meeting-canvas';
+  window.__meetingDraw = { texts: [] };
+  proto.clearRect = function (...args) {
+    if (mine(this)) window.__meetingDraw = { texts: [] };
+    return clearRect.apply(this, args);
+  };
+  proto.fillText = function (text, x, y, ...rest) {
+    if (mine(this)) window.__meetingDraw.texts.push({ text: String(text), x, y, width: this.measureText(text).width });
+    return fillText.call(this, text, x, y, ...rest);
+  };
+  return true;
+})()"""
+
+# The texts of the "Living" row: drawn one row below the title, left of "Dead players".
+LIVING_LINE = """(() => {
+  const texts = window.__meetingDraw.texts;
+  const title = texts.find((t) => t.text === 'Living');
+  const dead = texts.find((t) => t.text === 'Dead players');
+  return texts.filter((t) => t.y === title.y + 24 && t.x < dead.x)
+    .map((t) => ({ text: t.text, right: t.x + t.width, limit: dead.x }));
+})()"""
+
+
+TIME_LEFT_TEXT = """(() => {
+  const time = window.__meetingDraw.texts.find((t) => t.text.startsWith('Time left'));
+  return time ? time.text : null;
 })()"""
 
 
@@ -198,6 +239,7 @@ def played(server):  # noqa: F811 (the imported fixture)
         for label in LABELS:
             browser.open(label)
             browser.js(label, PROBE)
+            browser.js(label, RECORD_MEETING_CANVAS)
         names = browser.names
         browser.call("click", label="P0", selector="#home-create")
         browser.wait("P0", "/[A-Z0-9]{4}/.test(document.getElementById('lobby-code').textContent)")
@@ -233,6 +275,7 @@ def played(server):  # noqa: F811 (the imported fixture)
             browser.call("viewport", label=caller, width=width, height=height)
             time.sleep(0.4)
             seen["m1_sizes"][f"{width}x{height}"] = window(browser, caller)
+            seen["m1_sizes"][f"{width}x{height}"]["living_line"] = browser.js(caller, LIVING_LINE)
             shot(browser, caller, f"1a_emergency_discussion_{width}x{height}")
         browser.call("viewport", label=caller, width=1280, height=800)
         time.sleep(0.3)
@@ -325,6 +368,27 @@ def played(server):  # noqa: F811 (the imported fixture)
         seen["used_has_e_emergency"] = browser.js(caller, HAS_E_EMERGENCY)
         seen["used_bypass"] = bypass(browser, caller)
         shot(browser, caller, "4a_used_call_refused")
+
+        # 5. S-215: the Free Rider calls; once all three living have voted, 10 seconds are left.
+        put(names[fr], (CENTRE[0] - 20, CENTRE[1] + 10))
+        put(names[caller], free_place_at(CENTRE, 60, near=(CENTRE[0] - 60, CENTRE[1])))
+        call_at_button(browser, fr, stayers)
+        clock.skip(5)  # 40 s of discussion are left
+        time.sleep(1.2)
+        for voter, target in ((caller, fr), (second, fr), (fr, caller)):
+            act(browser, voter, vote_selector(names[target]), stayers, lobby)
+        seen["m5_server"] = {"deadline_left": lobby.meeting["deadline"] - main.seconds_now(),
+                             "ends_by": lobby.meeting.get("ends_by")}
+        seen["m5_shortened"] = {label: states_of(browser, label)[-1] for label in stayers}
+        seen["m5_clock_text"] = {label: browser.js(label, TIME_LEFT_TEXT) for label in stayers}
+        shot(browser, voter, "5a_ghost_sees_ten_seconds")
+        before = counts(browser, stayers, "result")
+        clock.skip(10)
+        wait_for_more(browser, stayers, "result", before)
+        seen["m5_result"] = states_of(browser, second, "result")[-1]
+        seen["m5_phases"] = [state["phase"] for state in states_of(browser, second)][-4:]
+        for label in stayers:
+            browser.wait(label, "!document.getElementById('classic-end-screen').hidden", timeout=20000)
         seen["problems"] = browser.close()
         browser = None
     finally:
@@ -356,6 +420,21 @@ def test_the_emergency_discussion_fits_the_window(played, size):
     assert shown["hintFits"], shown
     assert len(set(shown["widths"])) == 1, shown["widths"]
     assert shown["noPageScroll"]
+
+
+@pytest.mark.parametrize("size", [f"{w}x{h}" for w, h in SIZES])
+def test_the_living_line_names_everybody_or_says_how_many_more(played, size):
+    # The compact meeting picture has one row for the names: instead of
+    # cutting names off after a comma, the row ends in "+N more".
+    line = played["m1_sizes"][size]["living_line"]
+    text = "".join(part["text"] for part in line)
+    assert not text.rstrip().endswith(","), text
+    names = [name for name in text.split(", ") if name and not name.startswith("+")]
+    more = text.rsplit("+", 1)[1] if "+" in text else None
+    hidden = int(more.split(" ")[0]) if more else 0
+    assert more is None or more.endswith(" more"), text
+    assert len(names) + hidden == 5 and names, text
+    assert all(part["right"] <= part["limit"] for part in line), line
 
 
 def test_a_vote_in_the_emergency_discussion_is_changed_and_taken_back_on_every_page(played):
@@ -424,6 +503,19 @@ def test_a_used_emergency_call_offers_nothing_and_is_refused(played):
     assert [error["message"] for error in refused["errors"]] == [CALL_REFUSED]
     assert refused["server_meeting"] is False
     assert set(refused["meetings"].values()) <= {0}
+
+
+def test_once_everybody_voted_every_page_shows_ten_seconds_and_the_result_follows(played):
+    names, labels = played["names"], played["labels"]
+    assert played["m5_server"]["deadline_left"] == pytest.approx(10, abs=1.5)
+    for label, state in played["m5_shortened"].items():
+        assert state["phase"] == "discussion" and state["seconds_left"] in (9, 10), label
+        assert len(state["vote_targets"]) == 3
+    # The ghost (the failed voter) sees the same clock as the living.
+    assert played["m5_shortened"][labels["voter"]]["seconds_left"] == played["m5_shortened"][labels["fr"]]["seconds_left"]
+    assert all(text in ("Time left: 10 s", "Time left: 9 s") for text in played["m5_clock_text"].values()), played["m5_clock_text"]
+    assert played["m5_result"]["ejected_id"] == names[labels["fr"]]
+    assert "voting" not in played["m5_phases"]  # it ended from the discussion, without a vote phase
 
 
 def test_no_console_error_or_warning_on_any_page(played):

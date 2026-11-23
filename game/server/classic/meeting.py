@@ -11,6 +11,9 @@ DISCUSSION_SECONDS = 45
 VOTING_SECONDS = 30
 MAX_CHAT_LENGTH = 200
 CHAT_COOLDOWN_SECONDS = 2.0
+# Once every living player has voted or chosen Skip, the meeting ends this
+# many seconds later at the latest (S-215).
+SECONDS_AFTER_EVERYBODY_VOTED = 10
 MeetingPhase = Literal["discussion", "voting", "result"]
 
 
@@ -109,6 +112,43 @@ def end_if_enough_skips(meeting: dict, now: float) -> dict:
     updated["phase"] = "result"
     updated["deadline"] = float(now)
     return resolve_vote_result(updated)
+
+
+def everybody_has_voted(meeting: dict) -> bool:
+    """Whether every living player has voted for a player or chosen Skip. Ghosts do not count."""
+    living = set(meeting.get("living", ()))
+    decided = set(meeting.get("votes", {})) | set(meeting.get("skip_votes", ()))
+    return bool(living) and living <= decided
+
+
+def shorten_when_everybody_voted(meeting: dict, now: float) -> dict:
+    """Let the meeting end 10 seconds from `now` once every living player has voted (S-215).
+
+    It happens once per meeting, the first time everybody has voted while
+    voting is open: the meeting's end becomes the earlier of its old end and
+    now + 10 s, and `ends_by` records it. Taking a vote back or changing it
+    afterwards neither gives the time back nor starts it again. In the
+    discussion the chat stays open until then and the meeting goes straight
+    to its result; if the discussion ends earlier, the vote that follows
+    ends there. Otherwise the state is returned unchanged.
+    """
+    if not _valid_time(now):
+        raise ValueError("Meeting time must be a finite number.")
+    if (
+        meeting.get("ends_by") is not None
+        or not voting_is_open(meeting)
+        or now >= meeting.get("deadline", -math.inf)
+        or not everybody_has_voted(meeting)
+    ):
+        return meeting
+    meeting_end = meeting["deadline"]
+    if meeting["phase"] == "discussion":
+        meeting_end += VOTING_SECONDS
+    ends_by = min(meeting_end, float(now) + SECONDS_AFTER_EVERYBODY_VOTED)
+    updated = deepcopy(meeting)
+    updated["ends_by"] = ends_by
+    updated["deadline"] = min(meeting["deadline"], ends_by)
+    return updated
 
 
 def voting_is_open(state: dict) -> bool:
@@ -217,9 +257,16 @@ def advance_meeting(meeting: dict, now: float) -> dict:
         raise ValueError("Meeting time must be a finite number.")
     updated = deepcopy(meeting)
     while updated["phase"] != "result" and now >= updated["deadline"]:
-        if updated["phase"] == "discussion":
+        ends_by = updated.get("ends_by")
+        if updated["phase"] == "discussion" and ends_by is not None and updated["deadline"] >= ends_by:
+            # Everybody voted during the discussion (S-215): the meeting ends here.
+            updated["phase"] = "result"
+            updated = resolve_vote_result(updated)
+        elif updated["phase"] == "discussion":
             updated["phase"] = "voting"
             updated["deadline"] += VOTING_SECONDS
+            if ends_by is not None:
+                updated["deadline"] = min(updated["deadline"], ends_by)
         elif updated["phase"] == "voting":
             updated["phase"] = "result"
             updated = resolve_vote_result(updated)
