@@ -2,7 +2,7 @@
 
 - While a meeting runs nobody walks and no task can be opened; a task that
   was open when the meeting started is closed (`station_closed`).
-- After the meeting everybody stands on the Main Deck (the spawn) again, and
+- After either meeting everybody stays in their previous position, and
   the Free Riders' 15-second cooldown starts again from the meeting's end.
 - A player who is failed has their open task closed.
 """
@@ -29,7 +29,6 @@ from test_classic_meeting_once import (
 )
 
 STATIONS = {station["id"]: station for station in app.state.campus["stations"]}
-SPAWN = (float(app.state.campus["spawn"]["x"]), float(app.state.campus["spawn"]["y"]))
 
 
 def position_of(name):
@@ -69,14 +68,6 @@ def test_a_free_rider_voted_out_gets_no_cooldown_and_high_performers_never_do():
     assert game.last_fail_at == {}
 
 
-def test_the_way_back_to_the_deck_is_due_once_per_applied_meeting():
-    game, _fr, _hps = a_round_in_a_meeting()
-    assert game.take_back_to_the_deck() is False
-    game.apply_meeting_result(finished(game, {}))
-    assert game.take_back_to_the_deck() is True
-    assert game.take_back_to_the_deck() is False
-
-
 def test_a_meeting_without_a_readable_end_changes_no_cooldown():
     game = ClassicRound(list(FIVE), list(range(1, 12)), random.Random(7))
     game.apply_meeting_result({"phase": "result", "deadline": float("nan")})
@@ -88,23 +79,23 @@ def test_a_meeting_without_a_readable_end_changes_no_cooldown():
 # The server
 
 
-def test_after_the_meeting_everybody_stands_on_the_main_deck(connect, clock):
+def test_after_emergency_everybody_stays_in_place_across_ticks(connect, clock):
     connections, lobby, _fr, [caller, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
+    before = {name: position_of(name) for name in FIVE}
     everybody_skips(connections, lobby, clock)
     assert lobby.meeting["applied"] is True
 
     ticks(connections, count=1)
 
-    for name in FIVE:
-        assert position_of(name) == SPAWN
+    assert {name: position_of(name) for name in FIVE} == before
 
 
 def test_right_after_the_meeting_the_free_rider_cannot_fail_and_hears_his_cooldown(connect, clock):
     connections, lobby, fr, [caller, victim, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
     everybody_skips(connections, lobby, clock)
-    ticks(connections, count=1)  # everybody on the deck, the status is sent
+    ticks(connections, count=1)  # the cooldown status is sent
     statuses = [m for m in everything_sent(connections[fr]) if m["type"] == "classic_fail_status"]
     assert statuses and statuses[-1]["cooldown_until"] is not None
 
@@ -180,17 +171,17 @@ def test_a_failed_player_has_their_open_task_closed(connect, clock):
     assert lobby.tasks.open_station_of(victim) is None
 
 
-def test_the_move_to_the_deck_comes_with_the_result_before_any_tick(connect, clock):
+def test_players_stay_in_place_when_the_result_arrives_before_any_tick(connect, clock):
     # The meeting ends in a handler (the last Skip, S-162); no tick runs after it.
     connections, lobby, fr, [caller, *_] = classic_round(connect)
     start_emergency(connections, caller, clock)
+    before = {name: position_of(name) for name in FIVE}
     everybody_skips(connections, lobby, clock)
 
-    for name in FIVE:
-        assert position_of(name) == SPAWN
+    assert {name: position_of(name) for name in FIVE} == before
 
 
-def test_right_after_the_meeting_a_free_rider_cannot_hide_at_the_place_of_the_meeting(connect, clock):
+def test_right_after_the_meeting_a_free_rider_can_hide_if_still_in_range(connect, clock):
     connections, lobby, fr, [caller, *_] = classic_round(connect)
     spot = app.state.campus["hiding_spots"][0]
     start_emergency(connections, caller, clock)
@@ -199,9 +190,9 @@ def test_right_after_the_meeting_a_free_rider_cannot_hide_at_the_place_of_the_me
 
     connections[fr].send_json({"type": "hide"})
 
-    assert read_until(connections[fr], "error")[-1]["code"] == "hide_out_of_reach"
-    assert lobby.classic_round.hidden == {}
-    assert position_of(fr) == SPAWN
+    assert read_until(connections[fr], "classic_hiding")[-1]["hidden"] is True
+    assert lobby.classic_round.is_hidden(fr)
+    assert position_of(fr) == (spot["x"], spot["y"])
 
 
 def test_a_report_meeting_closes_an_open_task_too(connect, clock):
@@ -222,3 +213,9 @@ def test_a_report_meeting_closes_an_open_task_too(connect, clock):
     assert {"type": "station_closed", "station": station} in told
     assert lobby.tasks.open_station_of(worker) is None
     assert main.classic_task_stations(lobby.classic_round, worker) == [station]
+    before = {name: position_of(name) for name in FIVE}
+    for connection in connections.values():
+        everything_sent(connection)
+    everybody_skips(connections, lobby, clock)
+    ticks(connections, count=1)
+    assert {name: position_of(name) for name in FIVE} == before
