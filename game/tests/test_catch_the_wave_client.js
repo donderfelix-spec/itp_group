@@ -13,6 +13,8 @@ function open(waveDuration) {
   let focus;
   let start;
   const frames = new Map();
+  // The page's keydown listeners (S-221: Space and Enter anywhere in the window).
+  const keyListeners = new Set();
 
   function element(tag) {
     const listeners = {};
@@ -36,7 +38,11 @@ function open(waveDuration) {
   }
 
   const page = {
-    document: { createElement: element },
+    document: {
+      createElement: element,
+      addEventListener(type, handler) { if (type === 'keydown') keyListeners.add(handler); },
+      removeEventListener(type, handler) { if (type === 'keydown') keyListeners.delete(handler); },
+    },
     Game: { minigames: { register(kind, game) {
       assert.equal(kind, 'catch_the_wave');
       start = game.start;
@@ -57,6 +63,14 @@ function open(waveDuration) {
     body, stop, frames,
     result: () => finished,
     focused: () => focus,
+    keyListeners,
+    // A key pressed while the focus is on an element with this tag name.
+    press(key, tagName = 'SECTION', repeat = false) {
+      let prevented = false;
+      const event = { key, repeat, target: { tagName }, preventDefault() { prevented = true; } };
+      keyListeners.forEach((handler) => handler(event));
+      return prevented;
+    },
     at(milliseconds) {
       time = milliseconds;
       const callbacks = [...frames.values()];
@@ -120,4 +134,30 @@ for (const invalid of [undefined, '2000', 1799, 2401]) {
   assert.equal(unloaded.body.children[0].textContent, 'This task could not be loaded.');
   assert.equal(unloaded.frames.size, 0);
 }
+
+// S-221: after a click on the water the focus is on the window, not on the
+// button; Space and Enter still catch. On a button the browser clicks it, so
+// the page leaves the key alone; a held key counts once.
+const keys = open(2000);
+const [, keyControls, keyFeedback] = keys.body.children[0].children;
+const keyScore = keyControls.children[1];
+assert.equal(keys.keyListeners.size, 1);
+assert.equal(keys.press(' '), true, 'Space in the window is taken by the game');
+assert.match(keyFeedback.textContent, /Too early/);
+keys.at(cycle + centreTime);
+assert.equal(keys.press(' ', 'BUTTON'), false, 'Space on a button is left to the button');
+assert.equal(keyScore.textContent, '0 / 3 waves caught');
+assert.equal(keys.press('Enter', 'SECTION', true), false, 'a held key does not try again');
+assert.equal(keys.press('a'), false, 'other keys are left alone');
+keys.press('Enter');
+assert.equal(keyScore.textContent, '1 / 3 waves caught');
+keys.at(2 * cycle + centreTime);
+keys.press(' ');
+keys.at(3 * cycle + centreTime);
+keys.press(' ');
+assert.equal(keys.result(), 1);
+assert.equal(keys.keyListeners.size, 0, 'Completion removes the key listener');
+const closedByKey = open(2000);
+closedByKey.stop();
+assert.equal(closedByKey.keyListeners.size, 0, 'Closing a task removes the key listener');
 console.log('Catch the Wave timing, controls and cleanup passed');

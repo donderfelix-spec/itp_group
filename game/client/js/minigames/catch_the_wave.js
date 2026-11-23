@@ -75,6 +75,7 @@ window.Game = window.Game || {};
     function stop() {
       stopped = true;
       cancelAnimationFrame(frame);
+      document.removeEventListener('keydown', onKey);
     }
 
     function tryCatch() {
@@ -107,6 +108,17 @@ window.Game = window.Game || {};
     catchButton.addEventListener('keydown', (event) => {
       if (event.repeat && event.key === 'Enter') event.preventDefault();
     });
+    // A click on the water moves the focus from the button to the window, so
+    // Space and Enter catch wherever the focus is in the window (S-221). On a
+    // button they do what the button does: the browser clicks it.
+    function onKey(event) {
+      if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.key !== ' ' && event.key !== 'Enter') return;
+      if (event.target && event.target.tagName === 'BUTTON') return;
+      event.preventDefault();
+      tryCatch();
+    }
+    document.addEventListener('keydown', onKey);
     draw(started);
     return stop;
   }
