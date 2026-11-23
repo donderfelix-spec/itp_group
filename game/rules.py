@@ -314,6 +314,11 @@ def call_emergency(state: ClassicState, player_id: str) -> ClassicState:
         raise ValueError("The player cannot call an emergency meeting.")
     triggered_state = dict(state)
     triggered_state["pending_meeting_trigger"] = {"player_id": player_id}
+    # S-230: every F-sheet on the map when an emergency meeting starts can no
+    # longer be reported for the rest of the round, as if it had been.
+    triggered_state["meeting_triggers"] = set(state.get("meeting_triggers", ())) | {
+        f"report:{sheet_id}" for sheet_id in state.get("f_sheets", {})
+    }
     return start_meeting(triggered_state, "emergency")
 
 

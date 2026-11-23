@@ -220,6 +220,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M3-3.35** Team play test 2026-11-23 (Felix): Free Riders see each other in the Players list with a “Free Rider” badge, only on Free Riders' pages. Done on `game/final-classic-polish` (S-227).
 - [x] **M3-3.36** Team play test 2026-11-23 (Felix): the victim of a fail reads “You failed.” over the map. Done on `game/final-classic-polish` (S-228).
 - [x] **M3-3.37** Team play test 2026-11-23 (Felix): the report range was too small; it is 40 map units now (was 8), on the server and for “R Report”. Done on `game/final-classic-polish` (S-229).
+- [x] **M3-3.38** Team play test 2026-11-23 (Felix): the F-sheets on the map when an emergency meeting starts can no longer be reported afterwards. Done on `game/final-classic-polish` (S-230).
 - [ ] **M3-3.7** Play test: one complete round with five players, once the students win, once the Free Rider wins (Laurin)
 
 Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with one entry per mode, and `protocol.MODES` lists the modes the host can choose. A new mode adds one entry to each.
