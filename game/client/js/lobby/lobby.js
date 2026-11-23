@@ -327,7 +327,7 @@ window.Game = window.Game || {};
     const missing = playersMissing(state.mode, state.players.length);
     startButton.disabled = missing > 0 || !isOpen;
     const hint = document.getElementById('lobby-start-hint');
-    hint.textContent = missing > 0 ? startHint(state.mode, missing) : '';
+    hint.textContent = missing > 0 ? startHint(state.mode, missing, state.players.length) : '';
     hint.hidden = missing === 0;
   }
 
@@ -340,9 +340,11 @@ window.Game = window.Game || {};
   }
 
   // For example "Duel needs 1 more player" or "Classic needs 2 more players".
-  function startHint(modeId, missing) {
+  // A host alone in the lobby is also shown the way to play now: Solo (S-201).
+  function startHint(modeId, missing, playerCount) {
     const players = missing === 1 ? 'player' : 'players';
-    return modeName(modeId) + ' needs ' + missing + ' more ' + players;
+    const hint = modeName(modeId) + ' needs ' + missing + ' more ' + players;
+    return playerCount === 1 ? hint + '. Play alone? Choose Solo.' : hint;
   }
 
   // ---- Player list ----
