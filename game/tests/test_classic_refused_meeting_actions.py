@@ -42,7 +42,7 @@ def lobby_in_a_meeting(monkeypatch, now=101.0, reason="report"):
         lobbies.join(name, "ABCD")
     lobby.classic_round = a_classic_round(names)
     lobby.meeting = start_discussion(LIVING, [GHOST], 100.0)
-    lobby.meeting["reason"] = reason  # after a report, voting is open at once (S-161)
+    lobby.meeting["reason"] = reason  # voting is open at once after a report (S-161) and an emergency call (S-212)
     monkeypatch.setattr(main.app.state, "lobbies", lobbies)
     return lobby, sockets
 

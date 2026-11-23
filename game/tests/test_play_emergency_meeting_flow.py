@@ -38,7 +38,7 @@ import pytest
 
 from rules import FAIL_COOLDOWN_SECONDS
 from server import protocol
-from test_play_emergency_button_range import CENTRE, PROBE, bypass, meeting_states, stand, use_button
+from test_play_emergency_button_range import CENTRE, PROBE, bypass, stand, use_button
 from test_play_hiding import (  # noqa: F401 (quiet_tick and server are fixtures)
     LABELS,
     Browser,
@@ -119,24 +119,51 @@ def wait_for_phase(browser, labels, phase, count):
         browser.wait(label, f"window.__received.filter((r) => r.m.type === 'meeting_state' && r.m.phase === '{phase}').length >= {count}")
 
 
-def act(browser, label, selector, labels):
-    """Click in the meeting window; wait until every page in `labels` got the next snapshot."""
-    before = {other: meeting_states(browser, other) for other in labels}
+def ballots(lobby):
+    meeting = lobby.meeting
+    return dict(meeting["votes"]), sorted(meeting["skip_votes"]), meeting["phase"]
+
+
+def act(browser, label, selector, labels, lobby):
+    """Click in the meeting window; wait until the server took it and every page in `labels` shows it.
+
+    The pages wait for the server's new votes and Skips in their newest
+    snapshot, not for any next snapshot: the tick sends one every second.
+    """
+    before = ballots(lobby)
     browser.call("click", label=label, selector=selector)
+    wait_until(lambda: ballots(lobby) != before, f"the server took the click of {label}")
+    votes, skips, _phase = ballots(lobby)
+    compact = {"separators": (",", ":")}
     for other in labels:
-        browser.wait(other, f"window.__received.filter((r) => r.m.type === 'meeting_state').length > {before[other]}")
-    time.sleep(0.2)
+        browser.wait(other, f"""(() => {{
+            const last = window.__received.filter((r) => r.m.type === 'meeting_state').pop().m;
+            return JSON.stringify(last.vote_targets) === {json.dumps(json.dumps(votes, **compact))}
+                && JSON.stringify(last.skip_voted) === {json.dumps(json.dumps(skips, **compact))};
+        }})()""")
+    time.sleep(0.1)
+
+
+def counts(browser, labels, phase):
+    return {label: len(states_of(browser, label, phase)) for label in labels}
+
+
+def wait_for_more(browser, labels, phase, before):
+    """Wait until every page got a snapshot of `phase` after the `before` counts."""
+    for label in labels:
+        browser.wait(label, f"window.__received.filter((r) => r.m.type === 'meeting_state' && r.m.phase === '{phase}').length > {before[label]}")
 
 
 def vote_selector(name):
     return f'#classic-vote-players button[data-target-id="{name}"]'
 
 
-def call_at_button(browser, label, labels, number):
+def call_at_button(browser, label, labels):
     stand(browser, label, (CENTRE[0], CENTRE[1] + 10))
     browser.wait(label, HAS_E_EMERGENCY, timeout=5000)
+    before = counts(browser, labels, "discussion")
     browser.call("press", label=label, key="KeyE")
-    wait_for_phase(browser, labels, "discussion", number)
+    wait_for_more(browser, labels, "discussion", before)
     for other in labels:
         browser.wait(other, "!document.getElementById('classic-meeting').hidden")
     time.sleep(0.3)
@@ -185,7 +212,8 @@ def played(server):  # noqa: F811 (the imported fixture)
         browser.wait(caller, "window.__button.frame && window.__button.frame.visible", timeout=10000)
 
         # 1. Emergency meeting: votes in the discussion, a leave that brings Skip to 75 %.
-        call_at_button(browser, caller, everybody, 1)
+        results_before = counts(browser, everybody, "result")
+        call_at_button(browser, caller, everybody)
         seen["m1_first"] = states_of(browser, caller)[-1]
         seen["m1_window"] = {label: window(browser, label) for label in everybody}
         seen["m1_sizes"] = {}
@@ -197,40 +225,45 @@ def played(server):  # noqa: F811 (the imported fixture)
         browser.call("viewport", label=caller, width=1280, height=800)
         time.sleep(0.3)
 
-        act(browser, caller, vote_selector(names[fr]), everybody)
+        act(browser, caller, vote_selector(names[fr]), everybody, lobby)
         seen["m1_voted"] = {label: window(browser, label)["votes"] for label in everybody}
-        act(browser, caller, vote_selector(names[voter]), everybody)
+        act(browser, caller, vote_selector(names[voter]), everybody, lobby)
         seen["m1_changed"] = {label: window(browser, label)["votes"] for label in everybody}
         shot(browser, voter, "1b_vote_changed_seen_by_voter")
-        act(browser, caller, vote_selector(names[voter]), everybody)
+        act(browser, caller, vote_selector(names[voter]), everybody, lobby)
         seen["m1_withdrawn"] = {label: window(browser, label)["votes"] for label in everybody}
         seen["m1_server_votes"] = dict(lobby.meeting["votes"])
 
         for label in (fr, caller, voter):
-            act(browser, label, "#classic-skip-discussion", everybody)
+            act(browser, label, "#classic-skip-discussion", everybody, lobby)
         seen["m1_three_skips"] = {"phase": lobby.meeting["phase"], "window": window(browser, second)}
         shot(browser, second, "1c_three_of_five_skip")
         stayers = [label for label in LABELS if label != leaver]
         browser.call("click", label=leaver, selector="#classic-meeting-leave")
-        wait_for_phase(browser, stayers, "result", 1)
+        wait_for_more(browser, stayers, "result", results_before)
         seen["m1_result"] = {label: states_of(browser, label, "result")[-1] for label in stayers}
         seen["m1_server"] = {"applied": lobby.meeting is None or lobby.meeting.get("applied"),
                              "eliminated": sorted(classic.eliminated), "phase": classic.phase}
         shot(browser, second, "1d_result_after_the_leave")
         closed(browser, stayers)
+        seen["m1_results_sent"] = {label: n - results_before[label]
+                                   for label, n in counts(browser, stayers, "result").items()}
 
         # 2. Second emergency meeting: Skip by 75 % in the discussion.
-        call_at_button(browser, second, stayers, 2)
-        act(browser, voter, vote_selector(names[fr]), stayers)
+        results_before = counts(browser, stayers, "result")
+        call_at_button(browser, second, stayers)
+        act(browser, voter, vote_selector(names[fr]), stayers, lobby)
         seen["m2_voted"] = window(browser, fr)["votes"]
         for label in (fr, caller):
-            act(browser, label, "#classic-skip-discussion", stayers)
+            act(browser, label, "#classic-skip-discussion", stayers, lobby)
         browser.call("click", label=voter, selector="#classic-skip-discussion")
-        wait_for_phase(browser, stayers, "result", 2)
+        wait_for_more(browser, stayers, "result", results_before)
         seen["m2_result"] = states_of(browser, second, "result")[-1]
         seen["m2_phases"] = [state["phase"] for state in states_of(browser, second)][-6:]
         shot(browser, second, "2a_result_by_skip")
         closed(browser, stayers)
+        seen["m2_results_sent"] = {label: n - results_before[label]
+                                   for label, n in counts(browser, stayers, "result").items()}
 
         # 3. The Free Rider fails the voter; the second reports: a report meeting.
         clock.skip(FAIL_COOLDOWN_SECONDS + 1)  # the cooldown starts again after a meeting
@@ -246,8 +279,12 @@ def played(server):  # noqa: F811 (the imported fixture)
         put(names[voter], free_place_at(CENTRE, 60, near=(CENTRE[0] - 40, CENTRE[1] + 45)))
         stand(browser, second, (sheet["x"], sheet["y"]))
         browser.wait(second, "!document.querySelector('.report-button').hidden", timeout=5000)
+        discussions_before = counts(browser, stayers, "discussion")
+        results_before = counts(browser, stayers, "result")
         browser.call("press", label=second, key="KeyR")
-        wait_for_phase(browser, stayers, "discussion", 3)
+        wait_for_more(browser, stayers, "discussion", discussions_before)
+        for label in stayers:
+            browser.wait(label, "!document.getElementById('classic-meeting').hidden")
         time.sleep(0.3)
         seen["m3_first"] = states_of(browser, second)[-1]
         seen["m3_window"] = {label: window(browser, label) for label in stayers}
@@ -255,11 +292,15 @@ def played(server):  # noqa: F811 (the imported fixture)
         clock.skip(DISCUSSION_SECONDS + 1)
         wait_for_phase(browser, stayers, "voting", 1)
         clock.skip(VOTE_SECONDS + 1)
-        wait_for_phase(browser, stayers, "result", 3)
+        wait_for_more(browser, stayers, "result", results_before)
         seen["m3_result"] = states_of(browser, second, "result")[-1]
         closed(browser, stayers)
 
-        # 4. The caller's call is used.
+        # 4. The caller's call is used; the Free Rider, who has not called, still sees "E Emergency".
+        stand(browser, fr, (CENTRE[0] - 20, CENTRE[1] + 10))
+        time.sleep(0.3)
+        seen["unused_has_e_emergency"] = browser.js(fr, HAS_E_EMERGENCY)
+        put(names[fr], free_place_at(CENTRE, 60, near=(CENTRE[0] + 60, CENTRE[1])))
         stand(browser, caller, (CENTRE[0], CENTRE[1] + 10))
         time.sleep(0.3)
         seen["used_button"] = use_button(browser, caller)
@@ -324,6 +365,7 @@ def test_a_leave_that_brings_skip_to_75_percent_ends_the_emergency_meeting_at_on
         assert names[labels["leaver"]] not in result["living"]
     assert played["m1_server"]["eliminated"] == [names[labels["leaver"]]]
     assert played["m1_server"]["phase"] == "round"
+    assert set(played["m1_results_sent"].values()) == {1}  # the result reached every page once
 
 
 def test_skip_by_75_percent_ends_the_second_emergency_meeting_in_its_discussion(played):
@@ -331,13 +373,17 @@ def test_skip_by_75_percent_ends_the_second_emergency_meeting_in_its_discussion(
     assert {v["target"]: v["count"] for v in played["m2_voted"]}[names[labels["fr"]]] == "1"
     result = played["m2_result"]
     assert result["reason"] == "emergency" and result["ejected_id"] is None
+    assert result["trigger_player_id"] == names[labels["second"]]
+    assert set(played["m2_results_sent"].values()) == {1}
     assert result["vote_targets"] == {}  # the voter's Skip took his vote back
     assert len(result["skip_voted"]) == 3
     assert "voting" not in played["m2_phases"]  # it never reached the vote phase
 
 
 def test_the_report_meeting_offers_the_same_controls(played):
+    names, labels = played["names"], played["labels"]
     assert played["m3_first"]["reason"] == "report" and played["m3_first"]["phase"] == "discussion"
+    assert played["m3_first"]["trigger_player_id"] == names[labels["second"]]
     for label, shown in played["m3_window"].items():
         assert shown["votesShown"] and shown["skipShown"], label
         assert len(shown["votes"]) == 3
@@ -345,6 +391,7 @@ def test_the_report_meeting_offers_the_same_controls(played):
 
 
 def test_a_used_emergency_call_offers_nothing_and_is_refused(played):
+    assert played["unused_has_e_emergency"] is True  # the button itself is still there for others
     assert played["used_has_e_emergency"] is False
     refused = played["used_bypass"]
     assert [error["message"] for error in refused["errors"]] == [CALL_REFUSED]
