@@ -133,7 +133,7 @@ We built the game with coding agents (Claude Code), and we say so plainly: agent
 
 ## Documents
 
-- [game/WALKTHROUGH.md](game/WALKTHROUGH.md): a ten-minute tour of the code: one message from key to screen, the four areas, the five rules, how a to-do reached `main`
+- [game/WALKTHROUGH.md](game/WALKTHROUGH.md): a tour of the whole project: one message from key to screen, the four areas, the five rules, the questions we expect (data, tests, a database that is down, why, limits, security) and a checklist for the live demo
 - [game/DESIGN.md](game/DESIGN.md): look, map, characters, screens, rules of every mode, minigames, every message shown to the player
 - [game/DECISIONS.md](game/DECISIONS.md): every decision with its reason, including the ones we later replaced
 - [game/FEATURES.md](game/FEATURES.md): every feature and its status

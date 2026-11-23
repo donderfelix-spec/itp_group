@@ -1,8 +1,14 @@
-# Walkthrough: how the code fits together
+# Walkthrough: how the project is built
 
-A tour of the code for somebody who has the repository open. It takes about ten minutes. What the game is, who built it and how to run it are in the [README](../README.md); the map of every folder is in [game/README.md](README.md). Function names below are the real ones; search for them in the file named next to them.
+A tour of the whole project for somebody who has the repository open: every one of us should be able to answer for every part of it, not only for the area we own. Reading it takes about fifteen minutes. What the game is, who built it and how to run it are in the [README](../README.md); the map of every folder is in [game/README.md](README.md). Function names below are the real ones; search for them in the file named next to them.
 
-## 1. One message, end to end: pressing R at an F-sheet
+## 1. The whole in one picture
+
+One server (Python, FastAPI) holds everything that matters in its memory: who is signed in, the lobbies, the running rounds. Every browser keeps one WebSocket connection to it (`client/js/net.js`, `/ws` in `server/main.py`). The browser only sends what its player wants to do (walk, open a station, report, vote) and draws what the server tells it. Every message from a browser takes the same path: `parse_client_message` in `server/protocol.py` checks its shape, a handler in `server/main.py` checks whether this player may do it now, and a plain rule function (in `rules.py`, `server/classic/`, `server/modes/`, `server/world/`, `server/net/`, `server/accounts/`) decides what happens. The handler then sends each player only what that player may know. Walking is the one exception to “one message, one answer”: `move` only sets a direction (`answer_move_message`), and the tick (`run_ticks`, 15 times a second) moves everybody with `step` from `server/world/movement.py` and sends the positions (`tell_positions`). Accounts and statistics are the only data that outlive the server; they live in Postgres (section 6).
+
+The two traces below follow this path for two real actions.
+
+## 2. One message, end to end: pressing R at an F-sheet
 
 The Free Rider has failed Tiago. An F-sheet lies where he stood. Mara walks up to it and presses R.
 
@@ -32,7 +38,7 @@ The Free Rider has failed Tiago. An F-sheet lies where he stood. Mara walks up t
 | Answers and who gets them | `tests/test_classic_meeting_sheets_area3.py` (`test_meeting_snapshot_names_the_reported_sheet`), `tests/test_classic_rule1_messages.py` (`test_every_classic_message_reaches_only_who_may_know_it`) |
 | In real browsers | `tests/test_play_classic_report_after_meeting_and_new_round.py` |
 
-## 2. A second trace: a task station and its minigame (area 4)
+## 3. A second trace: a task station and its minigame (area 4)
 
 1. **E at a station.** `useActionInRange` in `world.js` decides what E means here (leave hiding, hide, emergency or a station); for a station, `useStationInRange` calls `openStation` in `main.js`, which sends `{type: "open_station", station}` with `Game.net.ask` (one action at a time).
 2. **Checks.** `parse_client_message` checks the station number (`_check_station`). `answer_task_message` in `server/main.py` checks sign-in and lobby, then `handle_open_station` refuses a Free Rider (“Free Riders cannot complete tasks.”) and any opening during a meeting. The rest is the plain rule `RoundTasks.open` in `server/modes/tasks.py`, with its checks in a fixed order (`_why_not_open`): the station exists, the player needs it (in Classic only the one active task, `active_task` in `server/classic/round.py`; in Duel only the next station of the route), no other task is open, and the player stands in range (`station_in_range` in `server/world/stations.py`).
@@ -42,7 +48,7 @@ The Free Rider has failed Tiago. An F-sheet lies where he stood. Mara walks up t
 
 Tests: `tests/test_tasks.py` (`test_just_under_the_minimum_time_is_too_fast`, `test_one_step_beyond_the_range_is_too_far`), `tests/test_server_tasks.py` (`test_finishing_too_soon_sends_the_error_and_then_closes`), `tests/test_classic_one_active_task.py`, and in real browsers `tests/test_play_classic_task_card_end_to_end.py`.
 
-## 3. The four areas
+## 4. The four areas
 
 **Area 1, Campus and characters (Hanna).** The map, walking and collision, the camera, limited vision, the drawing of rooms and characters.
 
@@ -80,17 +86,76 @@ Tests: `tests/test_tasks.py` (`test_just_under_the_minimum_time_is_too_fast`, `t
 - Rejected case: `test_just_under_the_minimum_time_is_too_fast` in `tests/test_tasks.py`.
 - How to explain it: “The browser plays the minigame, but the server draws its content and decides whether ‘done’ counts.”
 
-## 4. The five rules that shape the code
+## 5. The five rules that shape the code
 
 The rules are in [AGENTS.md](../AGENTS.md). One place where each can be seen:
 
 1. **The server decides.** `tell_positions` in `server/main.py`: each player is sent only the positions they may know (no ghosts for the living, only those in sight, no hidden Free Rider for a living High Performer), and `you_are_fr` goes only to a Free Rider (`tell_classic_start`).
 2. **Every message is checked.** `parse_client_message` and the table `CLIENT_MESSAGES` in `server/protocol.py`; `test_the_message_table_holds_exactly_the_agreed_types` in `tests/test_protocol.py` pins the list.
-3. **Every permission is checked.** `answer_report_message` in `server/main.py` (section 1, step 4), or `_why_not_open` in `server/modes/tasks.py`.
+3. **Every permission is checked.** `answer_report_message` in `server/main.py` (section 2, step 4), or `_why_not_open` in `server/modes/tasks.py`.
 4. **Rules are plain functions.** `can_report` and `report_sheet` in `rules.py`; `RoundTasks.finish(name, now)` gets the time as an argument.
 5. **No secrets in the repository.** `server/main.py` reads `DATABASE_URL` from the environment (`make_account_store(os.environ.get("DATABASE_URL"))`); `.gitignore` keeps `.env` files out, and `tests/conftest.py` removes `DATABASE_URL` so tests never touch a real database.
 
-## 5. Where decisions and work are written down
+## 6. Questions we expect, and the answers
+
+**Where is the data stored?**
+Accounts and statistics are in Postgres at Supabase, in two tables: `accounts` (`server/accounts/store.py`, `PostgresAccountStore`) and `account_statistics` (`server/accounts/statistics_store.py`). The server finds the database through the environment variable `DATABASE_URL`, which is set only in Render's settings (S-39). A password is stored only as an Argon2 hash (`Argon2Hasher` in `server/accounts/service.py`, S-38). Both tables have row level security switched on with no policy, so Supabase's public Data API sees no rows. Without `DATABASE_URL` (locally, in the tests) the same methods run on `MemoryAccountStore` and `MemoryStatisticsStore` (`make_account_store`, `make_statistics_store`). Lobbies, rounds, positions and who is signed in live only in the server's memory (`Lobbies`, `Sessions`; S-32, S-39): a round lasts minutes and need not survive a restart. The browser stores nothing: no cookie, no `localStorage`, no token. Being signed in belongs to the connection (S-78): after a reload a player signs in again. After a lost connection the page keeps the lobby code only in a variable, not in storage (S-109).
+*Limit:* a restart or a new deploy ends every lobby and round. *Could change:* keep lobbies in a shared store such as Redis, or let a running round wait for a player who reconnects.
+
+**What do the tests cover, and what not?**
+On 2026-11-23 there are about 6,300 test cases in `tests/`. Without Playwright, 5,713 pass and 574 are skipped. They work on four levels:
+- the plain rule functions, with the time and the random choices passed in (`tests/test_rules.py`, `tests/test_tasks.py`, `tests/test_movement.py`);
+- the real server over real WebSocket connections with FastAPI's test client, several players at once (`tests/test_server_tasks.py`, `tests/test_classic_rule1_messages.py`);
+- the real client files run in Node.js (`*_in_node.js`);
+- play tests that drive real Chromium pages with Playwright (27 files, most of them `tests/test_play_*.py`).
+The message types are tested for accepted, rejected and edge cases (rule 2). One gap we know of: no test sends a malformed `sheet_id`. The CI (`.github/workflows/ci.yml`) runs pytest, `node --check` and `pip-audit` on every pull request and on `main`.
+*Not covered:*
+- the deployed site on Render;
+- the real Supabase database: `tests/conftest.py` removes `DATABASE_URL`, and the Postgres stores are tested with fake connections;
+- the browser play tests in CI: it has no Playwright, so they run only on our machines;
+- browsers other than Chromium, phones and touch;
+- real network delay (only simulated, `tests/test_play_smooth_delivery.py`);
+- many lobbies or players at once: there is no load test.
+
+**What happens if the service the game depends on is unavailable?**
+Our only outside service is the database. We tried it with the server pointed at a closed port and at a port that never answers:
+- The server starts anyway: the stores connect only when they are first needed.
+- Sign-up and log-in answer “Accounts are unavailable right now. You can still play as a guest.” (`accounts_unavailable`). It comes at once when the database refuses, and after 5 seconds when it does not answer (`CONNECT_TIMEOUT_SECONDS`; a query may run at most 5 seconds, `SET_STATEMENT_TIMEOUT`). A down database is not counted as a wrong password (`handle_log_in`).
+- Profile and leaderboard answer “Statistics are unavailable right now.”
+- Guests sign in, create lobbies and play every mode at the same moment. The database runs on two worker threads (`account_workers`), never on the loop that runs the game.
+- The result of a finished round is written only after the players were told (`write_result_later`). If that write fails, the round has ended normally and only its statistics are lost (`tests/test_server_statistics.py`, `test_a_store_that_fails_does_not_keep_the_round_from_ending`).
+- The log gets one fixed line per failure, never the address or the password (`problem_log_line`).
+*Limits:* with a database that hangs, every account action takes one of the two workers for 5 seconds, so many log-ins at once wait in turn. A failed write is not retried.
+
+**Why was it built this way?**
+- Python with FastAPI on the server, because the course works with Python (S-29, replacing Node.js in S-15).
+- WebSockets, because several players need a permanent connection both ways (S-15, S-29).
+- Plain JavaScript on a canvas, without a framework or a build step: few dependencies and code everybody can read (S-17); the course asks for approval of JavaScript frameworks (S-42).
+- The server decides everything that counts and tells each browser only what its player may know, so a changed browser cannot cheat (S-16).
+- Rules as plain functions, so pytest can test them in seconds (S-30).
+- Minigames are played in the browser, with content drawn by the server and a minimum time (S-19, S-93): replaying every minigame on the server would cost too much for a game among friends.
+- Rounds in memory, data in Postgres (S-32, S-39).
+- Coding agents with fixed roles (S-22): the reviewer sees only the brief and the change (S-24), every loop stops after three rounds (S-25), and a person approves every pull request (S-26). The rules every agent follows are in [AGENTS.md](../AGENTS.md) (S-35), and every decision is written down with who made it.
+
+**What are the limits, and how could it change?**
+The README lists the known limitations: no return into a running round, rounds lost on a restart, attempt limits per connection, everybody learns who was failed and where, no drifting out to sea, no browser plays in CI. Next steps we would take:
+1. Let a player who lost the connection return to the running round (S-109 today only rejoins the lobby).
+2. Send the victim's position after a fail only to those who see it (M3-3.25).
+3. Count failed log-ins per account or address, not per connection.
+4. Run the Playwright play tests in CI, and add a test against a real Postgres.
+
+**How is it secured?**
+- Input: every message is checked for size, shape and allowed values in `server/protocol.py` before any game code sees it.
+- Permissions: every handler asks whether this player may act now (host, alive, in range, off cooldown).
+- What each player is told: no browser is sent what its player must not know (rule 1, `tests/test_classic_rule1_messages.py`).
+- Passwords: stored as Argon2 hashes. Log-in tries are limited to 5 wrong ones a minute and lobby codes to 10 (`server/net/attempts.py`). An unknown name takes as long to answer as a wrong password (`log_in`).
+- Database: queries are parameterised (`INSERT_ACCOUNT`).
+- Pages: the server sets security headers, including a content security policy (`SECURITY_HEADERS` in `server/main.py`).
+- Dependencies: five runtime packages, all pinned in `requirements.txt`; `pip-audit` reports no known vulnerabilities.
+- Secrets: none in the repository; `.env` is ignored.
+*Known gaps:* the attempt limits count per connection, so a new connection starts at zero. Every player learns who was failed and where (README).
+
+## 7. Where decisions and work are written down
 
 - [DECISIONS.md](DECISIONS.md): every decision, numbered S-01, S-02, …, with its date, its reason and who decided.
 - [TODO.md](TODO.md): the to-dos by milestone and area, ticked when done.
@@ -100,15 +165,22 @@ The rules are in [AGENTS.md](../AGENTS.md). One place where each can be seen:
 
 **One real example: hiding with E.** Felix wanted the Free Rider to hide on purpose instead of just by standing in a hiding spot (recorded on 2026-11-22). That became the to-do **M3-1.6** in TODO.md and the decisions **S-191** (who may hide, how it ends, what is refused while hidden) and **S-192** (a hidden Free Rider is sent to no living High Performer; the others see a crossed-out eye). It was built on the branch `game/m3-hide-with-e` (commits “The Free Rider hides on purpose with E (M3-1.6, S-191)” and “A hidden Free Rider is sent to no High Performer; others see a crossed-out eye (S-192)”), with the plain rules in `server/classic/hiding.py`, the server tests in `tests/test_hide_with_e.py` and a play test with four browsers (`tests/test_play_hide_with_e.py`). It reached `main` as **pull request #100** on 2026-11-22, together with M3-1.5 (hiding spots as map objects, S-190).
 
-## 6. Try it in two minutes
+## 8. Try it in two minutes
 
 1. Start the server as the [README](../README.md#run-it-locally) says and open http://localhost:8000.
 2. Click “Play as guest”, then “Create lobby”. A new lobby starts in Solo (S-203): “Start game” plays a Duel route alone.
 3. Open a second browser window, “Play as guest”, type the four-letter code and “Join”. The lobby switches to Duel; the host clicks “Start game”. Walk with WASD, press E at the pulsing station.
 4. For Classic open four windows (four players at least), and the host chooses “Classic”. M opens the campus map.
 
-## 7. What we would do next
+## 9. Before the live demo
 
-- Let a player whose connection dropped return to the running round (today they wait until it is over, S-109).
-- Send the victim's position after a fail only to the players who see it (M3-3.25), and show the voted-out character drifting out to sea (M3-3.5).
-- Run the browser play tests in CI too, not only on our machines.
+- Open https://itp-group.onrender.com a few minutes before: the free Render instance sleeps and takes about a minute to wake.
+- Check in Supabase that the project is not paused, and log in once with a test account. If accounts fail, the game still works for guests, and the page says so.
+- Have four browser windows ready (Classic needs four players), two of them signed in with accounts so the profile has numbers to show.
+- A five-minute path:
+  1. Sign up and log in, and show one refused input (a lobby code with three letters: “Lobby codes are 4 letters.”).
+  2. Create a lobby and let the others join with the code.
+  3. Play Classic: the Free Rider fails somebody, somebody reports, then chat and vote.
+  4. Play one short Duel.
+  5. Open the profile on Home and show the new rounds.
+- If the hall's network blocks WebSockets, use a phone hotspot.

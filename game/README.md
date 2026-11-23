@@ -30,7 +30,7 @@ Some tests run the real client files in Node.js, and the play tests (`tests/test
 
 ## Documents
 
-- [WALKTHROUGH.md](WALKTHROUGH.md): a guided tour of the code, from one key press to the screen, and how to explain each area
+- [WALKTHROUGH.md](WALKTHROUGH.md): a guided tour of the whole project, from one key press to the screen, with the questions we expect and their answers
 - [DESIGN.md](DESIGN.md): look, map, characters, screens, rules of the modes, minigames, every message shown to the player
 - [TODO.md](TODO.md): all to-dos, sorted by milestone and area
 - [FEATURES.md](FEATURES.md): overview of all features with their status
