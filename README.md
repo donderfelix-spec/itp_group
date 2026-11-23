@@ -75,7 +75,7 @@ Check the dependencies for known vulnerabilities:
 .venv/bin/pip-audit -r requirements.txt
 ```
 
-About the tests: most of them are plain pytest. About 45 test files also run the real client files in Node.js (version 20 or newer), and about 28 (most of `tests/test_play_*.py` and a few others) drive real Chromium pages with the npm package Playwright. Without Node, or without Playwright and Chromium, pytest skips those files and says so; the rest still runs. The CI on GitHub has Node but no Playwright, so it skips the browser play tests; they are run on our own machines.
+About the tests: most of them are plain pytest. About 45 test files also run the real client files in Node.js (version 20 or newer), and about 28 (most of `tests/test_play_*.py` and a few others) drive real Chromium pages with the npm package Playwright. Without Node, or without Playwright and Chromium, pytest skips those files and says so; the rest still runs. The CI on GitHub for pull requests has Node but no Playwright, so it skips the browser play tests there. They run on GitHub after each merge to `main` in a workflow of their own (`.github/workflows/browser-plays.yml`, with Playwright and Chromium), which never blocks a pull request, and on our own machines.
 
 ## The modes
 

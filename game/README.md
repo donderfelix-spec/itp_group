@@ -26,7 +26,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 
 The first command sets up the environment once. The second starts the game on http://localhost:8000 (without `DATABASE_URL`, accounts and statistics are kept in memory). The third runs the tests, the fourth checks the dependencies for known security vulnerabilities.
 
-Some tests run the real client files in Node.js, and the play tests (`tests/test_play_*.py` and a few others) drive real Chromium pages through the npm package Playwright. Without Node, or without Playwright and Chromium, pytest skips them and says so. The CI on GitHub (`.github/workflows/ci.yml`) has Node but no Playwright.
+Some tests run the real client files in Node.js, and the play tests (`tests/test_play_*.py` and a few others) drive real Chromium pages through the npm package Playwright. Without Node, or without Playwright and Chromium, pytest skips them and says so. The CI on GitHub for pull requests (`.github/workflows/ci.yml`) has Node but no Playwright; the play tests run on GitHub after each merge to `main` in `.github/workflows/browser-plays.yml` (S-220).
 
 ## Documents
 
