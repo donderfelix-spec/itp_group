@@ -105,7 +105,7 @@ def test_stations_and_the_button_are_not_solid(campus):
 
 
 def test_the_things_that_are_only_drawn_are_there(campus):
-    assert len(campus["hiding_spots"]) == 4
+    assert len(campus["hiding_spots"]) == 7  # four until M3-1.7 added three (S-196)
     assert [band["id"] for band in campus["bands"]] == ["sand", "sea"]
 
 

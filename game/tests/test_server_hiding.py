@@ -26,20 +26,30 @@ from test_classic_server_features import classic_for, start_classic
 from test_server_duel import REAL_TICK, duel_of, lobby_of
 
 CAMPUS = app.state.campus
-# The hiding spot in the hedge on the Main Deck (595, 249, r 9).
+# The hiding spot in the hedge on the Main Deck (644, 297, r 9; 595, 249 until M3-1.7).
 SPOT = CAMPUS["hiding_spots"][0]
 IN_THE_SPOT = (SPOT["x"], SPOT["y"])
 # Far from every hiding spot and from each other.
 FAR_PLACES = [(100.0, 330.0), (300.0, 330.0), (300.0, 400.0), (200.0, 300.0), (400.0, 300.0), (250.0, 450.0)]
 # Clear sight lines from outside the 35-unit hiding reveal range to each spot.
-SPOT_WATCHERS = [(640.0, 249.0), (549.0, 513.0), (91.0, 524.0), (591.0, 128.0)]
+# M3-1.7 (S-196) moved spots 1, 2 and 4 and added 5 to 7: the boxes' watcher
+# moved from (549, 513), which was 28 units from their new place, to the
+# other side of the aisle.
+SPOT_WATCHERS = [
+    (640.0, 249.0), (530.0, 499.0), (91.0, 524.0), (591.0, 128.0),
+    (360.0, 133.0), (90.0, 158.0), (230.0, 545.0),
+]
 FOUR = ("Mara", "Tiago", "Ines", "Rui")
 SIX = ("Mara", "Tiago", "Ines", "Rui", "Luca", "Sofia")
 
 
 def beside_the_spot(distance):
-    """A place `distance` units to the right of the spot's centre."""
-    return (SPOT["x"] + distance, SPOT["y"])
+    """A place `distance` units to the left of the spot's centre.
+
+    To the left since M3-1.7 (S-196): the hedge stands against the deck's
+    right wall now, so to the right of the spot there is only the wall.
+    """
+    return (SPOT["x"] - distance, SPOT["y"])
 
 
 def next_positions(connection):
@@ -144,8 +154,8 @@ def test_a_hidden_free_rider_is_left_out_for_high_performers_at_any_distance(con
     assert [entry.get("hidden") for entry in told[fr]["players"] if entry["name"] == fr] == [True]
 
 
-@pytest.mark.parametrize("index", [0, 1, 2, 3])
-def test_every_one_of_the_four_spots_hides_the_free_rider(connect, index):
+@pytest.mark.parametrize("index", [0, 1, 2, 3, 4, 5, 6])
+def test_every_one_of_the_seven_spots_hides_the_free_rider(connect, index):
     connections, [fr], high_performers = classic_round(connect)
     spot = CAMPUS["hiding_spots"][index]
     for name in high_performers:
@@ -187,9 +197,10 @@ def test_the_message_to_a_far_player_carries_no_trace_of_the_hidden_free_rider(c
 def test_a_free_rider_walking_into_the_spot_disappears_only_when_he_presses_e(connect):
     # Since M3-1.6 (S-191) walking in does not hide: he is seen on every step.
     connections, [fr], [far, _, _] = classic_round(connect)
-    # Below the hedge; three steps of 9 units up end in the spot, at y 253.
+    # Below the hedge; three steps of 9 units up end in the spot, at y 303
+    # (since M3-1.7 the hedge stands at the right wall: from 595, 280 to 595, 253 before).
     put(far, SPOT_WATCHERS[0])
-    put(fr, (595.0, 280.0))
+    put(fr, (644.0, 330.0))
     lobby = app.state.lobbies.lobby_of(fr)
     lobby.walkers.set_direction(fr, 0, -1)
     seen_by_far = []
@@ -198,7 +209,7 @@ def test_a_free_rider_walking_into_the_spot_disappears_only_when_he_presses_e(co
         seen_by_far.append(names_in(next_positions(connections[far])))
     lobby.walkers.set_direction(fr, 0, 0)
 
-    assert lobby.walkers.position_of(fr) == (595.0, 253.0)
+    assert lobby.walkers.position_of(fr) == (644.0, 303.0)
     assert [fr in seen for seen in seen_by_far] == [True, True, True]
     connections[fr].send_json({"type": "hide"})
     connections[fr].portal.call(REAL_TICK, 0.0)

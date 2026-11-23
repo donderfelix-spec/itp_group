@@ -29,12 +29,17 @@ NEW_STATIONS = [7, 8, 9, 10, 11, 12]
 # Measured again for M2-1.20 (map polish), which moved station 2 four units
 # off the café's wall: the ways to station 2 became shorter (spawn to 2:
 # 341.304 -> 339.647); the others are unchanged.
+# Measured again for M3-1.7 (S-196), which moved station 4 from in front of
+# the CTT's bookshelf (90, 520) to the left wall (38, 521): every way to
+# station 4 became 38 to 43 units longer (spawn to 4: 718.108 -> 760.735,
+# 1 to 4: 568.167 -> 606.108, 2 to 4: 714.960 -> 757.588, 3 to 4: 957.990
+# -> 1000.617, 4 to 5: 975.931 -> 1018.558); the others are unchanged.
 DISTANCES_ON_MAIN = {
-    (SPAWN, 1): 598.676, (SPAWN, 2): 339.647, (SPAWN, 3): 326.274, (SPAWN, 4): 718.108, (SPAWN, 5): 262.510,
-    (1, 2): 572.333, (1, 3): 815.362, (1, 4): 568.167, (1, 5): 856.500,
-    (2, 3): 529.588, (2, 4): 714.960, (2, 5): 597.470,
-    (3, 4): 957.990, (3, 5): 542.392,
-    (4, 5): 975.931,
+    (SPAWN, 1): 598.676, (SPAWN, 2): 339.647, (SPAWN, 3): 326.274, (SPAWN, 4): 760.735, (SPAWN, 5): 262.510,
+    (1, 2): 572.333, (1, 3): 815.362, (1, 4): 606.108, (1, 5): 856.500,
+    (2, 3): 529.588, (2, 4): 757.588, (2, 5): 597.470,
+    (3, 4): 1000.617, (3, 5): 542.392,
+    (4, 5): 1018.558,
 }
 
 
