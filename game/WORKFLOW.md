@@ -79,7 +79,7 @@ flowchart TD
 
 9. **Diamond “Findings?”** Every finding goes back to the Coder with file and line. Without findings it goes on to the play.
 
-10. **Play.** The building session starts the server, opens several browsers and plays as different players (the Tester agent does this only when the Lead asks for it). It checks what the rule tests do not see: whether everyone really sees the same thing, whether something hangs, whether it is playable. The run is turned into a repeatable test, which from then on runs with every change. (The browser plays need Node with Playwright and Chromium; the CI on GitHub has no Playwright and skips them, so they run on our own machines.)
+10. **Play.** The building session starts the server, opens several browsers and plays as different players (the Tester agent does this only when the Lead asks for it). It checks what the rule tests do not see: whether everyone really sees the same thing, whether something hangs, whether it is playable. The run is turned into a repeatable test. (The browser plays need Node with Playwright and Chromium. The CI for pull requests has no Playwright and skips them; they run on GitHub after each merge to `main` in `.github/workflows/browser-plays.yml`, S-220, and on our own machines, so the building session runs them before the pull request.)
 
 11. **Diamond “Acceptance criteria met?”** If not, the steps to reproduce go back to the Coder.
 
