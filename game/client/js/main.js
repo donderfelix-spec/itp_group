@@ -425,6 +425,20 @@ window.Game = window.Game || {};
     Game.duel.showResult(message);
   }
 
+  // The page has one line for messages. Two notices that come together (the
+  // host's leave stops a Classic round: "The host left. …" and then "Too many
+  // players left. …") are shown together, so neither hides the other (S-224).
+  const NOTICES_TOGETHER_MS = 500;
+  let lastNotice = null; // { text, at }
+
+  function whenNotice(message) {
+    const now = performance.now();
+    const together = lastNotice !== null && now - lastNotice.at <= NOTICES_TOGETHER_MS;
+    const text = together ? lastNotice.text + ' ' + message.message : message.message;
+    lastNotice = { text: text, at: now };
+    Game.screens.showMessage(text, false);
+  }
+
   function whenError(message) {
     Game.forms.stopWaiting(); // Every error is an answer, also one that belongs to no field.
     reportAnswered();
@@ -496,7 +510,7 @@ window.Game = window.Game || {};
   Game.net.on('classic_progress', whenClassicProgress);
   Game.net.on('profile', Game.statistics.showProfile);
   Game.net.on('leaderboard', Game.statistics.showLeaderboard);
-  Game.net.on('notice', (message) => Game.screens.showMessage(message.message, false));
+  Game.net.on('notice', whenNotice);
   Game.net.on('error', whenError);
   Game.net.on('meeting_state', reportAnswered);
   Game.net.on('you_are_fr', () => Game.classicRound.setOwnFreeRider(true));
