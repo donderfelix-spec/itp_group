@@ -62,6 +62,15 @@ async function chooseMode(page, modeId) {
   await page.waitForFunction((id) => document.querySelector(`#lobby-modes > .mode[data-mode="${id}"]`).classList.contains('mode-own'), modeId);
 }
 
+// A new lobby is in Solo (S-203), and the page does not let a host alone
+// choose Duel (it does not fit, S-146). A host alone has Duel chosen only
+// after a second player left again; this sends the same choice through the
+// page's own connection, to look at that state.
+async function chooseDuelWhileAlone(page) {
+  await page.evaluate(() => window.Game.net.send({ type: 'choose_mode', mode: 'duel' }));
+  await page.waitForFunction(() => document.querySelector('#lobby-modes > .mode[data-mode="duel"]').classList.contains('mode-own'));
+}
+
 // The colour of one CSS pixel of the page, read from a screenshot drawn on
 // a canvas (no image package needed).
 async function pixelColours(page, points, scale) {
@@ -208,6 +217,7 @@ async function playViewport(browser, label, viewport, scale) {
   const code = await createLobby(host);
   const result = {};
   await host.waitForSelector('#lobby-modes:not([hidden])');
+  await chooseDuelWhileAlone(host);
   await host.waitForFunction(() => {
     const duel = document.querySelector('#lobby-modes > .mode[data-mode="duel"]');
     return duel.classList.contains('mode-own') && duel.classList.contains('mode-unfit');
@@ -239,6 +249,7 @@ async function playCounts(browser, scale) {
   const code = await createLobby(host);
   await host.waitForSelector('#lobby-modes:not([hidden])');
   await waitForPlayers(host, 1);
+  await chooseDuelWhileAlone(host); // the counts are looked at with Duel chosen
   const result = { one: await readSituation(host, scale) };
   const others = [];
   for (const [count, name] of [[2, 'two'], [3, 'three'], [4, 'four']]) {

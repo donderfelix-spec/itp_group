@@ -110,10 +110,10 @@ THREE_PLAYERS = (("Mara", FIRST), ("Tiago", SECOND), ("Ines", THIRD))
 # A new lobby
 
 
-def test_a_new_lobby_is_in_mode_duel_and_phase_lobby(connect):
+def test_a_new_lobby_is_in_mode_solo_and_phase_lobby(connect):
     mara = player(connect, "Mara")
     answer = ask(mara, {"type": "create_lobby"})
-    assert answer["mode"] == "duel"
+    assert answer["mode"] == "solo"  # one player: Solo (S-203)
     assert answer["phase"] == "lobby"
 
 
@@ -195,6 +195,7 @@ def test_the_host_starts_with_eight_players(connect):
 def test_starting_alone_is_rejected(connect):
     mara = player(connect, "Mara")
     ask(mara, {"type": "create_lobby"})
+    ask(mara, {"type": "choose_mode", "mode": "duel"})  # a new lobby is in Solo (S-203); Duel needs two
     assert start(mara) == TOO_FEW_FOR_DUEL
     assert ask(mara, {"type": "choose_character", "character": "surfer"})["phase"] == "lobby"
 

@@ -114,6 +114,7 @@ def test_a_start_by_a_member_who_is_not_host_is_rejected():
 
 def test_a_start_with_too_few_players_begins_no_countdown():
     lobbies = lobby_with("Mara")
+    lobbies.choose_mode("Mara", "duel")  # a new lobby is in Solo (S-203); Duel needs two
     assert lobbies.start("Mara", START) == (None, "too_few_players")
     lobby = lobbies.find("ABCD")
     assert lobby.is_open() and lobby.round_starts_at is None
