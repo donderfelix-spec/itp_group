@@ -5,10 +5,11 @@ process (the fixtures and `put` of test_play_classic_task_card_end_to_end.py),
 with the real 45 seconds of the server's clock (no clock is replaced, so this
 test takes about a minute).
 
-- Before 45 s a High Performer standing on the button sees no button and no
+- Before 45 s a High Performer standing on the button sees it drawn grey and
+  locked (S-216, approved by Felix 2026-11-23; before: no button at all) and no
   "E Emergency"; E opens nothing, and the message sent past the page is
   refused with "The emergency button unlocks in N seconds.", shown at the top.
-- After 45 s the button is drawn at campus.button, (365, 375), radius 11, on
+- After 45 s the button is drawn red and ready at campus.button, (365, 375), radius 11, on
   every page.
 - Two units outside the range (use_range, 25) there is no hint and E opens nothing.
 - At the edge of the range the button reads "E Emergency"; E (pressed twice
@@ -75,13 +76,14 @@ def round_played(server_in_this_process):  # noqa: F811 (the imported fixture)
 
 
 @needs_chromium
-def test_the_emergency_button_appears_after_45_s_at_the_deck_centre_and_opens_the_meeting(round_played):
+def test_the_emergency_button_is_locked_until_45_s_at_the_deck_centre_and_then_opens_the_meeting(round_played):
     result = round_played
     assert result["button"] == {"x": 365, "y": 375, "r": 11}
 
     before = result["before"]
     assert before["secondsAfterChecks"] < EMERGENCY_DELAY_SECONDS, before
-    assert before["frame"] == {"visible": False, "drawn": False}, before
+    assert before["frame"] == {"visible": False, "drawn": True}, before
+    assert before["look"] == "locked", before
     assert before["useText"] != "E Emergency"
     assert before["meetings"] == [0, 0, 0, 0]
     assert before["rejection"]["code"] == "emergency_rejected"
@@ -91,6 +93,7 @@ def test_the_emergency_button_appears_after_45_s_at_the_deck_centre_and_opens_th
     unlock = result["unlock"]
     assert EMERGENCY_DELAY_SECONDS - 1 <= unlock["seconds"] <= EMERGENCY_DELAY_SECONDS + 5, unlock
     assert unlock["frame"] == {"visible": True, "drawn": True}
+    assert unlock["look"] == "ready", unlock
     assert all(frame == {"visible": True, "drawn": True} for frame in unlock["others"]), unlock["others"]
 
     assert result["outOfRange"]["useText"] != "E Emergency"
