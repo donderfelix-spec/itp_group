@@ -46,10 +46,8 @@ def test_a_leaver_is_in_no_vote_target_of_the_snapshot():
     assert "Bo" not in snapshot["voted"] and "Bo" not in snapshot["living"]
 
 
-@pytest.mark.parametrize(
-    ("phase", "reason"),
-    [("voting", "report"), ("voting", "emergency"), ("discussion", "report"), ("discussion", "emergency")],
-)
+@pytest.mark.parametrize("phase", ["discussion", "voting"])
+@pytest.mark.parametrize("reason", ["report", "emergency"])
 def test_three_skips_end_the_meeting_once_a_fourth_living_player_left(phase, reason):
     # Five living: 3 Skips are 60 %. Dan leaves: 3 of 4 are 75 %.
     meeting = a_meeting(phase=phase, reason=reason, skips={"Ana", "Bo", "Cy"}, votes={"Eve": "Ana"})
@@ -62,9 +60,8 @@ def test_three_skips_end_the_meeting_once_a_fourth_living_player_left(phase, rea
     assert updated["vote_result"] == EjectResult(None, False, None)
 
 
-def test_a_leave_during_an_emergency_discussion_ends_nothing_below_75_percent():
-    # Since S-212 Skips count in an emergency discussion (the 75 % case is in
-    # the test above). Five living: 2 Skips; Dan leaves: 2 of 4 are 50 %.
+def test_a_leave_during_an_emergency_discussion_below_the_skip_threshold_ends_nothing():
+    # Two Skips out of four living players are still below 75 % after Dan leaves.
     meeting = a_meeting(phase="discussion", reason="emergency", skips={"Ana", "Bo"})
     updated = meeting_rules.remove_player(meeting, "Dan")
     assert meeting_rules.end_if_enough_skips(updated, 120.0) is updated

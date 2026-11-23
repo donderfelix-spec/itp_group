@@ -792,12 +792,7 @@ def classic(server):
         in_place = everybody_where_they_are(names.values())
         clock.skip(31)
         wait_for_meeting_phase(browser, LABELS, "result", 1)
-        # After a meeting everybody stands on the Main Deck again (DESIGN.md
-        # 5.8). This play goes on from the places of the meeting, so once
-        # the server has sent everybody to the deck, they are put back.
-        wait_until(lambda: all(position(name) == SPAWN for name in names.values()), "everybody on the deck")
-        for name, place in in_place.items():
-            put(name, place)
+        assert everybody_where_they_are(names.values()) == in_place
         time.sleep(0.5)
         during = {}
         for label in (far, near, caller):
