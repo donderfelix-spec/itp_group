@@ -280,19 +280,28 @@ Game.classicMeeting = Game.classicMeeting || {};
   // Where the parts of the canvas go. The canvas is the part of the window
   // that shrinks (style.css), so a short canvas gets a compact layout that
   // leaves room for the chat. All numbers are CSS pixels from the top.
+  // In the roomy layout the chat starts right below the player lists: at
+  // chatTop with three rows of names, one row (PLAYER_ROW px) higher for each
+  // row the lists do not need (S-210).
   var ROOMY_LAYOUT = {
     titleFont: "800 28px", titleY: 42, phaseFont: "700 18px", phaseY: 76,
     reasonFont: "700 15px", reasonY: 101, playersY: 132, playerRows: 3,
-    chatTop: 230, chatHeading: true,
+    chatTop: 230, chatHeading: true, chatFollowsLists: true,
   };
   var COMPACT_LAYOUT = {
     titleFont: "800 20px", titleY: 28, phaseFont: "700 15px", phaseY: 50,
     reasonFont: "700 13px", reasonY: 68, playersY: 90, playerRows: 1,
-    chatTop: 134, chatHeading: false,
+    chatTop: 134, chatHeading: false, chatFollowsLists: false,
   };
   // Below this height the roomy layout would leave room for fewer than two
   // chat messages.
   var COMPACT_BELOW = 340;
+  // Text sizes of the player lists and the chat, in CSS pixels.
+  var PLAYER_ROW = 18;
+  var CHAT_LINE = 18;
+  // The space after a chat message, before the next one.
+  var CHAT_GAP = 2;
+  var CHAT_MAX_LINES = 2;
 
   function draw() {
     if (!state || !canvas || !context) return;
@@ -322,7 +331,44 @@ Game.classicMeeting = Game.classicMeeting || {};
     drawPlayers("Living", state.living, 24, layout.playersY, "#5FA86B", listWidth, layout.playerRows);
     drawPlayers("Dead players", state.ghosts, Math.max(170, width * 0.52), layout.playersY, "#8C8795",
       listWidth, layout.playerRows);
-    drawChat(width, height, layout);
+    drawChat(width, height, layout, chatTopOf(layout, listWidth));
+  }
+
+  // Where the chat starts. It depends only on the layout, the names and the
+  // width, so it stays put while a meeting runs; if a list needs one more row
+  // (a wider name list, a narrower window), the chat starts one row lower.
+  function chatTopOf(layout, listWidth) {
+    if (!layout.chatFollowsLists) return layout.chatTop;
+    context.font = "14px system-ui, sans-serif";
+    var rows = Math.max(playerRowsOf(state.living, listWidth), playerRowsOf(state.ghosts, listWidth));
+    var unused = layout.playerRows - Math.min(layout.playerRows, rows);
+    return layout.chatTop - unused * PLAYER_ROW;
+  }
+
+  // The rows a list of names takes when wrapped like drawPlayers wraps it
+  // ("None" takes one row). Measured with the font set by the caller.
+  function playerRowsOf(players, maxWidth) {
+    if (!players.length) return 1;
+    return playerRowStarts(players, 0, maxWidth).reduce(function (most, row) {
+      return Math.max(most, row.row);
+    }, 0) + 1;
+  }
+
+  // For each name: its label ("Ana, "), the row and the x where it goes.
+  function playerRowStarts(players, x, maxWidth) {
+    var cursorX = x;
+    var row = 0;
+    return players.map(function (playerId, index) {
+      var label = playerId + (index === players.length - 1 ? "" : ", ");
+      var width = context.measureText(label).width;
+      if (cursorX > x && cursorX + width > x + maxWidth) {
+        cursorX = x;
+        row += 1;
+      }
+      var place = { playerId: playerId, label: label, row: row, x: cursorX };
+      cursorX += width;
+      return place;
+    });
   }
 
   function phaseLabel(phase) {
@@ -341,24 +387,15 @@ Game.classicMeeting = Game.classicMeeting || {};
       context.fillText("None", x, y + 24);
       return;
     }
-    var cursorX = x;
-    var row = 0;
-    players.forEach(function (playerId, index) {
-      var label = playerId + (index === players.length - 1 ? "" : ", ");
-      var width = context.measureText(label).width;
-      if (cursorX > x && cursorX + width > x + maxWidth) {
-        cursorX = x;
-        row += 1;
-      }
-      if (row >= maxRows) return;
+    playerRowStarts(players, x, maxWidth).forEach(function (place) {
+      if (place.row >= maxRows) return;
+      var playerId = place.playerId;
       context.fillStyle = ownIsFreeRider && playerId === ownName ? "#C43E3E" : "#2E2A3B";
-      context.fillText(label, cursorX, y + 24 + row * 18);
-      cursorX += width;
+      context.fillText(place.label, place.x, y + 24 + place.row * PLAYER_ROW);
     });
   }
 
-  function drawChat(width, height, layout) {
-    var top = layout.chatTop;
+  function drawChat(width, height, layout, top) {
     context.strokeStyle = "#2E2A3B";
     context.lineWidth = 2;
     context.beginPath();
@@ -372,37 +409,71 @@ Game.classicMeeting = Game.classicMeeting || {};
       context.fillText("Discussion chat", 24, top + 12);
       firstMessageY = top + 40;
     }
-    // A message takes up to two lines; only messages that fit are drawn,
-    // the newest ones.
-    var maxRows = Math.max(1, Math.floor((height - firstMessageY + 14) / 38));
-    var messages = state.messages.slice(-maxRows);
-    var y = firstMessageY;
     var textX = Math.min(120, Math.floor(width * 0.3));
-    messages.forEach(function (message) {
+    context.font = "14px system-ui, sans-serif";
+    // Each message takes as many lines as it needs (at most two). From the
+    // newest message upwards, the ones that fit whole are drawn, oldest at
+    // the top. The space runs from the top of the first line to the bottom.
+    var shown = newestThatFit(state.messages, width - textX - 24, height - (firstMessageY - 14));
+    var y = firstMessageY;
+    shown.forEach(function (message) {
       context.fillStyle = "#2E2A3B";
       context.font = "700 14px system-ui, sans-serif";
-      context.fillText(message.player_id + ":", 24, y);
+      context.fillText(message.playerId + ":", 24, y);
       context.font = "14px system-ui, sans-serif";
-      wrapText(message.text, textX, y, width - textX - 24, 18, 2);
-      y += 38;
+      message.lines.forEach(function (line, index) {
+        context.fillText(line, textX, y + index * CHAT_LINE);
+      });
+      y += message.lines.length * CHAT_LINE + CHAT_GAP;
     });
   }
 
-  function wrapText(text, x, y, maxWidth, lineHeight, maxLines) {
-    var words = String(text).split(/\s+/);
+  // The newest messages whose lines fit into `space` pixels, oldest first,
+  // each with its lines. At least the newest one, even in a tiny canvas.
+  function newestThatFit(messages, maxWidth, space) {
+    var shown = [];
+    var used = 0;
+    for (var index = messages.length - 1; index >= 0; index -= 1) {
+      var lines = chatLines(messages[index].text, maxWidth, CHAT_MAX_LINES);
+      var needed = lines.length * CHAT_LINE + CHAT_GAP;
+      if (shown.length && used + needed > space) break;
+      used += needed;
+      shown.unshift({ playerId: messages[index].player_id, lines: lines });
+    }
+    return shown;
+  }
+
+  // Splits a message into lines no wider than maxWidth (a single long word
+  // stays whole), measured with the current font. A message longer than
+  // maxLines lines ends its last line in "…".
+  function chatLines(text, maxWidth, maxLines) {
+    var lines = [];
     var line = "";
-    var lineNumber = 0;
-    words.forEach(function (word) {
+    String(text).split(/\s+/).forEach(function (word) {
       var next = line ? line + " " + word : word;
       if (line && context.measureText(next).width > maxWidth) {
-        context.fillText(line, x, y + lineNumber * lineHeight);
-        lineNumber += 1;
+        lines.push(line);
         line = word;
       } else {
         line = next;
       }
     });
-    if (line && lineNumber < maxLines) context.fillText(line, x, y + lineNumber * lineHeight);
+    if (line) lines.push(line);
+    if (!lines.length) lines.push("");
+    if (lines.length > maxLines) {
+      lines = lines.slice(0, maxLines);
+      lines[maxLines - 1] = shortenToFit(lines[maxLines - 1] + " …", maxWidth);
+    }
+    return lines;
+  }
+
+  // Drops words before the final "…" until the line fits.
+  function shortenToFit(line, maxWidth) {
+    var words = line.split(" ");
+    while (words.length > 2 && context.measureText(words.join(" ")).width > maxWidth) {
+      words.splice(words.length - 2, 1);
+    }
+    return words.join(" ");
   }
 
   Game.classicMeeting.setup = setup;
