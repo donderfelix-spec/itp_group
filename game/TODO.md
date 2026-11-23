@@ -244,6 +244,7 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 - [ ] **M4-1.1** Finished graphics for rooms and characters
 - [ ] **M4-2.1** Friends: request, accept, decline, status, invitation to the lobby, leaderboard among friends (S-41)
 - [ ] **M4-2.2** Phones and tablets (Felix, 2026-11-23): walking needs the keys W, A, S, D or the arrows (`client/js/world/world.js`), and the page has no touch controls for walking, so the game cannot be played on a touch-only device; only the action buttons, the minigames and the menus also work with a tap. Possible later work: show a clear notice on touch-only devices instead of the game, or add touch controls (M4-1.2).
+- [x] **M4-2.3** The browser plays (`tests/test_play_*.py`) also run on GitHub, in their own workflow `.github/workflows/browser-plays.yml`: after each merge to `main` and by hand, never on pull requests, with Playwright 1.63.0 and Chromium; failed plays run once more with `--last-failed` (S-220). Requested by Felix on 2026-11-23
 - [ ] **M4-1.2** Touch controls for mobile phones
 - [ ] Play a real round once with the whole team and write down what gets in the way
 
