@@ -273,6 +273,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Failing, reporting or calling a meeting while hidden | “Leave your hiding spot first.” |
 | Opening a station while a meeting runs (only when someone bypasses the page; S-199) | “Tasks wait until the meeting is over.” |
 | Skipping when there is no meeting, as a ghost, or after the time (only when someone bypasses the page) | “You cannot skip this discussion right now.” |
+| The page is opened on a device that most likely has no keyboard: its primary pointer is coarse and cannot hover, as on a phone or tablet (S-219). Shown full-screen before anything else, with the button “Play anyway”, which closes it for the visit; a real press of W, A, S, D or an arrow key closes it too | “Group Project needs a keyboard.” / “Walking uses W, A, S, D or the arrow keys, so the game cannot be played on a phone or tablet. Please open it on a computer.” |
 | Connection lost | “Connection lost. Reconnecting…” After the player signs in again, the page joins the lobby it was in by itself and puts the code into the join field. If that lobby is gone, full or in its countdown or round, the usual text appears at the code field (S-109). |
 | Database not reachable | “Accounts are unavailable right now. You can still play as a guest.” |
 | Host has left the lobby | “The host left. Mara is the new host.” |
