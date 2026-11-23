@@ -144,6 +144,23 @@ scoredWaves.slice(0, expectedPages.length).forEach((wave, index) => {
 scoredRescue.advance(60000);
 assert.equal(scoredRescue.done(), 1);
 
+// Running out of flights below six saved pages ends the attempt with a
+// retry, even without three mistakes: five pages, then four coffees caught
+// (down to one), then the last three pages leave four of six.
+const drained = [...pages.slice(0, 5), ...coffees, ...pages.slice(5)];
+const drainedRescue = open({ ...samples.rescue, waves: drained });
+const drainedScore = drainedRescue.body.querySelectorAll('.challenge-score')[0];
+textButton(drainedRescue, 'Protect the draft').click();
+drained.forEach((wave) => {
+  drainedRescue.advance(wave.duration * 0.65);
+  textButton(drainedRescue, (wave.lane + 1) + ' · ' + laneNames[wave.lane]).click();
+  drainedRescue.advance(wave.duration * 0.35 + 250);
+});
+assert.equal(drainedRescue.done(), 0, 'four of six pages is not a finished task');
+assert.ok(drainedScore.textContent.startsWith('4 / 6 pages · 0 / 3 mistakes'));
+assert.ok(textButton(drainedRescue, 'Try another rescue'), 'running out offers a retry');
+assert.equal(drainedRescue.timers.size, 0, 'running out cancels every flight');
+
 const closed = open(samples.rescue);
 textButton(closed, 'Protect the draft').click();
 closed.stop();

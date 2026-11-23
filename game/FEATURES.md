@@ -129,7 +129,7 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | Six more minigames at stations 7 to 12, in Duel, Solo and Classic (S-124) | M2 | Done |
 | Stations 7, 10 and 12 reworked: rebuild a misleading chart from survey counts, deduce a schedule from chat clues (told in one of four ways, M2-4.22), catch falling pages in three lanes; each with its own brief, feedback and retry (S-189) | M2 | Done |
 | Solo mode for one player, without statistics (S-125); a new lobby starts in Solo and the second player switches it to Duel (S-203) | M2 | Done |
-| Seagull quality control: finish at six saved pages, with a one-page deduction for caught coffee | M2 | Done on Minispiele-und-Modi |
+| Seagull quality control: finish at six saved pages, with a one-page deduction for caught coffee (S-222) | M2 | Done (M2-4.26) |
 | Duel: every player starts at a different station, up to 8 players (S-126) | M2 | Done |
 | Stations as objects with a pulsing outline when they matter (S-128); station 6 shows its surfboard too, and stations 4, 8, 9 and 12 stand where Felix drew them (S-196) | M2 | Done |
 | Card at the top left with room and next task, direction arrow (S-129) | M2 | Done |
