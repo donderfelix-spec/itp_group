@@ -38,15 +38,14 @@ window.Game = window.Game || {};
         && content.initial_values.every((value) => Number.isInteger(value) && value >= 0 && value <= 100 && value % 10 === 0);
     }
     if (content.puzzle === 'chat_logic') {
-      return strings(content.people, 4) && strings(content.jobs, 4)
+      return strings(content.people, 4)
         && Array.isArray(content.slots) && content.slots.join(',') === '9,10,11,12'
-        && Array.isArray(content.clues) && content.clues.length === 5
+        && Array.isArray(content.clues) && content.clues.length === 4
         && content.clues.every((clue) => clue && typeof clue.from === 'string' && typeof clue.text === 'string')
         && Array.isArray(content.schedule) && content.schedule.length === 4
         && content.schedule.every((entry) => entry && content.people.includes(entry.person)
-          && content.jobs.includes(entry.job) && content.slots.includes(entry.slot))
+          && content.slots.includes(entry.slot))
         && new Set(content.schedule.map((entry) => entry.person)).size === 4
-        && new Set(content.schedule.map((entry) => entry.job)).size === 4
         && new Set(content.schedule.map((entry) => entry.slot)).size === 4;
     }
     return content.puzzle === 'seagull_defence' && content.goal === 6
@@ -180,7 +179,7 @@ window.Game = window.Game || {};
   }
 
   function chat(content, ui) {
-    ui.game.append(node('p', 'challenge-brief', 'Four teammates. Four presentation slots. Nobody sent a schedule. Use the messages to match each person to one time and one deliverable.'));
+    ui.game.append(node('p', 'challenge-brief', 'Four teammates. Four presentation slots. Nobody sent a schedule. Use the messages to give each person their time.'));
     const thread = node('section', 'challenge-thread');
     thread.setAttribute('aria-label', 'Group chat clues');
     content.clues.forEach((clue) => {
@@ -192,30 +191,26 @@ window.Game = window.Game || {};
     const board = node('section', 'challenge-schedule');
     const chosen = new Map();
     content.people.forEach((person) => {
-      const assignment = { slot: '', job: '' };
+      const assignment = { slot: '' };
       chosen.set(person, assignment);
       const row = node('div', 'challenge-schedule-row');
       const time = selector(person + ' time', ['Choose time', ...content.slots.map((slot) => slot + ':00')], (value) => {
         assignment.slot = value;
       });
-      const job = selector(person + ' deliverable', ['Choose work', ...content.jobs], (value) => { assignment.job = value; });
-      row.append(node('strong', '', person), time.label, job.label);
+      row.append(node('strong', '', person), time.label);
       board.append(row);
     });
     const confirm = control('Pin the schedule', () => {
       const picked = [...chosen.values()];
-      if (picked.some((entry) => !entry.slot || !entry.job || entry.slot === 'Choose time' || entry.job === 'Choose work')) {
-        ui.feedback.textContent = 'Give every teammate a time and a deliverable first.';
+      if (picked.some((entry) => !entry.slot || entry.slot === 'Choose time')) {
+        ui.feedback.textContent = 'Give every teammate a time first.';
         return;
       }
-      if (new Set(picked.map((entry) => entry.slot)).size !== 4 || new Set(picked.map((entry) => entry.job)).size !== 4) {
-        ui.feedback.textContent = 'One person per slot. Each deliverable belongs to exactly one teammate.';
+      if (new Set(picked.map((entry) => entry.slot)).size !== 4) {
+        ui.feedback.textContent = 'One person per slot.';
         return;
       }
-      if (!content.schedule.every((entry) => {
-        const choice = chosen.get(entry.person);
-        return choice.slot === entry.slot + ':00' && choice.job === entry.job;
-      })) {
+      if (!content.schedule.every((entry) => chosen.get(entry.person).slot === entry.slot + ':00')) {
         ui.feedback.textContent = 'Someone disagrees. Read every message again: “immediately” means the very next slot.';
         return;
       }
@@ -225,7 +220,7 @@ window.Game = window.Game || {};
   }
 
   function defence(content, ui) {
-    ui.game.append(node('p', 'challenge-brief', 'The gulls are dropping your draft and stolen coffee. Catch 6 pages in the yellow rescue zone. Let coffee fall. Three mistakes end the attempt, then you can try again. Use lane buttons or keys 1, 2, 3.'));
+    ui.game.append(node('p', 'challenge-brief', `The gulls are dropping your draft. Catch ${content.goal} pages in the yellow rescue zone to finish. Catching coffee costs one saved page. Three missed pages or bad grabs end the attempt. Use the lane buttons or keys 1, 2, 3.`));
     const status = node('p', 'challenge-score');
     const arena = node('div', 'challenge-flight');
     arena.setAttribute('aria-label', 'Three rescue lanes');
@@ -295,7 +290,7 @@ window.Game = window.Game || {};
     function nextWave() {
       if (!running || !ui.active()) return;
       if (waveIndex === content.waves.length) {
-        if (saved >= content.goal) { running = false; ui.complete(); } else failRound();
+        failRound();
         return;
       }
       current = content.waves[waveIndex];
@@ -320,18 +315,28 @@ window.Game = window.Game || {};
       if (!running || !current || caught || !ui.active()) return;
       const elapsed = performance.now() - launch;
       if (elapsed > current.duration) return;
-      if (lane !== current.lane || current.cargo !== 'page' || elapsed < current.duration * 0.5) {
+      if (lane !== current.lane || elapsed < current.duration * 0.5) {
         mistakes += 1;
-        ui.feedback.textContent = current.cargo === 'coffee' ? 'That is coffee. Save the work, not the caffeine.' : 'Too early or wrong lane. Catch the page in the yellow zone.';
+        ui.feedback.textContent = 'Too early or wrong lane. Catch the page in the yellow zone.';
         updateStatus();
         if (mistakes >= 3) failRound();
         return;
       }
       caught = true;
-      saved += 1;
       flight.classList.add('challenge-caught');
+      if (current.cargo === 'coffee') {
+        saved = Math.max(0, saved - 1);
+        ui.feedback.textContent = 'Coffee costs one saved page. Let the cups fall.';
+        updateStatus();
+        return;
+      }
+      saved += 1;
       ui.feedback.textContent = 'Page saved. Watch the next lane.';
       updateStatus();
+      if (saved === content.goal) {
+        running = false;
+        ui.complete();
+      }
     }
 
     function onKey(event) {

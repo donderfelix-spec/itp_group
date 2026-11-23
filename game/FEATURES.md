@@ -127,8 +127,9 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | Duel: progress of every player as 1/3 with a bar in the Players list of the panel (S-130) | M2 | Done |
 | Panel of the mode at the top of the side panel in every mode (Duel and Solo: next task and clock; Classic: group progress; the own task is in the card at the top left, S-197), visible without scrolling with eight players (S-143) | M2 | Done |
 | Six more minigames at stations 7 to 12, in Duel, Solo and Classic (S-124) | M2 | Done |
-| Stations 7, 10 and 12 reworked: rebuild a misleading chart from survey counts, deduce a schedule from chat clues (told in one of four ways, M2-4.22), catch falling pages in three lanes; each with its own brief, feedback and retry (S-189) | M2 | Done |
+| Stations 7, 10 and 12 reworked: rebuild a misleading chart from survey counts, deduce the presentation times from chat clues (told in one of four ways, M2-4.22; only the times since S-223), catch falling pages in three lanes; each with its own brief, feedback and retry (S-189) | M2 | Done |
 | Solo mode for one player, without statistics (S-125); a new lobby starts in Solo and the second player switches it to Duel (S-203) | M2 | Done |
+| Seagull quality control: finish at six saved pages, with a one-page deduction for caught coffee (S-222) | M2 | Done (M2-4.26) |
 | Duel: every player starts at a different station, up to 8 players (S-126) | M2 | Done |
 | Stations as objects with a pulsing outline when they matter (S-128); station 6 shows its surfboard too, and stations 4, 8, 9 and 12 stand where Felix drew them (S-196) | M2 | Done |
 | Card at the top left with room and next task, direction arrow (S-129) | M2 | Done |
@@ -136,6 +137,7 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | Lobby: modes outside their player range (Classic below 4) locked, all in one grey, the chosen one marked by frame and shadow; smaller “?” with even gaps (S-146) | M2 | Done |
 | “Done” for 0.5 s without a close button (S-127) | M2 | Done |
 | Beach exit: “Catch the wave” at station 6, in Duel, Solo and Classic: catch three waves with a click, a tap, the button, Space or Enter (S-221) | M4 | Done (M4-4.0) |
+| “Catch the wave” drawn in the game's flat style: sky and low sun, shimmering water, a curling swell, the map's surfboard with a shadow, sunlight as catch zone, foam on a catch, three marks for the caught waves | M4 | Done (M4-4.3) |
 | Duel: leaderboard with times at the end | M2 | Done |
 | Canteen: stop the microwave at the right moment | M4 | Planned |
 | Lecture Hall: record attendance by QR code | M4 | Planned |

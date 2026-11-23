@@ -33,7 +33,23 @@ window.Game = window.Game || {};
     const wave = element('div', 'surf-wave');
     const target = element('div', 'surf-target');
     const board = element('div', 'surf-board');
-    scene.append(target, wave, board);
+    // Only drawing (style.css): the board's shadow, the foam of a catch, and
+    // one mark per wave to catch, filled as they are caught.
+    const shadow = element('div', 'surf-shadow');
+    const splash = element('div', 'surf-splash');
+    const marks = element('div', 'surf-marks');
+    const markers = [];
+    for (let index = 0; index < GOAL; index += 1) {
+      const mark = element('span', 'surf-mark');
+      marks.append(mark);
+      markers.push(mark);
+    }
+    scene.append(target, wave, shadow, board, splash, marks);
+    // A catch or a miss plays a short animation; its class goes when it ends.
+    scene.addEventListener('animationend', (event) => {
+      if (event.animationName === 'surf-bob') scene.classList.toggle('surf-caught', false);
+      if (event.animationName === 'surf-wobble') scene.classList.toggle('surf-missed', false);
+    });
 
     const controls = element('div', 'surf-controls');
     const catchButton = element('button', 'button button-main surf-catch', 'Catch wave');
@@ -86,10 +102,13 @@ window.Game = window.Game || {};
       const distance = current.position - BOARD_POSITION;
       if (Math.abs(distance) > CATCH_MARGIN) {
         feedback.textContent = distance < 0 ? 'Too early. Try the next wave.' : 'Too late. Try the next wave.';
+        scene.classList.toggle('surf-missed', true);
         return;
       }
 
       caught += 1;
+      markers[caught - 1].classList.toggle('surf-mark-done', true);
+      scene.classList.toggle('surf-caught', true);
       score.textContent = caught + ' / ' + GOAL + ' waves caught';
       if (caught < GOAL) {
         feedback.textContent = 'Caught! ' + score.textContent + '.';

@@ -78,23 +78,46 @@ assert.equal(chart.done(), 1);
 chart.advance(10000);
 assert.equal(chart.done(), 1);
 
-// Empty and duplicate schedules fail. Solving the clues completes once.
+// Only a time per person (S-223). Empty, duplicate and wrong schedules
+// fail and stay editable; solving the clues completes once.
 const chat = open(samples.chat);
+const chatFeedback = chat.body.querySelectorAll('.challenge-feedback')[0];
 textButton(chat, 'Pin the schedule').click();
 assert.equal(chat.done(), 0);
+assert.equal(chatFeedback.textContent, 'Give every teammate a time first.');
 const selects = chat.body.querySelectorAll('select');
-samples.chat.people.forEach((person, index) => {
-  const answer = samples.chat.schedule.find((entry) => entry.person === person);
-  selects[index * 2].choose(answer.slot + ':00');
-  selects[index * 2 + 1].choose(answer.job);
-});
-selects[0].choose(selects[2].value);
+assert.equal(selects.length, 4, 'one select per person, no work choice');
+assert.ok(!chat.body.textContent.includes('Choose work'));
+assert.ok(!chat.body.textContent.includes('deliverable'));
+const slotOf = (person) => samples.chat.schedule.find((entry) => entry.person === person).slot + ':00';
+// One time not chosen.
+samples.chat.people.slice(0, 3).forEach((person, index) => selects[index].choose(slotOf(person)));
 textButton(chat, 'Pin the schedule').click();
 assert.equal(chat.done(), 0);
-selects[0].choose(samples.chat.schedule.find((entry) => entry.person === samples.chat.people[0]).slot + ':00');
+assert.equal(chatFeedback.textContent, 'Give every teammate a time first.');
+// Two people at one time.
+selects[3].choose(selects[0].value);
+textButton(chat, 'Pin the schedule').click();
+assert.equal(chat.done(), 0);
+assert.equal(chatFeedback.textContent, 'One person per slot.');
+// One wrong time: two people swapped.
+samples.chat.people.forEach((person, index) => selects[index].choose(slotOf(person)));
+const first = selects[0].value;
+selects[0].choose(selects[1].value);
+selects[1].choose(first);
+textButton(chat, 'Pin the schedule').click();
+chat.advance(1200);
+assert.equal(chat.done(), 0);
+assert.ok(chatFeedback.textContent.startsWith('Someone disagrees.'));
+assert.ok(selects.every((select) => !select.disabled), 'a rejected schedule stays editable');
+// Corrected after the rejection: accepted.
+samples.chat.people.forEach((person, index) => selects[index].choose(slotOf(person)));
 textButton(chat, 'Pin the schedule').click();
 chat.advance(1200);
 assert.equal(chat.done(), 1);
+// A packet that still carries the old work field and five clues is refused.
+const oldChat = open({ ...samples.chat, clues: [...samples.chat.clues, { from: 'Pinned message', text: 'x' }] });
+assert.equal(oldChat.body.querySelectorAll('select').length, 0);
 
 // Reaction game can fail, retry, win, and cancel while timers are active.
 const rescue = open(samples.rescue);
@@ -116,6 +139,51 @@ assert.equal(rescue.done(), 1);
 assert.equal(rescue.timers.size, 0);
 rescue.stop();
 assert.equal(rescue.listeners.size, 0);
+
+// Coffee costs a saved page once per cup, and the sixth net page ends the attempt.
+const pages = samples.rescue.waves.filter((wave) => wave.cargo === 'page');
+const coffees = samples.rescue.waves.filter((wave) => wave.cargo === 'coffee');
+const scoredWaves = [coffees[0], pages[0], coffees[1], ...pages.slice(1), ...coffees.slice(2)];
+const scoredRescue = open({ ...samples.rescue, waves: scoredWaves });
+const score = scoredRescue.body.querySelectorAll('.challenge-score')[0];
+const laneNames = ['Left', 'Middle', 'Right'];
+const expectedPages = [0, 1, 0, 1, 2, 3, 4, 5, 6];
+textButton(scoredRescue, 'Protect the draft').click();
+scoredWaves.slice(0, expectedPages.length).forEach((wave, index) => {
+  scoredRescue.advance(wave.duration * 0.65);
+  const lane = textButton(scoredRescue, (wave.lane + 1) + ' · ' + laneNames[wave.lane]);
+  lane.click();
+  lane.click();
+  assert.equal(score.textContent, `${expectedPages[index]} / 6 pages · 0 / 3 mistakes · wave ${index + 1} / 12`);
+  scoredRescue.advance(0);
+  if (expectedPages[index] < 6) {
+    assert.equal(scoredRescue.done(), 0);
+    scoredRescue.advance(wave.duration * 0.35 + 250);
+  } else {
+    assert.equal(scoredRescue.done(), 1, 'the sixth net page completes before its flight ends');
+    assert.equal(scoredRescue.timers.size, 0, 'success cancels all remaining flights');
+  }
+});
+scoredRescue.advance(60000);
+assert.equal(scoredRescue.done(), 1);
+
+// Running out of flights below six saved pages ends the attempt with a
+// retry, even without three mistakes: five pages, then four coffees caught
+// (down to one), then the last three pages leave four of six.
+const drained = [...pages.slice(0, 5), ...coffees, ...pages.slice(5)];
+const drainedRescue = open({ ...samples.rescue, waves: drained });
+const drainedScore = drainedRescue.body.querySelectorAll('.challenge-score')[0];
+textButton(drainedRescue, 'Protect the draft').click();
+drained.forEach((wave) => {
+  drainedRescue.advance(wave.duration * 0.65);
+  textButton(drainedRescue, (wave.lane + 1) + ' · ' + laneNames[wave.lane]).click();
+  drainedRescue.advance(wave.duration * 0.35 + 250);
+});
+assert.equal(drainedRescue.done(), 0, 'four of six pages is not a finished task');
+assert.ok(drainedScore.textContent.startsWith('4 / 6 pages · 0 / 3 mistakes'));
+assert.ok(textButton(drainedRescue, 'Try another rescue'), 'running out offers a retry');
+assert.equal(drainedRescue.timers.size, 0, 'running out cancels every flight');
+
 const closed = open(samples.rescue);
 textButton(closed, 'Protect the draft').click();
 closed.stop();
