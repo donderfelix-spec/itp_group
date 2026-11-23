@@ -42,22 +42,29 @@ def _wall_blocks(start, end, wall):
     return near < 1 and far > 0
 
 
+def place_in_sight(origin, place, campus):
+    """Whether a viewer at `origin` sees `place`: within the vision range, no wall between.
+
+    Both are (x, y). The same rule as `positions_in_sight`; also used for
+    the place of an F-sheet (S-202).
+    """
+    vision_range = campus.get("classic_vision_range", DEFAULT_VISION_RANGE)
+    if hypot(place[0] - origin[0], place[1] - origin[1]) > vision_range:
+        return False
+    walls = [solid for solid in campus["solids"] if solid["kind"] == "wall"]
+    return not any(_wall_blocks(tuple(origin), tuple(place), wall) for wall in walls)
+
+
 def positions_in_sight(positions, viewer, campus):
     """Keep the viewer and nearby players visible through clear space."""
     own = next((entry for entry in positions if entry[0] == viewer), None)
     if own is None:
         return []
-    _, x, y = own
-    origin = (x, y)
-    vision_range = campus.get("classic_vision_range", DEFAULT_VISION_RANGE)
-    walls = [solid for solid in campus["solids"] if solid["kind"] == "wall"]
+    origin = (own[1], own[2])
     return [
         entry
         for entry in positions
-        if entry[0] == viewer or (
-            hypot(entry[1] - x, entry[2] - y) <= vision_range
-            and not any(_wall_blocks(origin, entry[1:], wall) for wall in walls)
-        )
+        if entry[0] == viewer or place_in_sight(origin, (entry[1], entry[2]), campus)
     ]
 
 

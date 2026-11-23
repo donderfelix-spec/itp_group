@@ -318,7 +318,8 @@ def test_a_report_ends_hiding_and_tells_him(connect, clock):
     put(fr, below_the_spot(15))
     put(victim, below_the_spot(18))
     connections[fr].send_json({"type": "fail"})
-    sheet = answer(connections[reporter], ("classic_fail",))
+    # Since S-202 only the Free Rider who did it (and who sees the place) is told where the sheet lies.
+    sheet = answer(connections[fr], ("classic_fail",))
     assert press_hide(connections, fr) == {"type": "classic_hiding", "hidden": True}
     put(reporter, (sheet["position"]["x"], sheet["position"]["y"]))
     connections[reporter].send_json({"type": "report", "sheet_id": sheet["sheet_id"], "position": sheet["position"]})
