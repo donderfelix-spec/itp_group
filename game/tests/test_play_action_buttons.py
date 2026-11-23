@@ -181,7 +181,9 @@ def played(server):
         shot(browser, fr, "fr_6_hidden")
 
         # 6. A High Performer at the F-sheet.
-        sheet = browser.messages(reporter, "classic_fail")[-1]["position"]
+        # Since S-202 only the Free Rider (and who sees the place) is told where
+        # the sheet lies; the reporter's page gets it once he stands there.
+        sheet = browser.messages(fr, "classic_fail")[-1]["position"]
         put(names[reporter], (sheet["x"], sheet["y"] + 3))
         standing_still(names[reporter])
         seen["hp_report"] = until_buttons(browser, reporter, lambda b: b["report"], "R Report for the High Performer")
