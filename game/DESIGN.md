@@ -312,7 +312,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | A Free Rider opens, closes or finishes a station (only when someone bypasses the page) | “Free Riders cannot complete tasks.” |
 | Failing while it is not possible: no Classic round, no High Performer in range, as a High Performer or a ghost | “You cannot fail a player right now.” |
 | Failing during the 15-second cooldown | “You can fail again in 12 seconds.” (the seconds left, “1 second” for one) |
-| Chatting outside the discussion of a meeting, as a ghost, or too fast after the last message | “You cannot send that chat message right now.” |
+| Chatting outside the discussion of a meeting, as a ghost, or too fast after the last message (one message per player every 2 seconds) | “You cannot send that chat message right now.” It shows under the message field for a few seconds, and the refused text stays in the field, so nothing typed is lost (S-226). |
 | A chat message that is empty, longer than 200 characters or has characters that are not allowed | “Chat messages must contain 1–200 characters.” |
 | Voting while voting is closed, as a ghost, or for a player who is not a living player of the round | “You cannot cast that vote right now.” |
 | Reporting an F-sheet from too far away, as a ghost, or one that was already reported | “You cannot report that F-sheet right now. Stand at the sheet and try again.” |

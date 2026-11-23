@@ -481,6 +481,19 @@ const STEPS = {
     element(id).focus();
     (element(id).listeners.click || []).forEach((listener) => listener({ preventDefault() {} }));
   },
+  // Types a meeting chat message and presses Enter (the form is submitted).
+  typeChat(text) {
+    element('classic-chat-input').value = text;
+    (element('classic-chat-form').listeners.submit || []).forEach((listener) => listener({ preventDefault() {} }));
+  },
+  // What the chat field holds and what the line under it says (S-226).
+  lookAtChat() {
+    drawings.push({
+      chatValue: element('classic-chat-input').value,
+      chatHint: element('classic-chat-hint').textContent,
+      chatRefused: element('classic-chat-hint').classList.contains('classic-chat-refused'),
+    });
+  },
   // Clicks the button "E Use" on the map (it has no id), as a player would.
   clickUseButton() {
     const button = mapButton('use-button');
