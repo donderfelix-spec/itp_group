@@ -2422,18 +2422,10 @@ body:has(#screen-lobby:not([hidden])) .message {
 .campus-scene-label { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-bottom: 2px solid var(--ink); }
 .campus-scene-label strong { font-size: 12px; font-weight: 850; letter-spacing: .045em; }
 .campus-scene-label span { font-size: 10px; font-weight: 500; line-height: 1.3; }
-.campus-presentation-scene { border: 3px solid var(--ink); border-radius: 9px; overflow: hidden; background: #DBD3C2; box-shadow: 0 6px 0 #B5A88C; }
-.campus-presentation-scene > .campus-scene-label { padding-left: 42px; background: #DB8C76; position: relative; }
-.campus-presentation-scene > .campus-scene-label::before { content: ''; position: absolute; left: 15px; top: 17px; width: 12px; height: 12px; border: 2px solid var(--ink); background: #FFF7E2; box-shadow: 4px 4px 0 #B76552; }
-.campus-slide { padding: 14px; background: repeating-linear-gradient(0deg, transparent 0 28px, #EBE7DB 29px 30px), #FFFDF7; }
-.campus-slide-mark { align-self: flex-start; font: italic 800 20px Georgia, serif; color: #AA6D59; }
-.campus-buzzword { min-height: 104px; align-items: flex-start; text-align: left; border-radius: 4px; box-shadow: 3px 3px 0 #C8BCAA; }
-.campus-buzzword::after { content: ''; position: absolute; top: 9px; right: 9px; width: 14px; height: 4px; background: #D4CEBD; }
-.campus-buzzword.campus-removed .campus-piece-label { text-decoration: line-through 3px var(--coral); }
 .campus-lunch-scene { display: flex; flex-direction: column; gap: 9px; }
 .campus-tray-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.campus-tray-header strong { font-size: 11px; letter-spacing: .14em; color: #56685E; }
-.campus-lunch-count { padding: 4px 9px; border: 1.5px solid #87978A; border-radius: 7px; background: #EBF0E4; font-size: 11px; line-height: 1.2; font-weight: 750; font-variant-numeric: tabular-nums; }
+.campus-tray-header strong { font-size: 12px; letter-spacing: .14em; color: #56685E; }
+.campus-lunch-count { padding: 4px 9px; border: 1.5px solid #87978A; border-radius: 7px; background: #EBF0E4; font-size: 12px; line-height: 1.2; font-weight: 750; font-variant-numeric: tabular-nums; }
 .campus-meal-tray { display: grid; grid-template-columns: 1.04fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px; width: 100%; max-width: 360px; height: 220px; margin-inline: auto; padding: 12px; border: 3px solid #52665E; border-radius: 27px; background: linear-gradient(125deg, #D9E4DC 0%, #AEBEB4 35%, #D7E0D8 68%, #A2B4AA 100%); box-shadow: inset 0 0 0 4px #E3EBE3, inset 0 0 0 6px #9CAC9F, 0 4px 0 #8E9D91, 0 7px 0 #D1D4C5; }
 .campus-tray-compartment { position: relative; min-width: 0; min-height: 0; border: 2px solid #8C9F90; border-radius: 19px; background: linear-gradient(135deg, #AEBFB0, #D2DDD0 65%, #CED8CB); box-shadow: inset 2px 3px 5px #8F9F8F, 1px 2px 0 #E8EFE5; }
 .campus-tray-compartment-rice { grid-row: 1 / 3; }
@@ -2446,7 +2438,6 @@ body:has(#screen-lobby:not([hidden])) .message {
 .campus-tray-piece:active:not(:disabled) .campus-tray-food-art { transform: rotate(var(--food-angle, 0deg)) scale(.94); }
 .campus-tray-piece:focus-visible { outline: 3px solid #2E2A3B; outline-offset: 0; background: #FFF8DD88; }
 .campus-tray-piece:disabled { cursor: default; }
-.campus-removed { opacity: .62; background: #DFE9D3; box-shadow: none; }
 .campus-coffee-layout { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 14px; align-items: start; }
 .campus-recipe-card { position: relative; border: 2px solid #B5A589; border-top: 7px solid #2E2A3B; border-radius: 4px; background: #FFFEF7; box-shadow: 3px 5px 0 #D6C6AC; transform: rotate(-2deg); }
 .campus-recipe-card .campus-scene-label { border-bottom: 1px dashed #B9A68A; }
@@ -2462,16 +2453,7 @@ body:has(#screen-lobby:not([hidden])) .message {
 .campus-coffee-fill { position: absolute; bottom: 0; left: 0; right: 0; height: 0; background: linear-gradient(#E4BA85 0 12%, #966543 13% 100%); transition: height .2s; }
 .campus-coffee-label { position: absolute; top: 29px; left: 7px; right: 7px; padding: 3px; border: 1px solid var(--ink); background: var(--sun); font-size: 9px; font-weight: 900; text-align: center; transform: rotate(-5deg); }
 .campus-coffee-controls { width: 100%; gap: 7px; }
-.campus-coffee-controls .campus-piece { min-height: 39px; padding: 5px; font-size: 11px; border-radius: 8px; background: #FFF9E7; box-shadow: 1px 2px 0 var(--ink); }
-.campus-chat-phone { display: flex; flex-direction: column; gap: 11px; padding: 12px; border: 5px solid var(--ink); border-top-width: 12px; border-bottom-width: 12px; border-radius: 25px; background: radial-gradient(#A6BEA3 1px, transparent 1px), #D9E0CC; background-size: 14px 14px; box-shadow: 5px 5px 0 #B3A68E; }
-.campus-chat-phone .campus-scene-label { margin: -12px -12px 0; padding: 9px 13px; background: #456B60; color: #FFF8E5; }
-.campus-chat-time { align-self: center; padding: 2px 9px; border-radius: 5px; background: #F4F4E4; font-size: 10px; font-weight: 650; }
-.campus-chat-hint { margin: 0 12% 0 0; padding: 12px 14px; border: 1.5px solid #6D927C; border-radius: 14px 14px 14px 0; background: #FFFDF1; box-shadow: 2px 3px 0 #ADBC9C; font-size: 16px; }
-.campus-chat-caption { font-size: 11px; color: #344B3B; font-weight: 700; }
-.campus-sentence { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-height: 58px; padding: 10px; border: 2px dashed #789F80; border-radius: 10px; background: #E9F1D9; }
-.campus-word-done { padding: 3px 6px; border-radius: 4px; background: #BBD5B8; font-weight: 700; font-size: 13px; }
-.campus-word { min-height: 40px; border-radius: 7px; padding: 7px; font-size: 13px; background: #FFFDF1; }
-.campus-word:disabled { opacity: .35; box-shadow: none; }
+.campus-coffee-controls .campus-piece { min-height: 39px; padding: 5px; font-size: 13px; border-radius: 8px; background: #FFF9E7; box-shadow: 1px 2px 0 var(--ink); }
 .campus-checkout { display: flex; flex-direction: column; gap: 13px; padding: 14px; border: 3px solid var(--ink); border-radius: 16px; background: #ADC9AA; box-shadow: 0 5px 0 #7F9C80; }
 .campus-receipt { margin: 0 12px; padding-bottom: 10px; background: #FFFDF4; box-shadow: 3px 5px 0 #7F9C80; clip-path: polygon(0 0, 100% 0, 100% 96%, 96% 100%, 92% 96%, 88% 100%, 84% 96%, 80% 100%, 76% 96%, 72% 100%, 68% 96%, 64% 100%, 60% 96%, 56% 100%, 52% 96%, 48% 100%, 44% 96%, 40% 100%, 36% 96%, 32% 100%, 28% 96%, 24% 100%, 20% 96%, 16% 100%, 12% 96%, 8% 100%, 4% 96%, 0 100%); }
 .campus-receipt .campus-scene-label { align-items: center; padding: 8px; border-bottom: 1px dashed #A59A83; }
@@ -2481,24 +2463,13 @@ body:has(#screen-lobby:not([hidden])) .message {
 .campus-budget-display > div + div { text-align: right; }
 .campus-budget-display strong { display: block; font-size: 23px; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
 .campus-receipt-footer { padding-bottom: 4px; font: 8px ui-monospace, monospace; text-align: center; letter-spacing: .11em; }
-.campus-small { font-size: 11px; text-align: center; }
+.campus-small { font-size: 12px; text-align: center; }
 .campus-belt { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 10px; border: 2px solid var(--ink); border-radius: 7px; background: repeating-linear-gradient(0deg, #49544B 0 19px, #566258 20px 23px); }
-.campus-belt .campus-piece { gap: 3px; padding: 4px 5px 7px; min-height: 144px; background: #FAF3DC; font-size: 11px; border-radius: 7px; box-shadow: 2px 3px 0 #202B24; }
+.campus-belt .campus-piece { gap: 3px; padding: 4px 5px 7px; min-height: 144px; background: #FAF3DC; font-size: 12px; border-radius: 7px; box-shadow: 2px 3px 0 #202B24; }
 .campus-product-art { display: block; width: min(100%, 105px); height: 65px; }
 .campus-price { font-size: 15px; }
-.campus-belt .campus-piece-state { font-size: 8px; }
+.campus-belt .campus-piece-state { font-size: 10px; }
 .campus-scanned { background: #DCEBCD !important; border-style: dashed; box-shadow: none; }
-.campus-seagull-arena { position: relative; height: 270px; overflow: hidden; border: 3px solid var(--ink); border-radius: 16px; background: linear-gradient(#ACDAE8 0 45%, #6CAFC2 45% 65%, #F0D6A3 65% 100%); }
-.campus-seagull-arena::before { content: '⌁  ⌁   ⌁   ⌁   ⌁   ⌁'; position: absolute; top: 125px; left: 0; right: 0; color: #E8F4EC; font-size: 28px; letter-spacing: 8px; font-weight: 800; transform: rotate(-3deg); }
-.campus-beach-sun { position: absolute; top: 15px; right: 25px; width: 45px; height: 45px; border: 2px solid var(--ink); border-radius: 50%; background: #FFE19A; box-shadow: 0 0 0 7px #C5E2DD; }
-.campus-beach-shore { position: absolute; bottom: 20px; left: -12px; right: -12px; height: 70px; border-top: 6px solid #FFF8E3; border-radius: 50%; transform: rotate(-4deg); background: #F0D6A3; }
-.campus-beach-poster { position: absolute; bottom: 9px; right: 12px; color: #906F46; font-size: 9px; letter-spacing: .11em; font-weight: 800; }
-.campus-seagull { position: absolute; z-index: 1; width: 110px; height: 104px; min-height: 0; gap: 0; padding: 0 5px 6px; border-radius: 45% 45% 15% 15%; background: #FFF9E9; box-shadow: 3px 5px 0 #6E8676; }
-.campus-bird-art { width: 98px; height: 74px; }
-.campus-seagull-caption { padding: 3px 5px; border-radius: 4px; background: var(--sun); font-size: 9px; white-space: nowrap; }
-.campus-rescued-pages { display: flex; gap: 9px; min-height: 51px; padding: 3px 5px; }
-.campus-page { position: relative; display: flex; align-items: end; justify-content: end; min-width: 32px; height: 43px; padding: 3px 5px; border: 2px solid var(--ink); border-radius: 3px; background: white; font-size: 11px; font-weight: 800; transform: rotate(-5deg); box-shadow: 2px 2px 0 #C4B79F; }
-.campus-page::before { content: ''; position: absolute; top: 8px; left: 5px; right: 5px; height: 2px; background: #A6BDB3; box-shadow: 0 5px 0 #A6BDB3, 0 10px 0 #A6BDB3; }
 @media (max-width: 600px) {
   .campus-pile { gap: 6px; }
   .campus-piece { padding: 7px; font-size: 12px; }
@@ -2519,6 +2490,62 @@ body:has(#screen-lobby:not([hidden])) .message {
   .campus-lunch-count { font-size: 10px; padding: 4px 6px; }
   .campus-coffee-layout { grid-template-columns: 1fr; }
   .campus-recipe-card { transform: none; }
+}
+/* ---- The six campus emergencies in a low window (M2-4.25) ----
+
+   On a small laptop the map is 600 to 770px high, and the window of a
+   campus task was up to 1150px high: the player scrolled inside it to reach
+   the buttons. Below 800px of map height the window keeps less room around
+   it and inside (14px, as in a narrow window), and drawings that only
+   decorate get lower, so that every control and the instruction are in
+   view. The map area is the size container (see .map-area), so this holds
+   whether the panel is next to the map or below it. Stations 7, 10 and 12
+   follow in campus_challenges.css. */
+@container map-area (height < 800px) {
+  .minigame:has(.campus-game, .campus-challenge) { padding: 14px; }
+  .minigame-window:has(.campus-game, .campus-challenge) { gap: 8px; padding: 14px; }
+  .minigame-window:has(.campus-game) .minigame-header { padding-bottom: 8px; }
+  .minigame-window:has(.campus-game) .minigame-title { font-size: 22px; }
+  .campus-game { gap: 8px; }
+  .campus-instruction { font-size: 16px; }
+  .campus-story { padding: 6px 10px; }
+  .campus-feedback { padding: 6px 12px; }
+  .campus-scene-label { padding: 6px 10px; }
+
+  /* Station 8: a lower cup and lower buttons. */
+  .campus-coffee-machine { gap: 8px; padding-bottom: 12px; }
+  .campus-coffee-cup { width: 104px; height: 60px; }
+  .campus-coffee-label { top: 18px; }
+  .campus-coffee-controls .campus-piece { min-height: 34px; }
+  .campus-order-name { padding-top: 6px; }
+  .campus-recipe { padding: 6px 10px 10px 32px; }
+  .campus-recipe li { padding: 1px 4px; }
+
+  /* Station 11: the receipt stands left of the belt (below), and the
+     products are lower. */
+  .campus-checkout { gap: 8px; padding: 10px; }
+  .campus-belt { gap: 6px; padding: 6px; }
+  .campus-belt .campus-piece { min-height: 0; }
+  .campus-product-art { height: 36px; }
+  .campus-budget-display { padding: 6px 12px; }
+
+  @container (width >= 500px) {
+    .campus-checkout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr);
+      grid-template-rows: auto 1fr;
+      gap: 8px 12px;
+    }
+    .campus-receipt { grid-column: 1; grid-row: 1; margin: 0; }
+    .campus-checkout .campus-small { grid-column: 1; grid-row: 2; align-self: start; }
+    .campus-belt { grid-column: 2; grid-row: 1 / 3; }
+    .campus-budget-display { flex-direction: column; gap: 4px; }
+    .campus-budget-display > div + div { text-align: left; }
+    /* A product is narrower here, and "✓ Scanned · click to return" takes
+       two lines: the badge always has room for them, so that the belt does
+       not grow and the window does not move when a product is scanned. */
+    .campus-belt .campus-piece-state { display: flex; align-items: center; min-height: calc(2.4em + 6px); }
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .campus-wrong { animation: none; }
