@@ -71,7 +71,7 @@ Every file belongs to exactly one area.
 | `server/classic/` | The Classic round, meetings and votes, the emergency button, hiding | 3 |
 | `server/modes/` | The task frame (open, close, finish a station), the minigames' content, the Duel | 4 |
 | `client/index.html`, `client/css/` | Page skeleton, screens and colours | 2 |
-| `client/js/main.js`, `client/js/net.js` | Routing of the server's messages to the parts of the page; the WebSocket connection | 2 |
+| `client/js/main.js`, `client/js/net.js`, `client/js/keyboard_notice.js` | Routing of the server's messages to the parts of the page; the WebSocket connection; the notice for phones and tablets without a keyboard (S-219) | 2 |
 | `client/js/lobby/` | Start screen, sign-up and log-in, lobby, countdown, profile and leaderboard | 2 |
 | `client/js/world/` | Map (`campus.json`), drawing of rooms and characters (`art/`), walking, camera, limited view, overview map | 1 |
 | `client/js/classic/` | Role card, action buttons, meeting window, end screen | 3 |

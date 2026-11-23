@@ -79,7 +79,7 @@ Check the dependencies for known vulnerabilities:
 .venv/bin/pip-audit -r requirements.txt
 ```
 
-About the tests: most of them are plain pytest. About 45 test files also run the real client files in Node.js (version 20 or newer), and about 28 (most of `tests/test_play_*.py` and a few others) drive real Chromium pages with the npm package Playwright. Without Node, or without Playwright and Chromium, pytest skips those files and says so; the rest still runs. The CI on GitHub for pull requests has Node but no Playwright, so it skips the browser play tests there. They run on GitHub after each merge to `main` in a workflow of their own (`.github/workflows/browser-plays.yml`, with Playwright and Chromium), which never blocks a pull request, and on our own machines.
+About the tests: most of them are plain pytest. About 50 test files also run the real client files in Node.js (version 20 or newer), and about 35 (most of `tests/test_play_*.py` and a few others) drive real Chromium pages with the npm package Playwright. Without Node, or without Playwright and Chromium, pytest skips those files and says so; the rest still runs. The CI on GitHub for pull requests (`.github/workflows/ci.yml`) has Node but no Playwright, so it skips the browser play tests there. They run on GitHub after each merge to `main` and when started by hand, in a workflow of their own (`.github/workflows/browser-plays.yml`, with Playwright and Chromium: every `tests/test_play_*.py` and the six other files that drive Chromium, S-220, S-224), which never blocks a pull request, and on our own machines.
 
 ## The modes
 
@@ -97,13 +97,13 @@ The status of every feature is in [game/FEATURES.md](game/FEATURES.md), the rule
 
 ## Known limitations
 
-- A player whose connection drops cannot return to a running round; after signing in again they rejoin the lobby when the round is over (S-109).
+- A player whose connection drops cannot return to a running round. After they sign in again or play as a guest, the page tries once to rejoin the lobby they were in; while its round runs they read “This round has already started.” and can join by hand when it is over (S-109).
 - Lobbies and running rounds live only in the server's memory: a restart or a new deploy ends them.
 - The log-in and lobby-code limits count per connection, so a new connection starts again at zero.
 - A known risk we accept on purpose: if the database fails exactly while a finished round is being saved, that round's statistics are lost and are not written again. A retry is not safe, because the first write may have arrived after all and the round would then count twice. The clean fix, a round id with a unique constraint so that the database refuses a second copy, is the open to-do M3-2.9 (S-211).
 - In Classic everybody learns at once who was failed (the victim's portrait is on the F-sheet, S-163); only the place of the sheet is sent just to those who see it (S-202).
 - The character voted out is not shown drifting out to sea yet; the result is shown as text (M3-3.5).
-- The browser play tests do not run in CI (see above).
+- The browser play tests do not run on pull requests, only after each merge to `main` (see above), so a pull request can break one without a red check.
 - The game needs a keyboard: walking works only with W, A, S, D or the arrow keys, so it cannot be played on phones or tablets. A phone or tablet therefore first sees the notice “Group Project needs a keyboard.”, with “Play anyway” for a tablet with a keyboard (M4-2.2).
 - Not built, though planned "if time allows": the Deadline mode, sabotages, friends, sound and touch controls.
 
@@ -116,7 +116,7 @@ The work is split into four areas. Every file belongs to exactly one of them, an
 | Area | Owner | Responsible for | Code |
 |---|---|---|---|
 | 1 Campus and characters | Hanna | The map with its rooms, walking, collision, camera, limited view, characters, graphics | `game/client/js/world/`, `game/server/world/` |
-| 2 Network, lobby, accounts, foundation | Felix | Server, WebSocket connection, message checks, lobby, accounts and statistics, page skeleton, tests, CI, hosting | `game/server/main.py`, `game/server/protocol.py`, `game/server/net/`, `game/server/accounts/`, `game/client/index.html`, `game/client/css/`, `game/client/js/main.js`, `game/client/js/net.js`, `game/client/js/lobby/` |
+| 2 Network, lobby, accounts, foundation | Felix | Server, WebSocket connection, message checks, lobby, accounts and statistics, page skeleton, tests, CI, hosting | `game/server/main.py`, `game/server/protocol.py`, `game/server/net/`, `game/server/accounts/`, `game/client/index.html`, `game/client/css/`, `game/client/js/main.js`, `game/client/js/net.js`, `game/client/js/keyboard_notice.js`, `game/client/js/lobby/` |
 | 3 Classic rules | Laurin | Roles, failing someone, reporting, meetings, chat, votes, hiding, win conditions | `game/rules.py`, `game/server/classic/`, `game/client/js/classic/` |
 | 4 Minigames and other modes | Lennart | The frame for minigames, all minigames, the Duel and Solo modes | `game/server/modes/`, `game/client/js/minigames/` |
 
@@ -128,7 +128,7 @@ The work is split into four areas. Every file belongs to exactly one of them, an
 | Message checks | `game/server/protocol.py` | Every message from a browser is checked for size, shape and allowed values before any game code sees it. A rejected action gets one of the fixed texts in DESIGN.md, section 9. |
 | Game rules | `game/rules.py`, `game/server/classic/`, `game/server/modes/`, `game/server/world/`, `game/server/accounts/statistics.py` | Plain functions without network, database or clock, so the tests can call them directly. |
 | Client | `game/client/` | Plain HTML, CSS and JavaScript drawing on a canvas. No framework and no build step. It sends what the player wants to do and draws what the server reports. Each browser is sent only what its player may know (for example never who the Free Rider is). |
-| Tests | `game/tests/` | pytest: accepted actions, rejected actions and edge cases, plus play tests in real browsers. They run on every pull request. |
+| Tests | `game/tests/` | pytest: accepted actions, rejected actions and edge cases, plus play tests in real browsers. All but the browser plays run on every pull request; the browser plays run after each merge to `main` (S-220). |
 | Data | Supabase (Postgres) | Accounts (passwords only as Argon2 hashes) and statistics. Lobbies and running rounds live only in the server's memory. |
 
 No credentials are stored in this repository. The server reads the database connection from the environment variable `DATABASE_URL`.
