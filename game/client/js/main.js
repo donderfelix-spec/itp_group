@@ -190,6 +190,17 @@ window.Game = window.Game || {};
     const showsNextTask = hasOneTaskAtATime() || (mode === 'classic' && classicRole === 'HP');
     callTaskNavigation('setTargets', []);
     callTaskNavigation('setTarget', showsNextTask && stations.length === 1 ? stations[0] : null);
+    callTaskNavigation('setNote', ...classicNote(stations));
+  }
+
+  // The line the card shows in Classic instead of a task (S-197), only to
+  // the player concerned: the Free Rider's hint, or a High Performer's
+  // "all done" once the server sent no task any more.
+  function classicNote(stations) {
+    if (mode !== 'classic' || !roundIsRunning) return [null, false];
+    if (classicRole === 'FR') return ['Fake tasks: stand at a station to look busy.', false];
+    if (classicRole === 'HP' && stations.length === 0) return ['All your tasks are done.', true];
+    return [null, false];
   }
 
   // Duel and Solo give each player one next station at a time.

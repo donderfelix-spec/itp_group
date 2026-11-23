@@ -298,6 +298,7 @@ window.Game = window.Game || {};
 
   let target = null; // the station id of the own next task, or null
   let targets = []; // Classic: the station ids of the own open tasks
+  let note = null; // Classic (S-197): { text, done } in place of a task, or null
   let shownCard = ''; // what the card shows now, so it is only changed on a change
   let shownPlace = null; // the room the card shows now, or null while it is hidden
 
@@ -327,7 +328,8 @@ window.Game = window.Game || {};
     const card = document.getElementById('task-card');
     if (!card) return;
     const lines = place === null ? null : cardLines(guidance);
-    const key = JSON.stringify([place, lines]);
+    const shownNote = place === null || lines !== null ? null : note; // a task goes first
+    const key = JSON.stringify([place, lines, shownNote]);
     if (key === shownCard) return;
     shownCard = key;
     shownPlace = place;
@@ -339,6 +341,12 @@ window.Game = window.Game || {};
     ['task-card-kicker', 'task-card-room', 'task-card-title'].forEach((id, index) => {
       setText(id, lines ? lines[index] : '');
     });
+    const noteElement = document.getElementById('task-card-note');
+    if (noteElement) {
+      noteElement.hidden = shownNote === null;
+      noteElement.textContent = shownNote ? shownNote.text : '';
+      noteElement.classList.toggle('task-card-note-done', Boolean(shownNote && shownNote.done));
+    }
   }
 
   // The station of the own next task, or null for none. From main.js.
@@ -353,10 +361,18 @@ window.Game = window.Game || {};
     targets = Array.isArray(stationIds) ? stationIds.filter((id) => Number.isInteger(id)) : [];
   }
 
+  // Classic (S-197): a line for the card when there is no task, from main.js;
+  // `done` makes it green. null takes it away.
+  function setNote(text, done) {
+    note = typeof text === 'string' && text ? { text: text, done: done === true } : null;
+    showCard(shownPlace, null); // at once, not only at the next frame
+  }
+
   // The player left the lobby: no target and no card until the next frame of a world.
   function reset() {
     target = null;
     targets = [];
+    note = null;
     showCard(null, null);
   }
 
@@ -391,6 +407,7 @@ window.Game = window.Game || {};
     placeName: placeName,
     setTarget: setTarget,
     setTargets: setTargets,
+    setNote: setNote,
     reset: reset,
     draw: draw,
   };

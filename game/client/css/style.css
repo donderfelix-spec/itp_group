@@ -635,6 +635,17 @@ input {
 .task-card-kicker { font-size: 10px; font-weight: 800; letter-spacing: .04em; }
 .task-card-line { overflow: hidden; font-size: 14px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .task-card-room::after { content: " · "; }
+/* Classic (S-197): "All your tasks are done." (green) or the Free Rider's
+   hint, in place of the task part. It may wrap onto a second line. */
+.task-card-note {
+  margin: 0;
+  padding: 5px 10px 6px 12px;
+  border-top: 2px solid var(--ink);
+  border-left: 6px solid var(--sun);
+  font-size: 13px;
+  font-weight: 800;
+}
+.task-card-note-done { border-left-color: #5FA86B; }
 /* A narrow map that is higher than wide has room above the own character
    (a map unit is then 1/260 of its height), so the card takes the width. */
 @container map-area (max-width: 610px) and (orientation: portrait) {
@@ -647,6 +658,7 @@ input {
   .task-card-kicker { font-size: 9px; }
   .task-card-line { font-size: 12px; }
   .task-card-room { display: none; }
+  .task-card-note { padding: 3px 8px 4px 10px; font-size: 11px; }
 }
 
 /* When the map is narrow (below about 620px: on its own in a narrow window,
