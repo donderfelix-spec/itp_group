@@ -76,6 +76,7 @@ def test_the_profile_without_a_time_carries_null():
 
 def test_the_leaderboard_carries_place_name_win_totals_and_time_and_nothing_else():
     rows = [
+        # A row with more in it than may be sent: only the six fields get through.
         {"place": 1, "name": "Mara", "wins": 3, "classic_wins": 2, "duel_wins": 1,
          "best_seconds": 72.4, "name_key": "mara", "password_hash": "x"},
         {"place": 2, "name": "Tiago", "wins": 1, "classic_wins": 1, "duel_wins": 0, "best_seconds": None},

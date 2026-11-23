@@ -541,6 +541,12 @@ def test_a_finished_classic_round_counts_once_and_preserves_duel_totals(connect,
     for _ in range(2):
         players["Mara"].portal.call(main.tell_round_news, lobby)
     wait_for_rounds(store, 2)
+    # Every write runs as a task of its own: wait until none is left, so a
+    # second write of the same round would be counted here too.
+    deadline = time.monotonic() + DEADLINE_SECONDS
+    while main.background_sends:
+        assert time.monotonic() < deadline, "background tasks did not finish"
+        time.sleep(0.01)
     assert len(store.rounds) == 2
     assert store.rounds[-1][0] == "classic"
     rows = {row["name"]: row for row in leaderboard_for(player(connect, "Reader"))["players"]}

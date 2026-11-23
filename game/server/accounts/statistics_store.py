@@ -149,6 +149,7 @@ class PostgresStatisticsStore:
 
     def top(self, limit: int) -> list:
         rows = self._select(SELECT_TOP, (statistics.DUEL, statistics.CLASSIC, statistics.DUEL, limit))
+        # SUM gives a whole number of its own kind; `int` makes it a plain one.
         return [
             (name, int(wins), best_seconds, int(classic_wins), int(duel_wins))
             for name, wins, best_seconds, classic_wins, duel_wins in rows
