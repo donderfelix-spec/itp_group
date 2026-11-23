@@ -1,4 +1,4 @@
-// Browser part of test_play_origin_check.py (M3-2.5, S-207). Needs Playwright and Chromium.
+// Browser part of test_play_origin_check.py (M3-2.6, S-207). Needs Playwright and Chromium.
 //
 // Usage: node play_origin_check_in_browser.js <game-port>
 // The game server must run on 127.0.0.1:<game-port>. This script starts three

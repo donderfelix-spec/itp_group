@@ -1,4 +1,4 @@
-"""May a WebSocket from this origin connect? (M3-2.5, S-207)
+"""May a WebSocket from this origin connect? (M3-2.6, S-207)
 
 A browser sends the header `Origin` with every WebSocket handshake: the site
 of the page that opens the connection. Without a check, a page on any other

@@ -64,7 +64,7 @@ About the tests: most of them are plain pytest. About 30 test files also run the
 |---|---|---|
 | Classic | 4 to 8 | Each High Performer has four tasks, one active at a time. The Free Rider (two with 6 to 8 players) fails players in reach and can hide. Failed players become ghosts. A found F-sheet or the red emergency button starts a meeting with chat and a public vote. The High Performers win when the progress bar is full or every Free Rider is out; the Free Riders win when they are as many as the High Performers. |
 | Duel | 2 to 8 | Everyone gets their own random route across three task stations, of about the same walking length. The first to finish all three wins; after 3 minutes the round ends with a ranking. |
-| Solo | 1 | The Duel alone, for practice. It counts for no statistics. |
+| Solo | 1 | The Duel alone, for practice. It counts for no statistics. A new lobby starts in Solo; when a second player joins, it switches to Duel. |
 
 There are eleven minigames, one at each task station: Sort the slides, Brew the order, Build the tray, Shelve the books, Self-checkout, Fix the consultant's chart, Emergency caffeine protocol, Save the lunch, Decode the group chat, Expense the essentials and Seagull quality control.
 

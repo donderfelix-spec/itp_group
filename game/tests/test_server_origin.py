@@ -1,4 +1,4 @@
-"""The Origin check at the WebSocket handshake of the real `/ws` (M3-2.5, S-207).
+"""The Origin check at the WebSocket handshake of the real `/ws` (M3-2.6, S-207).
 
 The test client sends Host "testserver" and no Origin unless a test adds one.
 """

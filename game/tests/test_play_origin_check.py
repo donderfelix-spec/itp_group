@@ -1,4 +1,4 @@
-"""M3-2.5 (S-207): the Origin check with the real server, in Chromium and with raw handshakes.
+"""M3-2.6 (S-207): the Origin check with the real server, in Chromium and with raw handshakes.
 
 In Chromium (skipped when Node, Playwright or Chromium is missing): the game
 page plays on http://localhost and http://127.0.0.1 without any setting; a

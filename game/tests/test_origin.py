@@ -1,4 +1,4 @@
-"""The rule "may a WebSocket from this origin connect?" (M3-2.5, S-207, `server/net/origin.py`)."""
+"""The rule "may a WebSocket from this origin connect?" (M3-2.6, S-207, `server/net/origin.py`)."""
 
 import pytest
 
