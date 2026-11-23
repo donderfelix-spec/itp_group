@@ -114,7 +114,9 @@ def test_report_on_a_sheet_made_after_another_report_names_that_sheet(connect, c
     for connection in connections.values():
         read_until(connection, "positions")
 
-    # Sheet C: a new fail while sheet B is still on the map.
+    # Sheet C: a new fail while sheet B is still on the map, once the
+    # cooldown that starts again after a meeting is over (DESIGN.md 5.8).
+    clock.wait(15.0)
     connections[fr_id].send_json({"type": "fail"})
     fail_c = connections[fr_id].receive_json()
     assert fail_c["type"] == "classic_fail"

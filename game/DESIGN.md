@@ -271,6 +271,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Hiding as a High Performer or a ghost, in a meeting, outside a Classic round (only when someone bypasses the page) | “You cannot hide right now.” |
 | Hiding further than 25 map units from every hiding spot (only when someone bypasses the page) | “Walk up to a hiding spot to hide.” |
 | Failing, reporting or calling a meeting while hidden | “Leave your hiding spot first.” |
+| Opening a station while a meeting runs (only when someone bypasses the page; S-199) | “Tasks wait until the meeting is over.” |
 | Skipping when there is no meeting, as a ghost, after the time, or in the discussion of an emergency meeting (only when someone bypasses the page) | “You cannot skip this discussion right now.” |
 | Connection lost | “Connection lost. Reconnecting…” After the player signs in again, the page joins the lobby it was in by itself and puts the code into the join field. If that lobby is gone, full or in its countdown or round, the usual text appears at the code field (S-109). |
 | Database not reachable | “Accounts are unavailable right now. You can still play as a guest.” |
