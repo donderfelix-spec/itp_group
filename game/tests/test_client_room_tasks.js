@@ -290,12 +290,17 @@ for (const mode of ['duel', 'solo']) {
   assert.equal(env.ids.get('duel-next').textContent, 'Next: Seagull quality control (Main Deck)');
   env.Game.duel.showState({ next_station: 3, done: 1, total: 3 });
   assert.equal(env.ids.get('duel-next').textContent, 'Next: Build the tray (Canteen)');
+  // S-224: a Duel player who finished waits for the others; a Solo player does not.
+  env.Game.duel.showState({ next_station: null, seconds: 24.7, done: 3, total: 3 });
+  assert.equal(env.ids.get('duel-next').textContent, 'Finished in 0:24.7. Waiting for the others.');
   env.Game.duel.noteLobby({ phase: 'lobby', mode: 'solo' });
   env.Game.duel.noteLobby({ phase: 'round', mode: 'solo' });
   env.Game.duel.showState({ next_station: 12, done: 0, total: 3 });
   assert.equal(env.Game.duel.nextStation(), 12, 'Solo uses the private server-assigned destination');
   assert.equal(env.ids.get('duel-next').textContent, 'Next: Seagull quality control (Main Deck)');
   assert.equal(env.ids.get('duel-panel').hidden, false, 'Solo must display the existing task HUD');
+  env.Game.duel.showState({ next_station: null, seconds: 24.7, done: 3, total: 3 });
+  assert.equal(env.ids.get('duel-next').textContent, 'Finished in 0:24.7.', 'Solo has nobody to wait for (S-224)');
   env.Game.duel.noteLobby({ phase: 'lobby', mode: 'solo' });
   assert.equal(env.Game.duel.nextStation(), null, 'solo target clears when the round ends');
   assert.equal(env.ids.get('duel-panel').hidden, true);
