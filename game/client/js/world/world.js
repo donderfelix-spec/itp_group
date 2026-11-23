@@ -1949,7 +1949,10 @@ Game.world = Game.world || {};
     var vision = Game.world.vision;
     var sight = classicVision && !ownIsGhost && vision ? vision.boundary(campus, centre) : null;
     if (sight) {
-      vision.darken(ctx, view, sight, centre, vision.rangeOf(campus));
+      // Soft wall shadows (S-214); the hard fog only where no extra canvas can be made.
+      if (!vision.darkenSoftly(ctx, view, campus, centre)) {
+        vision.darken(ctx, view, sight, centre, vision.rangeOf(campus));
+      }
       ctx.save();
       vision.clip(ctx, sight);
     }
@@ -1966,8 +1969,11 @@ Game.world = Game.world || {};
       var own = players.get(ownName);
       Game.taskNavigation.draw(ctx, campus, centre, own ? own.server : null, inputPaused || overviewOpen);
     }
-    drawPlayers(now);
+    // Players and their names are drawn whole, outside the clip (S-214):
+    // the server sends only those in sight and every other one is deleted,
+    // so the hard sight line must not cut a body in two.
     if (sight) ctx.restore();
+    drawPlayers(now);
   }
 
   // The browser calls this before every repaint of the screen, and not at

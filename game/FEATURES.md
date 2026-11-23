@@ -42,7 +42,7 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | Smooth walking over the internet: characters and the camera keep moving when position messages come late or bunched (gaps up to 250 ms) | M2 | Done |
 | The own character and the camera keep walking through longer hold-ups of the connection (up to about 700 ms) and stop sooner after a key is released | M2 | Done |
 | Walking diagnostic for the team: with `?debug` in the address a panel measures the connection and the drawing while walking and copies the numbers as text | M2 | Done |
-| Limited view in Classic: nearby living players in direct sight, with walls casting shadows (S-185) | M3 | Done |
+| Limited view in Classic: nearby living players in direct sight, with walls casting shadows (S-185); the shadows fade in softly like the edge of the view, and every player in sight is drawn whole (S-214) | M3 | Done (M3-1.9) |
 | The place of an F-sheet only to who sees it, the ghosts and the Free Rider who did it; the others get it when it comes into their sight (S-202) | M3 | Done (M3-3.25) |
 | Half-transparent ghosts visible to other ghosts and fallen characters visible until reported (S-186) | M3 | Done |
 | Seven hiding spots in Classic (S-131 to S-140), drawn as objects of the map: boxes, a beanbag, a potted plant, a hollow in the hedge (S-190), coffee sacks, folding chairs and sun loungers (S-196); the Free Rider hides on purpose with E and is then sent to no High Performer; himself, the other Free Rider and ghosts see him with a crossed-out eye (S-191, S-192) | M3 | Done |
