@@ -164,7 +164,9 @@ def test_emergency_is_living_only_once_per_player_and_chat_vote_reach_all(names,
     for connection in connections.values():
         assert connection.receive_json()["type"] == "positions"
 
-    # The completed meeting returns to play; one other living player can still call once.
+    # The completed meeting returns to play; one other living player can still call once,
+    # after the 45 s the button is locked again after a meeting (S-218).
+    clock.wait(45.0)
     stand_at_emergency_button(reporter_id, another_living)
     connections[reporter_id].send_json({"type": "emergency"})
     assert connections[reporter_id].receive_json()["code"] == "emergency_rejected"
