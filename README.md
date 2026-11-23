@@ -70,7 +70,7 @@ Check the dependencies for known vulnerabilities:
 .venv/bin/pip-audit -r requirements.txt
 ```
 
-About the tests: most of them are plain pytest. About 45 test files also run the real client files in Node.js (version 20 or newer), and 27 (most of `tests/test_play_*.py` and a few others) drive real Chromium pages with the npm package Playwright. Without Node, or without Playwright and Chromium, pytest skips those files and says so; the rest still runs. The CI on GitHub has Node but no Playwright, so it skips the browser play tests; they are run on our own machines.
+About the tests: most of them are plain pytest. About 45 test files also run the real client files in Node.js (version 20 or newer), and about 28 (most of `tests/test_play_*.py` and a few others) drive real Chromium pages with the npm package Playwright. Without Node, or without Playwright and Chromium, pytest skips those files and says so; the rest still runs. The CI on GitHub has Node but no Playwright, so it skips the browser play tests; they are run on our own machines.
 
 ## The modes
 
@@ -91,7 +91,7 @@ The status of every feature is in [game/FEATURES.md](game/FEATURES.md), the rule
 - A player whose connection drops cannot return to a running round; after signing in again they rejoin the lobby when the round is over (S-109).
 - Lobbies and running rounds live only in the server's memory: a restart or a new deploy ends them.
 - The log-in and lobby-code limits count per connection, so a new connection starts again at zero.
-- In Classic everybody learns at once who was failed (the victim's portrait is on the F-sheet, S-163), and the victim's position is sent to the whole lobby, not only to those who see it (M3-3.25).
+- In Classic everybody learns at once who was failed (the victim's portrait is on the F-sheet, S-163); only the place of the sheet is sent just to those who see it (S-202).
 - The character voted out is not shown drifting out to sea yet; the result is shown as text (M3-3.5).
 - The browser play tests do not run in CI (see above).
 - Not built, though planned "if time allows": the Deadline mode, sabotages, friends, sound and touch controls.

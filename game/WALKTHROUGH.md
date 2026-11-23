@@ -12,7 +12,7 @@ The two traces below follow this path for two real actions.
 
 The Free Rider has failed Tiago. An F-sheet lies where he stood. Mara walks up to it and presses R.
 
-**1. The key (browser, area 1).** In `client/js/world/world.js`, `onKeyDown` sees the key `KeyR` (`isReportKey`) and calls `reportSheetInRange`. That asks `nearestSheetInRange` for the nearest F-sheet that is not reported yet and lies within `REPORT_RANGE` (8 map units, the same number as `rules.REPORT_RANGE`) of the player's position as the server last sent it. Clicking the button “R Report” does the same (`onReportButtonClick`); `updateReportButton` shows that button only to a living player next to a sheet (`reportVisible` in `client/js/classic/hud-actions.js`). Without a sheet in range nothing happens and no message is sent.
+**1. The key (browser, area 1).** In `client/js/world/world.js`, `onKeyDown` sees the key `KeyR` (`isReportKey`) and calls `reportSheetInRange`. That asks `nearestSheetInRange` for the nearest F-sheet that is not reported yet and lies within `REPORT_RANGE` (8 map units, the same number as `rules.REPORT_RANGE`) of the player's position as the server last sent it. Clicking the button “R Report” does the same (`onReportButtonClick`); `updateReportButton` shows that button only to a living player next to a sheet (`reportVisible` in `client/js/classic/hud-actions.js`). Without a sheet in range nothing happens and no message is sent. Mara's browser knows where the sheet lies only because the server told it when the place came into her sight: `classic_fail` carries the place only to the Free Rider, the ghosts and those who see it, and the tick sends `classic_sheet` to the others later (`tell_classic_sheets`, `sheets_to_tell` in `server/classic/sheets.py`, S-202).
 
 **2. The message (browser, area 2).** `reportSheetInRange` calls the handler that `client/js/main.js` registered with `setReportHandler`: `requestReport`. It sends `{type: "report", sheet_id, position}` with `Game.net.send` from `client/js/net.js`, only in a running Classic round and only once until an answer comes (`reportIsOnItsWay`; `reportAnswered` clears it on `meeting_state` or `error`). So a double click sends one report (M3-3.21).
 
@@ -103,12 +103,12 @@ Accounts and statistics are in Postgres at Supabase, in two tables: `accounts` (
 *Limit:* a restart or a new deploy ends every lobby and round. *Could change:* keep lobbies in a shared store such as Redis, or let a running round wait for a player who reconnects.
 
 **What do the tests cover, and what not?**
-On 2026-11-23 there are about 6,300 test cases in `tests/`. Without Playwright, 5,713 pass and 574 are skipped. They work on four levels:
+On 2026-11-23 there are about 6,600 test cases in `tests/`. Without Playwright, 5,995 pass and 575 are skipped. They work on four levels:
 - the plain rule functions, with the time and the random choices passed in (`tests/test_rules.py`, `tests/test_tasks.py`, `tests/test_movement.py`);
 - the real server over real WebSocket connections with FastAPI's test client, several players at once (`tests/test_server_tasks.py`, `tests/test_classic_rule1_messages.py`);
 - the real client files run in Node.js (`*_in_node.js`);
-- play tests that drive real Chromium pages with Playwright (27 files, most of them `tests/test_play_*.py`).
-The message types are tested for accepted, rejected and edge cases (rule 2). One gap we know of: no test sends a malformed `sheet_id`. The CI (`.github/workflows/ci.yml`) runs pytest, `node --check` and `pip-audit` on every pull request and on `main`.
+- play tests that drive real Chromium pages with Playwright (28 files, most of them `tests/test_play_*.py`).
+The message types are tested for accepted, rejected and edge cases (rule 2). The CI (`.github/workflows/ci.yml`) runs pytest, `node --check` and `pip-audit` on every pull request and on `main`.
 *Not covered:*
 - the deployed site on Render;
 - the real Supabase database: `tests/conftest.py` removes `DATABASE_URL`, and the Postgres stores are tested with fake connections;
@@ -138,9 +138,9 @@ Our only outside service is the database. We tried it with the server pointed at
 - Coding agents with fixed roles (S-22): the reviewer sees only the brief and the change (S-24), every loop stops after three rounds (S-25), and a person approves every pull request (S-26). The rules every agent follows are in [AGENTS.md](../AGENTS.md) (S-35), and every decision is written down with who made it.
 
 **What are the limits, and how could it change?**
-The README lists the known limitations: no return into a running round, rounds lost on a restart, attempt limits per connection, everybody learns who was failed and where, no drifting out to sea, no browser plays in CI. Next steps we would take:
+The README lists the known limitations: no return into a running round, rounds lost on a restart, attempt limits per connection, everybody learns at once who was failed, no drifting out to sea, no browser plays in CI. Next steps we would take:
 1. Let a player who lost the connection return to the running round (S-109 today only rejoins the lobby).
-2. Send the victim's position after a fail only to those who see it (M3-3.25).
+2. Show the character voted out drifting out to sea instead of a line of text (M3-3.5).
 3. Count failed log-ins per account or address, not per connection.
 4. Run the Playwright play tests in CI, and add a test against a real Postgres.
 
@@ -153,7 +153,8 @@ The README lists the known limitations: no return into a running round, rounds l
 - Pages: the server sets security headers, including a content security policy (`SECURITY_HEADERS` in `server/main.py`).
 - Dependencies: five runtime packages, all pinned in `requirements.txt`; `pip-audit` reports no known vulnerabilities.
 - Secrets: none in the repository; `.env` is ignored.
-*Known gaps:* the attempt limits count per connection, so a new connection starts at zero. Every player learns who was failed and where (README).
+- A check of the page's origin for the WebSocket `/ws` is being added (S-207).
+*Known gap:* the attempt limits count per connection, so a new connection starts at zero.
 
 ## 7. Where decisions and work are written down
 
