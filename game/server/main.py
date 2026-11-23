@@ -435,6 +435,21 @@ def duel_result_to_write(lobby, ranking):
         return None
 
 
+def classic_result_to_write(lobby, roles, winner):
+    """What a finished Classic round adds to the statistics, as `(mode, changes)`. Never raises.
+
+    Returns None when only guests are left at the end. Like
+    `duel_result_to_write`, nothing is written here.
+    """
+    try:
+        changes = statistics.changes_from_classic(roles, winner, lobby.names(), account_names(lobby.names()))
+        return (statistics.CLASSIC, changes) if changes else None
+    except Exception as problem:
+        # Statistics must never keep a round from ending.
+        logger.error("The result of a round could not be noted: %s", type(problem).__name__)
+        return None
+
+
 def account_names(names) -> set:
     """Those of `names` who are signed in with an account. Guests have no statistics (S-38).
 
@@ -1768,15 +1783,16 @@ def end_round_if_over(lobby) -> tuple:
             return {}, None
         result = classic.result(winner, end_reason(state))
         open_stations = {name: lobby.tasks.open_station_of(name) for name in lobby.names()}
+        # Worked out before the round ends, written after the players were told (S-198).
+        result_to_write = classic_result_to_write(lobby, classic.roles, winner)
         lobby.end_round()
         # Everybody is sent the positions at the next tick, also when nobody
         # moves: a Free Rider who was hidden (M3-1.4) is visible again.
         lobby.walkers._everybody_needs_news()
-        # Classic does not write statistics yet: no result for the store.
         return {
             name: ([] if station is None else [protocol.station_closed(station)]) + [result]
             for name, station in open_stations.items()
-        }, None
+        }, result_to_write
 
     the_duel = lobby.duel
     if the_duel is None or not the_duel.is_over(seconds_now()):

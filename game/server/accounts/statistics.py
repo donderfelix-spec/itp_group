@@ -19,6 +19,7 @@ Three shapes are used in this file and by the stores:
 from server.accounts.store import name_key
 
 DUEL = "duel"
+CLASSIC = "classic"
 # How many accounts the leaderboard shows at most.
 LEADERBOARD_SIZE = 20
 
@@ -32,6 +33,23 @@ def changes_from_duel(ranking, account_names) -> list:
     is not in the ranking any more and so gets none either.
     """
     return [_change_from_row(row) for row in ranking if row["name"] in account_names]
+
+
+def changes_from_classic(roles, winner, names_at_the_end, account_names) -> list:
+    """What a finished Classic round adds to the statistics, one change per account (S-198).
+
+    `roles` is `{name: "HP" or "FR"}` of the round and `winner` the side that
+    won, "HP" or "FR". Every account still in the lobby at the end plays one
+    round, ghosts included, and wins it if their side won. A player who left
+    during the round is not in `names_at_the_end` and gets no change, like in
+    the Duel; a guest (S-38) gets none either. Classic has no time, so
+    `best_seconds` stays None.
+    """
+    return [
+        {"name": name, "rounds": 1, "wins": 1 if roles[name] == winner else 0, "best_seconds": None}
+        for name in names_at_the_end
+        if name in account_names and name in roles
+    ]
 
 
 def _change_from_row(row) -> dict:
