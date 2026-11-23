@@ -13,13 +13,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      # The archived prototype "We Be(a)t" (S-45) keeps its own checks.
       - name: Syntax check
         run: |
-          for f in prototype/js/*.js tests/*.js; do
+          for f in archive/prototype/js/*.js archive/tests/*.js; do
             node --check "$f"
           done
       - name: Flow tests
-        run: node tests/run.js
+        run: node archive/tests/run.js
 
   game:
     runs-on: ubuntu-latest

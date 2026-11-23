@@ -14,10 +14,10 @@ All features of the game with their status. Whoever finishes a feature or plans 
 
 - **M1 Walking:** Several players meet in a lobby and walk across the campus together.
 - **M2 Duel:** Minigames and the Duel mode are playable.
-- **M3 Classic:** A complete Classic round with Free Rider, meeting and vote is playable. Status 2026-11-21: playable with known defects, see M3-3.9 to M3-3.18 in [TODO.md](TODO.md).
+- **M3 Classic:** A complete Classic round with Free Rider, meeting and vote is playable. Status 2026-11-23: playable through every ending; the open points are in [TODO.md](TODO.md).
 - **M4 Extensions:** Sabotage, Deadline mode, finished characters, sound, phone.
 
-As of 2026-11-21. Milestone 1 is on `main` and deployed.
+As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 only some points are built.
 
 ## Area 1: Campus and characters
 
@@ -29,9 +29,9 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Camera follows your own character | M1 | Done |
 | See other players with their names above the character; where name labels would cover each other only one is shown, the own name first (S-117) | M1 | Done |
 | Stations for tasks on the map | M2 | Done |
-| Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E done; R and Q come with Classic) | M2 | In progress |
+| Key hint in range: pulsing border around the target, coloured button with the key at the bottom right (E, R and F; S-195) | M2 | Done |
 | Choose a character from the list of stereotypes | M2 | Done |
-| Display of the current room | M2 | Planned |
+| Display of the current room, in the card at the top left (S-129) | M2 | Done |
 | Nicer, more detailed map: every room furnished from photos of the campus, floor patterns, wall faces, doors, drawn from tiles (S-122); walkways between fewer pieces, Hanna's Pingo Doce and round bushes (S-141); stations standing free, aisles without dead ends, everything that blocks drawn to its edges (S-144); Hanna's room floors, leafy square bushes and study tables in place of the pool, “Academic Hall” on the corridor floor (S-148) | M2 | Done |
 | Larger characters in a three-quarter view, facing only left or right; held objects stay in the same hand | M2 | Done |
 | A small personal motif on every outfit and a softer face (M2-1.18, S-142) | M2 | Done |
@@ -86,13 +86,13 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Feature | Milestone | Status |
 |---|---|---|
 | Assign roles at random at the start, the role is shown to each player individually | M3 | Done |
-| Each High Performer gets their own list of tasks | M3 | Playable with known defects (the list is not shown yet, M3-3.17) |
+| Each High Performer gets their own four tasks, sent only to them (since S-197 one active task at a time, see below) | M3 | Done |
 | Shared progress bar of the group work | M3 | Done |
 | Free Rider fails a nearby player, followed by a cooldown that starts again after every meeting; the victim's open task closes; the sheet shows the victim's portrait (S-163, S-199) | M3 | Done |
-| Find and report a failed player | M3 | Playable with known defects (M3-3.15) |
-| Report from 8 map units, also by the Free Rider; let fail from 25 map units with Q or F (S-194); F-sheets 30 % larger (S-180, S-181) | M3 | Done (M3-4.25 to M3-4.28) |
+| Find and report a failed player | M3 | Done |
+| Report from 8 map units, also by the Free Rider; let fail from 25 map units with F (S-194, S-195); F-sheets 30 % larger (S-180, S-181) | M3 | Done (M3-4.25 to M3-4.28) |
 | Classic action buttons with the key first: the Free Rider always has “F Let fail” (grey charge fill, yellow when a victim is in range; only F lets fail) and his own second button for “E Emergency”, “E Hide”, “E Leave hiding”; “R Report” for everybody (S-195) | M3 | Done (M3-3.26) |
-| Emergency meeting with the red button in the centre of the Main Deck (S-147), drawn as an alarm switch (S-149), limited per player, range checked by the server, hint only for the living (S-170) | M3 | Playable with known defects (M3-3.15: the wording “E Call meeting”) |
+| Emergency meeting with the red button in the centre of the Main Deck (S-147), drawn as an alarm switch (S-149), limited per player, range checked by the server, hint only for the living (S-170), button “E Emergency” (S-195) | M3 | Done |
 | Meeting with text chat and time limit; the window closes after the result (S-153) and always fits the screen (S-173); nobody walks and no task stays open during it, and afterwards everybody stands on the Main Deck again (S-199) | M3 | Done |
 | One random active Classic task per High Performer, next revealed after completion; only the current station pulses and opens, and the arrow leads to it; the Free Rider has none (S-197, replaces the own task list of S-154) | M3 | Done (M3-4.29) |
 | Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie; votes are public and can be changed, after a report already during the discussion, 75 % Skip ends the meeting (S-160 to S-162); each vote button shows its number of votes in a fixed field (S-173) | M3 | Done |
@@ -100,7 +100,7 @@ As of 2026-11-21. Milestone 1 is on `main` and deployed.
 | Ghosts keep doing their tasks, but they do not talk and do not vote; ghosts see the dead as “Dead” in the Players list (S-164) | M3 | Done (M3-3.9, M3-3.20, 2026-11-22) |
 | Check the win conditions and show the end screen that reveals the roles; only the host sees “New Round” (S-173) | M3 | Done (M3-3.11, 2026-11-22) |
 | A player who leaves a Classic round counts as failed; the round stops when too few players are left for its Free Riders (S-157, S-158); a leaver's Skip goes too, and 75 % Skip of those left ends the meeting (S-165) | M3 | Done (M3-3.8, M3-3.11, 2026-11-22) |
-| Free Riders can only fake tasks | M3 | Planned (M3-3.17) |
+| Free Riders can only fake tasks: they have none and cannot open a station (S-154, S-197) | M3 | Done |
 | Sabotage “WiFi down”: tasks locked until someone restarts the router | M4 | Planned |
 | Sabotage “Fire alarm”: Two players have to stand at two places in time, otherwise the Free Riders win | M4 | Planned |
 | Sabotage “Lights out”: view distance of the High Performers decreases | M4 | Later |

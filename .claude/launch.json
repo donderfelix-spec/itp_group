@@ -9,7 +9,7 @@
         "http.server",
         "8765",
         "--directory",
-        "prototype"
+        "archive/prototype"
       ],
       "port": 8765
     },

@@ -6,7 +6,7 @@ These rules apply to every agent working in this repository (Codex, Claude Code,
 
 **Group Project** is a multiplayer browser game set on the Nova SBE campus. "High Performers" complete tasks for a group project while a hidden "Free Rider" sabotages them. It is our team project for Introduction to Programming, due **2026-11-23, 23:59**.
 
-The game lives in `game/`. The folder `prototype/` is an older, unrelated project: do not touch it.
+The game lives in `game/`. The folder `archive/` holds an older, unrelated project (the prototype "We Be(a)t" with its tests and lists, S-45): do not touch it.
 
 Read before you change anything:
 
@@ -41,9 +41,9 @@ Every file belongs to exactly one area. Stay inside the area of your to-do.
 
 | Area | Folders |
 |---|---|
-| 1 Campus and characters | `game/client/js/world/`, `game/server/world/` (movement, collision, stations and walking distances on the server, S-79), drawing code for map and characters |
-| 2 Network, lobby, accounts, foundation | `game/server/main.py`, `game/server/protocol.py`, `game/server/net/`, `game/server/accounts/`, `game/client/js/net.js`, `game/client/js/lobby/`, CI, hosting |
-| 3 Classic rules | `game/server/classic/`, `game/client/js/classic/` |
+| 1 Campus and characters | `game/client/js/world/`, `game/server/world/` (movement, collision, stations and walking distances on the server, S-79), drawing code for map and characters, `game/design/` |
+| 2 Network, lobby, accounts, foundation | `game/server/main.py`, `game/server/protocol.py`, `game/server/net/`, `game/server/accounts/`, `game/client/index.html`, `game/client/css/`, `game/client/js/main.js`, `game/client/js/net.js`, `game/client/js/lobby/`, CI, hosting |
+| 3 Classic rules | `game/rules.py` (the plain Classic rules), `game/server/classic/`, `game/client/js/classic/` |
 | 4 Minigames and other modes | `game/server/modes/`, `game/client/js/minigames/` |
 
 Tests go in `game/tests/`, named after what they test.
