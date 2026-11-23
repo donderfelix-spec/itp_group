@@ -70,7 +70,9 @@ class Lobby:
         # who leaves the lobby in any way loses their position with it.
         self.walkers = Walkers()
         # What the host has chosen to play, and whether the round is running (S-91).
-        self.mode = DEFAULT_MODE
+        # A new lobby has one player, so it starts in Solo; the second player
+        # switches it to Duel (`mode_after_a_join`, S-125, S-203).
+        self.mode = SOLO
         self.phase = PHASE_LOBBY
         # The time on the server's clock at which the round starts. None
         # unless the countdown is running (S-102).

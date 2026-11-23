@@ -13,7 +13,7 @@ from task_helpers import (  # noqa: F401
 
 def solo_lobby(connect):
     connection = player(connect, 'Mara')
-    assert ask(connection, {'type': 'create_lobby'})['mode'] == 'duel'
+    assert ask(connection, {'type': 'create_lobby'})['mode'] == 'solo'  # one player: Solo (S-203)
     assert ask(connection, {'type': 'choose_mode', 'mode': 'solo'})['mode'] == 'solo'
     return connection
 
@@ -82,7 +82,8 @@ def test_solo_mode_finishes_three_real_tasks_then_can_restart(connect, clock, mo
 
 def test_regular_duel_still_refuses_a_single_player(connect):
     connection = player(connect, 'Mara')
-    assert ask(connection, {'type': 'create_lobby'})['mode'] == 'duel'
+    assert ask(connection, {'type': 'create_lobby'})['mode'] == 'solo'  # one player: Solo (S-203)
+    assert ask(connection, {'type': 'choose_mode', 'mode': 'duel'})['mode'] == 'duel'
     assert ask(connection, {'type': 'start_game'}) == protocol.too_few_players('duel')
     assert protocol.MIN_PLAYERS['duel'] == 2
     assert lobby_named('Mara').phase == 'lobby'

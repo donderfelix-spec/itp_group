@@ -339,7 +339,8 @@ def lobby_state(code: str, host: str, players, mode: str = DEFAULT_MODE, phase: 
     """`players` is a list of (name, character) pairs, in the order they joined.
 
     Every player has a character from the moment they join (S-75). Without
-    `mode` and `phase` this is the state of a new lobby (S-91).
+    `mode` and `phase` this is the state of a lobby of two or more before a
+    round (S-91); a new lobby with its one player is in Solo (S-203).
     """
     listed = [{"name": name, "character": character} for name, character in players]
     return {

@@ -296,9 +296,9 @@ def started_lobby(*names):
     return lobbies
 
 
-def test_a_new_lobby_has_mode_duel_and_phase_lobby():
+def test_a_new_lobby_has_mode_solo_and_phase_lobby():
     lobby = lobby_with("Mara").find("ABCD")
-    assert lobby.mode == "duel"
+    assert lobby.mode == "solo"  # one player: Solo (S-203)
     assert lobby.phase == "lobby"
     assert not lobby.round_is_running()
 
@@ -361,6 +361,7 @@ def test_start_by_a_member_who_is_not_host_is_rejected():
 
 def test_start_with_one_player_is_rejected():
     lobbies = lobby_with("Mara")
+    lobbies.choose_mode("Mara", "duel")  # a new lobby is in Solo (S-203); Duel needs two
     assert start_round_at_once(lobbies, "Mara") == (None, "too_few_players")
     assert lobbies.find("ABCD").phase == "lobby"
 

@@ -47,6 +47,7 @@ def test_start_round_at_once_leaves_a_running_round_with_everybody_on_the_way_to
 
 def test_start_round_at_once_passes_on_every_rejection():
     lobbies = lobby_with("Mara")
+    lobbies.choose_mode("Mara", "duel")  # a new lobby is in Solo (S-203); Duel needs two
     assert start_round_at_once(lobbies, "Tiago") == (None, "not_in_lobby")
     assert start_round_at_once(lobbies, "Mara") == (None, "too_few_players")
     lobbies.join("Tiago", "ABCD")
@@ -112,6 +113,7 @@ def renamed(told):
 def test_with_no_countdown_the_checks_of_the_start_are_the_server_s_own(connect):
     mara = player(connect, "Mara")
     ask(mara, {"type": "create_lobby"})
+    ask(mara, {"type": "choose_mode", "mode": "duel"})  # a new lobby is in Solo (S-203); Duel needs two
     assert ask(mara, {"type": "start_game"})["code"] == "too_few_players"
     tiago = player(connect, "Tiago")
     ask(tiago, {"type": "join_lobby", "code": lobby_named("Mara").code})

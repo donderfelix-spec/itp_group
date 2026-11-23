@@ -89,6 +89,7 @@ def test_duel_still_requires_two_players_and_the_discarded_campus_mode_is_absent
     assert protocol.MODES == ('duel', 'classic', 'solo')
     assert protocol.MIN_PLAYERS['duel'] == 2
     connection = player(connect, 'Mara')
-    assert ask(connection, {'type': 'create_lobby'})['mode'] == 'duel'
+    assert ask(connection, {'type': 'create_lobby'})['mode'] == 'solo'  # one player: Solo (S-203)
+    assert ask(connection, {'type': 'choose_mode', 'mode': 'duel'})['mode'] == 'duel'
     assert ask(connection, {'type': 'start_game'}) == protocol.too_few_players('duel')
     assert ask(connection, {'type': 'choose_mode', 'mode': 'campus_tasks'})['code'] == 'bad_mode'
