@@ -6,7 +6,6 @@ when players leave; the host can still choose any mode by hand.
 """
 
 from server import protocol
-from server.main import app
 from server.net.lobbies import Lobbies
 
 from task_helpers import ask, client, connect, lobby_named, player  # noqa: F401
