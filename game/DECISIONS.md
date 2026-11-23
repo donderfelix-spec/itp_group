@@ -16,6 +16,8 @@ Lennart's single-task request (2026-11-22): in Classic every High Performer has 
 
 Lennart's minigame redesign (2026-11-22): stations 7, 10 and 12 replace their answer-labelled clicking puzzles with chart reconstruction, chat deduction and timed three-lane rescue. The user requested more variety and challenge. Older campus_task packets retain their renderer; new openings use campus_challenge.
 
+Lennart's seagull follow-up (2026-11-23) ends the rescue as soon as the counter reaches six saved pages so players can return to the round immediately. A caught coffee deducts one page down to zero so the decoy costs progress. The mistake counter tracks missed pages and early or wrong-lane grabs.
+
 | No. | Date | Decision | Reason | By |
 |---|---|---|---|---|
 | S-01 | 2026-11-18 | Instead of the betting app, the team builds a multiplayer game in the social deduction genre that is set on the Nova SBE campus. | The team changed its mind. | Team |

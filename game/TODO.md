@@ -131,6 +131,7 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 - [x] **M2-4.14** Rework the three easy tasks at stations 7, 10 and 12 (Lennart). Built on `Minispiele-und-Modi`, 2026-11-22: repair a misleading survey chart, deduce a four-person presentation schedule from chat clues, and rescue falling pages across three lanes while ignoring coffee decoys. Each has its own brief. Chart/chat allow corrections, rescue offers a retry after three mistakes. Rule, server and client lifecycle tests pass; played through the actual task frame in the browser.
 
 - [ ] **M2-4.15** Make the minigames more exciting (Lennart). Revisit challenge, pacing and feedback, including the issues in K15.
+  - [x] Finish “Seagull quality control” as soon as the counter reaches six saved pages. Catching coffee deducts one page, down to zero (Lennart).
 - [x] **M2-4.13** The other players with their progress in one list: the Players list of the side panel, with “2/3” and a bar in Duel and Solo; no card over the map (S-130, Lennart's branch, reworked on `game/lennart-on-main-check`)
 - [x] **M2-4.16** Six more minigames at stations 7 to 12, in Duel, Solo and Classic (S-124, Lennart)
 - [x] **M2-4.17** Solo mode, and the mode choice Duel and Solo side by side with Classic below (S-125, Lennart)
