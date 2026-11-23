@@ -60,10 +60,11 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | Play as a guest, without statistics and friends | M1 | Done |
 | Clear message when a name is taken, the password is wrong or the database is not reachable | M1 | Done |
 | A database that hangs or loses its network frees the account workers within about 15 seconds (5 to connect, 10 for the call); four workers (S-211) | M3 | Done |
-| A statistics write that failed is written again later, without counting a round twice (M3-2.8) | M3 | Open |
+| A statistics write that failed is written again later, without counting a round twice (M3-2.9) | M3 | Open |
 | Show or hide the password with an eye icon | M1 | Done |
 | A player who is signed out because the account logged in somewhere else is told why | M1 | Done |
 | Limit on log-in attempts and lobby-code guessing | M1 | Done |
+| Only pages of the game's own site may open its WebSocket (Origin check, with `ALLOWED_ORIGINS` and the switch `ORIGIN_CHECK=off`, S-207) | M3 | Done (M3-2.6, 2026-11-23) |
 | Statistics per account: rounds and wins per mode (Duel, and Classic since S-198), best Duel time | M2 | Done |
 | Leaderboard of all accounts | M2 | Done |
 | Add friends by username, accept or decline a request | M4 | Planned |

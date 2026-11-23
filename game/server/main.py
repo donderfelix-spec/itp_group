@@ -21,6 +21,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
+from starlette.datastructures import Headers
 from starlette.websockets import WebSocketState
 
 from server import protocol
@@ -35,6 +36,7 @@ from server.classic.round import ClassicRound, HideRefused, active_task
 from server.modes import duel, minigames, tasks
 from server.net.attempts import AttemptLimits
 from server.net.lobbies import Lobbies
+from server.net import origin as origins
 from server.net.repeated_faults import RepeatedFaults
 from server.net.sessions import GUEST_NUMBERS, Sessions
 from server.protocol import PROTOCOL_VERSION, ProtocolError, error, parse_client_message, welcome
@@ -83,6 +85,12 @@ app.state.leaderboard_call = None
 app.state.hasher = service.Argon2Hasher()
 app.state.sessions = Sessions()
 app.state.attempt_limits = AttemptLimits()
+# Which pages may open a WebSocket (S-207). Both are read once at the start;
+# changing them in Render's settings restarts the server. Neither is a secret.
+app.state.origin_check = origins.check_is_on(os.environ.get("ORIGIN_CHECK"))
+app.state.allowed_origins = origins.PUBLIC_ORIGINS + origins.parse_allowed_origins(os.environ.get("ALLOWED_ORIGINS"))
+# Refused pages are logged at most once a minute, so a script cannot flood the log.
+app.state.refused_origins = RepeatedFaults()
 app.state.lobbies = Lobbies()
 # Which faults of the tick were logged lately, so that a repeating fault does not flood the log.
 app.state.repeated_faults = RepeatedFaults()
@@ -115,6 +123,47 @@ async def add_security_headers(request, call_next):
     for name, value in SECURITY_HEADERS.items():
         response.headers[name] = value
     return response
+
+
+class OriginCheck:
+    """Refuses a WebSocket from a page of another site at the handshake (S-207).
+
+    It sits in front of every WebSocket endpoint, so `game_socket` never sees
+    a refused connection. Closing before accepting gives the browser HTTP 403.
+    """
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "websocket" and not origin_is_allowed(Headers(scope=scope)):
+            log_refusal(Headers(scope=scope).get("origin", ""))
+            await send({"type": "websocket.close", "code": 1008, "reason": ""})
+            return
+        await self.inner(scope, receive, send)
+
+
+def origin_is_allowed(headers: Headers) -> bool:
+    """May the page that opens this connection connect? (`server/net/origin.py`)"""
+    if not app.state.origin_check:
+        return True
+    return origins.is_origin_allowed(
+        headers.get("origin"),
+        headers.get("host"),
+        headers.getlist("x-forwarded-host"),
+        app.state.allowed_origins,
+    )
+
+
+def log_refusal(origin: str):
+    """One line with the origin's host only, at most once a minute with the count in between."""
+    log_it, swallowed = app.state.refused_origins.happened("refused origin", seconds_now())
+    if log_it:
+        more = f" ({swallowed} more refused since the last line)" if swallowed else ""
+        logger.warning("Refused a WebSocket from %s%s", origins.origin_host_for_log(origin), more)
+
+
+app.add_middleware(OriginCheck)
 
 
 @app.get("/health")
