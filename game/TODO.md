@@ -121,8 +121,6 @@ A complete Duel round needs nothing more from area 2: start, play, ranking and t
 
 **Area 4 (Lennart)**
 
-- [x] **M3-4.29** Exactly one random active task per High Performer in Classic. Only that task is shown, usable and targeted by the arrow; completion reveals the next of the four randomly ordered assignments. Free Riders receive none (Lennart, 2026-11-22, local Minispiele-und-Modi).
-
 - [x] **M2-4.7a** A fault after a task was counted takes the count back, in the frame and in the Duel, so the server never counts a station the browser was not told about (solved with M2-4.7)
 - [x] **M2-4.7** Duel: a separate route for each player with an equally long walking distance, progress of the opponents, leaderboard (S-94). In the pull request after #26
 - [ ] **M2-4.8** Play test: two players play a Duel through to the leaderboard (Lennart). A scripted run with two browsers and the real minigames exists from the building of M2-4.7 (both finish, ranking, second round, time running out). Left to do: two people on two computers on the deployed server, and write down what gets in the way
@@ -215,6 +213,7 @@ Classic starts like Duel: `server/main.py` has a small table `ROUND_SETUPS` with
 - [x] **M3-4.26** Raise the F-sheet report range from 2 to 8 map units so players can report from farther away; server check (`rules.REPORT_RANGE`) and browser hint (`world.js` `REPORT_RANGE`) agree (Lennart, 2026-11-22). Done: S-180, `tests/test_classic_report_and_fail_ranges.py`, `tests/test_play_classic_ranges_and_f_key.py`
 - [x] **M3-4.27** Raise the “Let fail” range from 5 to 20 map units so the Free Rider can fail a player from farther away; server check (`rules.FAIL_RANGE_TILES`) and browser constant agree (Lennart, 2026-11-22). Done: S-180, `tests/test_classic_report_and_fail_ranges.py`, `tests/test_classic_fail_hud_area3.py` _Since S-194 the range is 25 (Lennart, approved by Felix 2026-11-22)._
 - [x] **M3-4.28** Draw F-sheets and their portraits 30 % larger; key F also lets fail, besides Q; the button says only “Let fail” (no tile count) (Lennart, 2026-11-22). Done: S-181, `tests/test_classic_report_and_fail_ranges.py`, `tests/test_play_classic_ranges_and_f_key.py`
+- [x] **M3-4.29** Exactly one random active task per High Performer in Classic. Only that task is shown, usable and targeted by the arrow; completion reveals the next of the four randomly ordered assignments. Free Riders receive none (Lennart, 2026-11-22, branch `Minispiele-und-Modi`; Felix took it on 2026-11-23). The task shows in the card at the top left like in Duel and Solo, the panel card above “Group progress” is hidden, and station 7 is called “Fix the consultant’s chart”. Done: S-197, `tests/test_classic_single_random_task.py`, `tests/test_classic_one_active_task.py`
 
 ## M4: Extension
 
