@@ -8,8 +8,8 @@
 //   roles      label -> role
 //   fail26     the Free Rider 26 map units from the victim: button, F sent a fail?
 //   fail25     at 25: button text and whether F failed the victim
-//   report85   a High Performer 8.5 from the sheet: Report button shown?
-//   report8    the Free Rider 8 from the sheet: Report shown, R started a meeting?
+//   report85   a High Performer 25.5 from the sheet: Report button shown? (S-229, was 8.5)
+//   report8    the Free Rider 25 from the sheet: Report shown, R started a meeting? (S-229, was 8)
 //   sheetBox   per page: where the F-sheet is on the screen and the viewport size
 //   problems   console errors and warnings, page errors
 const readline = require('readline');
@@ -146,8 +146,8 @@ async function buttons(g) {
     if (!failed) throw new Error('F at 25 did not fail: ' + JSON.stringify(out.fail25));
     const sheet = failed.position;
 
-    // 3. A High Performer 8.5 from the sheet sees no Report button.
-    await put([[finder.name, [sheet.x, sheet.y + 8.5]], [freeRider.name, [sheet.x + 60, sheet.y]]]);
+    // 3. A High Performer 25.5 from the sheet sees no Report button (S-229, was 8.5).
+    await put([[finder.name, [sheet.x, sheet.y + 25.5]], [freeRider.name, [sheet.x + 60, sheet.y]]]);
     await pause(900);
     out.report85 = await buttons(finder);
 
@@ -181,8 +181,8 @@ async function buttons(g) {
         }) });
     }
 
-    // 4. The Free Rider 8 from the sheet sees Report and starts the meeting with R.
-    await put([[freeRider.name, [sheet.x + 8, sheet.y]]]);
+    // 4. The Free Rider 25 from the sheet sees Report and starts the meeting with R (S-229, was 8).
+    await put([[freeRider.name, [sheet.x + 25, sheet.y]]]);
     await freeRider.page.waitForSelector('.report-button:not([hidden])', { timeout: 5000 }).catch(() => {});
     const reportBefore = await buttons(freeRider);
     await freeRider.page.keyboard.press('KeyR');

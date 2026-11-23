@@ -32,6 +32,7 @@ window.Game = window.Game || {};
   const modeButtons = {}; // mode id -> its button
   let ownName = null;
   let ownIsFreeRider = false;
+  let freeRiderPartners = new Set();
   let latestState = null;
   // In a Duel or Solo round: how many stations each player has done, from
   // `duel_progress` (see showProgress). null outside such a round.
@@ -62,6 +63,15 @@ window.Game = window.Game || {};
 
   function setOwnFreeRider(value) {
     ownIsFreeRider = value === true;
+    if (!ownIsFreeRider) freeRiderPartners = new Set(); // the round ended or another began
+    if (latestState) showPlayers(latestState);
+  }
+
+  // The other Free Riders, from the own private `classic_role` (S-227). Only
+  // a Free Rider is ever told them (rules.role_reveal_for); a High Performer's
+  // page never gets a name here.
+  function setFreeRiderPartners(names) {
+    freeRiderPartners = new Set(Array.isArray(names) ? names.filter((name) => typeof name === 'string') : []);
     if (latestState) showPlayers(latestState);
   }
 
@@ -414,6 +424,10 @@ window.Game = window.Game || {};
     row.appendChild(name);
     if (player.name === hostName) row.appendChild(makeText('span', 'marker marker-host', 'Host'));
     if (player.name === ownName) row.appendChild(makeText('span', 'marker', 'You'));
+    // Only a Free Rider sees who the Free Riders are, himself included (S-227).
+    if (ownIsFreeRider && (player.name === ownName || freeRiderPartners.has(player.name))) {
+      row.appendChild(makeText('span', 'marker marker-free-rider', 'Free Rider'));
+    }
     if (isDead) row.appendChild(makeText('span', 'marker marker-dead', 'Dead'));
     return row;
   }
@@ -519,6 +533,7 @@ window.Game = window.Game || {};
     setup: setup,
     setOwnName: setOwnName,
     setOwnFreeRider: setOwnFreeRider,
+    setFreeRiderPartners: setFreeRiderPartners,
     setPlayers: setPlayers,
     showProgress: showProgress,
     leaveLobby: leaveLobby,

@@ -423,6 +423,13 @@ function look() {
     // The names in the side panel's Players list, in their order.
     listNames: element('lobby-players').children
       .map((row) => row.children.find((child) => child.classList.contains('player-name')).textContent),
+    // "You failed." over the map for the victim of a fail (S-228).
+    youFailed: { shown: !element('classic-you-failed').hidden, text: element('classic-you-failed').textContent },
+    // Every row of the side panel's Players list with its markers (S-227).
+    markersInList: element('lobby-players').children.map((row) => ({
+      name: row.children.find((child) => child.classList.contains('player-name')).textContent,
+      markers: row.children.filter((child) => child.classList.contains('marker')).map((child) => child.textContent),
+    })),
     // The rows of the side panel's Players list marked dead, with their markers.
     deadInList: element('lobby-players').children
       .filter((row) => row.classList.contains('player-dead'))
@@ -480,6 +487,19 @@ const STEPS = {
   click(id) {
     element(id).focus();
     (element(id).listeners.click || []).forEach((listener) => listener({ preventDefault() {} }));
+  },
+  // Types a meeting chat message and presses Enter (the form is submitted).
+  typeChat(text) {
+    element('classic-chat-input').value = text;
+    (element('classic-chat-form').listeners.submit || []).forEach((listener) => listener({ preventDefault() {} }));
+  },
+  // What the chat field holds and what the line under it says (S-226).
+  lookAtChat() {
+    drawings.push({
+      chatValue: element('classic-chat-input').value,
+      chatHint: element('classic-chat-hint').textContent,
+      chatRefused: element('classic-chat-hint').classList.contains('classic-chat-refused'),
+    });
   },
   // Clicks the button "E Use" on the map (it has no id), as a player would.
   clickUseButton() {

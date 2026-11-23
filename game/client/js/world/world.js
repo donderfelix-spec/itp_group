@@ -129,7 +129,7 @@ Game.world = Game.world || {};
   var FAIL_RANGE_TILES = 25;
   var FAIL_COOLDOWN_SECONDS = 15;
   var REPORT_KEY_CODE = "KeyR";
-  var REPORT_RANGE = 8; // same as rules.REPORT_RANGE on the server (S-180)
+  var REPORT_RANGE = 25; // same as rules.REPORT_RANGE on the server (S-180, S-229)
   var EMERGENCY_DELAY_SECONDS = 45;
 
   // ---- State -----------------------------------------------------------
@@ -1112,6 +1112,13 @@ Game.world = Game.world || {};
   // meeting called by someone else changes nothing.
   function noteMeetingState(message) {
     if (!message || message.reason !== "emergency") return;
+    // S-230: every F-sheet on the map when an emergency meeting starts can no
+    // longer be reported; the server refuses it, and the page shows no Report.
+    // Only while the meeting runs: no fail can come in between, and a late
+    // copy of its result must not close a sheet failed afterwards.
+    if (message.phase === "discussion" || message.phase === "voting") {
+      bloodSheets.forEach(function (sheet) { sheet.reported = true; });
+    }
     if (ownName === null || message.trigger_player_id !== ownName) return;
     ownCallUsed = true;
     updateUseButton(stationInRange()); // put right at once, not only by the next frame

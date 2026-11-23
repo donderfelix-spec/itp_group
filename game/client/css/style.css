@@ -2960,3 +2960,29 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 .keyboard-notice-card h2 { font-size: clamp(22px, 6vw, 28px); line-height: 1.2; }
 .keyboard-notice-card .button { align-self: flex-start; }
+
+/* A refused meeting chat (S-226): the refusal shows under the field in red. */
+.classic-chat-refused { color: #C43E3E; font-weight: 700; }
+
+/* The Free Rider badge in the Players list, seen only by Free Riders (S-227). */
+.marker-free-rider { background: #F2695C; border-color: #C43E3E; color: #FFFFFF; }
+
+/* "You failed." over the map for the victim of a fail (S-228). */
+.classic-you-failed {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  padding: 10px 22px;
+  border: 3px solid #2E2A3B;
+  border-radius: 14px;
+  background: #FFFFFF;
+  color: #C43E3E;
+  font-size: clamp(28px, 6vw, 52px);
+  font-weight: 800;
+  pointer-events: none;
+  z-index: 5;
+  box-shadow: 0 4px 0 #2E2A3B;
+}
+.classic-you-failed[hidden] { display: none; }

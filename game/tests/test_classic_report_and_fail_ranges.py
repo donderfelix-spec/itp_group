@@ -1,13 +1,13 @@
 """Lennart's action ranges, the F key and the Free Rider's report (M3-4.25 to M3-4.28, S-180, S-181).
 
-- Report range 8 map units, fail range 25 map units; the server (rules.py)
+- Report range 25 map units (S-229, was 8), fail range 25 map units; the server (rules.py)
   and the browser (world.js) use the same numbers.
 - A living Free Rider can report an F-sheet, also their own victim's
   (Lennart's test, kept unchanged from his commit).
 - Only key F lets fail (Q did too until S-195); the button says only "F Let fail".
 
-Edge cases decided here: a distance of exactly 8 (report) or 25 (fail)
-counts as in range; 8.01 and 25.01 do not.
+Edge cases decided here: a distance of exactly 25 (report and fail)
+counts as in range; 25.01 does not.
 """
 
 import re
@@ -61,10 +61,10 @@ def test_free_rider_can_report_own_sheet_at_doubled_range():
         "eliminated": {"Victim"}, "phase": "round",
         "f_sheets": {"f-sheet-1": (0, 0)}, "meeting_triggers": set(),
     }
-    assert REPORT_RANGE == 8
+    assert REPORT_RANGE == 25
     assert FAIL_RANGE_TILES == 25
-    assert can_report(state, "Free", "f-sheet-1", (8, 0))
-    assert not can_report(state, "Free", "f-sheet-1", (8.01, 0))
+    assert can_report(state, "Free", "f-sheet-1", (25, 0))
+    assert not can_report(state, "Free", "f-sheet-1", (25.01, 0))
     state["meeting_triggers"].add("report:f-sheet-1")
     assert not can_report(state, "Free", "f-sheet-1", (0, 0))
 
@@ -73,20 +73,20 @@ def test_free_rider_can_report_own_sheet_at_doubled_range():
 
 
 def test_browser_and_server_use_the_same_ranges():
-    assert browser_number("REPORT_RANGE") == REPORT_RANGE == 8
+    assert browser_number("REPORT_RANGE") == REPORT_RANGE == 25
     assert browser_number("FAIL_RANGE_TILES") == FAIL_RANGE_TILES == 25
 
 
 # Report range: accepted, rejected, edge
 
 
-@pytest.mark.parametrize("position", [(8, 0), (0, -8), (4.8, 6.4), (7.99, 0)])
-def test_a_high_performer_reports_up_to_eight_map_units_away(position):
+@pytest.mark.parametrize("position", [(25, 0), (0, -25), (15, 20), (24.99, 0)])
+def test_a_high_performer_reports_up_to_twenty_five_map_units_away(position):
     assert can_report(report_state(), "Finder", "f-sheet-1", position)
 
 
-@pytest.mark.parametrize("position", [(8.01, 0), (0, 8.01), (6, 6), (20, 0)])
-def test_a_report_just_beyond_eight_map_units_is_refused(position):
+@pytest.mark.parametrize("position", [(25.01, 0), (0, 25.01), (18, 18), (60, 0)])
+def test_a_report_just_beyond_twenty_five_map_units_is_refused(position):
     assert not can_report(report_state(), "Finder", "f-sheet-1", position)
     assert not can_report(report_state(), "Free", "f-sheet-1", position)
 
@@ -112,7 +112,7 @@ def test_a_fail_just_beyond_twenty_five_map_units_is_refused(position):
 # Report range over the WebSocket, with the server's own positions
 
 
-def test_report_over_the_websocket_at_eight_accepted_and_just_beyond_refused(connect, clock):
+def test_report_over_the_websocket_at_twenty_five_accepted_and_just_beyond_refused(connect, clock):
     names = ("Mara", "Tiago", "Ines", "Rui")
     connections, _code, _public, _start = start_classic(connect, names)
     round_state = classic_for(names[0])
@@ -127,7 +127,7 @@ def test_report_over_the_websocket_at_eight_accepted_and_just_beyond_refused(con
     sheet = fail["position"]
     reporter = next(player for player in names if player not in (fr_id, fail["target_id"]))
 
-    too_far = (sheet["x"] + 8.5, sheet["y"])
+    too_far = (sheet["x"] + 25.5, sheet["y"])
     lobby.walkers._walkers[reporter].position = too_far
     connections[reporter].send_json({
         "type": "report", "sheet_id": fail["sheet_id"], "position": {"x": too_far[0], "y": too_far[1]},
@@ -137,7 +137,7 @@ def test_report_over_the_websocket_at_eight_accepted_and_just_beyond_refused(con
     assert refused["code"] == "report_rejected"
     assert lobby.meeting is None
 
-    at_the_edge = (sheet["x"] + 8.0, sheet["y"])
+    at_the_edge = (sheet["x"] + 25.0, sheet["y"])
     lobby.walkers._walkers[reporter].position = at_the_edge
     connections[reporter].send_json({
         "type": "report", "sheet_id": fail["sheet_id"], "position": {"x": at_the_edge[0], "y": at_the_edge[1]},

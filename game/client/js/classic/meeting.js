@@ -29,6 +29,14 @@ Game.classicMeeting = Game.classicMeeting || {};
   // back the vote (or the Skip) it just cast.
   var waitingForMeeting = false;
   var resultCloseTimer = null;
+  // Chat texts sent and not yet answered, oldest first (S-226). The field
+  // keeps its text until the server took it: a refused message (the
+  // 2-second limit per player) stays in the field instead of vanishing.
+  var pendingChats = [];
+  var ownMessagesSeen = 0;
+  var chatRefusal = null; // the refusal text shown under the field, for a few seconds
+  var chatRefusalTimer = null;
+  var CHAT_REFUSAL_MILLISECONDS = 3000;
   var resultShown = false;
   // The window stays this long after any result, then the round goes on.
   var RESULT_MILLISECONDS = 1800;
@@ -55,6 +63,7 @@ Game.classicMeeting = Game.classicMeeting || {};
     skipButton.addEventListener("click", skipDiscussion);
     window.addEventListener("resize", draw);
     Game.net.on("meeting_state", show);
+    Game.net.on("error", whenChatRefused);
   }
 
   function setOwnName(name) {
@@ -79,6 +88,7 @@ Game.classicMeeting = Game.classicMeeting || {};
       resultShown = false;
     }
     cancelResultClose();
+    noteOwnAcceptedChats(message);
     state = message;
     waitingForMeeting = false;
     // A reported sheet stays visible, but can no longer start a meeting.
@@ -116,7 +126,50 @@ Game.classicMeeting = Game.classicMeeting || {};
     state = null;
     waitingForMeeting = false;
     voteListSignature = "";
+    pendingChats = [];
+    ownMessagesSeen = 0;
+    showChatRefusal(null);
+    // A text left in the field belongs to this meeting only, not the next one.
+    if (input) input.value = "";
     screen.hidden = true;
+  }
+
+  // The own messages the server added since the last snapshot were accepted:
+  // their texts are no longer pending, and the field is emptied if it still
+  // holds one of them (S-226).
+  function noteOwnAcceptedChats(message) {
+    var own = message.messages.filter(function (item) { return item.player_id === ownName; });
+    if (own.length < ownMessagesSeen) ownMessagesSeen = 0; // a new meeting
+    own.slice(ownMessagesSeen).forEach(function (item) {
+      var index = pendingChats.indexOf(item.text);
+      if (index >= 0) pendingChats.splice(index, 1);
+      if (input && input.value === item.text) input.value = "";
+    });
+    ownMessagesSeen = own.length;
+  }
+
+  // A refused chat: the server answers in order, so it is the oldest one
+  // pending. Its text goes back into an empty field, and the refusal text
+  // shows under the field for a few seconds (DESIGN.md section 9).
+  function whenChatRefused(message) {
+    // `bad_chat` (protocol.py refused the text itself) answers a chat as well.
+    if (!message || !["chat_rejected", "bad_chat"].includes(message.code) || !state) return;
+    var text = pendingChats.shift();
+    if (input && typeof text === "string" && input.value === "") input.value = text;
+    showChatRefusal(typeof message.message === "string" ? message.message : null);
+  }
+
+  function showChatRefusal(text) {
+    if (chatRefusalTimer !== null) clearTimeout(chatRefusalTimer);
+    chatRefusalTimer = null;
+    chatRefusal = text;
+    if (text !== null) {
+      chatRefusalTimer = setTimeout(function () { showChatRefusal(null); }, CHAT_REFUSAL_MILLISECONDS);
+    }
+    if (hint) {
+      hint.classList.toggle("classic-chat-refused", text !== null);
+      updateInput();
+    }
   }
 
   function isMeetingState(message) {
@@ -153,7 +206,8 @@ Game.classicMeeting = Game.classicMeeting || {};
       && state.living.includes(ownName));
     input.disabled = !mayWrite;
     sendButton.disabled = !mayWrite;
-    if (mayWrite) hint.textContent = "Living players can chat during the discussion.";
+    if (chatRefusal !== null && mayWrite) hint.textContent = chatRefusal;
+    else if (mayWrite) hint.textContent = "Living players can chat during the discussion.";
     else if (state && state.phase === "voting") hint.textContent = "Chat is closed. Choose one living player to eject, or Skip.";
     else if (state && state.phase === "result") hint.textContent = "The vote is over.";
     else hint.textContent = "Ghosts can read the chat but cannot write.";
@@ -274,7 +328,10 @@ Game.classicMeeting = Game.classicMeeting || {};
   function sendMessage(event) {
     event.preventDefault();
     if (!state || input.disabled || input.value.length === 0) return;
-    if (Game.net.send({ type: "chat", text: input.value })) input.value = "";
+    // The text stays in the field until the server took it (S-226). The same
+    // text again while it waits for its answer (a double Enter) is not sent twice.
+    if (pendingChats.includes(input.value)) return;
+    if (Game.net.send({ type: "chat", text: input.value })) pendingChats.push(input.value);
   }
 
   // Where the parts of the canvas go. The canvas is the part of the window

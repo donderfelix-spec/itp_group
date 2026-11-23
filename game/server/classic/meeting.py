@@ -129,8 +129,9 @@ def shorten_when_everybody_voted(meeting: dict, now: float) -> dict:
     now + 10 s, and `ends_by` records it. Taking a vote back or changing it
     afterwards neither gives the time back nor starts it again. In the
     discussion the chat stays open until then and the meeting goes straight
-    to its result; if the discussion ends earlier, the vote that follows
-    ends there. Otherwise the state is returned unchanged.
+    to its result, also when less than 10 s of discussion were left: the
+    discussion then lasts until the end, so the clock only ever counts down
+    (S-225). Otherwise the state is returned unchanged.
     """
     if not _valid_time(now):
         raise ValueError("Meeting time must be a finite number.")
@@ -147,7 +148,10 @@ def shorten_when_everybody_voted(meeting: dict, now: float) -> dict:
     ends_by = min(meeting_end, float(now) + SECONDS_AFTER_EVERYBODY_VOTED)
     updated = deepcopy(meeting)
     updated["ends_by"] = ends_by
-    updated["deadline"] = min(meeting["deadline"], ends_by)
+    # The phase's own end is the meeting's end now: a discussion with less
+    # than 10 s left is not followed by a short vote phase, whose clock
+    # would jump up again (S-225).
+    updated["deadline"] = ends_by
     return updated
 
 

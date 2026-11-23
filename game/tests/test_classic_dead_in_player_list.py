@@ -35,7 +35,8 @@ GHOSTS_VIEW = roster(
 def test_a_ghost_sees_every_ghost_marked_dead():
     seen = run_page(classic_round_as_free_rider() + [GHOSTS_VIEW, ["look"]])["looks"][-1]
     assert seen["deadInList"] == [
-        {"name": "Ana", "markers": ["Host", "You", "Dead"]},
+        # Ana, the own player, is the Free Rider: her row has his badge too (S-227).
+        {"name": "Ana", "markers": ["Host", "You", "Free Rider", "Dead"]},
         {"name": "Di", "markers": ["Dead"]},
     ]
 
