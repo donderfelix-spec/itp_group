@@ -1767,7 +1767,8 @@ def end_round_if_over(lobby) -> tuple:
     Returns `(farewells, result)`. `farewells` is what each player still
     has to be told, as `{name: [messages]}`, or an empty dict if the round
     goes on (or none is running). `result` is what the round adds to the
-    statistics (see `duel_result_to_write`), or None. Both go to
+    statistics (see `duel_result_to_write` and
+    `classic_result_to_write`), or None. Both go to
     `tell_round_ended`, so a round's result travels with its own farewells.
 
     This function does not wait for anything: between the question "is it
