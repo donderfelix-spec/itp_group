@@ -181,13 +181,33 @@ def test_a_vote_for_a_ghost_is_heard_only_by_the_voter(monkeypatch):
     assert lobby.meeting["votes"] == {}
 
 
-def test_a_vote_and_a_skip_in_the_discussion_of_an_emergency_are_heard_only_by_the_sender(monkeypatch):
-    # After an emergency, voting opens only with the vote (S-161).
+def test_a_refused_vote_and_skip_in_the_discussion_of_an_emergency_are_heard_only_by_the_sender(monkeypatch):
+    # Since S-212 voting is open at once after an emergency call too, so the
+    # refused cases are the ones refused in every meeting: a ghost's vote and
+    # Skip, and a vote for a ghost.
+    lobby, sockets = lobby_in_a_meeting(monkeypatch, reason="emergency")
+    send(sockets, GHOST, vote("Tiago"))
+    send(sockets, GHOST, SKIP)
+    assert codes(sockets[GHOST]) == ["vote_rejected", "skip_discussion_rejected"]
+    assert heard_by_others(sockets, GHOST) == {}
+    forget_what_was_sent(sockets)
+    send(sockets, "Mara", vote(GHOST))
+    assert codes(sockets["Mara"]) == ["vote_rejected"]
+    assert heard_by_others(sockets, "Mara") == {}
+    assert lobby.meeting["votes"] == {} and lobby.meeting["skip_votes"] == set()
+
+
+def test_a_vote_and_a_skip_in_the_discussion_of_an_emergency_go_to_everybody(monkeypatch):
+    # S-212: after an emergency call voting and Skip are open during the discussion.
     lobby, sockets = lobby_in_a_meeting(monkeypatch, reason="emergency")
     send(sockets, "Mara", vote("Tiago"))
+    assert all(codes(socket) == ["meeting_state"] for socket in sockets.values())
+    assert sockets[GHOST].messages[0]["vote_targets"] == {"Mara": "Tiago"}
+    forget_what_was_sent(sockets)
     send(sockets, "Mara", SKIP)
-    assert codes(sockets["Mara"]) == ["vote_rejected", "skip_discussion_rejected"]
-    assert heard_by_others(sockets, "Mara") == {}
+    assert all(codes(socket) == ["meeting_state"] for socket in sockets.values())
+    assert sockets[GHOST].messages[0]["skip_voted"] == ["Mara"]
+    assert lobby.meeting["phase"] == "discussion"
 
 
 def test_a_vote_refused_because_the_time_ran_out_sends_the_result_once(monkeypatch):

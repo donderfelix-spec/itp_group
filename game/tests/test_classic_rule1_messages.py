@@ -822,8 +822,11 @@ def play_six(connect, clock, monkeypatch) -> Recorder:
     put("Luca", (app.state.campus["button"]["x"], app.state.campus["button"]["y"]))
     rec.connections["Luca"].send_json({"type": "emergency"})
     rec.step("Luca calls an emergency meeting", everybody(rec, "meeting_state"), actor="Luca")
-    refused_meeting_action(rec, "Sofia", vote("Mara"), "vote in the discussion")
-    refused_meeting_action(rec, "Sofia", SKIP, "Skip in the discussion")
+    # Voting is open during the discussion (S-212): a vote, taken back again.
+    meeting_action(rec, "Sofia", vote("Mara"), "Sofia votes Mara in the discussion")
+    meeting_action(rec, "Sofia", vote("Mara"), "Sofia takes her vote back")
+    refused_meeting_action(rec, "Sofia", vote("Rui"), "vote for a ghost in the discussion")
+    refused_meeting_action(rec, "Ines", SKIP, "ghost's Skip in the discussion")
     meeting_action(rec, "Mara", chat("Not me."), "Free Rider chats")
     clock.wait(DISCUSSION_SECONDS)
     rec.tick()
