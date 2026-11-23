@@ -5,6 +5,10 @@ on:
   push:
     branches: [main]
 
+# The jobs only read the repository (S-224).
+permissions:
+  contents: read
+
 jobs:
   checks:
     runs-on: ubuntu-latest

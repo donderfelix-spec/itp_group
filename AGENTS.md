@@ -30,7 +30,7 @@ Run all of these from the `game` folder.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt   # once
-.venv/bin/uvicorn server.main:app --reload                               # run the game on http://localhost:8000
+.venv/bin/uvicorn server.main:app --reload --ws-max-size 4096          # run the game on http://localhost:8000
 .venv/bin/python -m pytest                                               # run the tests
 .venv/bin/pip-audit -r requirements.txt                                  # check dependencies for known vulnerabilities
 ```
@@ -42,7 +42,7 @@ Every file belongs to exactly one area. Stay inside the area of your to-do.
 | Area | Folders |
 |---|---|
 | 1 Campus and characters | `game/client/js/world/`, `game/server/world/` (movement, collision, stations and walking distances on the server, S-79), drawing code for map and characters, `game/design/` |
-| 2 Network, lobby, accounts, foundation | `game/server/main.py`, `game/server/protocol.py`, `game/server/net/`, `game/server/accounts/`, `game/client/index.html`, `game/client/css/`, `game/client/js/main.js`, `game/client/js/net.js`, `game/client/js/lobby/`, CI, hosting |
+| 2 Network, lobby, accounts, foundation | `game/server/main.py`, `game/server/protocol.py`, `game/server/net/`, `game/server/accounts/`, `game/client/index.html`, `game/client/css/`, `game/client/js/main.js`, `game/client/js/net.js`, `game/client/js/keyboard_notice.js`, `game/client/js/lobby/`, CI, hosting |
 | 3 Classic rules | `game/rules.py` (the plain Classic rules), `game/server/classic/`, `game/client/js/classic/` |
 | 4 Minigames and other modes | `game/server/modes/`, `game/client/js/minigames/` |
 

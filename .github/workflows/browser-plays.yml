@@ -1,4 +1,5 @@
-# The browser plays (game/tests/test_play_*.py) in real Chromium, S-220.
+# The browser plays in real Chromium, S-220: game/tests/test_play_*.py and
+# the six other test files that drive Chromium (named in PLAYS below).
 # Separate from ci.yml and never run on pull requests, so a slow or flaky
 # play never blocks a merge: it runs after each merge to main and by hand.
 name: Browser plays
@@ -45,6 +46,17 @@ jobs:
       # So the failed tests alone run once more with --last-failed (pytest's
       # own cache, no new dependency); the job is red only if they fail again.
       - name: Browser plays
+        env:
+          # Every test file that drives Chromium. A new one that is not
+          # called test_play_*.py must be added here (S-224).
+          PLAYS: >-
+            tests/test_play_*.py
+            tests/test_classic_soft_wall_shadow.py
+            tests/test_emergency_button_art.py
+            tests/test_hanna_floors_and_shrubs.py
+            tests/test_hiding_objects.py
+            tests/test_lobby_mode_buttons.py
+            tests/test_map_polish.py
         run: |
-          python -m pytest tests/test_play_*.py -rs \
-            || python -m pytest tests/test_play_*.py --last-failed -rs
+          python -m pytest $PLAYS -rs \
+            || python -m pytest $PLAYS --last-failed -rs

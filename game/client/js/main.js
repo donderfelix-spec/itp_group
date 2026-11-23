@@ -425,6 +425,24 @@ window.Game = window.Game || {};
     Game.duel.showResult(message);
   }
 
+  // The page has one line for messages, and two notices can come at once:
+  // the host's leave can also stop a Classic round ("The host left. …", then
+  // "Too many players left. …"). So a notice waits until the one before it
+  // has stood NOTICE_READ_MS, and the new host reads both, one after the
+  // other (S-224). Not one joined line: that would be longer than the room
+  // the lobby panel keeps for a message (tests/test_lobby_message_length.py).
+  const NOTICE_READ_MS = 2500;
+  let noticeLineFreeAt = 0; // performance.now() when the next notice may show
+
+  function whenNotice(message) {
+    const now = performance.now();
+    const showAt = Math.max(now, noticeLineFreeAt);
+    noticeLineFreeAt = showAt + NOTICE_READ_MS;
+    const show = () => Game.screens.showMessage(message.message, false);
+    if (showAt <= now) show();
+    else setTimeout(show, showAt - now);
+  }
+
   function whenError(message) {
     Game.forms.stopWaiting(); // Every error is an answer, also one that belongs to no field.
     reportAnswered();
@@ -496,7 +514,7 @@ window.Game = window.Game || {};
   Game.net.on('classic_progress', whenClassicProgress);
   Game.net.on('profile', Game.statistics.showProfile);
   Game.net.on('leaderboard', Game.statistics.showLeaderboard);
-  Game.net.on('notice', (message) => Game.screens.showMessage(message.message, false));
+  Game.net.on('notice', whenNotice);
   Game.net.on('error', whenError);
   Game.net.on('meeting_state', reportAnswered);
   Game.net.on('you_are_fr', () => Game.classicRound.setOwnFreeRider(true));

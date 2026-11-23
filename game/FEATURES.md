@@ -56,12 +56,12 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | Feature | Milestone | Status |
 |---|---|---|
 | Start a server that delivers the client and the game | M0 | Done |
-| The browser plays run on GitHub after each merge to main, in a workflow of their own that never blocks a pull request (S-220) | M4 | Done (M4-2.3) |
+| The browser plays run on GitHub after each merge to main, in a workflow of their own that never blocks a pull request; since S-224 also the six Chromium files outside `tests/test_play_*.py` (S-220, S-224) | M4 | Done (M4-2.3, M3-2.11) |
 | Create an account with username and password, log in, log out | M1 | Done |
 | Play as a guest, without statistics and friends | M1 | Done |
 | Clear message when a name is taken, the password is wrong or the database is not reachable | M1 | Done |
 | A database that hangs or loses its network frees the account workers within about 15 seconds (5 to connect, 10 for the call); four workers (S-211) | M3 | Done |
-| A statistics write that failed is written again later, without counting a round twice (M3-2.9) | M3 | Open |
+| A statistics write that failed is written again later, without counting a round twice (M3-2.9) | M3 | Planned |
 | Show or hide the password with an eye icon | M1 | Done |
 | A player who is signed out because the account logged in somewhere else is told why | M1 | Done |
 | Limit on log-in attempts and lobby-code guessing | M1 | Done |

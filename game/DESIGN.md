@@ -189,7 +189,7 @@ The win and the time go into the statistics (S-40).
 
 **What a player sees in Duel**
 
-- At the top of the panel on the right, above “Players” (S-143): “Next: Build the tray (Canteen)” with the title of the minigame and the room, below it the clock counting down from 3:00. The progress of all players stands in the Players list below, for example “Mara 1/3”. A player who has finished all three sees “Finished in 1:12.4. Waiting for the others.” instead of the next station.
+- At the top of the panel on the right, above “Players” (S-143): “Next: Build the tray (Canteen)” with the title of the minigame and the room, below it the clock counting down from 3:00. The progress of all players stands in the Players list below, for example “Mara 1/3”. A player who has finished all three sees “Finished in 1:12.4. Waiting for the others.” instead of the next station; in Solo only “Finished in 1:12.4.” (S-224).
 - Every station is drawn as its object; only the next station has the pulsing yellow outline and opens (S-128).
 - The card at the top left of the map shows the room you are in and the next task; a small yellow triangle with a dark outline next to your character points straight at the station (S-129). In Classic it points at the player's one active task, and the card names it like in Duel and Solo; the Free Rider has no task, so no arrow, and the card shows his hint “Fake tasks: stand at a station to look busy.”; after the fourth task it says “All your tasks are done.” (S-197).
 - When the round is over, the ranking appears over the map for everybody: heading “Duel ranking”, one row per player with place, name and time (“1:12.4”), or “2/3” for a player who did not finish, and the button “Back to lobby”. If the three minutes ran out, the line “Time is up.” stands above the rows. The lobby is open again at that moment, so the host can start the next round.
@@ -214,7 +214,7 @@ Every room has its fixed minigame, it does not change. But the content is shuffl
 
 After a mistake, only the wrong piece is reset, never the whole minigame.
 
-A minigame opens with E or the button “E Use” at its station, only while a round is running. While it is open the character stands still. The close button and Esc close it without counting; it can be opened again and then has new content. When it is solved, the window shows “Done” in green for 0.5 seconds and closes automatically; the close button is hidden meanwhile (S-127). A station whose minigame is not built yet shows “This task is still being built.” and a button “Finish task”.
+A minigame opens with E or the button “E Use” at its station, only while a round is running. While it is open the character stands still. The close button and Esc close it without counting; it can be opened again and then has new content. When it is solved, the window shows “Done” in green for 0.5 seconds and closes automatically; the close button is hidden meanwhile (S-127). Every station has a minigame of its own since S-221; the placeholder “This task is still being built.” with a button “Finish task” (`server/modes/placeholder.py`) is used only by tests.
 
 | No. | Room | Title | Task | Done when | After a mistake |
 |---|---|---|---|---|---|
@@ -278,7 +278,7 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Connection lost | “Connection lost. Reconnecting…” After the player signs in again, the page joins the lobby it was in by itself and puts the code into the join field. If that lobby is gone, full or in its countdown or round, the usual text appears at the code field (S-109). |
 | Database not reachable | “Accounts are unavailable right now. You can still play as a guest.” |
 | Host has left the lobby | “The host left. Mara is the new host.” |
-| A Classic round no longer has enough players for its Free Riders because players left | “Too many players left. The round was stopped.” |
+| A Classic round no longer has enough players for its Free Riders because players left | “Too many players left. The round was stopped.”  When the host’s leave stops the round, the page shows “The host left. Mara is the new host.” first and this notice 2.5 seconds later, each alone, so the new host reads both (S-224). |
 | The same account logged in somewhere else, so this browser was signed out | “You were signed in somewhere else.” (shown by the browser on the Start screen) |
 | Password too long | “Passwords can have at most 64 characters.” |
 | Password with a character that cannot be stored | “Passwords cannot contain that character.” |
@@ -320,6 +320,18 @@ Grading criteria 1 and 2 require that invalid input does not break anything and 
 | Calling an emergency meeting in the first 45 seconds of a round or in the 45 seconds after a meeting (S-218) | “The emergency button unlocks in 20 seconds.” (the seconds left, “1 second” for one) |
 | A report with an F-sheet id that is not text of the right form (only when someone bypasses the page) | “That F-sheet could not be identified.” |
 | A report with a position that is not two finite numbers (only when someone bypasses the page) | “That position could not be read.” |
+| A page of another site opens the game's WebSocket (S-207) | No text: the server refuses the connection before it opens (HTTP 403), so that page only finds that it cannot connect. Our own pages, the deployed address and the sites in `ALLOWED_ORIGINS` are never refused. |
+
+The meeting window and the end screen also show these fixed lines, which are not refusals:
+
+| Situation | Message |
+|---|---|
+| Under the meeting's chat, for a living player during the discussion | “Living players can chat during the discussion.” |
+| Under the meeting's chat during the vote | “Chat is closed. Choose one living player to eject, or Skip.” |
+| Under the meeting's chat, for a ghost | “Ghosts can read the chat but cannot write.” |
+| Under the meeting's chat when the result is shown | “The vote is over.” |
+| The result of a vote with a tie or a majority for Skip | “No one was ejected.” |
+| The end screen, for a reason of the end the page does not know | “The round has ended.” |
 
 ## 10. What is deliberately not included
 

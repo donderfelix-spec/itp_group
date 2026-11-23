@@ -2356,6 +2356,14 @@ body:has(#screen-lobby:not([hidden])) .message {
 /* The own row can carry two markers, so it gets the full width. */
 .player-own { grid-column: 1 / -1; }
 
+/* With the panel beside the map (wider than 800px) one player per row: in
+   half of the 380px panel a name of 16 letters was cut ("Guest89…"), and
+   the names are what players read here (S-224). Below the map, on a narrow
+   window, the two columns stay. */
+@media (width > 800px) {
+  .players { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* In a Duel or Solo round (lobby.js): one column, "2/3" at the right of
    each row and a bar under the name, filled in success green. */
 .players-progress { grid-template-columns: minmax(0, 1fr); }

@@ -304,8 +304,10 @@ window.Game = window.Game || {};
       const isChosen = mode.id === modeId;
       button.classList.toggle('mode-own', isChosen);
       button.setAttribute('aria-pressed', String(isChosen));
-      // The server refuses these anyway (S-91); switching the button off
-      // only saves the host the error.
+      // The server refuses a choice during the countdown or the round, and
+      // Solo with two or more players. Duel and Classic with too few players
+      // may still be chosen there; only their start is refused (S-91, S-146).
+      // Switching the button off saves the host the error.
       const fits = fitsPlayerCount(mode, playerCount);
       button.disabled = !mode.isBuilt || !isOpen || !fits;
       button.classList.toggle('mode-unfit', !fits);

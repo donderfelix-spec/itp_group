@@ -99,20 +99,20 @@ The rules are in [AGENTS.md](../AGENTS.md). One place where each can be seen:
 ## 6. Questions we expect, and the answers
 
 **Where is the data stored?**
-Accounts and statistics are in Postgres at Supabase, in two tables: `accounts` (`server/accounts/store.py`, `PostgresAccountStore`) and `account_statistics` (`server/accounts/statistics_store.py`). The server finds the database through the environment variable `DATABASE_URL`, which is set only in Render's settings (S-39). A password is stored only as an Argon2 hash (`Argon2Hasher` in `server/accounts/service.py`, S-38). Both tables have row level security switched on with no policy, so Supabase's public Data API sees no rows. Without `DATABASE_URL` (locally, in the tests) the same methods run on `MemoryAccountStore` and `MemoryStatisticsStore` (`make_account_store`, `make_statistics_store`). Lobbies, rounds, positions and who is signed in live only in the server's memory (`Lobbies`, `Sessions`; S-32, S-39): a round lasts minutes and need not survive a restart. The browser stores nothing: no cookie, no `localStorage`, no token. Being signed in belongs to the connection (S-78): after a reload a player signs in again. After a lost connection the page keeps the lobby code only in a variable, not in storage (S-109).
+Accounts and statistics are in Postgres at Supabase, in two tables: `accounts` (`server/accounts/store.py`, `PostgresAccountStore`) and `account_statistics` (`server/accounts/statistics_store.py`). The server finds the database through the environment variable `DATABASE_URL`, which is set only in Render's settings (S-39). A password is stored only as an Argon2 hash (`Argon2Hasher` in `server/accounts/service.py`, S-38). Both tables have row level security switched on with no policy, so Supabase's public Data API sees no rows. Without `DATABASE_URL` (locally, in the tests) the same methods run on `MemoryAccountStore` and `MemoryStatisticsStore` (`make_account_store`, `make_statistics_store`). Lobbies, rounds, positions and who is signed in live only in the server's memory (`Lobbies`, `Sessions`; S-32, S-39): a round lasts minutes and need not survive a restart. The browser stores nothing about the player: no cookie, no `localStorage`, no token. The one thing it keeps is a flag in `sessionStorage` that the keyboard notice was closed with “Play anyway” (`client/js/keyboard_notice.js`, S-219); it is gone when the tab is closed. Being signed in belongs to the connection (S-78): after a reload a player signs in again. After a lost connection the page keeps the lobby code only in a variable, not in storage (S-109).
 *Limit:* a restart or a new deploy ends every lobby and round. *Could change:* keep lobbies in a shared store such as Redis, or let a running round wait for a player who reconnects.
 
 **What do the tests cover, and what not?**
-On 2026-11-23 there are about 6,600 test cases in `tests/`. Without Playwright, 5,995 pass and 575 are skipped. They work on four levels:
+On 2026-11-23 there are about 7,300 test cases in `tests/`. About 1,000 of them are in the 36 files that drive Chromium; without Playwright most of those are skipped and the rest pass. They work on four levels:
 - the plain rule functions, with the time and the random choices passed in (`tests/test_rules.py`, `tests/test_tasks.py`, `tests/test_movement.py`);
 - the real server over real WebSocket connections with FastAPI's test client, several players at once (`tests/test_server_tasks.py`, `tests/test_classic_rule1_messages.py`);
 - the real client files run in Node.js (`*_in_node.js`);
-- play tests that drive real Chromium pages with Playwright (28 files, most of them `tests/test_play_*.py`).
-The message types are tested for accepted, rejected and edge cases (rule 2). The CI (`.github/workflows/ci.yml`) runs pytest, `node --check` and `pip-audit` on every pull request and on `main`.
+- play tests that drive real Chromium pages with Playwright (about 35 files, most of them `tests/test_play_*.py`).
+The message types are tested for accepted, rejected and edge cases (rule 2). The CI (`.github/workflows/ci.yml`) runs pytest, `node --check` and `pip-audit` on every pull request and on `main`; it has no Playwright, so it skips the browser plays. They run after each merge to `main` and when started by hand in `.github/workflows/browser-plays.yml`, with Playwright and Chromium (S-220): every `tests/test_play_*.py` and the six other files that drive Chromium, and a failed test is run once more on its own.
 *Not covered:*
 - the deployed site on Render;
 - the real Supabase database: `tests/conftest.py` removes `DATABASE_URL`, and the Postgres stores are tested with fake connections;
-- the browser play tests in CI: it has no Playwright, so they run only on our machines;
+- the browser play tests on pull requests: they run only after the merge to `main`, so a pull request can break one without a red check;
 - browsers other than Chromium, phones and touch;
 - real network delay (only simulated, `tests/test_play_smooth_delivery.py`);
 - many lobbies or players at once: there is no load test.
@@ -138,11 +138,11 @@ Our only outside service is the database. We tried it with the server pointed at
 - Coding agents with fixed roles (S-22): the reviewer sees only the brief and the change (S-24), every loop stops after three rounds (S-25), and a person approves every pull request (S-26). The rules every agent follows are in [AGENTS.md](../AGENTS.md) (S-35), and every decision is written down with who made it.
 
 **What are the limits, and how could it change?**
-The README lists the known limitations: no return into a running round, rounds lost on a restart, attempt limits per connection, everybody learns at once who was failed, no drifting out to sea, no browser plays in CI. Next steps we would take:
+The README lists the known limitations: no return into a running round, rounds lost on a restart, attempt limits per connection and none on sign-up, everybody learns at once who was failed, no drifting out to sea, no browser plays on pull requests. Next steps we would take:
 1. Let a player who lost the connection return to the running round (S-109 today only rejoins the lobby).
 2. Show the character voted out drifting out to sea instead of a line of text (M3-3.5).
 3. Count failed log-ins per account or address, not per connection.
-4. Run the Playwright play tests in CI, and add a test against a real Postgres.
+4. Run the Playwright play tests on every pull request too, and add a test against a real Postgres.
 
 **How is it secured?**
 - Input: every message is checked for size, shape and allowed values in `server/protocol.py` before any game code sees it.
@@ -153,8 +153,43 @@ The README lists the known limitations: no return into a running round, rounds l
 - Pages: the server sets security headers, including a content security policy (`SECURITY_HEADERS` in `server/main.py`).
 - Dependencies: five runtime packages, all pinned in `requirements.txt`; `pip-audit` reports no known vulnerabilities.
 - Secrets: none in the repository; `.env` is ignored.
-- A check of the page's origin for the WebSocket `/ws` is being added (S-207).
-*Known gap:* the attempt limits count per connection, so a new connection starts at zero.
+- WebSocket origin: `/ws` accepts a page only from the host the request was sent to, the deployed address or a site listed in `ALLOWED_ORIGINS`; any other page is refused before the connection opens (HTTP 403, `OriginCheck` in `server/main.py`, `is_origin_allowed` in `server/net/origin.py`, S-207). A connection without an `Origin` header (a script, not a browser) is let through on purpose and meets the same message checks and limits. `ORIGIN_CHECK=off` in Render's settings switches the check off if a page of the real game is ever refused.
+*Known gaps:* the attempt limits count per connection, so a new connection starts at zero (S-107); sign-up has no limit of its own, so a script can create many accounts; a player who loses the connection cannot return to a running round (S-109).
+
+### Questions about the last day's changes
+
+**Why does the server check the origin of the WebSocket, and what does that not protect?** (S-207)
+Without it, a page of any other site could open our `/ws` in a visitor's browser and play or guess passwords in that visitor's name. The handshake is refused (HTTP 403) unless the page comes from the host the request was sent to, the deployed address or a site in `ALLOWED_ORIGINS`. It does not stop a script that sends no `Origin` header at all; that is allowed on purpose for tools and tests, and such a connection meets the same message checks and limits as any browser. *Show:* `is_origin_allowed` in `server/net/origin.py`, `OriginCheck` in `server/main.py`, the switch `ORIGIN_CHECK=off` in the README.
+
+**What happens when Supabase hangs or is down?** (S-211, S-38)
+Every database call runs on one of four worker threads, with short TCP keepalives and a statement timeout, so a hanging connection frees its worker within seconds. The player reads “Accounts are unavailable right now. You can still play as a guest.”, and guests and rounds go on, because lobbies live in memory. At most two Argon2 hashes run at once, to keep memory low. *Show:* `SOCKET_OPTIONS` in `server/accounts/store.py`, `HASHES_AT_ONCE` in `server/accounts/service.py`, `account_workers` in `server/main.py`.
+
+**How does a meeting end?** (S-162, S-212, S-215)
+In one of three ways: the clock runs out (45 seconds of discussion and 30 of voting); 75 % of the living choose Skip, which ends it at once with nobody voted out; or 10 seconds after every living player has voted, worked out once per meeting by a plain function that gets the time passed in. After a report or an emergency call, voting is open from the start. *Show:* `shorten_when_everybody_voted`, `end_if_enough_skips` and `voting_is_open` in `server/classic/meeting.py`; the vote tests `tests/test_classic_*vote*.py`.
+
+**Where do players stand after a meeting, and why?** (S-199, replaced by S-213)
+Where they stood before it. S-199 first sent everybody back to the Main Deck; Lennart asked that the round go on where everyone had been standing, and S-213 replaced that point. What stays from S-199: nobody walks or opens a task during a meeting, open tasks are closed when it starts, and the Free Rider's 15-second cooldown starts again from the meeting's end. *Show:* `advance_classic_walkers`, `settle_meeting` and `close_every_open_task` in `server/main.py`; `apply_meeting_result` and `take_cooldown_news` in `server/classic/round.py`.
+
+**How do statistics and the leaderboard work with two modes?** (S-40, S-198, S-217)
+Only the server writes a finished round: a Duel from its ranking, a Classic round once for every account still in the lobby, with a win for the winning side. Solo and guests write nothing. The leaderboard adds up the wins per mode in SQL (`SUM … FILTER`) and orders by all wins, then the best Duel time, then the name. *Show:* `changes_from_classic` and `total_of` in `server/accounts/statistics.py`, `SELECT_TOP` in `server/accounts/statistics_store.py`, `end_round_if_over` in `server/main.py`.
+
+**Why is the emergency button grey at the start and after a meeting?** (S-216, S-218)
+It is drawn from the start of the round, locked and grey, so that players learn where it is; it turns red when it unlocks 45 seconds after the round started or after the last meeting ended. Whether it can be pressed is decided only by the server: the time, a distance of at most 25 units and one call per living player. *Show:* `drawButton` in `client/js/world/draw.js`, `emergency_unlocks_at` in `server/classic/round.py`, `emergency_button_in_reach` in `server/classic/emergency_button.py`.
+
+**How does the browser know not to show “Free Rider” to a High Performer?** (rule 1)
+It is never told. The server sends each player only their own role, positions only within 120 units and in line of sight, a hidden Free Rider to no living High Performer, and F-sheets only to those who see them (S-202). `tests/test_classic_rule1_messages.py` lists for every message type who may receive it. *Show:* `server/world/visibility.py`, `tell_positions` in `server/main.py`.
+
+**What runs on GitHub, and when?** (S-220)
+`ci.yml` runs on every pull request and every push: pytest, `pip-audit` and the syntax check. `browser-plays.yml` runs after each merge to `main` and when started by hand, with Playwright 1.63.0 and Chromium, so the slow browser plays never block a merge but still run on `main`. *Show:* `.github/workflows/`, “About the tests” in the README.
+
+**What would you build next, and how?**
+Two examples. A return into a running round: today a player who loses the connection goes back to the lobby when the round is over (S-109); the server would have to keep that player's place for a few seconds and give it back to the same player on a new connection. And a statistics write that can be repeated safely: give every finished round an id with a unique constraint, so that the database refuses a second copy and a failed write can be tried again (M3-2.9, S-211). *Show:* `game/TODO.md` (the open items), `game/DECISIONS.md`.
+
+**How do you know invalid input does not break the server?**
+Every browser message goes through `server/protocol.py` first: at most 2048 bytes, a JSON object, a known type, exactly the right fields, types and ranges (huge numbers are refused since M3-2.3). Then each handler checks the permission (host, alive, in range, off cooldown) and answers with a fixed text from DESIGN.md, section 9. A frame over 4096 bytes is not even read when the server is started with `--ws-max-size 4096` (S-224). *Show:* `parse_client_message` and `REJECTIONS` in `server/protocol.py`; `tests/test_protocol*.py` and the rejected cases in each `tests/test_server_*` and `tests/test_classic_*` file.
+
+**How was the twelfth minigame added, and what does the server check there?** (S-221, M4-4.0)
+“Catch the wave” at station 6 (the beach exit), by Hanna: three waves must be caught as the crest passes under the board, with a click on the water, the button “Catch wave”, or Space or Enter. It plugs into the frame every minigame uses, so the server needed no new rule and no new message type (`open_station` already accepted stations 1 to 12). The server draws only the speed of the waves (`wave_duration_ms`, 1800 to 2400) and, as for every minigame (S-19, S-93), accepts `finish_station` only for the station the player opened within range, after the minimum time, here 3 seconds; the fastest honest game takes about 5.2 seconds, so the minimum never refuses a real player. Duel and Solo now draw three of twelve stations, Classic four of twelve per High Performer. *Show:* `server/modes/catch_the_wave.py` (`make_content`, `MINIGAME`), `client/js/minigames/catch_the_wave.js`, `tests/test_server_catch_the_wave.py`, `tests/test_play_catch_the_wave.py`.
 
 ## 7. Where decisions and work are written down
 

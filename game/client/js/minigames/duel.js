@@ -135,7 +135,9 @@ window.Game = window.Game || {};
   function nextLine() {
     if (!state) return '';
     if (state.next_station === null) {
-      return 'Finished in ' + formatTime(state.seconds, true) + '. Waiting for the others.';
+      const finished = 'Finished in ' + formatTime(state.seconds, true) + '.';
+      // Solo has nobody else to wait for (S-224).
+      return roundName === 'Solo' ? finished : finished + ' Waiting for the others.';
     }
     return 'Next: ' + stationName(state.next_station);
   }
