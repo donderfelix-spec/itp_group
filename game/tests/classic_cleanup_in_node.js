@@ -423,6 +423,11 @@ function look() {
     // The names in the side panel's Players list, in their order.
     listNames: element('lobby-players').children
       .map((row) => row.children.find((child) => child.classList.contains('player-name')).textContent),
+    // Every row of the side panel's Players list with its markers (S-227).
+    markersInList: element('lobby-players').children.map((row) => ({
+      name: row.children.find((child) => child.classList.contains('player-name')).textContent,
+      markers: row.children.filter((child) => child.classList.contains('marker')).map((child) => child.textContent),
+    })),
     // The rows of the side panel's Players list marked dead, with their markers.
     deadInList: element('lobby-players').children
       .filter((row) => row.classList.contains('player-dead'))

@@ -163,6 +163,10 @@ Game.classicRound = Game.classicRound || {};
       ? "Complete your 4 tasks."
       : "Make High Performers fail without getting caught.";
     var partners = Array.isArray(message.other_free_riders) ? message.other_free_riders : [];
+    // The Players list marks the Free Riders, only on a Free Rider's page (S-227).
+    if (Game.lobby && typeof Game.lobby.setFreeRiderPartners === "function") {
+      Game.lobby.setFreeRiderPartners(message.role === "FR" ? partners : []);
+    }
     // Only with two Free Riders: with one there is nobody to name (no "None").
     rolePartners.textContent = message.role === "FR" && partners.length
       ? "Other Free Riders: " + partners.join(", ")

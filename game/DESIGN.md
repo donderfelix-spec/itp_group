@@ -16,7 +16,7 @@ Everything without a note is required by Monday. “If time allows” means: onl
 | Background | `#EADFC8` (sand) | outside the buildings, page background |
 | Surface | `#F4EFE3` (cream) | corridors, cards, dialogs |
 | Accent | `#FFD23F` (sun yellow) | task stations, main buttons |
-| Danger | `#F2695C` (coral) | Free Rider, emergency button, error messages |
+| Danger | `#F2695C` (coral) | Free Rider, emergency button, error messages, the “Free Rider” badge in the Players list that only Free Riders see (S-227) |
 | Success | `#5FA86B` (green) | progress bar, “done” |
 | Water | `#9CD3E6` | fountain, links |
 
