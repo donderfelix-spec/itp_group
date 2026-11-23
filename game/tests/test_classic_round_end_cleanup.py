@@ -70,6 +70,7 @@ NOTHING_OF_CLASSIC = {
     "useButtonText": "E Use",
     "useButtonHasFailLook": False,
     "reportButtonShown": False,
+    "freeRiderEButtonText": None,
     "ownNameRedOnMap": False,
     "ownNameRedInLobby": False,
     "ownNameRedInRound": False,
@@ -217,11 +218,15 @@ def test_the_harness_sees_every_classic_element_during_the_round():
     assert during["sheetIds"] == ["f-sheet-1"]
     assert during["sheetsDrawn"] == 1
     assert during["emergencyButtonDrawn"] is True
-    assert during["useButtonText"] == "E Emergency"
-    assert during["useButtonDisabled"] is False
-    assert during["useButtonHasFailLook"] is False
+    # S-195: the Free Rider's main button stays "F Let fail"; "E Emergency"
+    # is his own second button, only at the red button.
+    assert during["useButtonText"] == "F Let fail"
+    assert during["useButtonHasFailLook"] is True
+    assert during["freeRiderEButtonText"] == "E Emergency"
+    assert during["freeRiderEButtonDisabled"] is False
     assert outside["useButtonHasFailLook"] is True
-    assert outside["useButtonText"].startswith("Let fail")
+    assert outside["useButtonText"] == "F Let fail"
+    assert outside["freeRiderEButtonText"] is None
     assert during["reportButtonShown"] is True
     assert during["ownNameDrawn"] is True
     assert during["ownNameRedOnMap"] is True
@@ -240,8 +245,11 @@ def test_the_emergency_button_stays_available_to_the_free_rider_during_fail_cool
     ]
     result = run_page(steps)
     during = result["looks"][-1]
-    assert during["useButtonText"] == "E Emergency"
-    assert during["useButtonDisabled"] is False
+    # S-195: "F Let fail" stays (grey, charging); "E Emergency" is the second button.
+    assert during["useButtonText"] == "F Let fail"
+    assert during["useButtonDisabled"] is True
+    assert during["freeRiderEButtonText"] == "E Emergency"
+    assert during["freeRiderEButtonDisabled"] is False
     assert [message for message in result["sent"] if message["type"] == "emergency"] == [
         {"type": "emergency"},
     ]
@@ -264,7 +272,7 @@ def test_after_the_round_the_red_button_stays_locked_while_time_goes_on():
 @needs_node
 def test_after_the_round_e_r_and_q_at_the_red_button_send_nothing_of_classic():
     steps = classic_round_as_free_rider() + end_of_round() + [
-        ["key", "KeyE"], ["key", "KeyR"], ["key", "KeyQ"],
+        ["key", "KeyE"], ["key", "KeyR"], ["key", "KeyF"],
     ]
     sent_types = [message["type"] for message in run_page(steps)["sent"]]
     assert not {"emergency", "report", "fail"} & set(sent_types)
@@ -440,7 +448,7 @@ def test_a_duel_after_a_classic_round_shows_nothing_of_classic():
         *walk_to_the_button(),
         ["wait", UNLOCK_WAIT],
         ["look"],
-        ["key", "KeyE"], ["key", "KeyR"], ["key", "KeyQ"],
+        ["key", "KeyE"], ["key", "KeyR"], ["key", "KeyF"],
     ]
     result = run_page(steps)
     in_the_duel = result["looks"][1]

@@ -125,6 +125,11 @@ const commands = {
     await pages[label].page.keyboard.press(key);
     return true;
   },
+  // A new window size for one page (test_play_action_buttons.py, S-195).
+  async viewport({ label, width, height }) {
+    await pages[label].page.setViewportSize({ width, height });
+    return true;
+  },
   async screenshot({ label, path }) {
     await pages[label].page.screenshot({ path });
     return path;

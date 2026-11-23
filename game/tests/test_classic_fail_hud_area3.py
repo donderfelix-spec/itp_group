@@ -1,10 +1,15 @@
 """WebSocket regression tests for the Free Rider's fail action and HUD state."""
 
+from pathlib import Path
+
 import pytest
 
 from server.main import app
 from task_helpers import clock, client, connect, placeholder_at_every_station  # noqa: F401
 from test_classic_server_features import ask, classic_for, start_classic
+
+# The Free Rider's button text and its spoken label (S-195).
+FAIL_BUTTON_JS = (Path(__file__).resolve().parents[1] / "client/js/classic/fail-button.js").read_text(encoding="utf-8")
 
 
 PLAYER_SETS = [
@@ -137,7 +142,7 @@ def test_fail_button_is_private_to_fr_and_q_uses_the_same_handler():
     root = Path(__file__).resolve().parents[1]
     world = (root / "client/js/world/world.js").read_text()
     main = (root / "client/js/main.js").read_text()
-    assert '"Let fail"' in world
+    assert '"F Let fail"' in FAIL_BUTTON_JS  # S-195: the text lives in fail-button.js
     assert "ownIsFreeRider" in world
     assert 'event.code === FAIL_KEY_CODE' in world
     assert "type: 'fail'" in main or 'type: "fail"' in main
@@ -200,8 +205,9 @@ def test_fail_button_english_label_and_server_timestamp_fill_with_fixed_times():
 
     root = Path(__file__).resolve().parents[1]
     world = (root / "client/js/world/world.js").read_text()
-    assert '"Let fail"' in world
-    assert '"Let fail ("' in world
+    # S-195: "F Let fail" with no seconds; was "Let fail" and "Let fail (n s)".
+    assert '"F Let fail"' in FAIL_BUTTON_JS
+    assert '"Let fail ("' not in world and '"Let fail ("' not in FAIL_BUTTON_JS
     assert "Durchfallen lassen" not in world
 
     helper = root / "client/js/classic/fail-button.js"

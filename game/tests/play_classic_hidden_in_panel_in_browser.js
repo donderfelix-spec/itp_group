@@ -147,8 +147,8 @@ async function layout(g) {
     // since M3-1.6 (S-191), presses E once his button offers "E Hide".
     await put([[fr.name, 'spot']]);
     await fr.page.waitForFunction(() => {
-      const button = document.querySelector('.use-button');
-      return Boolean(button) && button.textContent === 'E Hide';
+      const button = document.querySelector('.free-rider-e-button'); // S-195: the Free Rider's own E button
+      return Boolean(button) && !button.hidden && button.textContent === 'E Hide';
     }, null, { timeout: 5000 });
     await fr.page.keyboard.press('KeyE');
     const frShown = await waitForHint(fr, true);

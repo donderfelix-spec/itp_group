@@ -13,7 +13,8 @@ What is played, in this order, in one round:
    Game.world.drawMap is wrapped to note whether it was asked to draw the
    button and whether a circle of the button's radius was drawn there).
 2. The Free Rider fails a High Performer (this also tells every page that the
-   button is unlocked). During the 15-second cooldown he sees "Let fail (N s)"
+   button is unlocked). During the 15-second cooldown he sees "F Let fail",
+   greyed out with the fill showing the charge and no seconds (S-195),
    away from the button and an enabled "E Emergency" within 25 units of it;
    E sends {"type": "emergency"} and opens the meeting for all five pages.
    The meeting is played to its end (nobody votes, nobody goes).
@@ -36,6 +37,7 @@ Chromium is missing.
 
 import json
 import math
+import re
 import os
 import time
 import urllib.request
@@ -124,9 +126,17 @@ WATCH_HINT = """(() => {
   return true;
 })()"""
 
+# The button E would press: the Free Rider's own E button while it is shown
+# (S-195: "E Emergency", "E Hide", "E Leave hiding"), else the main button.
 USE_BUTTON = """(() => {
-  const b = document.querySelector('.use-button');
+  const e = document.querySelector('.free-rider-e-button');
+  const b = e && !e.hidden ? e : document.querySelector('.use-button');
   return b ? { text: b.textContent, disabled: b.disabled, failLook: b.classList.contains('fail-button') } : null;
+})()"""
+# The Free Rider's main button: its spoken label and its fill (S-195).
+FAIL_BUTTON_STATE = """(() => {
+  const b = document.querySelector('.use-button');
+  return { label: b.getAttribute('aria-label'), fill: b.style.getPropertyValue('--fail-fill') };
 })()"""
 
 
@@ -310,15 +320,16 @@ def played(server):  # noqa: F811 (the imported fixture)
 
         # 2. The Free Rider during his fail cooldown: away, then at the button.
         stand(browser, fr, fr_place)
-        browser.wait(fr, "/^Let fail \\(\\d+ s\\)$/.test(document.querySelector('.use-button').textContent)", timeout=5000)
+        browser.wait(fr, "/^Let fail, ready in \\d+ seconds?$/.test(document.querySelector('.use-button').getAttribute('aria-label'))", timeout=5000)
         away = use_button(browser, fr)
+        away.update(browser.js(fr, FAIL_BUTTON_STATE))
         away["distance"] = math.dist(fr_place, CENTRE)
         away["cooldown_left"] = fail_at + FAIL_COOLDOWN_SECONDS - server_main.seconds_now()
         seen["fr_away"] = away
         shot(browser, fr, "2a_free_rider_away_let_fail_countdown")
         fr_at_button = (CENTRE[0] - 20, CENTRE[1] + 10)
         stand(browser, fr, fr_at_button)
-        browser.wait(fr, "document.querySelector('.use-button').textContent === 'E Emergency'", timeout=5000)
+        browser.wait(fr, "Array.from(document.querySelectorAll('.use-button, .free-rider-e-button')).some((b) => !b.hidden && b.textContent === 'E Emergency')", timeout=5000)
         near = use_button(browser, fr)
         near["distance"] = math.dist(fr_at_button, CENTRE)
         near["cooldown_left"] = fail_at + FAIL_COOLDOWN_SECONDS - server_main.seconds_now()
@@ -477,12 +488,17 @@ def test_after_45_s_every_page_draws_the_button(played):
         assert frame["visible"] and frame["drawn"], (label, frame)
 
 
-def test_the_free_rider_sees_let_fail_with_seconds_away_from_the_button(played):
+def test_the_free_rider_sees_f_let_fail_without_seconds_away_from_the_button(played):
+    # S-195: was "Let fail (N s)"; now the key first and no seconds, the
+    # charge shows in the fill and a screen reader hears the seconds.
     away = played["fr_away"]
     assert away["distance"] > USE_RANGE
     assert away["cooldown_left"] > 0
     assert away["failLook"] is True
-    assert away["text"].startswith("Let fail (") and away["text"].endswith(" s)"), away
+    assert away["text"] == "F Let fail", away
+    assert away["disabled"] is True
+    assert re.fullmatch(r"Let fail, ready in \d+ seconds?", away["label"]), away
+    assert 0 <= float(away["fill"].rstrip("%")) < 100, away
 
 
 def test_the_free_rider_at_the_button_during_his_cooldown_sees_an_enabled_e_emergency(played):
