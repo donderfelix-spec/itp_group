@@ -1,6 +1,6 @@
 # Decisions for “Group Project”
 
-Every decision about the game is listed here with its reason. The rules are the same as in the old [DECISIONS.md](../DECISIONS.md) of “We Be(a)t”:
+Every decision about the game is listed here with its reason. The rules are the same as in the old [DECISIONS.md](../archive/DECISIONS.md) of “We Be(a)t”:
 
 - Every decision gets a number (S-xx), a date, the decision itself and the reason.
 - Entries are not deleted. If a decision is changed, a new entry is added, and the old one gets the note “replaced by S-xx”.
@@ -53,7 +53,7 @@ As of 2026-11-19. On 2026-11-18 the team confirmed all entries except those with
 | S-24 | 2026-11-18 | The Code Review agent only gets the task and the change, not the Coder's explanation. The Tester does not change any game code; it only writes tests and a report. | Whoever knows the reasoning usually confirms it. A tester who fixes bugs itself ends up checking its own work. | Team |
 | S-25 | 2026-11-18 | Each loop (checks, review, test) runs at most three times. After that, the Lead reports the problem to a human. | This prevents the Coder and the Reviewer from going round in circles forever. | Team |
 | S-26 | 2026-11-18 | One branch per to-do, merged by a pull request that a human approves. | As before (E-33). The agents work fast, so the last look stays with a human. | Team |
-| S-27 | 2026-11-18 | The game is built in the folder `game/`. The prototype “We Be(a)t” stays under `prototype/`. | Confirmed this way by the team: it stays there for now and is ignored. | Team |
+| S-27 | 2026-11-18 | _The prototype moved to `archive/` on 2026-11-23 (S-45)._ The game is built in the folder `game/`. The prototype “We Be(a)t” stays under `prototype/`. | Confirmed this way by the team: it stays there for now and is ignored. | Team |
 
 ## Requirements from the course (2026-11-18)
 
@@ -78,7 +78,7 @@ These entries follow from the team's answers and from the project description in
 | S-42 | 2026-11-18 | The team asks the teaching staff whether a Python server with a JavaScript client is acceptable. Building starts before the answer. | The wiki requires approval for JavaScript frameworks and advises asking beforehand. With five days, waiting costs too much, and the rules in Python stay usable whatever the answer is. | Team |
 | S-43 | 2026-11-18 | All texts in the game are in English. | The course and Nova are international. It was already like this in the prototype (E-26). | Team |
 | S-44 | 2026-11-18 | The game uses the real names: Nova SBE, CTT, Pingo Doce. | The recognition value is the joke of the game. Not a problem for a university project. | Team |
-| S-45 | 2026-11-18 | The old prototype is moved to `archive/` before the submission. Until then it stays where it is (S-27). | The teaching staff look at the repo without the team. A second project in the main folder would be confusing. | Team |
+| S-45 | 2026-11-18 | _Done on 2026-11-23: `prototype/`, the old `tests/` and the old lists are in `archive/`, and the CI checks them there._ The old prototype is moved to `archive/` before the submission. Until then it stays where it is (S-27). | The teaching staff look at the repo without the team. A second project in the main folder would be confusing. | Team |
 | S-46 | 2026-11-18 | In Duel, the players run across the campus from station to station. The stations are spread over the whole map. | Decided this way by the team. It uses the map and makes the race visible. | Team |
 | S-47 | 2026-11-18 | Where someone has failed, a crumpled sheet of paper with a red “F” is left behind, not a character lying on the ground. | Decided this way by the team. It is the game's own idea and light in tone. | Team |
 | S-48 | 2026-11-18 | At most eight players per lobby. Classic: one Free Rider with 4 or 5 players, two with 6 to 8. Replaces the numbers in S-08. | Decided this way by the team. Eight characters, each only once per lobby, so no colour variants are needed. | Team |

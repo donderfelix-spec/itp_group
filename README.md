@@ -97,4 +97,4 @@ No credentials are stored in this repository. The server reads the database conn
 
 ## About this repository
 
-The folder `prototype/`, the folder `tests/` and the files `TODO.md`, `DECISIONS.md` and `FEATURES.md` in the root belong to an earlier idea, the betting app "We Be(a)t". We dropped it in favour of the game. They are not part of the deployed application and will move to an `archive/` folder before submission.
+The folder `archive/` holds an earlier idea, the betting app "We Be(a)t": its prototype, its tests and its lists. We dropped it in favour of the game (S-01) and moved it there before the submission (S-45). It is not part of the deployed application.

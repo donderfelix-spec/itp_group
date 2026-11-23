@@ -6,7 +6,7 @@ These rules apply to every agent working in this repository (Codex, Claude Code,
 
 **Group Project** is a multiplayer browser game set on the Nova SBE campus. "High Performers" complete tasks for a group project while a hidden "Free Rider" sabotages them. It is our team project for Introduction to Programming, due **2026-11-23, 23:59**.
 
-The game lives in `game/`. The folder `prototype/` is an older, unrelated project: do not touch it.
+The game lives in `game/`. The folder `archive/` holds an older, unrelated project (the prototype "We Be(a)t" with its tests and lists, S-45): do not touch it.
 
 Read before you change anything:
 
