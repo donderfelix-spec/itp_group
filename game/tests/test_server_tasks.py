@@ -174,7 +174,9 @@ def test_before_the_round_starts_no_task_can_be_opened_closed_or_finished(connec
     assert lobby_named("Mara").tasks is None
 
 
-def test_station_6_is_not_in_use(connect):
+def test_a_station_without_a_minigame_in_the_table_is_not_in_use(connect):
+    # The table of task_helpers has stations 1 to 5 only; in the real game
+    # station 6 has "Catch the wave" since S-221.
     mara, tiago, _ = running_round(connect)
     put_at_station("Mara", 6)
     assert open_station(mara, 6) == NO_STATION

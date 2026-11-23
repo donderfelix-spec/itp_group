@@ -6,8 +6,8 @@ spread as evenly as possible, and with more players than routes even the
 routes are given again, evenly. It never raises for 0 to 8 players and a
 pool of at least three stations.
 
-The pools: the eleven stations of the Duel today (1 to 5 and 7 to 12), the
-five stations of main, and three stations as the smallest edge case.
+The pools: the twelve active stations, the five original stations, and
+three stations as the smallest edge case.
 """
 
 import itertools
@@ -22,17 +22,17 @@ from server.world.campus import load_campus
 from server.world.paths import SPAWN, station_distances
 
 CAMPUS = load_campus()
-ELEVEN = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
+TWELVE = list(range(1, 13))
 FIVE = [1, 2, 3, 4, 5]
 THREE = [1, 2, 3]
-REAL_ELEVEN = station_distances(CAMPUS, ELEVEN)
+REAL_TWELVE = station_distances(CAMPUS, TWELVE)
 REAL_FIVE = station_distances(CAMPUS, FIVE)
 REAL_THREE = station_distances(CAMPUS, THREE)
 EIGHT_NAMES = ["Mara", "Tiago", "Ines", "Rui", "Sofia", "Duarte", "Leonor", "Vasco"]
 SEEDS = range(100)
 
 POOLS = {
-    "eleven": (ELEVEN, REAL_ELEVEN),
+    "twelve": (TWELVE, REAL_TWELVE),
     "five": (FIVE, REAL_FIVE),
     "three": (THREE, REAL_THREE),
 }
@@ -62,15 +62,15 @@ def spread(counts, total, places):
 
 
 @pytest.mark.parametrize("player_count", range(1, 9))
-def test_with_eleven_stations_nobody_shares_a_first_station(player_count):
+def test_with_twelve_stations_nobody_shares_a_first_station(player_count):
     names = EIGHT_NAMES[:player_count]
     for seed in SEEDS:
-        routes = draw_routes(names, ELEVEN, REAL_ELEVEN, random.Random(seed))
+        routes = draw_routes(names, TWELVE, REAL_TWELVE, random.Random(seed))
         assert list(routes) == names
         assert len({route[0] for route in routes.values()}) == player_count
         assert len(set(routes.values())) == player_count
         for route in routes.values():
-            assert len(set(route)) == 3 and set(route) <= set(ELEVEN)
+            assert len(set(route)) == 3 and set(route) <= set(TWELVE)
 
 
 @pytest.mark.parametrize("player_count", range(1, 6))
@@ -83,35 +83,35 @@ def test_with_five_stations_up_to_five_players_never_share_a_first_station(playe
 
 
 @pytest.mark.parametrize("player_count", range(2, 9))
-def test_on_the_real_eleven_stations_all_routes_stay_within_ten_percent_of_one_of_them(player_count):
+def test_on_the_real_twelve_stations_all_routes_stay_within_ten_percent_of_one_of_them(player_count):
     # On the real map every number of players finds routes within 10 % that
     # also start at different stations, so the tolerance of S-94 holds.
     names = EIGHT_NAMES[:player_count]
     for seed in range(40):
-        routes = list(draw_routes(names, ELEVEN, REAL_ELEVEN, random.Random(seed)).values())
-        assert any(all(is_close(route, first, REAL_ELEVEN) for route in routes) for first in routes)
+        routes = list(draw_routes(names, TWELVE, REAL_TWELVE, random.Random(seed)).values())
+        assert any(all(is_close(route, first, REAL_TWELVE) for route in routes) for first in routes)
 
 
 def test_one_player_can_get_any_first_station_and_the_same_seed_gives_the_same_route():
     first_stations = set()
     for seed in range(300):
-        routes = draw_routes(["Mara"], ELEVEN, REAL_ELEVEN, random.Random(seed))
+        routes = draw_routes(["Mara"], TWELVE, REAL_TWELVE, random.Random(seed))
         assert list(routes) == ["Mara"]
-        assert routes == draw_routes(["Mara"], ELEVEN, REAL_ELEVEN, random.Random(seed))
+        assert routes == draw_routes(["Mara"], TWELVE, REAL_TWELVE, random.Random(seed))
         first_stations.add(routes["Mara"][0])
-    assert first_stations == set(ELEVEN)
+    assert first_stations == set(TWELVE)
 
 
 def test_where_enough_first_stations_have_close_routes_every_route_is_close_to_the_first():
-    candidates = all_routes(ELEVEN)
+    candidates = all_routes(TWELVE)
     for seed in range(60):
         first = random.Random(seed).choice(candidates)
-        close_starts = {route[0] for route in candidates if route[0] != first[0] and is_close(route, first, REAL_ELEVEN)}
+        close_starts = {route[0] for route in candidates if route[0] != first[0] and is_close(route, first, REAL_TWELVE)}
         count = min(8, len(close_starts) + 1)
-        routes = draw_routes(EIGHT_NAMES[:count], ELEVEN, REAL_ELEVEN, random.Random(seed))
+        routes = draw_routes(EIGHT_NAMES[:count], TWELVE, REAL_TWELVE, random.Random(seed))
         # The route drawn first was kept, and all others are close to it.
         assert first in routes.values()
-        assert all(is_close(route, first, REAL_ELEVEN) for route in routes.values())
+        assert all(is_close(route, first, REAL_TWELVE) for route in routes.values())
         assert len({route[0] for route in routes.values()}) == count
 
 

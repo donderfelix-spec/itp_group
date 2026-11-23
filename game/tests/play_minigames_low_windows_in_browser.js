@@ -1,21 +1,25 @@
-// Browser part of test_play_minigames_low_windows.py (M2-4.25).
+// Browser part of test_play_minigames_low_windows.py (M2-4.25; station 6 since M4-4.0).
 // Needs Playwright and Chromium.
 //
 // Usage: node play_minigames_low_windows_in_browser.js <base-url> <openings.json>
 // <openings.json> is a list of { station, title, content } drawn by the server's
 // own minigames. Each is opened with the real frame (Game.minigames.open) over
-// the map of a guest's lobby, in a 1280x600 and a 1024x600 window. Prints one
-// JSON object:
+// the map of a guest's lobby, in windows of 1280x800, 1024x700, 1280x600,
+// 1024x600 and 320x640. Prints one JSON object:
 //   console   every console error or warning and page error
 //   seen      per window size and opening: the viewport, the window's box and
-//             its visible box (inside its border), and the box of every
-//             control (button, select) and of the instruction
+//             its visible box (inside its border), how far its content
+//             reaches past it sideways, and the box of every control
+//             (button, select) and of the instruction
 const { chromium } = require('playwright');
 const fs = require('fs');
 
 const [base, openingsFile] = process.argv.slice(2);
 const openings = JSON.parse(fs.readFileSync(openingsFile, 'utf8'));
-const SIZES = [{ width: 1280, height: 600 }, { width: 1024, height: 600 }];
+const SIZES = [
+  { width: 1280, height: 800 }, { width: 1024, height: 700 },
+  { width: 1280, height: 600 }, { width: 1024, height: 600 }, { width: 320, height: 640 },
+];
 const problems = [];
 
 // What one open window shows. Runs in the page.
@@ -30,11 +34,14 @@ function look() {
   const outer = box(card);
   // The part of the window that shows content: inside its border.
   const inner = { x: outer.x + card.clientLeft, y: outer.y + card.clientTop, w: card.clientWidth, h: card.clientHeight };
-  const instructions = [...card.querySelectorAll('.campus-instruction, .challenge-brief')].filter(shown);
+  // The sentence in the header (station 6), or the task's own brief (7 to 12,
+  // whose header sentence is empty and not shown).
+  const instructions = [...card.querySelectorAll('.minigame-instructions, .campus-instruction, .challenge-brief')].filter(shown);
   return {
     viewport: { w: innerWidth, h: innerHeight },
     window: outer,
     inside: inner,
+    sideways: card.scrollWidth - card.clientWidth,
     controls: [...card.querySelectorAll('button, select')].filter(shown).map((el) => ({ name: name(el), ...box(el) })),
     instructions: instructions.map((el) => ({ name: name(el), ...box(el) })),
   };

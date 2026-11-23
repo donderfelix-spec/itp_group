@@ -77,7 +77,7 @@ Tests: `tests/test_tasks.py` (`test_just_under_the_minimum_time_is_too_fast`, `t
 - Rejected case: `test_ghost_cannot_report_or_call_emergency` in `tests/test_rules.py`.
 - How to explain it: “rules.py takes the state, the time and the random choices as arguments and returns a new state, so every rule can be tested without a server.”
 
-**Area 4, Minigames and other modes (Lennart).** The frame for minigames, the eleven minigames, Duel and Solo.
+**Area 4, Minigames and other modes (Lennart).** The frame for minigames, the twelve minigames, Duel and Solo.
 
 - `server/modes/tasks.py`: the frame: who has which task open, the range and the minimum time.
 - `server/modes/minigames.py`: which minigame is at which station; each draws its content with a plain function.

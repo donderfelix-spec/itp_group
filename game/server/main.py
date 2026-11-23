@@ -941,8 +941,11 @@ def advance_classic_walkers(lobby, seconds: float) -> bool:
     """
     classic = lobby.classic_round
     if classic.take_cooldown_news():
-        # After a meeting (DESIGN.md 5.8), from the tick, so it comes after the result.
+        # After a meeting (DESIGN.md 5.8), from the tick, so it comes after the
+        # result: the Free Riders' cooldown, and for everybody the emergency
+        # button's new unlock time, 45 s after the meeting's end (S-218).
         run_in_background(tell_classic_fail_status(lobby))
+        run_in_background(tell_classic_progress(lobby))
     walked = 0.0 if meeting_is_running(lobby) else seconds
     return lobby.walkers.advance(walked, app.state.campus, ghosts=classic.eliminated)
 

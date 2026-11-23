@@ -32,7 +32,7 @@ import math
 import pytest
 
 from server.classic import hiding
-from server.modes import duel, minigames
+from server.modes import duel
 from server.world.campus import CampusError, check_campus, load_campus
 from server.world.movement import is_free
 from server.world.paths import GRID_STEP, SPAWN, Grid, station_distances
@@ -243,6 +243,9 @@ def test_a_drawing_name_that_is_not_a_name_is_refused(name):
 
 # ---- The walking distances of the Duel and Solo (S-79) ---------------------
 
+# Station 6 was still decorative when M3-1.7 moved the other stations.
+STATIONS_DURING_M3_1_7 = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
+
 # Measured with paths.station_distances on the map of M3-1.7, in map units:
 # the spawn and every station with a minigame (1-5 and 7-12), 66 ways. The
 # server measures them again when it starts; this table shows what changed.
@@ -266,7 +269,7 @@ ROUNDING = 0.001
 
 @pytest.fixture(scope="module")
 def ways_now():
-    return station_distances(CAMPUS, sorted(minigames.MINIGAMES))
+    return station_distances(CAMPUS, STATIONS_DURING_M3_1_7)
 
 
 @pytest.fixture(scope="module")
@@ -276,11 +279,11 @@ def ways_before():
     for station in campus["stations"]:
         if station["id"] in STATIONS_BEFORE:
             station["x"], station["y"] = STATIONS_BEFORE[station["id"]]
-    return station_distances(campus, sorted(minigames.MINIGAMES))
+    return station_distances(campus, STATIONS_DURING_M3_1_7)
 
 
-def test_the_pinned_ways_are_every_way_of_the_duel():
-    places = [SPAWN] + sorted(minigames.MINIGAMES)
+def test_the_pinned_ways_cover_the_duel_stations_at_the_time_of_m3_1_7():
+    places = [SPAWN] + STATIONS_DURING_M3_1_7
     assert {frozenset(pair) for pair in WAYS_SINCE_M3_1_7} == {
         frozenset(pair) for pair in itertools.combinations(places, 2)
     }
@@ -300,7 +303,7 @@ def test_only_ways_to_a_moved_station_changed(ways_now, ways_before):
 
 def tours(ways):
     """Every Duel and Solo route (three stations from the spawn) with its length, shortest first."""
-    routes = duel.all_routes(sorted(minigames.MINIGAMES))
+    routes = duel.all_routes(STATIONS_DURING_M3_1_7)
     return sorted((duel.route_length(route, ways), route) for route in routes)
 
 

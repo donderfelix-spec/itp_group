@@ -652,6 +652,9 @@ def test_a_station_walled_in_cannot_be_used_from_anywhere_the_spawn_reaches():
 
 # The Duel's ways
 
+# Station 6 had no minigame when these historical routes were measured.
+STATIONS_DURING_MAP_POLISH = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
+
 # Measured with paths.station_distances on the map before this to-do (main
 # at f8cd9a3: the Felix mix of M2-1.19 with the walkable hedge of M3-1.4),
 # in map units: the spawn and every station with a minigame (1-5 and 7-12),
@@ -703,12 +706,11 @@ def campus_with_the_stations_of_m2_1_20():
 
 @pytest.fixture(scope="module")
 def ways_with_the_stations_of_m2_1_20():
-    return station_distances(campus_with_the_stations_of_m2_1_20(), sorted(minigames.MINIGAMES))
+    return station_distances(campus_with_the_stations_of_m2_1_20(), STATIONS_DURING_MAP_POLISH)
 
 
-def test_the_pinned_ways_are_every_way_between_the_spawn_and_the_duel_stations():
-    places = [SPAWN] + sorted(minigames.MINIGAMES)
-    assert sorted(minigames.MINIGAMES) == [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
+def test_the_pinned_ways_cover_the_duel_stations_at_the_time_of_map_polish():
+    places = [SPAWN] + STATIONS_DURING_MAP_POLISH
     assert {frozenset(pair) for pair in WAYS_BEFORE_THIS_TO_DO} == {
         frozenset(pair) for pair in itertools.combinations(places, 2)
     }

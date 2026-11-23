@@ -98,7 +98,7 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | Find and report a failed player | M3 | Done |
 | Report from 8 map units, also by the Free Rider; let fail from 25 map units with F (S-194, S-195); F-sheets 30 % larger (S-180, S-181) | M3 | Done (M3-4.25 to M3-4.28) |
 | Classic action buttons with the key first: the Free Rider always has “F Let fail” (grey charge fill, yellow when a victim is in range; only F lets fail) and his own second button for “E Emergency”, “E Hide”, “E Leave hiding”; “R Report” for everybody (S-195) | M3 | Done (M3-3.26) |
-| Emergency meeting with the red button in the centre of the Main Deck (S-147), drawn as an alarm switch (S-149), grey and locked from the start of a Classic round until it unlocks after 45 s (S-216), limited per player, range checked by the server, hint only for the living (S-170), button “E Emergency” (S-195) | M3 | Done |
+| Emergency meeting with the red button in the centre of the Main Deck (S-147), drawn as an alarm switch (S-149), grey and locked from the start of a Classic round until it unlocks after 45 s (S-216) and again for 45 s after every meeting (S-218), limited per player, range checked by the server, hint only for the living (S-170), button “E Emergency” (S-195) | M3 | Done |
 | Meeting with text chat and time limit; the window closes after the result (S-153) and always fits the screen (S-173) and shows as many chat messages as fit (S-210); nobody walks and no task stays open during it, and afterwards players resume from their previous positions (S-199, S-213); its own “Leave lobby” (S-201) | M3 | Done |
 | One random active Classic task per High Performer, next revealed after completion; only the current station pulses and opens, and the arrow leads to it; the Free Rider has none (S-197, replaces the own task list of S-154) | M3 | Done (M3-4.29) |
 | Vote: choose a person or skip, the majority choice is voted out, nobody in case of a tie; votes are public and can be changed, after a report or emergency call already during the discussion (S-212), 75 % Skip ends the meeting (S-160 to S-162), once everybody has voted it ends 10 seconds later (S-215); each vote button shows its number of votes in a fixed field (S-173) | M3 | Done |
@@ -136,8 +136,8 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | Classic: current task and arrow use the same top-left card as Duel, which also says “All your tasks are done.” or, to the Free Rider, “Fake tasks: stand at a station to look busy.”; no task card above group progress (S-197, replaces S-145) | M3 | Done (M3-4.29) |
 | Lobby: modes outside their player range (Classic below 4) locked, all in one grey, the chosen one marked by frame and shadow; smaller “?” with even gaps (S-146) | M2 | Done |
 | “Done” for 0.5 s without a close button (S-127) | M2 | Done |
+| Beach exit: “Catch the wave” at station 6, in Duel, Solo and Classic: catch three waves with a click, a tap, the button, Space or Enter (S-221) | M4 | Done (M4-4.0) |
 | Duel: leaderboard with times at the end | M2 | Done |
-| Beach exit: “Catch the wave”, click at the right moment (first “If time allows” minigame) | M4 | Planned |
 | Canteen: stop the microwave at the right moment | M4 | Planned |
 | Lecture Hall: record attendance by QR code | M4 | Planned |
 | CTT Student Hall: find the mistake in the spreadsheet formula | M4 | Planned |

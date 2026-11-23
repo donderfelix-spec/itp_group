@@ -320,7 +320,7 @@ async function shoot(g, name) {
     if (highPerformer) {
       const card = out.classicCards[classicPages.indexOf(highPerformer)];
       const first = (card.taskStations || [])[0];
-      const order = [first, ...[1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12].filter((id) => id !== first).slice(0, 3)];
+      const order = [first, ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((id) => id !== first).slice(0, 3)];
       for (let index = 0; index < order.length; index++) {
         const station = order[index];
         const next = order.slice(index + 1, index + 2);

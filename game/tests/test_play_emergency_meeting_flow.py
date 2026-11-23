@@ -23,6 +23,8 @@ Roles: the Free Rider and four High Performers (caller, second, voter, leaver).
    its discussion and runs to its end.
 4. Back at the button the caller sees no "E Emergency", and a call past the
    page is refused with "You cannot call an emergency meeting right now.".
+   After every meeting the button is locked for 45 s (S-218): grey, no
+   "E Emergency", E sends nothing; then it is offered again.
 5. S-215: the Free Rider calls; once the three living players have voted,
    every page, the ghost's included, shows 10 seconds left, and 10 seconds
    later the meeting ends from its discussion: the Free Rider is voted out.
@@ -44,7 +46,7 @@ import pytest
 
 from rules import FAIL_COOLDOWN_SECONDS
 from server import main, protocol
-from test_play_emergency_button_range import CENTRE, PROBE, bypass, stand, use_button
+from test_play_emergency_button_range import CENTRE, PROBE, bypass, press_and_watch, stand, use_button
 from test_play_hiding import (  # noqa: F401 (quiet_tick and server are fixtures)
     LABELS,
     Browser,
@@ -304,6 +306,21 @@ def played(server):  # noqa: F811 (the imported fixture)
         seen["m1_results_sent"] = {label: n - results_before[label]
                                    for label, n in counts(browser, stayers, "result").items()}
 
+        # S-218: after the meeting the button is locked again for 45 s: grey, and E does nothing.
+        ended = time.monotonic()
+        stand(browser, second, (CENTRE[0], CENTRE[1] + 10))
+        browser.wait(second, "window.__button.frame && window.__button.frame.visible === false", timeout=5000)
+        seen["m1_locked"] = {"frame": browser.js(second, "window.__button.frame"),
+                             "has_e": browser.js(second, HAS_E_EMERGENCY),
+                             "press": press_and_watch(browser, second)}
+        shot(browser, second, "1e_button_locked_after_the_meeting")
+        browser.wait(second, HAS_E_EMERGENCY, timeout=60000)
+        seen["m1_unlocked_after"] = time.monotonic() - ended
+        seen["m1_progress_after"] = browser.js(second, """window.__received
+            .filter((r) => r.m.type === 'classic_progress').slice(-2).map((r) => r.m)""")
+        seen["m1_unlocked_frame"] = browser.js(second, "window.__button.frame")
+        shot(browser, second, "1f_button_unlocked_45_s_later")
+
         # 2. Second emergency meeting: Skip by 75 % in the discussion.
         results_before = counts(browser, stayers, "result")
         call_at_button(browser, second, stayers)
@@ -357,9 +374,11 @@ def played(server):  # noqa: F811 (the imported fixture)
         seen["m3_positions"] = {"before": kept_before, "after": {label: position(names[label]) for label in stayers},
                                 "told": {label: own_place_on_page(browser, label) for label in stayers}}
 
-        # 4. The caller's call is used; the Free Rider, who has not called, still sees "E Emergency".
+        # 4. The caller's call is used; the Free Rider, who has not called, sees "E Emergency"
+        # once the 45 s after the report meeting are over (S-218).
         stand(browser, fr, (CENTRE[0] - 20, CENTRE[1] + 10))
-        time.sleep(0.3)
+        seen["m3_locked_has_e"] = browser.js(fr, HAS_E_EMERGENCY)
+        browser.wait(fr, HAS_E_EMERGENCY, timeout=60000)
         seen["unused_has_e_emergency"] = browser.js(fr, HAS_E_EMERGENCY)
         put(names[fr], free_place_at(CENTRE, 60, near=(CENTRE[0] + 60, CENTRE[1])))
         stand(browser, caller, (CENTRE[0], CENTRE[1] + 10))
@@ -494,6 +513,20 @@ def test_everybody_goes_on_from_where_they_stood_and_the_page_shows_no_jump(play
     assert kept["after"] == kept["before"]
     for label, place in kept["before"].items():
         assert kept["told"][label] == pytest.approx(list(place)), label
+
+
+def test_after_a_meeting_the_button_is_locked_for_45_s_then_offered_again(played):
+    # S-218: grey (drawn, but not usable), no "E Emergency", E sends nothing.
+    locked = played["m1_locked"]
+    assert locked["frame"]["visible"] is False and locked["frame"]["drawn"] is True
+    assert locked["has_e"] is False
+    assert locked["press"]["sent"] == 0 and set(locked["press"]["meetings"].values()) == {0}
+    # The page was told 45 s from the meeting's end, and unlocked within that time of it.
+    progress = played["m1_progress_after"][-1]
+    assert progress["emergency_ready_at"] - progress["server_time"] == pytest.approx(45, abs=1)
+    assert played["m1_unlocked_after"] <= 50
+    assert played["m1_unlocked_frame"]["visible"] is True
+    assert played["m3_locked_has_e"] is False  # after a report meeting too
 
 
 def test_a_used_emergency_call_offers_nothing_and_is_refused(played):

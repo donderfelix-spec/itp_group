@@ -1,17 +1,20 @@
-"""The six minigames of stations 7 to 12 in a low window (M2-4.25).
+"""The minigames of stations 6 to 12 in a low window (M2-4.25, station 6 since M4-4.0).
 
 On a small laptop screen the window of these minigames was up to 1150px
 high: at 1280x600 the player had to scroll inside it to reach "Publish
 honest chart", "Pin the schedule", the second row of products or the lane
 buttons. Now their layout follows the height of the map.
 
-This test opens every one of the six with the real page and the real frame
+This test opens every one of them with the real page and the real frame
 (`Game.minigames.open`, as main.js does when the server opens a station)
-over the map of a lobby, in a 1280x600 and a 1024x600 window, with content
-the server's own minigames drew from three seeds each. It checks that
-every control and the instruction lie inside the window, that the window
-lies inside the viewport, and that no two of them overlap. Skipped when
-Node, Playwright or Chromium is missing, like the other play tests.
+over the map of a lobby, with content the server's own minigames drew from
+three seeds each. In laptop windows (1280x800, 1024x700, 1280x600 and
+1024x600) it checks that every control and the instruction lie inside the
+window, that the window lies inside the viewport, and that no two of them
+overlap. In a 320x640 window, where every minigame scrolls (stations 1 to
+5 too), the window still lies inside the viewport and nothing reaches out
+of it sideways. Skipped when Node, Playwright or Chromium is missing, like
+the other play tests.
 """
 
 import contextlib
@@ -26,14 +29,16 @@ from pathlib import Path
 
 import pytest
 
-from server.modes import room_tasks
+from server.modes import minigames
 from test_play_campus_detail import NODE, node_environment, playwright_works
 
 GAME = Path(__file__).resolve().parents[1]
 BROWSER_SCRIPT = Path(__file__).with_name("play_minigames_low_windows_in_browser.js")
-STATIONS = [7, 8, 9, 10, 11, 12]
+STATIONS = [6, 7, 8, 9, 10, 11, 12]
 SEEDS = [1, 2, 3]
-SIZES = ["1280x600", "1024x600"]
+LAPTOP_SIZES = ["1280x800", "1024x700", "1280x600", "1024x600"]
+PHONE_SIZE = "320x640"
+SIZES = LAPTOP_SIZES + [PHONE_SIZE]
 # Rounding of the layout, in CSS pixels.
 TOLERANCE = 0.5
 
@@ -66,7 +71,7 @@ def running_server():
 def played(running_server, tmp_path_factory):
     openings = []
     for station in STATIONS:
-        minigame = room_tasks.MINIGAMES[station]
+        minigame = minigames.MINIGAMES[station]
         for seed in SEEDS:
             content = minigame.make_content(random.Random(seed))
             openings.append({"station": station, "title": minigame.title, "content": content})
@@ -115,7 +120,7 @@ def test_the_window_lies_inside_the_viewport(played, size, station):
 
 
 @needs_chromium
-@pytest.mark.parametrize("size", SIZES)
+@pytest.mark.parametrize("size", LAPTOP_SIZES)
 @pytest.mark.parametrize("station", STATIONS)
 def test_the_instruction_and_every_control_are_in_view_without_scrolling(played, size, station):
     for seen in openings_of(played, size, station):
@@ -126,7 +131,7 @@ def test_the_instruction_and_every_control_are_in_view_without_scrolling(played,
 
 
 @needs_chromium
-@pytest.mark.parametrize("size", SIZES)
+@pytest.mark.parametrize("size", LAPTOP_SIZES)
 @pytest.mark.parametrize("station", STATIONS)
 def test_no_two_controls_and_no_control_and_the_instruction_overlap(played, size, station):
     for seen in openings_of(played, size, station):
@@ -134,3 +139,14 @@ def test_no_two_controls_and_no_control_and_the_instruction_overlap(played, size
         for index, first in enumerate(boxes):
             for second in boxes[index + 1:]:
                 assert overlap(first, second) <= TOLERANCE, f"{first['name']} lies on {second['name']}"
+
+
+@needs_chromium
+@pytest.mark.parametrize("station", STATIONS)
+def test_in_a_phone_window_nothing_reaches_out_of_the_window_sideways(played, station):
+    for seen in openings_of(played, PHONE_SIZE, station):
+        assert seen["sideways"] <= TOLERANCE
+        inside = seen["inside"]
+        for box in seen["instructions"] + seen["controls"]:
+            assert box["x"] >= inside["x"] - TOLERANCE, box["name"]
+            assert box["x"] + box["w"] <= inside["x"] + inside["w"] + TOLERANCE, box["name"]
