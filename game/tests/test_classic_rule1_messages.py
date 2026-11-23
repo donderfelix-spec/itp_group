@@ -29,6 +29,7 @@ from server import protocol
 from server.classic import round as classic_round_module
 from server.classic.meeting import DISCUSSION_SECONDS, VOTING_SECONDS
 from server.main import app
+from server.world import visibility
 from task_helpers import PASSWORD, client, clock, connect, placeholder_at_every_station, put, put_at_station  # noqa: F401
 from test_classic_leaving import wait_for_background_sends
 from test_classic_server_features import classic_for
@@ -138,6 +139,7 @@ class Step:
     final: bool  # the round ends in this step
     roles: tuple  # (name, role) of everybody, fixed by the test
     tasks: tuple  # (name, stations) of everybody's task list at the start
+    places: tuple = ()  # (name, (x, y)) of every member at the end of the step (S-202)
 
     def role_of(self, name):
         return dict(self.roles)[name]
@@ -147,6 +149,11 @@ class Step:
 
     def free_riders(self):
         return {name for name, role in self.roles if role == "FR"}
+
+    def sees_place(self, name, place):
+        """Whether this member had `place` in sight at the end of the step (S-185, S-202)."""
+        own = dict(self.places).get(name)
+        return own is not None and visibility.place_in_sight(own, place, app.state.campus)
 
 
 @dataclass(frozen=True)
@@ -222,6 +229,7 @@ class Recorder:
             name=name, actor=actor, members=frozenset(self.connections), ghosts=frozenset(self.ghosts),
             ejected=tuple(sorted(self.ejected.items())), hidden=self.hidden, victim=victim, final=final,
             roles=tuple(sorted(self.roles.items())), tasks=tuple(sorted(self.tasks.items())),
+            places=self.places_now(),
         )
         self.steps.append(step)
         for viewer, messages in arrived.items():
@@ -231,6 +239,14 @@ class Recorder:
             heard = {viewer: types_of(messages) for viewer, messages in arrived.items() if viewer != actor and messages}
             assert heard == {}, f"step {name}: only {actor} may hear about it, but {heard}"
         return arrived
+
+    def places_now(self) -> tuple:
+        lobby = app.state.lobbies.lobby_of(next(iter(self.connections)))
+        if lobby is None:
+            return ()
+        return tuple(sorted(
+            (name, lobby.walkers.position_of(name)) for name in self.connections if name in lobby.names()
+        ))
 
     def agrees_with_the_server(self, final):
         """The test's own list of ghosts is the server's, while the round runs."""
@@ -377,10 +393,35 @@ def check_classic_roster(record):
         assert names == step.members - step.ghosts, "a living player was sent a ghost in classic_roster (S-164)"
 
 
+def may_know_sheet_place(record, place) -> bool:
+    """S-202: the place of an F-sheet only to a ghost or to one who has it in sight."""
+    return record.state == "ghost" or record.step.sees_place(record.viewer, place)
+
+
 def check_classic_fail(record):
     # Public by decision (S-159, S-163): the victim and their character, never who failed them.
-    assert set(record.message) == {"type", "target_id", "character", "sheet_id", "position"}
+    # The place of the sheet only to those who may know it (S-202): the
+    # ghosts (the victim among them), the Free Rider who did it and those
+    # who have it in sight.
     assert record.message["target_id"] == record.step.victim
+    assert set(record.message) - {"position"} == {"type", "target_id", "character", "sheet_id"}
+    told_place = "position" in record.message
+    if record.viewer == record.step.actor or record.state == "ghost":
+        assert told_place, "the Free Rider who did it and the ghosts are told the place (S-202)"
+    if told_place:
+        assert record.message["position"] == {"x": SHEET_PLACE[0], "y": SHEET_PLACE[1]}
+        assert record.viewer == record.step.actor or may_know_sheet_place(record, SHEET_PLACE), (
+            "the place of the sheet went to a living player who does not see it (S-202)"
+        )
+    else:
+        assert not may_know_sheet_place(record, SHEET_PLACE), "a player who sees the sheet was not told its place"
+
+
+def check_classic_sheet(record):
+    # A sheet that came into view later (S-202): only to a ghost or one who sees it now.
+    assert set(record.message) == {"type", "sheet_id", "character", "position", "reported"}
+    place = (record.message["position"]["x"], record.message["position"]["y"])
+    assert may_know_sheet_place(record, place), "classic_sheet went to a living player who does not see it (S-202)"
 
 
 MEETING_STATE_KEYS = {
@@ -451,7 +492,8 @@ KNOWN_CLASSIC_TYPES = {
     "positions": ("everybody; ghosts only to ghosts (S-155); a hidden Free Rider never to a living High Performer, flagged for the others (S-136, S-137, S-192)", check_positions),
     "classic_hiding": ("only the living Free Rider about himself (S-191)", check_classic_hiding),
     "classic_roster": ("everybody; the living without the ghosts (S-155, S-164)", check_classic_roster),
-    "classic_fail": ("everybody, public by decision S-159 and S-163: the victim with character", check_classic_fail),
+    "classic_fail": ("everybody, public by decision S-159 and S-163: the victim with character; the place only to ghosts, the actor and who sees it (S-202)", check_classic_fail),
+    "classic_sheet": ("only a ghost or a living player who has the sheet in sight, once per sheet (S-202)", check_classic_sheet),
     "meeting_state": ("everybody, identical; votes and Skips public by decision S-160 and S-162", check_meeting_state),
     "classic_result": ("everybody, public by decision: all roles at the end", check_classic_result),
     "error": ("only the acting player, with a text that names nobody and no role", check_error),
@@ -517,10 +559,23 @@ def check_meeting_states_are_identical(records):
         )
 
 
+def check_each_place_told_once(records):
+    """S-202: a player is told where a sheet lies once, by `classic_fail` or `classic_sheet`."""
+    told = Counter(
+        (record.viewer, record.message["sheet_id"])
+        for record in records
+        if record.message["type"] == "classic_sheet"
+        or (record.message["type"] == "classic_fail" and "position" in record.message)
+    )
+    twice = sorted(key for key, count in told.items() if count > 1)
+    assert not twice, f"the place of a sheet was told more than once: {twice}"
+
+
 def check_all(rec):
     for record in rec.records:
         check_record(record)
     check_meeting_states_are_identical(rec.records)
+    check_each_place_told_once(rec.records)
 
 
 # Setting up a round

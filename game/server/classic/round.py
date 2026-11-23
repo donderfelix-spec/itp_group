@@ -17,6 +17,7 @@ from rules import (
 )
 from server.classic import hiding as hiding_rules
 from server.classic import meeting as meeting_rules
+from server.classic import sheets as sheet_rules
 
 EMERGENCY_DELAY_SECONDS = 45.0
 
@@ -43,6 +44,10 @@ class ClassicRound:
         self.last_fail_at = {}
         self.f_sheets = {}
         self.sheets_issued = 0
+        # The character drawn on each sheet, and which players were told
+        # its place (S-202): player -> set of sheet ids. Only the server knows it.
+        self.sheet_characters = {}
+        self.sheets_told = {}
         self.emergency_used = set()
         self.meeting_triggers = set()
         self.meeting = None
@@ -99,13 +104,43 @@ class ClassicRound:
         self.completed_tasks[player_id].add(station_id)
         self._has_news = True
 
-    def fail(self, fr_id, target_id, now, position):
+    def fail(self, fr_id, target_id, now, position, character=None):
         """Apply a validated fail action, count its F sheet and return the sheet id."""
         updated = apply_fail(self.rule_state(), fr_id, target_id, now, position)
         self._sync_rule_state(updated)
         self.failure_count += 1
         self._has_news = True
-        return sheet_id_for(self.sheets_issued)
+        sheet_id = sheet_id_for(self.sheets_issued)
+        self.sheet_characters[sheet_id] = character
+        return sheet_id
+
+    def sheet_is_reported(self, sheet_id):
+        return f"report:{sheet_id}" in self.meeting_triggers
+
+    def may_know_sheet(self, viewer, viewer_position, sheet_id, campus):
+        """Whether this player may be told where the sheet lies (S-202)."""
+        return sheet_id in sheet_rules.sheets_in_view(
+            {sheet_id: self.f_sheets[sheet_id]}, viewer_position, viewer in self.eliminated, campus
+        )
+
+    def mark_sheet_told(self, viewer, sheet_id):
+        self.sheets_told.setdefault(viewer, set()).add(sheet_id)
+
+    def sheet_news(self, viewer, viewer_position, campus):
+        """The sheets that came into this player's view since he was last told, now marked told.
+
+        Returns (sheet_id, (x, y), character, reported) for each.
+        """
+        told = self.sheets_told.setdefault(viewer, set())
+        new = sheet_rules.sheets_to_tell(
+            self.f_sheets, viewer_position, viewer in self.eliminated, told, campus
+        )
+        told.update(new)
+        return [
+            (sheet_id, self.f_sheets[sheet_id], self.sheet_characters.get(sheet_id),
+             self.sheet_is_reported(sheet_id))
+            for sheet_id in new
+        ]
 
     def hide(self, player_id, position, campus):
         """A Free Rider presses E at a hiding object. Returns the spot he hides in.

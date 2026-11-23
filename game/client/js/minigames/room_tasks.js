@@ -449,5 +449,7 @@ window.Game = window.Game || {};
     placeBird();
   }
 
-  Game.minigames.register('campus_task', { instructions: 'A group project emergency. Read the brief below.', start });
+  // No shared header line: stations 8, 9 and 11 each show their own
+  // instruction in the body, like the campus challenges (M2-4.22).
+  Game.minigames.register('campus_task', { instructions: '', start });
 })();

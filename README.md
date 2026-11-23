@@ -127,7 +127,7 @@ No credentials are stored in this repository. The server reads the database conn
 We built the game with coding agents (Claude Code), and we say so plainly: agents wrote most of the commits in this repository; the commits whose author is "Claude" are theirs, the others are our own. The team led the work and decided everything that mattered:
 
 - We decided the game, its rules and its look ourselves; every decision is written down with its reason and who decided it in [game/DECISIONS.md](game/DECISIONS.md).
-- Each piece of work started as a to-do in [game/TODO.md](game/TODO.md) and a brief with acceptance criteria. Agents in fixed roles (coder, reviewer, tester) built, reviewed and played it; the process is in [game/WORKFLOW.md](game/WORKFLOW.md), the rules every agent follows in [AGENTS.md](AGENTS.md).
+- Each piece of work started as a to-do in [game/TODO.md](game/TODO.md) and a brief with acceptance criteria. Agents in fixed roles (coder, reviewer, tester) built, reviewed and played it; since 2026-11-22 a small change is reviewed and played by the session that built it, and only a riskier one gets a separate reviewer; the process is in [game/WORKFLOW.md](game/WORKFLOW.md), the rules every agent follows in [AGENTS.md](AGENTS.md).
 - Changes reach `main` through pull requests that a team member approved, with the tests green. Two commits on 2026-11-22 were pushed to `main` directly by mistake; their changes were checked and recorded afterwards (S-180, S-194).
 - Each member owns one area (table above) and answers for the changes in it.
 

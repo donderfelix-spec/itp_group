@@ -1127,7 +1127,11 @@ Game.world = Game.world || {};
     var x = message.position.x;
     var y = message.position.y;
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    bloodSheets.set(message.sheet_id, { x: x, y: y, character: message.character });
+    // A sheet that comes into sight after its meeting (`classic_sheet`,
+    // S-202) is drawn as reported at once.
+    bloodSheets.set(message.sheet_id, {
+      x: x, y: y, character: message.character, reported: message.reported === true,
+    });
   }
 
   function clearBloodSheets() {
