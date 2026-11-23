@@ -215,7 +215,7 @@ window.Game = window.Game || {};
         const choice = chosen.get(entry.person);
         return choice.slot === entry.slot + ':00' && choice.job === entry.job;
       })) {
-        ui.feedback.textContent = 'Someone disagrees. Read “immediately after” carefully and check who goes last.';
+        ui.feedback.textContent = 'Someone disagrees. Read every message again: “immediately” means the very next slot.';
         return;
       }
       ui.complete();
