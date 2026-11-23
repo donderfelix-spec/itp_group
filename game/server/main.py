@@ -1191,7 +1191,7 @@ TASK_HANDLERS = {
 
 
 async def answer_fail_message(websocket: WebSocket):
-    """Apply Q to the nearest living HP in range; Classic rules validate the action."""
+    """Apply F (let fail) to the nearest living HP in range; Classic rules validate the action."""
     name = app.state.sessions.name_of(websocket)
     if name is None:
         await websocket.send_json(protocol.rejection("not_signed_in"))
@@ -1379,7 +1379,7 @@ async def answer_emergency_message(websocket: WebSocket):
     lobby.meeting = meeting
     lobby.meeting_clock = None
     await close_every_open_task(lobby)
-    await tell_meeting_state(lobby)
+    await tell_meeting_state(lobby, now)
 
 
 async def answer_hide_message(websocket: WebSocket):

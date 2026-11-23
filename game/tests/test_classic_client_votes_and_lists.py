@@ -96,7 +96,7 @@ def test_votes_can_change_and_be_withdrawn_and_show_every_voter_in_the_count_and
 
 
 @needs_node
-def test_a_report_discussion_offers_voting_and_skip_but_an_emergency_one_does_not():
+def test_report_and_emergency_discussions_offer_the_same_voting_and_skip_controls():
     steps = classic_round_as_free_rider() + [
         meeting_with("discussion", reason="report"), ["look"],
         ["click", "classic-skip-discussion"],
@@ -111,8 +111,10 @@ def test_a_report_discussion_offers_voting_and_skip_but_an_emergency_one_does_no
         meeting_state("discussion"), ["look"], ["click", "classic-skip-discussion"],
     ]
     result = run_page(steps)
-    assert result["looks"][-1]["skip"]["hidden"] is True
-    assert not any(message["type"] == "skip_discussion" for message in result["sent"])
+    emergency = result["looks"][-1]
+    assert emergency["skip"]["hidden"] is False
+    assert [button["target"] for button in emergency["voteButtons"]] == ["Ana", "Bo", "Cy"]
+    assert result["sent"][-1] == {"type": "skip_discussion"}
 
 
 @needs_node
@@ -163,12 +165,12 @@ def test_skip_needs_four_of_five_and_six_of_seven():
 
 
 @needs_node
-def test_skip_is_offered_only_while_voting():
-    steps = classic_round_as_free_rider() + [meeting_state("discussion"), ["look"]]
+def test_result_closes_skip_and_voting_controls():
+    steps = classic_round_as_free_rider() + [meeting_state("result"), ["look"], ["click", "classic-skip-discussion"]]
     result = run_page(steps)
-    # In the discussion there are no vote buttons yet, so no Skip either.
+    assert result["looks"][-1]["skip"]["hidden"] is True
     assert result["looks"][-1]["voteButtons"] == []
-    assert not any(message["type"] == "vote" for message in result["sent"])
+    assert not any(message["type"] in ("vote", "skip_discussion") for message in result["sent"])
 
 
 # ---- The own list -------------------------------------------------------------
