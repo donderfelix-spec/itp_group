@@ -59,6 +59,8 @@ As of 2026-11-23. Milestones 1 to 3 are on `main` and deployed; of milestone 4 o
 | Create an account with username and password, log in, log out | M1 | Done |
 | Play as a guest, without statistics and friends | M1 | Done |
 | Clear message when a name is taken, the password is wrong or the database is not reachable | M1 | Done |
+| A database that hangs or loses its network frees the account workers within 10 seconds; four workers (S-211) | M3 | Done |
+| A statistics write that failed is written again later, without counting a round twice (M3-2.8) | M3 | Open |
 | Show or hide the password with an eye icon | M1 | Done |
 | A player who is signed out because the account logged in somewhere else is told why | M1 | Done |
 | Limit on log-in attempts and lobby-code guessing | M1 | Done |

@@ -97,10 +97,12 @@ app.state.distances = paths.station_distances(app.state.campus, sorted(minigames
 
 # Hashing a password and asking the database both take a while, so they run in
 # worker threads and do not freeze the game for every other player. There are
-# only two workers on purpose: one Argon2 hash needs 64 MiB of memory, and the
-# host has 512 MB. Python's default of up to 32 threads at once could use it all.
-# With two, further log-ins simply wait their turn.
-account_workers = ThreadPoolExecutor(max_workers=2, thread_name_prefix="accounts")
+# four (S-211): with a slow database every call holds its worker for up to a
+# few seconds, and two made everybody wait in turn. Not Python's default of up
+# to 32: one Argon2 hash needs 64 MiB of memory and the host has 512 MB, so the
+# hasher itself lets only two hash at once (`service.HASHES_AT_ONCE`). Four
+# also means at most four short connections to the database at a time.
+account_workers = ThreadPoolExecutor(max_workers=4, thread_name_prefix="accounts")
 
 # Sends that run on their own (see `tell_signed_out_later`). Python may throw
 # away a running task nobody refers to, so they are kept here until they finish.

@@ -91,6 +91,7 @@ The status of every feature is in [game/FEATURES.md](game/FEATURES.md), the rule
 - A player whose connection drops cannot return to a running round; after signing in again they rejoin the lobby when the round is over (S-109).
 - Lobbies and running rounds live only in the server's memory: a restart or a new deploy ends them.
 - The log-in and lobby-code limits count per connection, so a new connection starts again at zero.
+- If writing a round's statistics fails (the database is down or too slow), it is not tried again and that round's numbers are lost (S-211, M3-2.8).
 - In Classic everybody learns at once who was failed (the victim's portrait is on the F-sheet, S-163); only the place of the sheet is sent just to those who see it (S-202).
 - The character voted out is not shown drifting out to sea yet; the result is shown as text (M3-3.5).
 - The browser play tests do not run in CI (see above).

@@ -24,6 +24,8 @@ from server.accounts import statistics
 from server.accounts.store import (
     CONNECT_TIMEOUT_SECONDS,
     SET_STATEMENT_TIMEOUT,
+    SOCKET_OPTIONS,
+    CallDeadline,
     StoreUnavailable,
     describe_problem,
     name_key,
@@ -113,20 +115,27 @@ class PostgresStatisticsStore:
         # The URL contains the database password: never log or print it.
         self._database_url = database_url
         self._table_exists = False
-        # The store is called from two worker threads. The lock makes sure
+        # The store is called from several worker threads. The lock makes sure
         # only one of them creates the table.
         self._table_lock = threading.Lock()
 
     def record_round(self, mode: str, changes):
-        connection = self._connect()
+        connection, deadline = self._connect()
         try:
             # All changes of a round are saved together or not at all.
             with connection:
                 connection.execute(SET_STATEMENT_TIMEOUT)
-                for change in changes:
+                # Each row stays locked until the round is saved. Two rounds
+                # written at the same moment with the same two accounts in
+                # opposite order would wait for each other, and Postgres
+                # would throw one of them away (a deadlock). In the order of
+                # the keys, the second one simply waits for the first (S-211).
+                for change in sorted(changes, key=lambda change: name_key(change["name"])):
                     connection.execute(ADD_ROUND, _values_of(mode, change))
         except psycopg.Error as problem:
             raise self._unavailable("query", problem) from None
+        finally:
+            deadline.stop()
 
     def records_of(self, name: str) -> dict:
         rows = self._select(SELECT_RECORDS, (name_key(name),))
@@ -141,20 +150,22 @@ class PostgresStatisticsStore:
         return [(name, int(wins), best_seconds) for name, wins, best_seconds in rows]
 
     def _select(self, query: str, values: tuple) -> list:
-        connection = self._connect()
+        connection, deadline = self._connect()
         try:
             with connection:
                 connection.execute(SET_STATEMENT_TIMEOUT)
                 return connection.execute(query, values).fetchall()
         except psycopg.Error as problem:
             raise self._unavailable("query", problem) from None
+        finally:
+            deadline.stop()
 
     def _connect(self):
         """Open a connection, with the table `account_statistics` in place.
 
-        Used as `with connection:`, which saves the changes and closes the
-        connection at the end. Raises `StoreUnavailable` when connecting or
-        creating the table fails; the log then says which of the two it was.
+        Returns `(connection, deadline)`, like `PostgresAccountStore._connect`.
+        Raises `StoreUnavailable` when connecting or creating the table fails;
+        the log then says which of the two it was.
         """
         try:
             connection = psycopg.connect(
@@ -162,16 +173,21 @@ class PostgresStatisticsStore:
                 connect_timeout=CONNECT_TIMEOUT_SECONDS,
                 # Supabase's connection pooler does not support prepared statements.
                 prepare_threshold=None,
+                # See `SOCKET_OPTIONS` in store.py (S-211).
+                **SOCKET_OPTIONS,
             )
         # UnicodeError: see `PostgresAccountStore._connect`.
         except (psycopg.Error, UnicodeError) as problem:
             raise self._unavailable("connect", problem) from None
+        # Started before the table is created, see `PostgresAccountStore._connect`.
+        deadline = CallDeadline(connection)
         try:
             self._create_table_once(connection)
         except psycopg.Error as problem:
             connection.close()
+            deadline.stop()
             raise self._unavailable("create table", problem) from None
-        return connection
+        return connection, deadline
 
     def _create_table_once(self, connection):
         """Create and protect the table if this store has not done so yet."""

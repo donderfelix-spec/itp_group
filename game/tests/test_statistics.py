@@ -347,7 +347,16 @@ def test_postgres_connects_like_the_accounts_do(database, postgres):
     postgres.records_of("Mara")
     args, kwargs = database.connect_arguments
     assert args == ("postgresql://example.invalid/db",)
-    assert kwargs == {"connect_timeout": 5, "prepare_threshold": None}
+    assert kwargs == {
+        "connect_timeout": 5,
+        "prepare_threshold": None,
+        # S-211: the same socket options as the accounts.
+        "keepalives": 1,
+        "keepalives_idle": 2,
+        "keepalives_interval": 1,
+        "keepalives_count": 3,
+        "tcp_user_timeout": 5000,
+    }
 
 
 def test_postgres_creates_the_table_on_the_first_call_only(database, postgres):
@@ -392,6 +401,48 @@ def test_postgres_records_a_round_with_one_parameterised_statement_per_account(d
     for query, values in inserts:
         assert query.count("%s") == 6
         assert "Mara" not in query and "duel" not in query
+
+
+def test_postgres_writes_the_accounts_of_a_round_in_the_order_of_their_keys(database, postgres):
+    # Two rounds with the same accounts then lock their rows in the same
+    # order, so they cannot wait for each other for good (S-211).
+    postgres.record_round("duel", [change("Tiago", 0, None), change("ana", 1, 70.0), change("Mara", 0, None)])
+    keys = [values[0] for query, values in database.queries("INSERT INTO account_statistics")]
+    assert keys == ["ana", "mara", "tiago"]
+
+
+class RecordedDeadline:
+    """Stands in for `CallDeadline` and writes down when it starts and stops."""
+
+    def __init__(self, connection, seconds=None):
+        RecordedDeadline.events.append("start")
+
+    def stop(self):
+        RecordedDeadline.events.append("stop")
+
+
+@pytest.fixture
+def deadlines(monkeypatch):
+    from server.accounts import statistics_store
+
+    RecordedDeadline.events = []
+    monkeypatch.setattr(statistics_store, "CallDeadline", RecordedDeadline)
+    return RecordedDeadline.events
+
+
+def test_postgres_stops_the_deadline_of_every_statistics_call(database, postgres, deadlines):
+    postgres.records_of("Mara")
+    postgres.record_round("duel", [change("Mara", 1, 72.4)])
+    postgres.top(20)
+    assert deadlines == ["start", "stop"] * 3
+
+
+@pytest.mark.parametrize("failing_step", ["CREATE", "INSERT", "commit"])
+def test_postgres_stops_the_deadline_when_a_statistics_call_fails(database, postgres, deadlines, failing_step):
+    database.fail_on = failing_step
+    with pytest.raises(StoreUnavailable):
+        postgres.record_round("duel", [change("Mara", 1, 72.4)])
+    assert deadlines == ["start", "stop"]
 
 
 def test_postgres_adds_to_an_existing_row_and_keeps_the_smaller_time(database, postgres):
