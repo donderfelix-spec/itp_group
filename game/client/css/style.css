@@ -2690,8 +2690,8 @@ body:has(#screen-lobby:not([hidden])) .message {
 
 /* The narrow columns of the leaderboard. The name gets all the rest. */
 .stats-column-place { width: 70px; }
-.stats-column-wins { width: 110px; }
-.stats-column-time { width: 140px; }
+.stats-column-wins { width: 84px; }
+.stats-column-time { width: 120px; }
 
 .stats-name {
   overflow: hidden;
