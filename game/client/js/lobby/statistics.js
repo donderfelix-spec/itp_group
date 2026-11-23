@@ -83,7 +83,8 @@ window.Game = window.Game || {};
 
   function isLeaderboard(message) {
     const isPlayer = (player) => Boolean(player)
-      && isCount(player.place) && typeof player.name === 'string' && isCount(player.wins);
+      && isCount(player.place) && typeof player.name === 'string'
+      && isCount(player.classic_wins) && isCount(player.duel_wins);
     return Array.isArray(message.players) && message.players.every(isPlayer);
   }
 
@@ -95,7 +96,8 @@ window.Game = window.Game || {};
     const name = cell(player.name, 'stats-name');
     name.title = player.name; // A long name is cut off in a narrow window.
     row.appendChild(name);
-    row.appendChild(cell(String(player.wins), 'stats-number'));
+    row.appendChild(cell(String(player.classic_wins), 'stats-number'));
+    row.appendChild(cell(String(player.duel_wins), 'stats-number'));
     row.appendChild(cell(timeText(player.best_duel_seconds), 'stats-number'));
     return row;
   }

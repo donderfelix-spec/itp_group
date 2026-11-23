@@ -158,33 +158,33 @@ def test_the_best_duel_time_comes_from_the_duel_only():
 
 def test_the_total_adds_the_wins_of_all_modes():
     records = {"duel": record(3, 1, 72.4), "classic": record(2, 2, None)}
-    assert statistics.total_of("Mara", records) == ("Mara", 3, 72.4)
+    assert statistics.total_of("Mara", records) == ("Mara", 3, 72.4, 2, 1)
 
 
 def test_the_leaderboard_is_ordered_by_wins_then_time_then_name():
     totals = [
-        ("Zoe", 1, None),
-        ("Rui", 1, 80.0),
-        ("Mara", 3, 90.0),
-        ("ines", 1, 70.0),
-        ("Tiago", 1, 70.0),
-        ("Ana", 1, None),
-        ("Bea", 0, 40.0),
+        ("Zoe", 1, None, 1, 0),
+        ("Rui", 1, 80.0, 0, 1),
+        ("Mara", 3, 90.0, 2, 1),
+        ("ines", 1, 70.0, 0, 1),
+        ("Tiago", 1, 70.0, 0, 1),
+        ("Ana", 1, None, 1, 0),
+        ("Bea", 0, 40.0, 0, 0),
     ]
-    assert [name for name, wins, best in statistics.best_first(totals)] == [
+    assert [name for name, *_ in statistics.best_first(totals)] == [
         "Mara", "ines", "Tiago", "Rui", "Ana", "Zoe", "Bea",
     ]
 
 
 def test_names_are_ordered_ignoring_case():
-    totals = [("bea", 1, 70.0), ("Ana", 1, 70.0), ("Cid", 1, 70.0)]
-    assert [name for name, wins, best in statistics.best_first(totals)] == ["Ana", "bea", "Cid"]
+    totals = [("bea", 1, 70.0, 0, 1), ("Ana", 1, 70.0, 0, 1), ("Cid", 1, 70.0, 0, 1)]
+    assert [name for name, *_ in statistics.best_first(totals)] == ["Ana", "bea", "Cid"]
 
 
 def test_the_rows_of_the_leaderboard_are_numbered_from_1():
-    assert statistics.leaderboard_rows([("Mara", 3, 72.4), ("Tiago", 1, None)]) == [
-        {"place": 1, "name": "Mara", "wins": 3, "best_seconds": 72.4},
-        {"place": 2, "name": "Tiago", "wins": 1, "best_seconds": None},
+    assert statistics.leaderboard_rows([("Mara", 3, 72.4, 2, 1), ("Tiago", 1, None, 1, 0)]) == [
+        {"place": 1, "name": "Mara", "wins": 3, "best_seconds": 72.4, "classic_wins": 2, "duel_wins": 1},
+        {"place": 2, "name": "Tiago", "wins": 1, "best_seconds": None, "classic_wins": 1, "duel_wins": 0},
     ]
 
 
@@ -227,7 +227,7 @@ def test_a_second_mode_is_one_more_record(store):
     store.record_round("duel", [change("Mara", 1, 72.4)])
     store.record_round("classic", [change("Mara", 1, None)])
     assert store.records_of("Mara") == {"duel": record(1, 1, 72.4), "classic": record(1, 1, None)}
-    assert store.top(20) == [("Mara", 2, 72.4)]
+    assert store.top(20) == [("Mara", 2, 72.4, 1, 1)]
 
 
 def test_what_the_store_returns_cannot_change_what_it_keeps(store):
@@ -243,8 +243,8 @@ def test_recording_no_changes_changes_nothing(store):
 
 def test_top_is_ordered_and_cut_at_the_limit(store):
     store.record_round("duel", [change("Mara", 1, 72.4), change("Tiago", 0, 80.0), change("Ines", 0, None)])
-    assert store.top(20) == [("Mara", 1, 72.4), ("Tiago", 0, 80.0), ("Ines", 0, None)]
-    assert store.top(2) == [("Mara", 1, 72.4), ("Tiago", 0, 80.0)]
+    assert store.top(20) == [("Mara", 1, 72.4, 0, 1), ("Tiago", 0, 80.0, 0, 0), ("Ines", 0, None, 0, 0)]
+    assert store.top(2) == [("Mara", 1, 72.4, 0, 1), ("Tiago", 0, 80.0, 0, 0)]
 
 
 def test_without_a_database_url_statistics_live_in_memory():
@@ -484,10 +484,10 @@ def test_postgres_returns_no_records_for_an_account_that_never_played(database, 
 
 
 def test_postgres_asks_for_the_top_with_the_limit_as_a_parameter(database, postgres):
-    database.rows = [("Mara", 3, 72.4), ("Tiago", 1, None)]
-    assert postgres.top(20) == [("Mara", 3, 72.4), ("Tiago", 1, None)]
+    database.rows = [("Mara", 3, 72.4, 2, 1), ("Tiago", 1, None, 1, 0)]
+    assert postgres.top(20) == [("Mara", 3, 72.4, 2, 1), ("Tiago", 1, None, 1, 0)]
     query, values = database.queries("SELECT")[0]
-    assert values == ("duel", 20)
+    assert values == ("duel", "classic", "duel", 20)
     assert "ORDER BY total_wins DESC, best_duel ASC NULLS LAST, name_key" in query
     assert "LIMIT %s" in query
 

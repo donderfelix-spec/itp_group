@@ -248,6 +248,10 @@ These entries follow from the team's answers and from the project description in
 
 | S-206 | 2026-11-23 | After an emergency meeting or F-sheet report, players continue at their previous positions. Replaces the relocation in S-199 point 4. The meeting result still applies once, and the cooldown restarts as specified in point 5. | Lennart asked to continue the round where everyone had been standing. | Lennart |
 
+### Leaderboard columns
+
+Show Classic wins, Duel wins and best Duel time as separate columns. The leaderboard keeps its existing ranking by total wins, then best Duel time and account name. Save results when a Classic round completes so its wins count for the winning team’s accounts.
+
 ## Open decisions
 
 | Question | Affects | Thinking so far |
