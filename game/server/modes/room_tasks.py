@@ -68,27 +68,16 @@ SLOT_CLUES = (
 
 
 def chat(rng):
+    """Four teammates, one message each; the player picks only the times (S-223)."""
     people = rng.sample(["Mara", "Tiago", "Ines", "Rui"], 4)
-    jobs = rng.sample(["Slides", "Survey", "Budget", "Sources"], 4)
     sentences = rng.choice(SLOT_CLUES)(people)
-    # Two people name their own deliverable; the pinned message orders the
-    # other two, which settles who has which.
-    named = sorted(rng.sample(range(4), 2))
-    for slot in named:
-        sentences[slot] += f" Also, I have the {jobs[slot]}."
-    earlier, later = [slot for slot in range(4) if slot not in named]
     clues = [{"from": person, "text": text} for person, text in zip(people, sentences)]
-    clues.append({"from": "Pinned message",
-                  "text": f"The {jobs[earlier]} must be presented before the {jobs[later]}."})
     rng.shuffle(clues)
     displayed = list(people)
     rng.shuffle(displayed)
-    options = list(jobs)
-    rng.shuffle(options)
     return {"kind": "campus_challenge", "puzzle": "chat_logic", "people": displayed,
-            "jobs": options, "slots": [9, 10, 11, 12], "clues": clues,
-            "schedule": [{"person": person, "job": job, "slot": slot}
-                         for person, job, slot in zip(people, jobs, [9, 10, 11, 12])]}
+            "slots": [9, 10, 11, 12], "clues": clues,
+            "schedule": [{"person": person, "slot": slot} for person, slot in zip(people, [9, 10, 11, 12])]}
 
 
 def budget(rng):

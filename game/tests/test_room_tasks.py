@@ -53,9 +53,10 @@ def test_extra_room_contents_are_solvable_and_readable(seed):
     chat = contents[10]
     assert chat['puzzle'] == 'chat_logic'
     assert {row['person'] for row in chat['schedule']} == set(chat['people'])
-    assert {row['job'] for row in chat['schedule']} == set(chat['jobs'])
+    assert 'jobs' not in chat
+    assert all(set(row) == {'person', 'slot'} for row in chat['schedule'])
     assert sorted(row['slot'] for row in chat['schedule']) == chat['slots']
-    assert len(chat['clues']) == 5
+    assert len(chat['clues']) == 4
     prices = [item['price'] for item in contents[11]['products']]
     target = contents[11]['target']
     assert max(prices) < target
