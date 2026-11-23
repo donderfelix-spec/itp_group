@@ -10,7 +10,8 @@ const assert = require('node:assert/strict');
 
 const world = path.join(__dirname, '..', 'client', 'js', 'world');
 const campus = JSON.parse(fs.readFileSync(path.join(world, 'campus.json'), 'utf8'));
-const OBJECT_STATIONS = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12];
+// Station 6 has its object since M3-1.7 (S-196): a surfboard in its stand.
+const OBJECT_STATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const station = (id) => campus.stations.find((entry) => entry.id === id);
 
 // The zoom of the stand-in: pixels per map unit.
@@ -83,7 +84,8 @@ function check(condition, message) {
   checked += 1;
 }
 
-// B1: eleven objects, always, each with its number; no old circle markers.
+// B1: twelve objects (eleven until M3-1.7 drew station 6), always, each with
+// its number; no old circle markers.
 {
   const { world } = page();
   for (const pulsing of [[], null, [9]]) {
@@ -94,28 +96,32 @@ function check(condition, message) {
       check(calls.texts.includes(String(id)), 'station ' + id + ' keeps its number');
       check(!calls.arcs.some(([x, y, r]) => x === at.x && y === at.y && r === at.r), 'no marker circle at station ' + id);
     }
+    // Until M3-1.7 station 6 had no object and no number; now it has both.
     const six = station(6);
-    check(!calls.translations.some(([x, y]) => x === six.x && y === six.y) && !calls.texts.includes('6'),
-      'station 6 is not in use and has no object');
+    check(calls.translations.some(([x, y]) => x === six.x && y === six.y) && calls.texts.includes('6'),
+      'station 6 is not in use yet but shows its object and number');
   }
   for (const id of OBJECT_STATIONS) {
     check(typeof world.art.stations[id] === 'function', 'art/stations.js draws station ' + id);
   }
-  check(!(6 in world.art.stations), 'no drawing for station 6');
+  check(6 in world.art.stations, 'a drawing for station 6 too (M3-1.7; until then none)');
 }
 
 // B2: only the stations that matter get the pulsing outline.
 {
   const { world, made } = page();
   check(outlined(draw(world, [])).length === 0, 'the lobby (an empty list) outlines nothing');
-  for (const wrong of [null, undefined, 7, '7', ['7'], {}, [999], [6]]) {
+  for (const wrong of [null, undefined, 7, '7', ['7'], {}, [999]]) {
     check(outlined(draw(world, wrong)).length === 0, 'no outline for ' + JSON.stringify(wrong));
   }
   check(JSON.stringify(outlined(draw(world, [9]))) === '[9]', 'a Duel outlines only the next station');
   check(JSON.stringify(outlined(draw(world, [12]))) === '[12]', 'a new station can be the next one');
+  // Until M3-1.7 station 6 had no object, so [6] outlined nothing. Now it
+  // would be outlined, but the server never lists it: it is not in use.
+  check(JSON.stringify(outlined(draw(world, [6]))) === '[6]', 'station 6 has an object to outline');
   check(JSON.stringify(outlined(draw(world, [1, 2, 3, 4, 5]))) === '[1,2,3,4,5]', 'a list of five outlines all five');
   check(JSON.stringify(outlined(draw(world, OBJECT_STATIONS))) === JSON.stringify(OBJECT_STATIONS),
-    'Classic with eleven usable stations outlines all of them');
+    'every station with an object outlines when listed');
   // Four layers per outline: the dark edge and the yellow, narrow and wide.
   check(draw(world, [3], 700).images.length === 4, 'one outline at its widest is four images');
   // The silhouettes are made once and then kept.
@@ -137,7 +143,7 @@ function check(condition, message) {
   const { world, made } = page();
   const layers = 4;
   draw(world, OBJECT_STATIONS, 700);
-  check(world.outlineCacheSize() === OBJECT_STATIONS.length * layers, 'eleven stations, four layers each');
+  check(world.outlineCacheSize() === OBJECT_STATIONS.length * layers, 'twelve stations, four layers each');
   const before = made.length;
   zoom = 3;
   draw(world, OBJECT_STATIONS, 700);
@@ -160,9 +166,10 @@ function check(condition, message) {
   check(calls.translations.some(([x, y]) => x === station(4).x && y === station(4).y) && calls.texts.includes('4'),
     'its object and number are drawn on top of the outline');
   const none = { translations: [], arcs: [], texts: [], images: [] };
-  world.drawStationGlow(recordingContext(none, false), station(6), 0);
+  // A station without a drawing (station 6 was one until M3-1.7 drew it).
+  world.drawStationGlow(recordingContext(none, false), { id: 99, x: 300, y: 534, r: 10 }, 0);
   world.drawStationGlow(recordingContext(none, false), null, 0);
-  check(none.images.length === 0 && none.translations.length === 0, 'nothing for station 6 or no station');
+  check(none.images.length === 0 && none.translations.length === 0, 'nothing for a station without a drawing or no station');
 }
 
 // Without a page that can make canvases (a test in Node) the objects stay and no outline breaks.

@@ -160,7 +160,7 @@ def test_the_old_place_right_of_the_hedge_is_not_the_centre():
 
 @pytest.mark.parametrize("place, what", [
     ((365, 290), "solid deck-pool"),
-    ((600, 350), "station circle 12"),
+    ((644, 350), "station circle 12"),  # at (600, 350) until M3-1.7 moved it (S-196)
     ((365, 352), "the Main Deck name"),
     ((486, 296), "the spawn"),
     ((30, 200), "outside the deck"),

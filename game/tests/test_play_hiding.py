@@ -8,7 +8,8 @@ played here by real Chromium pages (Playwright, driven through
   button reads "E Hide" (`press_hide`); walking into a spot alone does not
   hide, a step ends hiding and a meeting ends it too (replaces S-138).
 - Classic, five players, so one Free Rider (found from the role card of his
-  page). He walks with real keys into each of the four hiding spots, the one
+  page). He walks with real keys into each of the seven hiding spots (four
+  until M3-1.7 added three, S-196), the one
   in the hedge from the spawn, into the hedge and through it. For every spot
   one High Performer stands about 55 units away and must neither be sent nor
   draw the Free Rider; another walks past him with real keys, and is sent
@@ -75,7 +76,8 @@ SPAWN = (CAMPUS["spawn"]["x"], CAMPUS["spawn"]["y"])
 # no living High Performer at all. The plays still measure against it, to
 # show that even a High Performer well within it does not get him.
 REVEAL_RANGE = 35
-SPOTS = {name: spot for name, spot in zip(("hedge", "pingo-doce", "ctt", "canteen"), CAMPUS["hiding_spots"])}
+SPOTS = {name: spot for name, spot in zip(
+    ("hedge", "pingo-doce", "ctt", "canteen", "mon-cafe", "lecture-hall", "sun-loungers"), CAMPUS["hiding_spots"])}
 HEDGE = next(solid for solid in SOLIDS if solid["id"] == "deck-hedge")
 BUTTON = CAMPUS["button"]
 # Players this close are sent to each other when nobody hides. Classic's
@@ -696,7 +698,7 @@ def classic(server):
         seen["hedge_walk"] = {"trail_in_hedge": [p for p in trail if HEDGE["y"] <= p[1] <= HEDGE["y"] + HEDGE["h"]],
                               "end": position(names[fr]), "in_spot_on_the_way": any(in_spot(p, hedge) for p in trail)}
 
-        # The four spots
+        # Every spot
         far, near, other1, other2 = hps
         for spot_name in SPOTS:
             put(names[other1], SPAWN)
@@ -981,9 +983,12 @@ def classic(server):
 # ---- The tests: Classic ---------------------------------------------------
 
 
-def test_the_four_spots_are_the_ones_of_the_map():
+def test_the_seven_spots_are_the_ones_of_the_map():
+    # M3-1.7 (S-196) moved the hedge (595, 249), the boxes (549, 468) and the
+    # plant (636, 128) and added the last three.
     assert {name: (spot["x"], spot["y"]) for name, spot in SPOTS.items()} == {
-        "hedge": (595, 249), "pingo-doce": (549, 468), "ctt": (136, 524), "canteen": (636, 128),
+        "hedge": (644, 297), "pingo-doce": (573, 499), "ctt": (136, 524), "canteen": (646, 156),
+        "mon-cafe": (406, 133), "lecture-hall": (39, 154), "sun-loungers": (183, 539),
     }
     # The reveal range is retired (S-192).
     assert "hide_reveal_range" not in CAMPUS
@@ -1000,7 +1005,7 @@ def test_the_free_rider_walks_from_the_spawn_into_the_hedge_and_through_it(class
     assert walk["end"][1] < HEDGE["y"]  # out at the other side
 
 
-@pytest.mark.parametrize("spot_index", range(4), ids=list(SPOTS))
+@pytest.mark.parametrize("spot_index", range(len(SPOTS)), ids=list(SPOTS))
 def test_the_free_rider_walks_into_the_spot_and_is_hidden_from_far_high_performers(classic, spot_index):
     record = classic["spots"][spot_index]
     assert in_spot(record["fr_at"], SPOTS[record["spot"]])
@@ -1011,7 +1016,7 @@ def test_the_free_rider_walks_into_the_spot_and_is_hidden_from_far_high_performe
     assert record["traces"] == {label: 0 for label in record["traces"]}
 
 
-@pytest.mark.parametrize("spot_index", range(4), ids=list(SPOTS))
+@pytest.mark.parametrize("spot_index", range(len(SPOTS)), ids=list(SPOTS))
 def test_a_high_performer_walking_past_never_gets_the_hidden_free_rider(classic, spot_index):
     # Before S-192 he got him exactly within 35 units; now never, also within.
     record = classic["spots"][spot_index]
@@ -1022,12 +1027,12 @@ def test_a_high_performer_walking_past_never_gets_the_hidden_free_rider(classic,
     assert record["near_last_listed"] is False
 
 
-@pytest.mark.parametrize("spot_index", range(4), ids=list(SPOTS))
+@pytest.mark.parametrize("spot_index", range(len(SPOTS)), ids=list(SPOTS))
 def test_no_frozen_free_rider_is_left_drawn_when_he_disappears(classic, spot_index):
     assert classic["spots"][spot_index]["near_frozen_draws"] == []
 
 
-@pytest.mark.parametrize("spot_index", range(4), ids=list(SPOTS))
+@pytest.mark.parametrize("spot_index", range(len(SPOTS)), ids=list(SPOTS))
 def test_only_the_hidden_free_rider_sees_himself_half_transparent_and_hidden(classic, spot_index):
     record = classic["spots"][spot_index]
     hint = record["fr_hint"]
@@ -1040,7 +1045,7 @@ def test_only_the_hidden_free_rider_sees_himself_half_transparent_and_hidden(cla
     assert not any(record["hp_hints"].values())
 
 
-@pytest.mark.parametrize("spot_index", range(4), ids=list(SPOTS))
+@pytest.mark.parametrize("spot_index", range(len(SPOTS)), ids=list(SPOTS))
 def test_walking_out_of_the_spot_shows_him_at_once_at_his_new_place(classic, spot_index):
     record = classic["spots"][spot_index]
     spot = SPOTS[record["spot"]]

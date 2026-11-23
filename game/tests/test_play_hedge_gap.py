@@ -3,10 +3,12 @@
 `test_hedge_gap.py` checks the map and the walking rules on their own. Here
 the same walks are played over WebSocket connections against the real server
 with the real tick, the way a tester played them in two browser tabs: one
-player walks into the place where tree 3 and the hedge meet, a second player
-in the same lobby watches. Both must be told the same positions, and in no
-message may the walker stand inside the hedge, inside tree 3 or in the old
-10-unit gap between them.
+player walks into the place where the hedge meets the deck's right wall, a
+second player in the same lobby watches. Both must be told the same
+positions, and in no message may the walker stand inside the hedge, inside
+the wall or in the 10-unit strip between them. (Until M3-1.7 the hedge lay
+left to right and met tree 3; since S-196 it stands upright along the right
+wall, and the closed gap moved with it.)
 
 Walking from the spawn to the hedge with keys would take seconds and land on
 a different spot each time, so each test puts the walker where the walk
@@ -35,14 +37,15 @@ PASSWORD = "password123"
 CAMPUS = copy.deepcopy(app.state.campus)
 next(solid for solid in CAMPUS["solids"] if solid["id"] == "deck-hedge")["walkable"] = False
 SOLIDS = CAMPUS["solids"]
-TREE = next(item for item in SOLIDS if item["id"] == "deck-tree-3")
+WALL = next(item for item in SOLIDS if item["id"] == "deck-wall-right")
 HEDGE = next(item for item in SOLIDS if item["id"] == "deck-hedge")
 
-# Where the gap was: between the right edge of tree 3 (x 556) and the old
-# left edge of the hedge (x 566), from the top of the tree to the bottom of the hedge.
-OLD_GAP = {"x": 556, "y": 238, "w": 10, "h": 24}
-# The middle of the old gap: the one x where a player fitted into it.
-GAP_MIDDLE_X = OLD_GAP["x"] + OLD_GAP["w"] / 2
+# The strip a hedge 10 units narrower would leave at the wall: from x 647 to
+# the wall (x 657), as high as the hedge (y 255 to 323).
+WALL_GAP = {"x": 647, "y": 255, "w": 10, "h": 68}
+# The middle of that strip: the one x where a player would fit into it,
+# touching the wall.
+GAP_MIDDLE_X = WALL_GAP["x"] + WALL_GAP["w"] / 2
 
 # Generous: every walk here takes less than two seconds.
 DEADLINE_SECONDS = 15.0
@@ -158,73 +161,72 @@ def walk_from(connect, start, dx, dy):
     return trails
 
 
-def assert_never_in_the_hedge_the_tree_or_the_old_gap(trail):
+def assert_never_in_the_hedge_the_wall_or_the_gap(trail):
     assert trail, "the walker was never seen walking"
     for x, y in trail:
         assert is_free(x, y, SOLIDS, CAMPUS["width"], CAMPUS["height"]), (x, y)
-        assert not overlaps(x, y, OLD_GAP), (x, y)
+        assert not overlaps(x, y, WALL_GAP), (x, y)
 
 
-# Straight walks into the place of the old gap
+# Straight walks along the wall into the hedge
 
 
-def test_walking_up_from_below_the_old_gap_stops_under_the_hedge_for_both_players(connect):
-    for_mara, for_watcher = walk_from(connect, (GAP_MIDDLE_X, 300), 0, -1)
+def test_walking_up_along_the_wall_stops_under_the_hedge_for_both_players(connect):
+    for_mara, for_watcher = walk_from(connect, (GAP_MIDDLE_X, 360), 0, -1)
     assert for_mara == for_watcher
-    assert_never_in_the_hedge_the_tree_or_the_old_gap(for_mara)
+    assert_never_in_the_hedge_the_wall_or_the_gap(for_mara)
     assert for_mara[-1] == (GAP_MIDDLE_X, HEDGE["y"] + HEDGE["h"] + PLAYER_HALF_SIZE)
 
 
-def test_walking_down_from_above_the_old_gap_stops_on_the_hedge_for_both_players(connect):
+def test_walking_down_along_the_wall_stops_on_the_hedge_for_both_players(connect):
     for_mara, for_watcher = walk_from(connect, (GAP_MIDDLE_X, 205), 0, 1)
     assert for_mara == for_watcher
-    assert_never_in_the_hedge_the_tree_or_the_old_gap(for_mara)
+    assert_never_in_the_hedge_the_wall_or_the_gap(for_mara)
     assert for_mara[-1] == (GAP_MIDDLE_X, HEDGE["y"] - PLAYER_HALF_SIZE)
 
 
-# Diagonal walks into the corner where tree 3 and the hedge meet
+# Diagonal walks into the corners where the hedge and the wall meet
 
 
-def test_up_and_left_from_below_right_ends_in_the_corner_under_tree_and_hedge(connect):
-    for_mara, for_watcher = walk_from(connect, (600, 296), -1, -1)
+def test_up_and_right_from_below_left_ends_in_the_corner_under_hedge_and_wall(connect):
+    for_mara, for_watcher = walk_from(connect, (590, 380), 1, -1)
     assert for_mara == for_watcher
-    assert_never_in_the_hedge_the_tree_or_the_old_gap(for_mara)
-    # Touching the bottom of the hedge and the right side of the tree.
-    assert for_mara[-1] == (TREE["x"] + TREE["w"] + PLAYER_HALF_SIZE, HEDGE["y"] + HEDGE["h"] + PLAYER_HALF_SIZE)
+    assert_never_in_the_hedge_the_wall_or_the_gap(for_mara)
+    # Touching the bottom of the hedge and the wall.
+    assert for_mara[-1] == (WALL["x"] - PLAYER_HALF_SIZE, HEDGE["y"] + HEDGE["h"] + PLAYER_HALF_SIZE)
 
 
-def test_down_and_right_from_above_left_ends_in_the_corner_on_tree_and_hedge(connect):
+def test_down_and_right_from_above_left_ends_in_the_corner_on_hedge_and_wall(connect):
     # A diagonal step moves x and y by the same amount, so from here she
-    # reaches the top of the tree (y 233) at x 543, left of the hedge.
-    for_mara, for_watcher = walk_from(connect, (516, 206), 1, 1)
+    # reaches the top of the hedge (y 250) at x 644, over the hedge, and
+    # slides along it to the wall.
+    for_mara, for_watcher = walk_from(connect, (600, 206), 1, 1)
     assert for_mara == for_watcher
-    assert_never_in_the_hedge_the_tree_or_the_old_gap(for_mara)
-    # Touching the top of the tree and the left side of the hedge.
-    assert for_mara[-1] == (HEDGE["x"] - PLAYER_HALF_SIZE, TREE["y"] - PLAYER_HALF_SIZE)
+    assert_never_in_the_hedge_the_wall_or_the_gap(for_mara)
+    # Touching the top of the hedge and the wall.
+    assert for_mara[-1] == (WALL["x"] - PLAYER_HALF_SIZE, HEDGE["y"] - PLAYER_HALF_SIZE)
 
 
-def test_up_and_right_from_below_left_only_passes_on_the_far_side_of_the_hedge(connect):
-    for_mara, for_watcher = walk_from(connect, (540, 296), 1, -1)
+def test_up_and_left_from_below_the_hedge_only_passes_on_its_left_side(connect):
+    for_mara, for_watcher = walk_from(connect, (650, 340), -1, -1)
     assert for_mara == for_watcher
-    assert_never_in_the_hedge_the_tree_or_the_old_gap(for_mara)
-    # She slides along under tree and hedge and goes up only right of the
-    # hedge, where the way past the red button is.
-    hedge_right = HEDGE["x"] + HEDGE["w"]
+    assert_never_in_the_hedge_the_wall_or_the_gap(for_mara)
+    # She slides along under the hedge and goes up only left of it.
     for x, y in for_mara:
         if y < HEDGE["y"] + HEDGE["h"] + PLAYER_HALF_SIZE:
-            assert x >= hedge_right + PLAYER_HALF_SIZE, (x, y)
+            assert x <= HEDGE["x"] - PLAYER_HALF_SIZE, (x, y)
     assert min(y for _, y in for_mara) < HEDGE["y"] - PLAYER_HALF_SIZE
 
 
-def test_down_and_left_from_above_right_only_passes_on_the_far_side_of_tree_3(connect):
-    for_mara, for_watcher = walk_from(connect, (600, 205), -1, 1)
+def test_down_and_left_from_above_the_hedge_only_passes_on_its_left_side(connect):
+    for_mara, for_watcher = walk_from(connect, (650, 230), -1, 1)
     assert for_mara == for_watcher
-    assert_never_in_the_hedge_the_tree_or_the_old_gap(for_mara)
-    # She slides along over hedge and tree and goes down only left of tree 3.
+    assert_never_in_the_hedge_the_wall_or_the_gap(for_mara)
+    # She slides along over the hedge and goes down only left of it.
     for x, y in for_mara:
-        if y > TREE["y"] - PLAYER_HALF_SIZE:
-            assert x <= TREE["x"] - PLAYER_HALF_SIZE, (x, y)
-    assert max(y for _, y in for_mara) > TREE["y"] + TREE["h"] + PLAYER_HALF_SIZE
+        if y > HEDGE["y"] - PLAYER_HALF_SIZE:
+            assert x <= HEDGE["x"] - PLAYER_HALF_SIZE, (x, y)
+    assert max(y for _, y in for_mara) > HEDGE["y"] + HEDGE["h"] + PLAYER_HALF_SIZE
 
 
 # Trying to break it
@@ -232,19 +234,19 @@ def test_down_and_left_from_above_right_only_passes_on_the_far_side_of_tree_3(co
 
 def test_pushing_on_in_the_corner_and_switching_fast_never_gets_into_the_hedge(connect):
     mara, watcher = walker_and_watcher(connect)
-    corner = (TREE["x"] + TREE["w"] + PLAYER_HALF_SIZE, HEDGE["y"] + HEDGE["h"] + PLAYER_HALF_SIZE)
+    corner = (WALL["x"] - PLAYER_HALF_SIZE, HEDGE["y"] + HEDGE["h"] + PLAYER_HALF_SIZE)
     put("Mara", corner)
-    # Every direction that points into the hedge or the tree, many times and
+    # Every direction that points into the hedge or the wall, many times and
     # without any pause, then the same direction twice in a row.
     for _ in range(30):
-        for dx, dy in ((0, -1), (-1, -1), (1, -1), (-1, 0), (0, -1), (0, -1)):
+        for dx, dy in ((0, -1), (1, -1), (-1, -1), (1, 0), (0, -1), (0, -1)):
             move(mara, dx, dy)
     seen = read_until_quiet(watcher)
     move(mara, 0, 0)
     trail = [positions["Mara"] for positions in seen]
     for x, y in trail:
         assert is_free(x, y, SOLIDS, CAMPUS["width"], CAMPUS["height"]), (x, y)
-        assert not overlaps(x, y, OLD_GAP), (x, y)
+        assert not overlaps(x, y, WALL_GAP), (x, y)
     # The last direction was straight up, into the hedge: she has not moved
     # past its bottom edge.
     assert all(y >= corner[1] for _, y in trail)
@@ -252,10 +254,10 @@ def test_pushing_on_in_the_corner_and_switching_fast_never_gets_into_the_hedge(c
 
 def test_a_move_that_names_a_position_inside_the_hedge_is_refused_and_nobody_moves(connect):
     mara, watcher = walker_and_watcher(connect)
-    below = (GAP_MIDDLE_X, 280.0)
+    below = (GAP_MIDDLE_X, 340.0)
     put("Mara", below)
     # The browser only says which way to walk; a position is not a field of `move`.
-    answer = ask(mara, {"type": "move", "dx": 0, "dy": -1, "x": GAP_MIDDLE_X, "y": 249})
+    answer = ask(mara, {"type": "move", "dx": 0, "dy": -1, "x": GAP_MIDDLE_X, "y": 297})
     assert answer["type"] == "error"
     assert answer["message"] == "That message has a field the server does not expect."
     time.sleep(QUIET_SECONDS)

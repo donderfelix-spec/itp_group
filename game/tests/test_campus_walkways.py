@@ -285,12 +285,14 @@ def test_no_piece_in_a_changed_room_leaves_a_gap_a_player_could_just_squeeze_int
 # The hedge on the deck
 
 def test_the_hedge_keeps_its_place_and_is_walkable_for_hiding():
-    # Until M3-1.4 the hedge was solid here; hiding made it walkable (S-98),
-    # so the hiding spot inside it (595, 249) can be stood on.
+    # Until M3-1.4 the hedge was solid; hiding made it walkable (S-98), so the
+    # hiding spot inside it can be stood on. M3-1.7 (S-196) moved it from the
+    # top right of the deck (556, 236, 68, 26; spot 595, 249) upright to the
+    # right wall.
     hedge = solid_called("deck-hedge")
-    assert (hedge["x"], hedge["y"], hedge["w"], hedge["h"]) == (556, 236, 68, 26)
+    assert (hedge["x"], hedge["y"], hedge["w"], hedge["h"]) == (631, 255, 26, 68)
     assert hedge["walkable"] is True
-    assert is_free(595, 249, SOLIDS, WIDTH, HEIGHT)
+    assert is_free(644, 297, SOLIDS, WIDTH, HEIGHT)
 
 
 # The Duel

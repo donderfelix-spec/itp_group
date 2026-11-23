@@ -214,4 +214,35 @@ Game.world = Game.world || {};
     ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
     ctx.fillRect(panel.x + 0.6, panel.y + 0.6, panel.w * 0.4, 0.5);
   };
+
+  // ---- The hiding spot in the corner (M3-1.7) ---------------------------
+
+  // Spare folding chairs, folded and stacked in the corner by the door
+  // wall: two stacks of grey metal chairs seen from above, each chair a
+  // little offset from the one below, so the stack shows its layers. Only
+  // drawn: players walk through them.
+  var FOLDING_CHAIR = "#8C93A0";
+
+  function foldingChair(ctx, x, y, size) {
+    var half = size / 2;
+    util.box(ctx, x - half, y - half, size, size, size * 0.18, FOLDING_CHAIR, 0.6); // the seat
+    util.box(ctx, x - half, y - half, size, size * 0.26, size * 0.1, util.darker(FOLDING_CHAIR, 0.35), 0.5); // the back
+    util.line(ctx, x - half + 1, y + half - 1.2, x + half - 1, y + half - 1.2, util.lighter(FOLDING_CHAIR, 0.35), 0.35);
+  }
+
+  function chairStack(ctx, x, y, size, count) {
+    util.shadowBelow(ctx, x - size / 2 + 0.4, y + size / 2, size + (count - 1) * 0.9 - 0.8, 0.9);
+    for (var i = 0; i < count; i++) {
+      foldingChair(ctx, x + i * 0.9, y - i * 1.3, size);
+    }
+  }
+
+  art.hiding["lecture-hall:spot"] = function (ctx, spot) {
+    var x = spot.x;
+    var y = spot.y;
+    var k = spot.r / 9; // the drawing is made for a spot of radius 9
+    util.hidingShade(ctx, x, y, spot.r);
+    chairStack(ctx, x - 4.6 * k, y + 1.8 * k, 7 * k, 3);
+    chairStack(ctx, x + 3.4 * k, y + 2.6 * k, 7 * k, 2);
+  };
 })();

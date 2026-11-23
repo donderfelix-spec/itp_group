@@ -35,6 +35,9 @@ from test_play_campus_detail import NODE, node_environment, playwright_works
 GAME = Path(__file__).resolve().parents[1]
 BROWSER_SCRIPT = Path(__file__).with_name("play_task_card_in_browser.js")
 STATIONS_IN_USE = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
+# Every station's object is drawn; station 6 too since M3-1.7 (S-196), though
+# it is not in use yet. Until then the drawn ones were STATIONS_IN_USE.
+STATIONS_DRAWN = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
 needs_chromium = pytest.mark.skipif(not playwright_works(), reason="Node with Playwright and Chromium is needed")
 
@@ -87,7 +90,7 @@ def test_in_the_lobby_the_card_shows_only_the_room_and_no_station_pulses(played,
     assert seen["card"] and seen["here"] == "Main Deck"
     assert not seen["taskPart"]
     assert seen["pulse"] == []
-    assert seen["drawn"] == STATIONS_IN_USE
+    assert seen["drawn"] == STATIONS_DRAWN
 
 
 @needs_chromium
@@ -150,5 +153,5 @@ def test_in_classic_only_the_active_task_pulses_and_the_card_names_it(played):
             assert seen["taskPart"] and seen["kicker"] in ("NEXT TASK", "E USE · YOUR TASK") and seen["title"]
         else:
             assert not seen["taskPart"]
-        assert seen["drawn"] == STATIONS_IN_USE
+        assert seen["drawn"] == STATIONS_DRAWN
     assert sum(1 for seen in played["classic"] if seen["ownList"]) == 3
