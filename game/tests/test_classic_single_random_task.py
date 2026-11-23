@@ -5,6 +5,7 @@ import random
 from server import protocol
 from server.classic.round import ClassicRound
 from server.main import classic_task_stations
+from server.modes import minigames
 from task_helpers import client, clock, connect  # noqa: F401
 from test_classic_server_features import ask, classic_for, put_at_station, start_classic
 from extra_task_helpers import news
@@ -43,7 +44,7 @@ def test_websocket_rejects_other_station_and_unlocks_only_next_task(connect, clo
     assert classic_task_stations(game, name) == [first]
     put_at_station(name, first)
     assert ask(players[name], {'type': 'open_station', 'station': first})['type'] == 'station_opened'
-    clock.wait(1.1)
+    clock.wait(minigames.MINIGAMES[first].min_seconds + 0.1)  # 3 s at station 6 (S-221)
     assert ask(players[name], {'type': 'finish_station'}) == {
         'type': 'station_done', 'station': first, 'task_stations': [second],
     }
